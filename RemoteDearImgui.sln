@@ -3,24 +3,24 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.28010.2050
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ATDRemoteImgui", "ATDRemoteImgui\ATDRemoteImgui.vcxproj", "{DCD4D791-77BF-4EAA-BEEB-CF550CF43A2A}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RemoteDearImgui", "RemoteDearImgui\RemoteDearImgui.vcxproj", "{DCD4D791-77BF-4EAA-BEEB-CF550CF43A2A}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SampleClient", "TestClient\directx11_example\directx11_example.vcxproj", "{9F316E83-5AE5-4939-A723-305A94F48005}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
-		Debug|x86 = Debug|x86
 		Release|x64 = Release|x64
-		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{DCD4D791-77BF-4EAA-BEEB-CF550CF43A2A}.Debug|x64.ActiveCfg = Debug|x64
 		{DCD4D791-77BF-4EAA-BEEB-CF550CF43A2A}.Debug|x64.Build.0 = Debug|x64
-		{DCD4D791-77BF-4EAA-BEEB-CF550CF43A2A}.Debug|x86.ActiveCfg = Debug|Win32
-		{DCD4D791-77BF-4EAA-BEEB-CF550CF43A2A}.Debug|x86.Build.0 = Debug|Win32
 		{DCD4D791-77BF-4EAA-BEEB-CF550CF43A2A}.Release|x64.ActiveCfg = Release|x64
 		{DCD4D791-77BF-4EAA-BEEB-CF550CF43A2A}.Release|x64.Build.0 = Release|x64
-		{DCD4D791-77BF-4EAA-BEEB-CF550CF43A2A}.Release|x86.ActiveCfg = Release|Win32
-		{DCD4D791-77BF-4EAA-BEEB-CF550CF43A2A}.Release|x86.Build.0 = Release|Win32
+		{9F316E83-5AE5-4939-A723-305A94F48005}.Debug|x64.ActiveCfg = Debug|x64
+		{9F316E83-5AE5-4939-A723-305A94F48005}.Debug|x64.Build.0 = Debug|x64
+		{9F316E83-5AE5-4939-A723-305A94F48005}.Release|x64.ActiveCfg = Release|x64
+		{9F316E83-5AE5-4939-A723-305A94F48005}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
