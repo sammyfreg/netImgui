@@ -1,0 +1,107 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="imgui">
+      <UniqueIdentifier>{0587d7a3-f2ce-4d56-b84f-a0005d3bfce6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="sources">
+      <UniqueIdentifier>{08e36723-ce4f-4cff-9662-c40801cf1acf}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ClientCode">
+      <UniqueIdentifier>{afe377a4-1aa4-4906-ab10-5cad7a5fbd5b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ClientCode\Private">
+      <UniqueIdentifier>{cb720429-e449-4955-8dd8-3cebf61f394b}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="$(ProjectDir)..\ServerApp\ThirdParty\Imgui\imconfig.h">
+      <Filter>imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ProjectDir)..\ServerApp\ThirdParty\Imgui\imgui.h">
+      <Filter>imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ProjectDir)..\ServerApp\ThirdParty\Imgui\imgui_internal.h">
+      <Filter>imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ProjectDir)..\ServerApp\ThirdParty\Imgui\stb_rect_pack.h">
+      <Filter>imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ProjectDir)..\ServerApp\ThirdParty\Imgui\stb_textedit.h">
+      <Filter>imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ProjectDir)..\ServerApp\ThirdParty\Imgui\stb_truetype.h">
+      <Filter>imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ProjectDir)Source\imgui_impl_dx11.h">
+      <Filter>sources</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ProjectDir)Source\SampleClient.h">
+      <Filter>sources</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ClientCode\NetImgui_Api.h">
+      <Filter>ClientCode</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ClientCode\Private\NetImgui_Client.h">
+      <Filter>ClientCode\Private</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ClientCode\Private\NetImgui_CmdPackets.h">
+      <Filter>ClientCode\Private</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ClientCode\Private\NetImgui_DrawFrame.h">
+      <Filter>ClientCode\Private</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ClientCode\Private\NetImgui_Network.h">
+      <Filter>ClientCode\Private</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ClientCode\Private\NetImgui_Shared.h">
+      <Filter>ClientCode\Private</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="$(ProjectDir)..\ServerApp\ThirdParty\Imgui\imgui.cpp">
+      <Filter>imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ProjectDir)..\ServerApp\ThirdParty\Imgui\imgui_demo.cpp">
+      <Filter>imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ProjectDir)..\ServerApp\ThirdParty\Imgui\imgui_draw.cpp">
+      <Filter>imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ProjectDir)Source\imgui_impl_dx11.cpp">
+      <Filter>sources</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ProjectDir)Source\main.cpp">
+      <Filter>sources</Filter>
+    </ClCompile>
+    <ClCompile Include="$(ProjectDir)Source\SampleClient.cpp">
+      <Filter>sources</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ClientCode\Private\NetImgui_Api.cpp">
+      <Filter>ClientCode\Private</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ClientCode\Private\NetImgui_Client.cpp">
+      <Filter>ClientCode\Private</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ClientCode\Private\NetImgui_CmdPackets_DrawFrame.cpp">
+      <Filter>ClientCode\Private</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ClientCode\Private\NetImgui_NetworkWin32.cpp">
+      <Filter>ClientCode\Private</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ClientCode\Private\NetImgui_Shared.cpp">
+      <Filter>ClientCode\Private</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\ClientCode\Private\NetImgui_Client.inl">
+      <Filter>ClientCode\Private</Filter>
+    </None>
+    <None Include="..\ClientCode\Private\NetImgui_CmdPackets.inl">
+      <Filter>ClientCode\Private</Filter>
+    </None>
+    <None Include="..\ClientCode\Private\NetImgui_Shared.inl">
+      <Filter>ClientCode\Private</Filter>
+    </None>
+  </ItemGroup>
+</Project>
