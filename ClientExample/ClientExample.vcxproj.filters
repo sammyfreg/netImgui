@@ -15,24 +15,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="$(ProjectDir)..\ServerApp\ThirdParty\Imgui\imconfig.h">
-      <Filter>imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="$(ProjectDir)..\ServerApp\ThirdParty\Imgui\imgui.h">
-      <Filter>imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="$(ProjectDir)..\ServerApp\ThirdParty\Imgui\imgui_internal.h">
-      <Filter>imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="$(ProjectDir)..\ServerApp\ThirdParty\Imgui\stb_rect_pack.h">
-      <Filter>imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="$(ProjectDir)..\ServerApp\ThirdParty\Imgui\stb_textedit.h">
-      <Filter>imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="$(ProjectDir)..\ServerApp\ThirdParty\Imgui\stb_truetype.h">
-      <Filter>imgui</Filter>
-    </ClInclude>
     <ClInclude Include="$(ProjectDir)Source\imgui_impl_dx11.h">
       <Filter>sources</Filter>
     </ClInclude>
@@ -57,17 +39,29 @@
     <ClInclude Include="..\ClientCode\Private\NetImgui_Shared.h">
       <Filter>ClientCode\Private</Filter>
     </ClInclude>
+    <ClInclude Include="..\ServerApp\ThirdParty\Imgui\imstb_textedit.h">
+      <Filter>imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ServerApp\ThirdParty\Imgui\imstb_truetype.h">
+      <Filter>imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ServerApp\ThirdParty\Imgui\imconfig.h">
+      <Filter>imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ServerApp\ThirdParty\Imgui\imgui.h">
+      <Filter>imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ServerApp\ThirdParty\Imgui\imgui_internal.h">
+      <Filter>imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ServerApp\ThirdParty\Imgui\imstb_rectpack.h">
+      <Filter>imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\imgui_impl_win32.h">
+      <Filter>sources</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="$(ProjectDir)..\ServerApp\ThirdParty\Imgui\imgui.cpp">
-      <Filter>imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="$(ProjectDir)..\ServerApp\ThirdParty\Imgui\imgui_demo.cpp">
-      <Filter>imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="$(ProjectDir)..\ServerApp\ThirdParty\Imgui\imgui_draw.cpp">
-      <Filter>imgui</Filter>
-    </ClCompile>
     <ClCompile Include="$(ProjectDir)Source\imgui_impl_dx11.cpp">
       <Filter>sources</Filter>
     </ClCompile>
@@ -91,6 +85,21 @@
     </ClCompile>
     <ClCompile Include="..\ClientCode\Private\NetImgui_Shared.cpp">
       <Filter>ClientCode\Private</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ServerApp\ThirdParty\Imgui\imgui.cpp">
+      <Filter>imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ServerApp\ThirdParty\Imgui\imgui_demo.cpp">
+      <Filter>imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ServerApp\ThirdParty\Imgui\imgui_draw.cpp">
+      <Filter>imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ServerApp\ThirdParty\Imgui\imgui_widgets.cpp">
+      <Filter>imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\imgui_impl_win32.cpp">
+      <Filter>sources</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

@@ -45,24 +45,6 @@
     <ClInclude Include="targetver.h">
       <Filter>Source Files\Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ThirdParty\Imgui\imconfig.h">
-      <Filter>Source Files\ThirdParty\Imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="ThirdParty\Imgui\imgui.h">
-      <Filter>Source Files\ThirdParty\Imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="ThirdParty\Imgui\imgui_internal.h">
-      <Filter>Source Files\ThirdParty\Imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="ThirdParty\Imgui\stb_rect_pack.h">
-      <Filter>Source Files\ThirdParty\Imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="ThirdParty\Imgui\stb_textedit.h">
-      <Filter>Source Files\ThirdParty\Imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="ThirdParty\Imgui\stb_truetype.h">
-      <Filter>Source Files\ThirdParty\Imgui</Filter>
-    </ClInclude>
     <ClInclude Include="Source\ServerInfoTab.h">
       <Filter>Source Files</Filter>
     </ClInclude>
@@ -90,19 +72,28 @@
     <ClInclude Include="Source\RemoteClient.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="ThirdParty\Imgui\imstb_textedit.h">
+      <Filter>Source Files\ThirdParty\Imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\Imgui\imstb_truetype.h">
+      <Filter>Source Files\ThirdParty\Imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\Imgui\imconfig.h">
+      <Filter>Source Files\ThirdParty\Imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\Imgui\imgui.h">
+      <Filter>Source Files\ThirdParty\Imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\Imgui\imgui_internal.h">
+      <Filter>Source Files\ThirdParty\Imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\Imgui\imstb_rectpack.h">
+      <Filter>Source Files\ThirdParty\Imgui</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DirectX\DirectX11.cpp">
       <Filter>Source Files\DirectX</Filter>
-    </ClCompile>
-    <ClCompile Include="ThirdParty\Imgui\imgui.cpp">
-      <Filter>Source Files\ThirdParty\Imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="ThirdParty\Imgui\imgui_demo.cpp">
-      <Filter>Source Files\ThirdParty\Imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="ThirdParty\Imgui\imgui_draw.cpp">
-      <Filter>Source Files\ThirdParty\Imgui</Filter>
     </ClCompile>
     <ClCompile Include="Source\ServerInfoTab.cpp">
       <Filter>Source Files</Filter>
@@ -130,6 +121,18 @@
     </ClCompile>
     <ClCompile Include="Source\RemoteClient.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\Imgui\imgui.cpp">
+      <Filter>Source Files\ThirdParty\Imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\Imgui\imgui_demo.cpp">
+      <Filter>Source Files\ThirdParty\Imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\Imgui\imgui_draw.cpp">
+      <Filter>Source Files\ThirdParty\Imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\Imgui\imgui_widgets.cpp">
+      <Filter>Source Files\ThirdParty\Imgui</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

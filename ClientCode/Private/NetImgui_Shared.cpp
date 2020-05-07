@@ -1,5 +1,3 @@
-#pragma once
-
 #include "NetImGui_Shared.h"
 
 namespace NetImgui { namespace Internal

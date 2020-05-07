@@ -1,7 +1,7 @@
 #pragma once
 
 #include <atomic>
-#include "NetImGui_Api.h"
+#include "../NetImGui_Api.h"
 #define MAYBE_UNUSED(_VAR_)		(void)_VAR_
 #define ARRAY_COUNT(_ARRAY_)	(sizeof(_ARRAY_)/sizeof(_ARRAY_[0]))
 

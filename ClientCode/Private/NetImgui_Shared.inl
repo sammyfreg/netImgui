@@ -17,7 +17,7 @@ void Free(void* pData)
 }
 
 template <typename TType>
-typename TType* CastMalloc<TType>(size_t elemenCount)
+TType* CastMalloc<TType>(size_t elemenCount)
 {
 	return reinterpret_cast<TType*>( Malloc(elemenCount*sizeof(TType)) );
 }
@@ -32,7 +32,7 @@ void SafeFree<TType>(TType*& pData)
 //=============================================================================
 //=============================================================================
 template <typename TType>
-typename TType* ExchangePtr<TType>::Release()
+TType* ExchangePtr<TType>::Release()
 {
 	return mpData.exchange(nullptr);
 }
@@ -67,7 +67,7 @@ ExchangePtr<TType>::~ExchangePtr()
 template <typename TType>
 bool OffsetPointer<TType>::IsOffset()const
 {
-	return mOffset < 32*1024; //Not certain, but should do for now
+	return mOffset < 128*1024; //Not certain, but should do for now
 }
 
 template <typename TType>

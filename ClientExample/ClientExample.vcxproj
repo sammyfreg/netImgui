@@ -79,12 +79,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="$(ProjectDir)..\ServerApp\ThirdParty\Imgui\imconfig.h" />
-    <ClInclude Include="$(ProjectDir)..\ServerApp\ThirdParty\Imgui\imgui.h" />
-    <ClInclude Include="$(ProjectDir)..\ServerApp\ThirdParty\Imgui\imgui_internal.h" />
-    <ClInclude Include="$(ProjectDir)..\ServerApp\ThirdParty\Imgui\stb_rect_pack.h" />
-    <ClInclude Include="$(ProjectDir)..\ServerApp\ThirdParty\Imgui\stb_textedit.h" />
-    <ClInclude Include="$(ProjectDir)..\ServerApp\ThirdParty\Imgui\stb_truetype.h" />
     <ClInclude Include="$(ProjectDir)Source\imgui_impl_dx11.h" />
     <ClInclude Include="$(ProjectDir)Source\SampleClient.h" />
     <ClInclude Include="..\ClientCode\NetImgui_Api.h" />
@@ -93,11 +87,15 @@
     <ClInclude Include="..\ClientCode\Private\NetImgui_DrawFrame.h" />
     <ClInclude Include="..\ClientCode\Private\NetImgui_Network.h" />
     <ClInclude Include="..\ClientCode\Private\NetImgui_Shared.h" />
+    <ClInclude Include="..\ServerApp\ThirdParty\Imgui\imconfig.h" />
+    <ClInclude Include="..\ServerApp\ThirdParty\Imgui\imgui.h" />
+    <ClInclude Include="..\ServerApp\ThirdParty\Imgui\imgui_internal.h" />
+    <ClInclude Include="..\ServerApp\ThirdParty\Imgui\imstb_rectpack.h" />
+    <ClInclude Include="..\ServerApp\ThirdParty\Imgui\imstb_textedit.h" />
+    <ClInclude Include="..\ServerApp\ThirdParty\Imgui\imstb_truetype.h" />
+    <ClInclude Include="Source\imgui_impl_win32.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="$(ProjectDir)..\ServerApp\ThirdParty\Imgui\imgui.cpp" />
-    <ClCompile Include="$(ProjectDir)..\ServerApp\ThirdParty\Imgui\imgui_demo.cpp" />
-    <ClCompile Include="$(ProjectDir)..\ServerApp\ThirdParty\Imgui\imgui_draw.cpp" />
     <ClCompile Include="$(ProjectDir)Source\imgui_impl_dx11.cpp" />
     <ClCompile Include="$(ProjectDir)Source\main.cpp" />
     <ClCompile Include="$(ProjectDir)Source\SampleClient.cpp" />
@@ -106,6 +104,11 @@
     <ClCompile Include="..\ClientCode\Private\NetImgui_CmdPackets_DrawFrame.cpp" />
     <ClCompile Include="..\ClientCode\Private\NetImgui_NetworkWin32.cpp" />
     <ClCompile Include="..\ClientCode\Private\NetImgui_Shared.cpp" />
+    <ClCompile Include="..\ServerApp\ThirdParty\Imgui\imgui.cpp" />
+    <ClCompile Include="..\ServerApp\ThirdParty\Imgui\imgui_demo.cpp" />
+    <ClCompile Include="..\ServerApp\ThirdParty\Imgui\imgui_draw.cpp" />
+    <ClCompile Include="..\ServerApp\ThirdParty\Imgui\imgui_widgets.cpp" />
+    <ClCompile Include="Source\imgui_impl_win32.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\ClientCode\Private\NetImgui_Client.inl" />

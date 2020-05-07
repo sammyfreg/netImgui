@@ -1,9 +1,9 @@
 namespace NetImgui { namespace Internal
 {
-
+//SF TODO: Make Offset/Pointer test safer
 void CmdDrawFrame::ToPointers()
 {
-	if( !mpVertices.IsPointer() )
+	if( !mpIndices.IsPointer() ) //Safer to test the first element after CmdHeader
 	{
 		mpVertices.ToPointer();
 		mpIndices.ToPointer();
@@ -13,7 +13,7 @@ void CmdDrawFrame::ToPointers()
 
 void CmdDrawFrame::ToOffsets()
 {
-	if( !mpVertices.IsOffset() )
+	if( !mpIndices.IsOffset() ) //Safer to test the first element after CmdHeader
 	{
 		mpVertices.ToOffset();
 		mpIndices.ToOffset();

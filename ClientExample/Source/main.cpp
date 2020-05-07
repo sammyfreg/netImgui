@@ -2,6 +2,7 @@
 
 #include <imgui.h>
 #include "imgui_impl_dx11.h"
+#include "imgui_impl_win32.h"
 #include <d3d11.h>
 #include <d3dcompiler.h>
 #include "SampleClient.h"
@@ -101,12 +102,12 @@ void CleanupDeviceD3D()
     if (g_pd3dDevice) { g_pd3dDevice->Release(); g_pd3dDevice = NULL; }
 }
 
-extern IMGUI_API LRESULT ImGui_ImplDX11_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {	
     if( SampleClient::Client_SetImguiContextLocal() )
 	{
-		if( ImGui_ImplDX11_WndProcHandler(hWnd, msg, wParam, lParam) )
+		if( ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam) )
 			return true;
 	}
 
@@ -152,15 +153,14 @@ int main(int, char**)
     ShowWindow(hwnd, SW_SHOWDEFAULT);
     UpdateWindow(hwnd);
 
-    // Setup ImGui binding
-    ImGui_ImplDX11_Init(hwnd, g_pd3dDevice, g_pd3dDeviceContext);
-
 	// Initialize network and other things
-	if( SampleClient::Client_Startup() )
+	ImGui::SetCurrentContext( ImGui::CreateContext() );
+	if( SampleClient::Client_Startup()	&&
+		ImGui_ImplWin32_Init(hwnd)		&&
+		ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext) )
 	{		
-		ImVec4 clear_col = ImColor(114, 144, 154);
-
 		// Main loop
+		ImVec4 clear_col = ImColor(114, 144, 154);
 		MSG msg;
 		ZeroMemory(&msg, sizeof(msg));
 		while (msg.message != WM_QUIT)
@@ -178,20 +178,23 @@ int main(int, char**)
 			}
 
 			if( SampleClient::Client_SetImguiContextLocal() )
-			{
+			{				
 				ImGui_ImplDX11_NewFrame();
+				ImGui_ImplWin32_NewFrame();
 				SampleClient::Client_DrawLocal(clear_col);
 				g_pd3dDeviceContext->ClearRenderTargetView(g_mainRenderTargetView, (float*)&clear_col);
 				ImGui::Render();
-				extern void ImGui_ImplDX11_RenderDrawLists(ImDrawData* draw_data);
-				ImGui_ImplDX11_RenderDrawLists(ImGui::GetDrawData());
+				ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 				g_pSwapChain->Present(0, 0);			
 			}
 		}
 	}
 	SampleClient::Client_Shutdown();
     ImGui_ImplDX11_Shutdown();
-    CleanupDeviceD3D();	
+	ImGui_ImplWin32_Shutdown();
+    CleanupDeviceD3D();
+	ImGui::DestroyContext();
+
     UnregisterClass(L"ImGui Example", wc.hInstance);
 
     return 0;

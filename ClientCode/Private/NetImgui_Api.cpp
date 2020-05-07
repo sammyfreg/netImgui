@@ -3,8 +3,7 @@
 #include <thread>
 #include <chrono>
 #include <atomic>
-#include <imgui.h>
-#include "NetImGui_Api.h"
+#include "../NetImGui_Api.h"
 #include "NetImGui_Client.h"
 #include "NetImGui_Network.h"
 #include "NetImGui_CmdPackets.h"
@@ -14,6 +13,7 @@ namespace NetImgui {
 
 Client::ClientInfo*	gpClientInfo;
 
+//SF TODO: Create own context and copy/restore it instead?
 bool Connect(ImGuiIO& imguiIO, const char* clientName, const uint8_t serverIp[4], uint32_t serverPort)
 {
 	Client::ClientInfo& client = *gpClientInfo;
@@ -107,6 +107,7 @@ inline bool IsKeyPressed(const CmdInput& input, uint8_t vkKey)
 	return (input.KeysDownMask[vkKey/64] & (uint64_t(1)<<(vkKey%64))) != 0;
 
 }
+
 bool InputUpdateData()
 {
 	Client::ClientInfo& client	= *gpClientInfo;
@@ -129,10 +130,16 @@ bool InputUpdateData()
 		for(uint32_t i(0); i<ARRAY_COUNT(pCmdInput->KeysDownMask)*64; ++i)
 			client.mpImguiIO->KeysDown[i] = (pCmdInput->KeysDownMask[i/64] & (uint64_t(1)<<(i%64))) != 0;
 
-		size_t keyCount(ARRAY_COUNT(client.mpImguiIO->InputCharacters)-1);
-		client.mPendingKeyIn.ReadData(client.mpImguiIO->InputCharacters, keyCount);
-		client.mpImguiIO->InputCharacters[keyCount] = 0;
-
+		//SF TODO: Optimize this
+		client.mpImguiIO->ClearInputCharacters();
+		size_t keyCount(1);
+		do 
+		{
+			keyCount = 1;
+			uint16_t character;
+			client.mPendingKeyIn.ReadData(&character, keyCount);
+			client.mpImguiIO->AddInputCharacter(character);
+		}while(keyCount > 0);
 		SafeFree(pCmdInput);
 		return true;
 	}

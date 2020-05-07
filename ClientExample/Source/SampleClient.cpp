@@ -1,21 +1,30 @@
 #include <chrono>
-#include <imgui.h>
 #include "SampleClient.h"
 #include <NetImgui_Api.h>
 
-void*		gpImguiStateDefault;	// Default ImGui state used for normal menu drawing
-void*		gpImguiStateSecondary;	// ImGui state used while drawing a special local debug menu in client window, while the normal DebugMenu is displayed on the netImguiApp window. (Not needed for proper use of netImgui)
-int			gConnectPort		= NetImgui::kDefaultServerPort;
-int			gConnectIP[4]		= {127,0,0,1};
+ImGuiContext*	gpImguiContextDefault	= nullptr;	// Default ImGui state used for normal menu drawing
+ImGuiContext*	gpImguiContextSecondary	= nullptr;	// ImGui state used while drawing a special local debug menu in client window, while the normal DebugMenu is displayed on the netImguiApp window. (Not needed for proper use of netImgui)
+int				gConnectPort			= NetImgui::kDefaultServerPort;
+int				gConnectIP[4]			= {127,0,0,1};
 
 namespace SampleClient
 {
 
 bool Client_SetImguiContextLocal()
 {
-	if( gpImguiStateDefault && gpImguiStateSecondary )
+	if( gpImguiContextDefault )
 	{
-		ImGui::SetInternalState( NetImgui::IsConnected() ? gpImguiStateSecondary : gpImguiStateDefault, false);
+		if( NetImgui::IsConnected() && !gpImguiContextSecondary )
+		{
+			ImGuiIO& defaultIO			= ImGui::GetIO();
+			ImGuiStyle& defaultStyle	= ImGui::GetStyle();
+			ImFontAtlas* pDefaultAtlas	= defaultIO.Fonts;
+			gpImguiContextSecondary		= ImGui::CreateContext(pDefaultAtlas);
+			ImGui::SetCurrentContext(gpImguiContextSecondary);
+			memcpy(&ImGui::GetIO(), &defaultIO, sizeof(defaultIO));
+			memcpy(&ImGui::GetStyle(), &defaultStyle, sizeof(defaultStyle));
+		}
+		ImGui::SetCurrentContext( NetImgui::IsConnected() ? gpImguiContextSecondary : gpImguiContextDefault);
 		return true;
 	}
 	return false;
@@ -23,9 +32,9 @@ bool Client_SetImguiContextLocal()
 
 bool Client_SetImguiContextRemote()
 {
-	if( NetImgui::IsConnected() && gpImguiStateDefault && gpImguiStateSecondary )
+	if( NetImgui::IsConnected() && gpImguiContextDefault)
 	{
-		ImGui::SetInternalState( gpImguiStateDefault, false);
+		ImGui::SetCurrentContext( gpImguiContextDefault );
 		return true;
 	}
 	return false;
@@ -52,26 +61,17 @@ bool Client_Startup()
     //io.Fonts->AddFontFromFileTTF("../../extra_fonts/DroidSans.ttf", 18.0f);
     //io.Fonts->AddFontFromFileTTF("../../extra_fonts/fontawesome-webfont.ttf", 18.0f, &icons_config, icons_ranges);
 
-	// Save the default Imgui State and create a secondary one for use locally while debug menu displayed in netImguiApp
-	gpImguiStateDefault					= ImGui::GetInternalState();	
-	ImGuiIO& defaultIO					= ImGui::GetIO();
-
-	gpImguiStateSecondary				= malloc( ImGui::GetInternalStateSize() );
-	ImGui::SetInternalState(gpImguiStateSecondary, true);
-	memcpy(&ImGui::GetIO(), &defaultIO, sizeof(defaultIO));
-	//ImGui::GetIO().RenderDrawListsFn = SampleClient::Imgui_DrawCallback;
-	
-	ImGui::SetInternalState(gpImguiStateDefault, false);
+	// Save the default Imgui State and create a secondary one for use locally while debug menu displayed in netImguiApp		
+	gpImguiContextDefault = ImGui::GetCurrentContext();	
 	return true;
 }
 
 void Client_Shutdown()
-{
+{	
 	NetImgui::Shutdown();
-	ImGui::SetInternalState(gpImguiStateSecondary, false);
-	ImGui::Shutdown();
-	free(gpImguiStateSecondary);
-	ImGui::SetInternalState(gpImguiStateDefault, false);
+	if(gpImguiContextSecondary)
+		ImGui::DestroyContext(gpImguiContextSecondary);
+	ImGui::SetCurrentContext(gpImguiContextDefault);
 }
 
 void Client_AddFontTexture(uint64_t texId, void* pData, uint16_t width, uint16_t height)
@@ -81,6 +81,7 @@ void Client_AddFontTexture(uint64_t texId, void* pData, uint16_t width, uint16_t
 
 void Client_DrawLocal(ImVec4& clearColorOut)
 {
+	ImGui::NewFrame();
 	if( !NetImgui::IsConnected() )
 	{		
 		SampleClient::Imgui_DrawMainMenu();
@@ -94,12 +95,12 @@ void Client_DrawLocal(ImVec4& clearColorOut)
 }
 
 // Normal DebugUI rendering
-	// Can either be displayed locally or sent to remote netImguiApp server if connected	
+// Can either be displayed locally or sent to remote netImguiApp server if connected
 void Client_DrawRemote(ImVec4& clearColorOut)
 {	
+	static auto lastTime = std::chrono::high_resolution_clock::now();
 	if( NetImgui::IsConnected() && NetImgui::InputUpdateData() )
-	{
-		static auto lastTime				= std::chrono::high_resolution_clock::now();
+	{		
 		auto currentTime					= std::chrono::high_resolution_clock::now();
 		auto duration						= std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lastTime);
 		lastTime							= currentTime;		
@@ -156,7 +157,7 @@ void Imgui_DrawContent(ImVec4& clear_col)
 	// 2. Show another simple window, this time using an explicit Begin/End pair
 	if (show_another_window)
 	{
-		ImGui::SetNextWindowSize(ImVec2(200,100), ImGuiSetCond_FirstUseEver);
+		ImGui::SetNextWindowSize(ImVec2(200,100), ImGuiCond_FirstUseEver);
 		ImGui::Begin("Another Window", &show_another_window);
 		ImGui::Text("Hello");
 		ImGui::End();
@@ -165,8 +166,8 @@ void Imgui_DrawContent(ImVec4& clear_col)
 	// 3. Show the ImGui test window. Most of the sample code is in ImGui::ShowTestWindow()
 	if (show_test_window)
 	{
-		ImGui::SetNextWindowPos(ImVec2(650, 20), ImGuiSetCond_FirstUseEver);     // Normally user code doesn't need/want to call it because positions are saved in .ini file anyway. Here we just want to make the demo initial state a bit more friendly!
-		ImGui::ShowTestWindow(&show_test_window);
+		ImGui::SetNextWindowPos(ImVec2(650, 20), ImGuiCond_FirstUseEver);     // Normally user code doesn't need/want to call it because positions are saved in .ini file anyway. Here we just want to make the demo initial state a bit more friendly!
+		ImGui::ShowDemoWindow(&show_test_window);
 	}
 }
 

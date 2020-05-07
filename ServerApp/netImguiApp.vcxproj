@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
@@ -117,9 +117,9 @@
     <ClInclude Include="ThirdParty\Imgui\imconfig.h" />
     <ClInclude Include="ThirdParty\Imgui\imgui.h" />
     <ClInclude Include="ThirdParty\Imgui\imgui_internal.h" />
-    <ClInclude Include="ThirdParty\Imgui\stb_rect_pack.h" />
-    <ClInclude Include="ThirdParty\Imgui\stb_textedit.h" />
-    <ClInclude Include="ThirdParty\Imgui\stb_truetype.h" />
+    <ClInclude Include="ThirdParty\Imgui\imstb_rectpack.h" />
+    <ClInclude Include="ThirdParty\Imgui\imstb_textedit.h" />
+    <ClInclude Include="ThirdParty\Imgui\imstb_truetype.h" />
     <ClInclude Include="ThirdParty\stb_image.h" />
   </ItemGroup>
   <ItemGroup>
@@ -136,6 +136,7 @@
     <ClCompile Include="ThirdParty\Imgui\imgui.cpp" />
     <ClCompile Include="ThirdParty\Imgui\imgui_demo.cpp" />
     <ClCompile Include="ThirdParty\Imgui\imgui_draw.cpp" />
+    <ClCompile Include="ThirdParty\Imgui\imgui_widgets.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="netImguiApp.rc" />

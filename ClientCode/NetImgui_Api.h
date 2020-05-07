@@ -1,8 +1,9 @@
 #pragma once
 
+// Set path to your 'dear imgui' header here
+// Note: Tested against 'dear imgui' v1.77, but other versions can still be compatible
+#include <imgui.h>	
 #include <stdint.h>
-struct ImDrawData;	//Forward declare of a dear imgui struct
-struct ImGuiIO;		//Forward declare of a dear imgui struct
 
 namespace NetImgui 
 { 

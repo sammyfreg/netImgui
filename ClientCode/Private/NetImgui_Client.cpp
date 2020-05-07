@@ -2,7 +2,6 @@
 #include <chrono>
 #include <atomic>
 #include <vector>
-#include <imgui.h>
 #include "NetImGui_Client.h"
 #include "NetImGui_Network.h"
 #include "NetImGui_CmdPackets.h"
@@ -127,7 +126,7 @@ bool Communications_Incoming(ClientInfo& client)
 		if( bOk && cmdHeader.mSize > sizeof(CmdHeader) )
 		{
 			pCmdData		= CastMalloc<char>(cmdHeader.mSize);
-			memcpy(pCmdData, &cmdHeader, sizeof(pCmdData));
+			memcpy(pCmdData, &cmdHeader, sizeof(CmdHeader));
 			bOk				= Network::DataReceive(client.mpSocket, &pCmdData[sizeof(cmdHeader)], cmdHeader.mSize-sizeof(cmdHeader));	
 		}
 
