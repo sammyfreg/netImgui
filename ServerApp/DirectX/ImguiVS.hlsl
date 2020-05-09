@@ -3,10 +3,12 @@
 	float4x4 ProjectionMatrix;
 };
 
+//Note: Keep these 4 constants in sync with 'NetImgui_DrawFrame.h'
 static const float kUvRange_Min		= -2;
-static const float kUvRange_Max		= 2;
-static const float kPosRange_Min	= -256;
-static const float kPosRange_Max	= 2048;
+static const float kUvRange_Max		=  2;
+static const float kPosRange_Min	= -2048;
+static const float kPosRange_Max	=  4096;
+
 struct VS_INPUT
 {
 	float2 pos : POSITION;

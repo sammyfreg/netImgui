@@ -1,4 +1,3 @@
-#include "NetImGui_DrawFrame.h"
 #include "NetImgui_CmdPackets.h"
 
 namespace NetImgui { namespace Internal
@@ -47,7 +46,7 @@ inline void ImGui_ExtractIndices(uint8_t* pOutIndices, const ImDrawList* pCmdLis
 	}	
 }
 
-inline void ImGui_ExtractDraws(uint32_t& indiceByteOffset, uint32_t& vertexIndex, uint32_t& drawIndex, ImguiDraw* pOutDraws, const ImDrawList* pCmdList)
+inline void ImGui_ExtractDraws(uint32_t& indiceByteOffset, uint32_t& vertexIndex, uint32_t& drawIndex, ImguiDraw* pOutDraws, const ImDrawList* pCmdList, const ImVec2& clipOffset)
 {
 	const bool is16Bit = pCmdList->VtxBuffer.size() <= 0xFFFF;
 	for(int cmd_i = 0; cmd_i < pCmdList->CmdBuffer.size(); cmd_i++)
@@ -60,10 +59,10 @@ inline void ImGui_ExtractDraws(uint32_t& indiceByteOffset, uint32_t& vertexIndex
 			pOutDraws[drawIndex].mTextureId		= reinterpret_cast<uint64_t>(pCmd->TextureId);
 			pOutDraws[drawIndex].mIdxCount		= pCmd->ElemCount;
 			pOutDraws[drawIndex].mIndexSize		= is16Bit ? 2 : 4;
-			pOutDraws[drawIndex].mClipRect[0]	= pCmd->ClipRect.x;
-			pOutDraws[drawIndex].mClipRect[1]	= pCmd->ClipRect.y;
-			pOutDraws[drawIndex].mClipRect[2]	= pCmd->ClipRect.z;
-			pOutDraws[drawIndex].mClipRect[3]	= pCmd->ClipRect.w;
+			pOutDraws[drawIndex].mClipRect[0]	= pCmd->ClipRect.x - clipOffset.x;
+			pOutDraws[drawIndex].mClipRect[1]	= pCmd->ClipRect.y - clipOffset.y;
+			pOutDraws[drawIndex].mClipRect[2]	= pCmd->ClipRect.z - clipOffset.x;
+			pOutDraws[drawIndex].mClipRect[3]	= pCmd->ClipRect.w - clipOffset.y;
 			indiceByteOffset					+= pCmd->ElemCount * pOutDraws[drawIndex].mIndexSize;
 			drawIndex							+= 1;
 		}
@@ -100,6 +99,10 @@ CmdDrawFrame* CreateCmdDrawDrame(const ImDrawData* pDearImguiData)
 	pDrawFrame->mVerticeCount		= pDearImguiData->TotalVtxCount;
 	pDrawFrame->mIndiceByteSize		= indiceSize;
 	pDrawFrame->mDrawCount			= 0;
+	pDrawFrame->mDisplayArea[0]		= pDearImguiData->DisplayPos.x;
+	pDrawFrame->mDisplayArea[1]		= pDearImguiData->DisplayPos.y;
+	pDrawFrame->mDisplayArea[2]		= pDearImguiData->DisplayPos.x + pDearImguiData->DisplaySize.x;
+	pDrawFrame->mDisplayArea[3]		= pDearImguiData->DisplayPos.y + pDearImguiData->DisplaySize.y;
 	pDrawFrame->mpIndices.mPointer	= reinterpret_cast<uint8_t*>(pRawData + indiceOffset);
 	pDrawFrame->mpVertices.mPointer	= reinterpret_cast<ImguiVert*>(pRawData + verticeOffset);
 	pDrawFrame->mpDraws.mPointer	= reinterpret_cast<ImguiDraw*>(pRawData + drawOffset);
@@ -113,7 +116,7 @@ CmdDrawFrame* CreateCmdDrawDrame(const ImDrawData* pDearImguiData)
 		const ImDrawList* pCmdList = pDearImguiData->CmdLists[n];
 		ImGui_ExtractVertices(&pDrawFrame->mpVertices[vertexIndex], pCmdList);
 		ImGui_ExtractIndices(&pDrawFrame->mpIndices[indiceByteOffset], pCmdList);
-		ImGui_ExtractDraws(indiceByteOffset, vertexIndex, drawIndex, pDrawFrame->mpDraws.Get(), pCmdList);
+		ImGui_ExtractDraws(indiceByteOffset, vertexIndex, drawIndex, pDrawFrame->mpDraws.Get(), pCmdList, pDearImguiData->DisplayPos);
 
 		vertexIndex += pCmdList->VtxBuffer.size();		
 	}	

@@ -4,10 +4,12 @@
 
 namespace NetImgui { namespace Internal
 {
-//SF move this?
+
 struct ImguiVert
 {
-	enum Constants{ kUvRange_Min=-2, kUvRange_Max=2, kPosRange_Min=-256, kPosRange_Max=2048};
+	//Note: Keep these 4 constants in sync with 'ImguiVS.hlsl'
+	//Note: If updating this, increase 'CmdVersion::eVersion'
+	enum Constants{ kUvRange_Min=-2, kUvRange_Max=2, kPosRange_Min=-2048, kPosRange_Max=4096};
 	uint16_t	mPos[2];	
 	uint16_t	mUV[2];
 	uint32_t	mColor;

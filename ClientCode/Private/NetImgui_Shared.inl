@@ -7,23 +7,22 @@ namespace NetImgui { namespace Internal
 
 void* Malloc(size_t dataSize)
 {
-	return (*gpMalloc)(dataSize);
+	return ImGui::MemAlloc(dataSize);
 }
 
 void Free(void* pData)
 {
-	if( pData != nullptr )
-		(*gpFree)(pData);
+	ImGui::MemFree(pData);
 }
 
 template <typename TType>
-TType* CastMalloc<TType>(size_t elemenCount)
+TType* CastMalloc(size_t elemenCount)
 {
 	return reinterpret_cast<TType*>( Malloc(elemenCount*sizeof(TType)) );
 }
 
 template <typename TType> 
-void SafeFree<TType>(TType*& pData)
+void SafeFree(TType*& pData)
 {
 	Free(pData);
 	pData = nullptr;

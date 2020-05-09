@@ -74,7 +74,8 @@ void ClientRemote::UpdateInputToSend(HWND hWindows, InputUpdate& Input)
 	pInputNew->ScreenSize[1]	= static_cast<uint16_t>(rect.bottom - rect.top);
 	pInputNew->MousePos[0]		= static_cast<int16_t>(MousPos.x);
 	pInputNew->MousePos[1]		= static_cast<int16_t>(MousPos.y);
-	pInputNew->MouseWheel		= Input.mMouseWheelPos;
+	pInputNew->MouseWheelVert	= Input.mMouseWheelVertPos;
+	pInputNew->MouseWheelHoriz	= Input.mMouseWheelHorizPos;
 	
 	// Avoid reading keyboard/mouse input if we are not the active window	
 	uint8_t KeyStates[256];

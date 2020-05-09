@@ -85,11 +85,6 @@ struct stdAllocator
   void					deallocate (T* p, std::size_t n) { MAYBE_UNUSED(n); SafeFree(p); }
 };
 
-
-
-extern void* (*gpMalloc)(size_t);
-extern void (*gpFree)(void*);
-
 }} //namespace NetImgui::Internal
 
 using namespace NetImgui::Internal;

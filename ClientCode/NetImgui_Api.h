@@ -1,8 +1,9 @@
 #pragma once
 
-// Set path to your 'dear imgui' header here
 // Note: Tested against 'dear imgui' v1.77, but other versions can still be compatible
-#include <imgui.h>	
+// Note: Use memory allocator assigned to ImGui
+
+#include <imgui.h>		// Set path to your 'dear imgui' header here
 #include <stdint.h>
 
 namespace NetImgui 
@@ -13,47 +14,45 @@ enum eTexFormat : uint8_t { kTexFmtR8, kTexFmtRG8, kTexFmtRGB8, kTexFmtRGBA8, kT
 constexpr uint32_t kDefaultServerPort = 8888;
 
 //=================================================================================================
-// Initialize the Network Library, and assign custom malloc/free 
-// (use std::malloc/free by default)
+// Initialize the Network Library
 //=================================================================================================
-bool	Startup				(void* (*pMalloc)(size_t) = nullptr, void (*pFree)(void*) = nullptr);
+bool		Startup				(void);
 
 //=================================================================================================
 // Free Resources
 //=================================================================================================
-void	Shutdown			(void);
+void		Shutdown			(void);
 
 //=================================================================================================
-// Try to establish a connection to netImguiApp server
+// Try to establish a connection to netImguiApp server. 
+// Will create a new ImGui Context by copying the current settings
 //=================================================================================================
-bool	Connect				(ImGuiIO& imguiIO, const char* clientName, const uint8_t serverIp[4], uint32_t serverPort=kDefaultServerPort);
+bool		Connect				(const char* clientName, const uint8_t serverIp[4], uint32_t serverPort=kDefaultServerPort);
 
 //=================================================================================================
 // Request a disconnect from the netImguiApp server
 //=================================================================================================
-void	Disconnect			(void);
+void		Disconnect			(void);
 
 //=================================================================================================
 // True if connected to netImguiApp server
 //=================================================================================================
-bool	IsConnected			(void);
-
-//=================================================================================================
-// Send the latest result of Imgui Draw Data, to netImguiApp server
-//=================================================================================================
-void	SendDataDraw		(const ImDrawData* pImguiDrawData);
+bool		IsConnected			(void);
 
 //=================================================================================================
 // Send an updated texture used by imgui, to netImguiApp server
 //=================================================================================================
-void	SendDataTexture		(uint64_t textureId, void* pData, uint16_t width, uint16_t height, eTexFormat format);
+void		SendDataTexture		(uint64_t textureId, void* pData, uint16_t width, uint16_t height, eTexFormat format);
 
 //=================================================================================================
-// Update Imgui with the latest keyboard/mouse/screen informations. 
-// If there's new data, a rendering update should be sent back to netImguiApp server with
-// 'SendDataDraw'
+// Start a new Imgui Frame and wait for Draws commands. Sets a new current ImGui Context
 //=================================================================================================
-bool	InputUpdateData		(void);
+bool		NewFrame			(void);
+
+//=================================================================================================
+// Process all receives draws, send them to remote connection and restore the ImGui Context
+//=================================================================================================
+void		EndFrame			(void);
 
 uint8_t		GetTexture_BitsPerPixel	(eTexFormat eFormat);
 uint32_t	GetTexture_BytePerLine	(eTexFormat eFormat, uint32_t pixelWidth);

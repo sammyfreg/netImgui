@@ -2,43 +2,12 @@
 #include "SampleClient.h"
 #include <NetImgui_Api.h>
 
-ImGuiContext*	gpImguiContextDefault	= nullptr;	// Default ImGui state used for normal menu drawing
-ImGuiContext*	gpImguiContextSecondary	= nullptr;	// ImGui state used while drawing a special local debug menu in client window, while the normal DebugMenu is displayed on the netImguiApp window. (Not needed for proper use of netImgui)
 int				gConnectPort			= NetImgui::kDefaultServerPort;
 int				gConnectIP[4]			= {127,0,0,1};
 
 namespace SampleClient
 {
 
-bool Client_SetImguiContextLocal()
-{
-	if( gpImguiContextDefault )
-	{
-		if( NetImgui::IsConnected() && !gpImguiContextSecondary )
-		{
-			ImGuiIO& defaultIO			= ImGui::GetIO();
-			ImGuiStyle& defaultStyle	= ImGui::GetStyle();
-			ImFontAtlas* pDefaultAtlas	= defaultIO.Fonts;
-			gpImguiContextSecondary		= ImGui::CreateContext(pDefaultAtlas);
-			ImGui::SetCurrentContext(gpImguiContextSecondary);
-			memcpy(&ImGui::GetIO(), &defaultIO, sizeof(defaultIO));
-			memcpy(&ImGui::GetStyle(), &defaultStyle, sizeof(defaultStyle));
-		}
-		ImGui::SetCurrentContext( NetImgui::IsConnected() ? gpImguiContextSecondary : gpImguiContextDefault);
-		return true;
-	}
-	return false;
-}
-
-bool Client_SetImguiContextRemote()
-{
-	if( NetImgui::IsConnected() && gpImguiContextDefault)
-	{
-		ImGui::SetCurrentContext( gpImguiContextDefault );
-		return true;
-	}
-	return false;
-}
 
 bool Client_Startup()
 {
@@ -62,16 +31,12 @@ bool Client_Startup()
     //io.Fonts->AddFontFromFileTTF("../../extra_fonts/fontawesome-webfont.ttf", 18.0f, &icons_config, icons_ranges);
 
 	// Save the default Imgui State and create a secondary one for use locally while debug menu displayed in netImguiApp		
-	gpImguiContextDefault = ImGui::GetCurrentContext();	
 	return true;
 }
 
 void Client_Shutdown()
 {	
 	NetImgui::Shutdown();
-	if(gpImguiContextSecondary)
-		ImGui::DestroyContext(gpImguiContextSecondary);
-	ImGui::SetCurrentContext(gpImguiContextDefault);
 }
 
 void Client_AddFontTexture(uint64_t texId, void* pData, uint16_t width, uint16_t height)
@@ -97,19 +62,12 @@ void Client_DrawLocal(ImVec4& clearColorOut)
 // Normal DebugUI rendering
 // Can either be displayed locally or sent to remote netImguiApp server if connected
 void Client_DrawRemote(ImVec4& clearColorOut)
-{	
-	static auto lastTime = std::chrono::high_resolution_clock::now();
-	if( NetImgui::IsConnected() && NetImgui::InputUpdateData() )
+{		
+	if( NetImgui::NewFrame() )
 	{		
-		auto currentTime					= std::chrono::high_resolution_clock::now();
-		auto duration						= std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lastTime);
-		lastTime							= currentTime;		
-		ImGui::GetIO().DeltaTime			= static_cast<float>(duration.count() / 1000.f);		
-		ImGui::NewFrame();
 		SampleClient::Imgui_DrawMainMenu();
 		SampleClient::Imgui_DrawContent(clearColorOut);
-		ImGui::Render();
-		NetImgui::SendDataDraw( ImGui::GetDrawData() );
+		NetImgui::EndFrame();
 	}
 }
 
@@ -130,7 +88,7 @@ void Imgui_DrawMainMenu()
 		if( ImGui::Button("Connect") )
 		{
 			unsigned char IpAddress[4] = {(uint8_t)gConnectIP[0], (uint8_t)gConnectIP[1], (uint8_t)gConnectIP[2], (uint8_t)gConnectIP[3] };
-			NetImgui::Connect(ImGui::GetIO(), "SampleClientPC", IpAddress, gConnectPort);
+			NetImgui::Connect("SampleClientPC", IpAddress, gConnectPort);
 		}
 			
 	}

@@ -103,7 +103,7 @@
   <ItemGroup>
     <ClInclude Include="..\ClientCode\Private\NetImgui_Client.h" />
     <ClInclude Include="..\ClientCode\Private\NetImgui_CmdPackets.h" />
-    <ClInclude Include="..\ClientCode\Private\NetImgui_DrawFrame.h" />
+    <ClInclude Include="..\ClientCode\Private\NetImgui_CmdPackets_DrawFrame.h" />
     <ClInclude Include="..\ClientCode\Private\NetImgui_Network.h" />
     <ClInclude Include="..\ClientCode\Private\NetImgui_Shared.h" />
     <ClInclude Include="..\ClientCode\NetImgui_Api.h" />
@@ -127,7 +127,6 @@
     <ClCompile Include="..\ClientCode\Private\NetImgui_Client.cpp" />
     <ClCompile Include="..\ClientCode\Private\NetImgui_CmdPackets_DrawFrame.cpp" />
     <ClCompile Include="..\ClientCode\Private\NetImgui_NetworkWin32.cpp" />
-    <ClCompile Include="..\ClientCode\Private\NetImgui_Shared.cpp" />
     <ClCompile Include="Source\Application.cpp" />
     <ClCompile Include="DirectX\DirectX11.cpp" />
     <ClCompile Include="Source\RemoteClient.cpp" />

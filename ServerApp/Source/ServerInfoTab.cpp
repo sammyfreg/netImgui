@@ -140,10 +140,7 @@ bool ServerInfoTab_Startup(unsigned int ServerPort)
 
 	ImGui::SetCurrentContext(ImGui::CreateContext());
 	ImGuiIO& io = ImGui::GetIO();	
-	uint8_t Ip[4] = {127,0,0,1};
-	if( !NetImgui::Connect(io, "ServerLogs", Ip, ServerPort) )
-		return false;
-
+	
 	// Build
     unsigned char* pixels;
     int width, height;
@@ -159,6 +156,10 @@ bool ServerInfoTab_Startup(unsigned int ServerPort)
     io.Fonts->ClearInputData();
     io.Fonts->ClearTexData();
 
+	uint8_t Ip[4] = {127,0,0,1};
+	if( !NetImgui::Connect("ServerLogs", Ip, ServerPort) )
+		return false;
+
 	return true;
 }
 
@@ -169,19 +170,10 @@ void ServerInfoTab_Shutdown()
 
 void ServerInfoTab_Draw()
 {
-	if( NetImgui::InputUpdateData() )
+	if( NetImgui::NewFrame() )
 	{
-		static auto lastTime			= std::chrono::high_resolution_clock::now();
-		auto currentTime				= std::chrono::high_resolution_clock::now();
-		auto duration					= std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lastTime);
-		ImGui::GetIO().DeltaTime		= static_cast<float>(duration.count() / 1000.f);
-		lastTime						= currentTime;
-
-		ImGui::NewFrame();
 		ExampleAppLog::Get().Draw("Logs");	
-		ImGui::Render();
-
-		NetImgui::SendDataDraw( ImGui::GetDrawData() );
+		NetImgui::EndFrame();
 	}
 }
 

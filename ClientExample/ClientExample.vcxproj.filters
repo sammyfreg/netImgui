@@ -83,9 +83,6 @@
     <ClCompile Include="..\ClientCode\Private\NetImgui_NetworkWin32.cpp">
       <Filter>ClientCode\Private</Filter>
     </ClCompile>
-    <ClCompile Include="..\ClientCode\Private\NetImgui_Shared.cpp">
-      <Filter>ClientCode\Private</Filter>
-    </ClCompile>
     <ClCompile Include="..\ServerApp\ThirdParty\Imgui\imgui.cpp">
       <Filter>imgui</Filter>
     </ClCompile>

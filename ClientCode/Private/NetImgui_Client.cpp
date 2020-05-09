@@ -5,7 +5,6 @@
 #include "NetImGui_Client.h"
 #include "NetImGui_Network.h"
 #include "NetImGui_CmdPackets.h"
-#include "NetImGui_DrawFrame.h"
 
 namespace NetImgui { namespace Internal { namespace Client 
 {
@@ -172,45 +171,11 @@ bool Communications_Outgoing(ClientInfo& client)
 	return bSuccess;
 }
 
-void InputSettingOverride(ClientInfo& client)
-{
-	if( client.mpImguiIO )
-	{
-		memcpy(client.SavedKeyMap, client.mpImguiIO->KeyMap, sizeof(client.SavedKeyMap));
-		client.mpImguiIO->KeyMap[ImGuiKey_Tab]			= CmdInput::vkKeyboardTab;
-		client.mpImguiIO->KeyMap[ImGuiKey_LeftArrow]	= CmdInput::vkKeyboardLeft;
-		client.mpImguiIO->KeyMap[ImGuiKey_RightArrow]	= CmdInput::vkKeyboardRight;
-		client.mpImguiIO->KeyMap[ImGuiKey_UpArrow]		= CmdInput::vkKeyboardUp;
-		client.mpImguiIO->KeyMap[ImGuiKey_DownArrow]	= CmdInput::vkKeyboardDown;
-		client.mpImguiIO->KeyMap[ImGuiKey_PageUp]		= CmdInput::vkKeyboardPageUp;
-		client.mpImguiIO->KeyMap[ImGuiKey_PageDown]		= CmdInput::vkKeyboardPageDown;
-		client.mpImguiIO->KeyMap[ImGuiKey_Home]			= CmdInput::vkKeyboardHome;
-		client.mpImguiIO->KeyMap[ImGuiKey_End]			= CmdInput::vkKeyboardEnd;
-		client.mpImguiIO->KeyMap[ImGuiKey_Delete]		= CmdInput::vkKeyboardDel;
-		client.mpImguiIO->KeyMap[ImGuiKey_Backspace]	= CmdInput::vkKeyboardBackspace;
-		client.mpImguiIO->KeyMap[ImGuiKey_Enter]		= CmdInput::vkKeyboardEnter;
-		client.mpImguiIO->KeyMap[ImGuiKey_Escape]		= CmdInput::vkKeyboardEscape;
-		client.mpImguiIO->KeyMap[ImGuiKey_A]			= 'A';
-		client.mpImguiIO->KeyMap[ImGuiKey_C]			= 'C';
-		client.mpImguiIO->KeyMap[ImGuiKey_V]			= 'V';
-		client.mpImguiIO->KeyMap[ImGuiKey_X]			= 'X';
-		client.mpImguiIO->KeyMap[ImGuiKey_Y]			= 'Y';
-		client.mpImguiIO->KeyMap[ImGuiKey_Z]			= 'Z';
-	}
-}
-
-void InputSettingRestore(ClientInfo& client)
-{
-	if( client.mpImguiIO )
-		memcpy(client.mpImguiIO->KeyMap, client.SavedKeyMap, sizeof(client.mpImguiIO->KeyMap));
-}
-
 //=================================================================================================
 // COMMUNICATIONS THREAD 
 //=================================================================================================
 void Communications(ClientInfo* pClient)
 {	
-	InputSettingOverride(*pClient);
 	Communications_Initialize(*pClient);
 	while( pClient->mbConnected )
 	{
@@ -219,7 +184,6 @@ void Communications(ClientInfo* pClient)
 		std::this_thread::sleep_for(std::chrono::milliseconds(8));
 	}
 	Network::Disconnect(pClient->mpSocket);
-	InputSettingOverride(*pClient);
 	pClient->mbDisconnectRequest = false;
 }
 

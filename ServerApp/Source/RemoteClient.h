@@ -6,7 +6,8 @@
 
 struct InputUpdate 
 { 
-	float		mMouseWheelPos; 
+	float		mMouseWheelVertPos;
+	float		mMouseWheelHorizPos;
 	uint8_t		mKeyCount;
 	uint16_t	mKeys[128];
 };

@@ -44,8 +44,10 @@ BufferKeys					mPendingKeyIn;
 bool						mbConnected			= false;
 bool						mbDisconnectRequest	= false;
 bool						mbHasTextureUpdate	= false;
-ImGuiIO*					mpImguiIO			= nullptr;
-int							SavedKeyMap[ImGuiKey_COUNT];
+ImGuiContext*				mpContext			= nullptr;
+ImGuiContext*				mpContextRestore	= nullptr;
+float						mMouseWheelVertPrev	= 0.f;
+float						mMouseWheelHorizPrev= 0.f;
 void						ProcessTextures();
 };
 

@@ -1,10 +1,12 @@
 #pragma once
 
 #include "NetImGui_Shared.h"
-#include "NetImGui_DrawFrame.h"
+#include "NetImGui_CmdPackets_DrawFrame.h"
 
 namespace NetImgui { namespace Internal
 {
+
+//Note: If updating any of these commands data structure, increase 'CmdVersion::eVersion'
 
 struct CmdHeader
 {
@@ -52,6 +54,8 @@ struct alignas(8) CmdInput
 		vkMouseBtnLeft		= 0x01,
 		vkMouseBtnRight		= 0x02,
 		vkMouseBtnMid		= 0x04,
+		vkMouseBtnExtra1	= 0x05, // VK_XBUTTON1
+		vkMouseBtnExtra2	= 0x06, // VK_XBUTTON2
 		vkKeyboardShift		= 0x10,
 		vkKeyboardCtrl		= 0x11,
 		vkKeyboardAlt		= 0x12,
@@ -68,13 +72,16 @@ struct alignas(8) CmdInput
 		vkKeyboardBackspace	= 0x08,
 		vkKeyboardEnter		= 0x0D,
 		vkKeyboardEscape	= 0x1B,
+		vkKeyboardSuper1	= 0x5B, // VK_LWIN
+		vkKeyboardSuper2	= 0x5C, // VK_LWIN
 	};
 	inline bool IsKeyDown(eVirtualKeys vkKey)const;
 
 	CmdHeader	mHeader		= CmdHeader(CmdHeader::kCmdInput, sizeof(CmdInput));
 	uint16_t	ScreenSize[2];
 	int16_t		MousePos[2];	
-	float		MouseWheel;
+	float		MouseWheelVert;
+	float		MouseWheelHoriz;
 	uint16_t	KeyChars[64];			// Input characters
 	uint8_t		KeyCharCount;			// Number of valid input characters
 	uint64_t	KeysDownMask[256/64];	// List of keys currently pressed (follow Windows Virtual-Key codes)
@@ -97,6 +104,7 @@ struct alignas(8) CmdDrawFrame
 	uint32_t					mVerticeCount;		
 	uint32_t					mIndiceByteSize;	
 	uint32_t					mDrawCount;
+	float						mDisplayArea[4];
 	OffsetPointer<ImguiVert>	mpVertices;
 	OffsetPointer<uint8_t>		mpIndices;
 	OffsetPointer<ImguiDraw>	mpDraws;

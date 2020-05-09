@@ -103,7 +103,6 @@
     <ClCompile Include="..\ClientCode\Private\NetImgui_Client.cpp" />
     <ClCompile Include="..\ClientCode\Private\NetImgui_CmdPackets_DrawFrame.cpp" />
     <ClCompile Include="..\ClientCode\Private\NetImgui_NetworkWin32.cpp" />
-    <ClCompile Include="..\ClientCode\Private\NetImgui_Shared.cpp" />
     <ClCompile Include="..\ServerApp\ThirdParty\Imgui\imgui.cpp" />
     <ClCompile Include="..\ServerApp\ThirdParty\Imgui\imgui_demo.cpp" />
     <ClCompile Include="..\ServerApp\ThirdParty\Imgui\imgui_draw.cpp" />

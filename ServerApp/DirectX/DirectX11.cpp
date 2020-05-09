@@ -265,7 +265,10 @@ bool Startup(HWND hWindow)
     if( hr == S_OK )
 {
         CD3D11_RASTERIZER_DESC desc(D3D11_DEFAULT);
-        desc.CullMode = D3D11_CULL_NONE;        
+        desc.FillMode = D3D11_FILL_SOLID;
+        desc.CullMode = D3D11_CULL_NONE;
+        desc.ScissorEnable = true;
+        desc.DepthClipEnable = true;
         hr = gpGfxRes->mDevice->CreateRasterizerState(&desc, gpGfxRes->mDefaultRasterState.GetForInit());
     }
 
@@ -377,10 +380,10 @@ void Render_DrawImgui(const std::vector<TextureHandle>& textures, const NetImgui
 	if( !pDrawFrame )
 		return;
 	
-	const float L = 0.0f;
-	const float R = (float)gpGfxRes->mScreenWidth;
-	const float B = (float)gpGfxRes->mScreenHeight;
-	const float T = 0.0f;
+	const float L = pDrawFrame->mDisplayArea[0];
+	const float R = pDrawFrame->mDisplayArea[2];	
+	const float T = pDrawFrame->mDisplayArea[1];
+	const float B = pDrawFrame->mDisplayArea[3];
 	const float mvp[4][4] = 
 	{
 	    { 2.0f/(R-L),   0.0f,           0.0f,       0.0f},
@@ -406,22 +409,22 @@ void Render_DrawImgui(const std::vector<TextureHandle>& textures, const NetImgui
 	gpGfxRes->mContext->PSSetShader(gpGfxRes->mImguiShaders.mShaderPS.Get(), nullptr, 0);
 	gpGfxRes->mContext->VSSetConstantBuffers(0, 1, VertexCB.GetArray());
 	gpGfxRes->mContext->IASetVertexBuffers(0, 1, VertexBuffer.GetArray(), &stride, &offset);
-	
-	CD3D11_RECT ViewportPrev(0,0,0,0);
+
+	CD3D11_RECT RectPrevious(0,0,0,0);
 	uint64_t lastTextureId = (uint64_t)-1;
 	for(unsigned int i(0); i<pDrawFrame->mDrawCount; ++i)
 	{
-		const auto* pDraw		= &pDrawFrame->mpDraws[i];
-		CD3D11_RECT Viewport((LONG)pDraw->mClipRect[0], (LONG)pDraw->mClipRect[1], (LONG)pDraw->mClipRect[2], (LONG)pDraw->mClipRect[3] );		
+		const auto* pDraw = &pDrawFrame->mpDraws[i];
+		CD3D11_RECT Rect((LONG)pDraw->mClipRect[0], (LONG)pDraw->mClipRect[1], (LONG)pDraw->mClipRect[2], (LONG)pDraw->mClipRect[3] );		
 		if( i == 0 || pDraw->mIndexSize != pDrawFrame->mpDraws[i-1].mIndexSize )
 		{			
 			gpGfxRes->mContext->IASetIndexBuffer(IndexBuffer.Get(), pDraw->mIndexSize == 2 ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT, 0);
 		}
 
-		if( i == 0 || Viewport != ViewportPrev )
+		if( i == 0 || Rect != RectPrevious )
 		{
-			ViewportPrev = Viewport;
-			gpGfxRes->mContext->RSSetScissorRects(1, &Viewport);
+			RectPrevious = Rect;
+			gpGfxRes->mContext->RSSetScissorRects(1, &RectPrevious);
 		}
 
 		if( i == 0 || lastTextureId == pDraw->mTextureId )

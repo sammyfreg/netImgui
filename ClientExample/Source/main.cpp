@@ -105,13 +105,10 @@ void CleanupDeviceD3D()
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {	
-    if( SampleClient::Client_SetImguiContextLocal() )
-	{
-		if( ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam) )
-			return true;
-	}
+    if( ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam) )
+		return true;
 
-    switch (msg)
+	switch (msg)
     {
     case WM_SIZE:
         if (g_pd3dDevice != NULL && wParam != SIZE_MINIMIZED)
@@ -171,22 +168,19 @@ int main(int, char**)
 				DispatchMessage(&msg);
 				continue;
 			}
+			
+			// Draw the Local Imgui UI
+			// (if connected to remote, display a text message and disconnect menu item, else normal ImGui UI)
+			ImGui_ImplDX11_NewFrame();
+			ImGui_ImplWin32_NewFrame();
+			SampleClient::Client_DrawLocal(clear_col);
+			g_pd3dDeviceContext->ClearRenderTargetView(g_mainRenderTargetView, (float*)&clear_col);
+			ImGui::Render();
+			ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+			g_pSwapChain->Present(0, 0);
 
-			if( SampleClient::Client_SetImguiContextRemote() )
-			{
-				SampleClient::Client_DrawRemote(clear_col);
-			}
-
-			if( SampleClient::Client_SetImguiContextLocal() )
-			{				
-				ImGui_ImplDX11_NewFrame();
-				ImGui_ImplWin32_NewFrame();
-				SampleClient::Client_DrawLocal(clear_col);
-				g_pd3dDeviceContext->ClearRenderTargetView(g_mainRenderTargetView, (float*)&clear_col);
-				ImGui::Render();
-				ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
-				g_pSwapChain->Present(0, 0);			
-			}
+			// Draw the normal ImGui and send it to the netImgui app (if connected)
+			SampleClient::Client_DrawRemote(clear_col);
 		}
 	}
 	SampleClient::Client_Shutdown();
