@@ -1,6 +1,8 @@
 #include <chrono>
 #include <NetImGui_Api.h>
 
+//SF TODO: Implement proper logging and data transfer stats
+
 //Class copied from Dear ImGui sample in "imgui_demo.cpp"
 // Usage:
 //  static ExampleAppLog my_log;

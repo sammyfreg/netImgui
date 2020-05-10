@@ -18,7 +18,7 @@ NetImgui::Internal::CmdDrawFrame* ClientRemote::GetDrawFrame()
 	NetImgui::Internal::CmdDrawFrame* pPendingFrame = mPendingFrame.Release();
 	if( pPendingFrame )
 	{
-		SafeFree( mpFrameDraw );
+		netImguiDeleteSafe( mpFrameDraw );
 		mpFrameDraw = pPendingFrame;
 	}	
 	return mpFrameDraw;
@@ -56,7 +56,7 @@ void ClientRemote::Reset()
 	mName[0]	= 0;
 	mPendingFrame.Free();
 	mPendingInput.Free();
-	SafeFree(mpFrameDraw);
+	netImguiDeleteSafe(mpFrameDraw);
 }
 
 void ClientRemote::UpdateInputToSend(HWND hWindows, InputUpdate& Input) 
@@ -64,19 +64,20 @@ void ClientRemote::UpdateInputToSend(HWND hWindows, InputUpdate& Input)
 	RECT rect;
 	POINT MousPos;
 	
-	NetImgui::Internal::CmdInput* pInputNew	= new(NetImgui::Internal::Malloc(sizeof(NetImgui::Internal::CmdInput))) NetImgui::Internal::CmdInput();
-	
-    GetClientRect(hWindows, &rect);
+	GetClientRect(hWindows, &rect);
 	GetCursorPos(&MousPos);
 	ScreenToClient(hWindows, &MousPos);
-		
+
+	auto* pInputNew				= NetImgui::Internal::netImguiNew<NetImgui::Internal::CmdInput>();
 	pInputNew->ScreenSize[0]	= static_cast<uint16_t>(rect.right - rect.left);
 	pInputNew->ScreenSize[1]	= static_cast<uint16_t>(rect.bottom - rect.top);
 	pInputNew->MousePos[0]		= static_cast<int16_t>(MousPos.x);
 	pInputNew->MousePos[1]		= static_cast<int16_t>(MousPos.y);
 	pInputNew->MouseWheelVert	= Input.mMouseWheelVertPos;
 	pInputNew->MouseWheelHoriz	= Input.mMouseWheelHorizPos;
-	
+
+	//SF TODO Add Clipboard support
+
 	// Avoid reading keyboard/mouse input if we are not the active window	
 	uint8_t KeyStates[256];
 	memset(pInputNew->KeysDownMask, 0, sizeof(pInputNew->KeysDownMask));	

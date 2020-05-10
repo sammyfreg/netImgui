@@ -129,7 +129,7 @@ bool InputUpdateData()
 
 		client.mMouseWheelVertPrev	= pCmdInput->MouseWheelVert;
 		client.mMouseWheelHorizPrev = pCmdInput->MouseWheelHoriz;
-		SafeFree(pCmdInput);
+		netImguiDeleteSafe(pCmdInput);
 		return true;
 	}
 	return false;
@@ -169,8 +169,10 @@ void EndFrame()
 	Client::ClientInfo& client = *gpClientInfo;
 	if( ImGui::GetCurrentContext() == client.mpContext )
 	{
+		uint32_t Cursor				= ImGui::GetMouseCursor();	//Must be fetched before 'Render'
 		ImGui::Render();
 		CmdDrawFrame* pNewDrawFrame = CreateCmdDrawDrame(ImGui::GetDrawData());
+		pNewDrawFrame->mMouseCursor = Cursor;
 		client.mPendingFrameOut.Assign(pNewDrawFrame);
 		ImGui::SetCurrentContext(client.mpContextRestore);
 		client.mpContextRestore = nullptr;
@@ -186,7 +188,7 @@ void SendDataTexture(uint64_t textureId, void* pData, uint16_t width, uint16_t h
 	{		
 		uint32_t PixelDataSize				= GetTexture_BytePerImage(format, width, height);
 		uint32_t SizeNeeded					= PixelDataSize + sizeof(CmdTexture);
-		pCmdTexture							= new(Malloc(SizeNeeded)) CmdTexture();
+		pCmdTexture							= netImguiNew<CmdTexture>(SizeNeeded);
 
 		pCmdTexture->mpTextureData.mPointer = reinterpret_cast<uint8_t*>(&pCmdTexture[1]);	
 		memcpy(pCmdTexture->mpTextureData.Get(), pData, PixelDataSize);
@@ -199,9 +201,10 @@ void SendDataTexture(uint64_t textureId, void* pData, uint16_t width, uint16_t h
 		pCmdTexture->mpTextureData.ToOffset();
 	}
 	// Texture to remove
+	//SF TODO support texture removal on server
 	else
 	{
-		pCmdTexture							= new(Malloc(sizeof(CmdTexture))) CmdTexture();
+		pCmdTexture							= netImguiNew<CmdTexture>();
 		pCmdTexture->mTextureId				= textureId;
 		pCmdTexture->mpTextureData.mOffset	= 0;
 	}
@@ -232,7 +235,7 @@ inline bool IsKeyPressed(const CmdInput& input, uint8_t vkKey)
 
 bool Startup()
 {
-	gpClientInfo = new(Malloc(sizeof(Client::ClientInfo))) Client::ClientInfo();
+	gpClientInfo = netImguiNew<Client::ClientInfo>();
 	return Network::Startup();
 }
 
@@ -241,8 +244,7 @@ void Shutdown()
 	if( gpClientInfo )
 	{
 		Disconnect();
-		gpClientInfo->~ClientInfo();
-		SafeFree(gpClientInfo);
+		netImguiDeleteSafe(gpClientInfo);
 	}
 	Network::Shutdown();
 }

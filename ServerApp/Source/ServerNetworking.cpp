@@ -45,7 +45,7 @@ bool Communications_Incoming(SOCKET Socket, ClientRemote* pClient)
 		bOk				= sizeRead == sizeof(cmdHeader);
 		if( bOk && cmdHeader.mSize > sizeof(cmdHeader) )
 		{
-			pCmdAlloc		= NetImgui::Internal::CastMalloc<char>(cmdHeader.mSize);
+			pCmdAlloc		= NetImgui::Internal::netImguiNew<char>(cmdHeader.mSize);
 			sizeRead		= recv(Socket, &pCmdAlloc[sizeof(cmdHeader)], cmdHeader.mSize-sizeof(cmdHeader), MSG_WAITALL);
 			bOk				= sizeRead == cmdHeader.mSize-sizeof(cmdHeader);
 			memcpy(pCmdAlloc, &cmdHeader, sizeof(cmdHeader));
@@ -76,7 +76,7 @@ bool Communications_Incoming(SOCKET Socket, ClientRemote* pClient)
 			}
 		}
 
-		NetImgui::Internal::SafeFree(pCmdAlloc);
+		NetImgui::Internal::netImguiDeleteSafe(pCmdAlloc);
 	}
 
 	return bOk;
@@ -94,7 +94,7 @@ bool Communications_Outgoing(SOCKET Socket, ClientRemote* pClient)
 	{
 		int result	= send(Socket, reinterpret_cast<const char*>(pInputCmd), pInputCmd->mHeader.mSize, 0);
 		bSuccess	= (result == static_cast<int>(pInputCmd->mHeader.mSize));
-		NetImgui::Internal::SafeFree(pInputCmd);
+		NetImgui::Internal::netImguiDeleteSafe(pInputCmd);
 	}
 	
 	// Always finish with a ping

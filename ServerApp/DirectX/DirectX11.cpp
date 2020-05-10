@@ -467,7 +467,7 @@ void Render_UpdatePendingResources()
 		else
 		{
 			CreateTexture(gTextures[texIdx], pCmdTexture->mFormat, pCmdTexture->mWidth, pCmdTexture->mHeight, pCmdTexture->mpTextureData.Get());
-			NetImgui::Internal::Free(pCmdTexture);
+			netImguiDeleteSafe(pCmdTexture);
 		}
 		gTexturesPending[pendingIdx].mIndex			= (uint64_t)-1;
 		gTexturesPending[pendingIdx].mpCmdTexture	= nullptr;

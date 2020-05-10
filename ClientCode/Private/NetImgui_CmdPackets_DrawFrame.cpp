@@ -93,12 +93,13 @@ CmdDrawFrame* CreateCmdDrawDrame(const ImDrawData* pDearImguiData)
 
 	//-----------------------------------------------------------------------------------------
 	// Allocate Data and init general frame informations
-	//-----------------------------------------------------------------------------------------
-	uint8_t* pRawData				= CastMalloc<uint8_t>(dataSize);
-	CmdDrawFrame* pDrawFrame		= new(pRawData) CmdDrawFrame();	
+	//-----------------------------------------------------------------------------------------	
+	CmdDrawFrame* pDrawFrame		= netImguiNew<CmdDrawFrame>(dataSize);
+	uint8_t* pRawData				= reinterpret_cast<uint8_t*>(pDrawFrame);
 	pDrawFrame->mVerticeCount		= pDearImguiData->TotalVtxCount;
 	pDrawFrame->mIndiceByteSize		= indiceSize;
 	pDrawFrame->mDrawCount			= 0;
+	//pDrawFrame->mMouseCursor		= ImGui::GetMouseCursor(); //Assigned outside of this method since 'GetMouseCursor' needs to be called before 'Render'
 	pDrawFrame->mDisplayArea[0]		= pDearImguiData->DisplayPos.x;
 	pDrawFrame->mDisplayArea[1]		= pDearImguiData->DisplayPos.y;
 	pDrawFrame->mDisplayArea[2]		= pDearImguiData->DisplayPos.x + pDearImguiData->DisplaySize.x;

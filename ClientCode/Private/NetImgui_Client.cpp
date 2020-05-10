@@ -81,7 +81,7 @@ bool Communications_Outgoing_Frame(ClientInfo& client)
 	if( pPendingDrawFrame )
 	{
 		bSuccess = Network::DataSend(client.mpSocket, pPendingDrawFrame, pPendingDrawFrame->mHeader.mSize);
-		SafeFree(pPendingDrawFrame);
+		netImguiDeleteSafe(pPendingDrawFrame);
 	}
 	return bSuccess;
 }
@@ -124,7 +124,7 @@ bool Communications_Incoming(ClientInfo& client)
 		bOk					= Network::DataReceive(client.mpSocket, &cmdHeader, sizeof(cmdHeader));
 		if( bOk && cmdHeader.mSize > sizeof(CmdHeader) )
 		{
-			pCmdData		= CastMalloc<char>(cmdHeader.mSize);
+			pCmdData		= netImguiNew<char>(cmdHeader.mSize);
 			memcpy(pCmdData, &cmdHeader, sizeof(CmdHeader));
 			bOk				= Network::DataReceive(client.mpSocket, &pCmdData[sizeof(cmdHeader)], cmdHeader.mSize-sizeof(cmdHeader));	
 		}
@@ -147,7 +147,7 @@ bool Communications_Incoming(ClientInfo& client)
 			}
 		}
 		
-		SafeFree(pCmdData);
+		netImguiDeleteSafe(pCmdData);
 	}
 	return bOk;
 }
@@ -206,7 +206,7 @@ void ClientInfo::ProcessTextures()
 			mTextures[texIdx].Set(nullptr);
 			mTextures[texIdx] = mTextures[mTextures.size()-1];
 			mTextures.resize(mTextures.size()-1); //SF Should improve this to avoid sizedown reallocation
-			SafeFree(pCmdTexture);
+			netImguiDeleteSafe(pCmdTexture);
 		}
 		// Add/Update a texture
 		else if( pCmdTexture->mpTextureData.mOffset != 0 )

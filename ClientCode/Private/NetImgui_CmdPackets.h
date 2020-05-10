@@ -104,6 +104,7 @@ struct alignas(8) CmdDrawFrame
 	uint32_t					mVerticeCount;		
 	uint32_t					mIndiceByteSize;	
 	uint32_t					mDrawCount;
+	uint32_t					mMouseCursor;	// ImGuiMouseCursor value
 	float						mDisplayArea[4];
 	OffsetPointer<ImguiVert>	mpVertices;
 	OffsetPointer<uint8_t>		mpIndices;

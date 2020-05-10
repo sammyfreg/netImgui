@@ -9,12 +9,12 @@ namespace NetImgui { namespace Internal
 {
 
 //=============================================================================
-// Can override this with your own implementation
+// All allocations made by netImgui goes through here. 
+// Relies in ImGui allocator
 //=============================================================================
-inline void*						Malloc(size_t dataSize);
-inline void							Free(void* pData);
-template <typename TType> TType*	CastMalloc(size_t elemenCount);
-template <typename TType> void		SafeFree(TType*& pData);
+template <typename TType> TType*	netImguiNew(size_t placementSize=(size_t)-1);
+template <typename TType> void		netImguiDelete(TType* pData);
+template <typename TType> void		netImguiDeleteSafe(TType*& pData);
 
 //=============================================================================
 // Class to exchange a pointer between two threads, safely
@@ -74,6 +74,7 @@ private:
 
 //=============================================================================
 // Std custom allocator
+// SF TODO get rid of this and use imgui vector?
 //=============================================================================
 template <class T>
 struct stdAllocator 
@@ -81,8 +82,8 @@ struct stdAllocator
   typedef T value_type;
 						stdAllocator() noexcept {}
   template <class U>	stdAllocator (const stdAllocator<U>&) noexcept {}
-  T*					allocate (std::size_t n) { return CastMalloc<T>(n); }
-  void					deallocate (T* p, std::size_t n) { MAYBE_UNUSED(n); SafeFree(p); }
+  T*					allocate (std::size_t n) { return reinterpret_cast<T*>(IM_ALLOC(sizeof(T)*n)); }
+  void					deallocate (T* p, std::size_t n) { MAYBE_UNUSED(n); IM_FREE(p); }
 };
 
 }} //namespace NetImgui::Internal

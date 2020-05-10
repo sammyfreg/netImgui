@@ -5,26 +5,22 @@
 namespace NetImgui { namespace Internal
 {
 
-void* Malloc(size_t dataSize)
+template <typename TType> 
+TType* netImguiNew(size_t placementSize)
 {
-	return ImGui::MemAlloc(dataSize);
-}
-
-void Free(void* pData)
-{
-	ImGui::MemFree(pData);
-}
-
-template <typename TType>
-TType* CastMalloc(size_t elemenCount)
-{
-	return reinterpret_cast<TType*>( Malloc(elemenCount*sizeof(TType)) );
+	return IM_PLACEMENT_NEW( IM_ALLOC(placementSize != (size_t)-1 ? placementSize : sizeof(TType)) ) TType();
 }
 
 template <typename TType> 
-void SafeFree(TType*& pData)
+void netImguiDelete(TType* pData)
 {
-	Free(pData);
+	IM_DELETE(pData);
+}
+
+template <typename TType> 
+void netImguiDeleteSafe(TType*& pData)
+{
+	IM_DELETE(pData);
 	pData = nullptr;
 }
 
@@ -43,7 +39,7 @@ TType* ExchangePtr<TType>::Release()
 template <typename TType>
 void ExchangePtr<TType>::Assign(TType*& pNewData)
 {
-	Internal::Free( mpData.exchange(pNewData) );
+	netImguiDelete( mpData.exchange(pNewData) );
 	pNewData = nullptr;
 }
 
