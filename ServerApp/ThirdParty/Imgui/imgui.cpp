@@ -801,6 +801,23 @@ CODE
 // [SECTION] INCLUDES
 //-------------------------------------------------------------------------
 
+
+//=================================================================================================
+// WARNING SUPPRESSIONS for -Wall
+//=================================================================================================
+#if defined(__clang__)
+    #pragma clang diagnostic ignored "-Wreserved-id-macro"
+
+#elif defined(_MSC_VER) && !defined(__clang__) 
+    #pragma warning (disable: 4365) // warning C4365: 'argument': conversion from xxx to yyy, signed/unsigned mismatch
+    #pragma warning (disable: 4514) // warning C4514 : xxx : unreferenced inline function has been removed
+    #pragma warning (disable: 5045)	// warning C5045 : Compiler will insert Spectre mitigation for memory load if / Qspectre switch specified
+    #pragma warning (disable: 4774)	// warning C4774 : xxx : format string expected in argument yyy is not a string literal
+    #pragma warning (disable: 4710) // warning C4710 : 'xxx' : function not inlined
+#endif
+//=================================================================================================
+
+
 #if defined(_MSC_VER) && !defined(_CRT_SECURE_NO_WARNINGS)
 #define _CRT_SECURE_NO_WARNINGS
 #endif

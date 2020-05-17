@@ -1,6 +1,6 @@
 #pragma once
 
-#include "NetImGui_Shared.h"
+#include "NetImgui_Shared.h"
 
 namespace NetImgui { namespace Internal
 {
@@ -20,11 +20,12 @@ struct ImguiDraw
 	uint64_t	mTextureId;
 	uint32_t	mIdxCount;
 	uint32_t	mIdxOffset;	// In Bytes
-	uint32_t	mVtxOffset;	// In ImguiVert Index	
+	uint32_t	mVtxOffset;	// In ImguiVert Index		
+	float		mClipRect[4];
 	uint16_t	mIndexSize;	// 2, 4 bytes
-	float		mClipRect[4];	
+	uint8_t		PADDING[2];
 };
 
-struct CmdDrawFrame* CreateCmdDrawDrame(const ImDrawData* pDearImguiData);
+struct CmdDrawFrame* CreateCmdDrawDrame(const ImDrawData* pDearImguiData, ImGuiMouseCursor cursor);
 
 }} // namespace NetImgui::Internal

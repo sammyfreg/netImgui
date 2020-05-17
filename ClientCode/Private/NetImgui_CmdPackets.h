@@ -1,7 +1,7 @@
 #pragma once
 
-#include "NetImGui_Shared.h"
-#include "NetImGui_CmdPackets_DrawFrame.h"
+#include "NetImgui_Shared.h"
+#include "NetImgui_CmdPackets_DrawFrame.h"
 
 namespace NetImgui { namespace Internal
 {
@@ -11,8 +11,8 @@ namespace NetImgui { namespace Internal
 struct CmdHeader
 {
 	enum eCommands : uint8_t { kCmdInvalid, kCmdPing, kCmdDisconnect, kCmdVersion, kCmdTexture, kCmdInput, kCmdDrawFrame };
-				CmdHeader(){};
-				CmdHeader(CmdHeader::eCommands CmdType, uint16_t Size) : mSize(Size), mType(CmdType) {}	
+				CmdHeader(){}
+				CmdHeader(CmdHeader::eCommands CmdType, uint16_t Size) : mSize(Size), mType(CmdType){}
 	uint32_t	mSize		= 0;
 	eCommands	mType		= kCmdInvalid;
 	uint8_t		mPadding[3]	= {0,0,0};
@@ -78,14 +78,14 @@ struct alignas(8) CmdInput
 	inline bool IsKeyDown(eVirtualKeys vkKey)const;
 
 	CmdHeader	mHeader		= CmdHeader(CmdHeader::kCmdInput, sizeof(CmdInput));
-	uint16_t	ScreenSize[2];
-	int16_t		MousePos[2];	
-	float		MouseWheelVert;
-	float		MouseWheelHoriz;
-	uint16_t	KeyChars[64];			// Input characters
-	uint8_t		KeyCharCount;			// Number of valid input characters
-	uint64_t	KeysDownMask[256/64];	// List of keys currently pressed (follow Windows Virtual-Key codes)
-	
+	uint16_t	mScreenSize[2];
+	int16_t		mMousePos[2];	
+	float		mMouseWheelVert;
+	float		mMouseWheelHoriz;
+	uint16_t	mKeyChars[64];			// Input characters	
+	uint64_t	mKeysDownMask[256/64];	// List of keys currently pressed (follow Windows Virtual-Key codes)
+	uint8_t		mKeyCharCount;			// Number of valid input characters
+	uint8_t		PADDING[7];
 };
 
 struct alignas(8) CmdTexture
@@ -95,7 +95,8 @@ struct alignas(8) CmdTexture
 	uint64_t				mTextureId;
 	uint16_t				mWidth;
 	uint16_t				mHeight;
-	eTexFormat				mFormat;
+	uint8_t					mFormat;			// eTexFormat
+	uint8_t					PADDING[3];
 };
 
 struct alignas(8) CmdDrawFrame

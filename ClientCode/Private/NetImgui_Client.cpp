@@ -1,13 +1,22 @@
-#include <thread>
-#include <chrono>
-#include <atomic>
-#include <vector>
-#include "NetImGui_Client.h"
-#include "NetImGui_Network.h"
-#include "NetImGui_CmdPackets.h"
+#include "NetImgui_Shared.h"
+
+#if NETIMGUI_ENABLED
+#include "NetImgui_WarningDisable.h"
+#include "NetImgui_Client.h"
+#include "NetImgui_Network.h"
+#include "NetImgui_CmdPackets.h"
 
 namespace NetImgui { namespace Internal { namespace Client 
 {
+
+//=================================================================================================
+// CLIENT INFO Constructor
+//=================================================================================================
+ClientInfo::ClientInfo() 
+: mTexturesPendingCount(0) 
+{ 
+	memset(mTexturesPending, 0, sizeof(mTexturesPending)); 
+}
 
 //=================================================================================================
 // COMMUNICATIONS INITIALIZE
@@ -23,7 +32,7 @@ bool Communications_Initialize(ClientInfo& client)
 	client.mbConnected =	bResultRcv && bResultSend && 
 							cmdVersionRcv.mHeader.mType == CmdHeader::kCmdVersion && 
 							cmdVersionRcv.mVersion == CmdVersion::kVer_Current;
-
+	client.mbConnectRequest = false;
 	if( client.mbConnected )
 	{
 		client.mbHasTextureUpdate = true;
@@ -39,12 +48,13 @@ bool Communications_Initialize(ClientInfo& client)
 // INCOM: INPUT
 // Receive new keyboard/mouse/screen resolution input to pass on to dearImgui
 //=================================================================================================
-void Communications_Incoming_Input(ClientInfo& client, void* pData)
+void Communications_Incoming_Input(ClientInfo& client, uint8_t*& pCmdData)
 {
-	CmdInput* pCmdInput	 = reinterpret_cast<CmdInput*>(pData);
-	size_t keyCount(pCmdInput->KeyCharCount);
-	client.mPendingKeyIn.AddData(pCmdInput->KeyChars, keyCount);
-	client.mPendingInputIn.Assign(pCmdInput);
+	auto pCmdInput	= reinterpret_cast<CmdInput*>(pCmdData);
+	pCmdData		= nullptr; // Take ownership of the data, prevent Free
+	size_t keyCount(pCmdInput->mKeyCharCount);
+	client.mPendingKeyIn.AddData(pCmdInput->mKeyChars, keyCount);
+	client.mPendingInputIn.Assign(pCmdInput);	
 }
 
 //=================================================================================================
@@ -54,15 +64,17 @@ void Communications_Incoming_Input(ClientInfo& client, void* pData)
 bool Communications_Outgoing_Textures(ClientInfo& client)
 {	
 	bool bSuccess(true);
-	client.ProcessTextures();
+	client.TextureProcessPending();
 	if( client.mbHasTextureUpdate )
 	{
 		for(auto& cmdTexture : client.mTextures)
 		{
-			if( cmdTexture.mbSent == false )
+			if( !cmdTexture.mbSent && cmdTexture.mpCmdTexture )
 			{
-				bSuccess &= Network::DataSend(client.mpSocket, cmdTexture.mpCmdTexture, cmdTexture.mpCmdTexture->mHeader.mSize);
-				cmdTexture.mbSent = bSuccess;
+				bSuccess			&= Network::DataSend(client.mpSocket, cmdTexture.mpCmdTexture, cmdTexture.mpCmdTexture->mHeader.mSize);
+				cmdTexture.mbSent	= bSuccess;
+				if( cmdTexture.mbSent && cmdTexture.mpCmdTexture->mFormat == kTexFmt_Invalid )
+					netImguiDeleteSafe(cmdTexture.mpCmdTexture);					
 			}
 		}
 		client.mbHasTextureUpdate = !bSuccess;
@@ -96,6 +108,7 @@ bool Communications_Outgoing_Disconnect(ClientInfo& client)
 	{
 		CmdDisconnect cmdDisconnect;
 		Network::DataSend(client.mpSocket, &cmdDisconnect, cmdDisconnect.mHeader.mSize);
+		return false;
 	}
 	return true;
 }
@@ -120,33 +133,29 @@ bool Communications_Incoming(ClientInfo& client)
 	while( bOk && !bPingReceived )
 	{
 		CmdHeader cmdHeader;
-		char* pCmdData		= nullptr;
+		uint8_t* pCmdData	= nullptr;
 		bOk					= Network::DataReceive(client.mpSocket, &cmdHeader, sizeof(cmdHeader));
 		if( bOk && cmdHeader.mSize > sizeof(CmdHeader) )
 		{
-			pCmdData		= netImguiNew<char>(cmdHeader.mSize);
-			memcpy(pCmdData, &cmdHeader, sizeof(CmdHeader));
-			bOk				= Network::DataReceive(client.mpSocket, &pCmdData[sizeof(cmdHeader)], cmdHeader.mSize-sizeof(cmdHeader));	
+			pCmdData								= netImguiNew<uint8_t>(cmdHeader.mSize);
+			*reinterpret_cast<CmdHeader*>(pCmdData) = cmdHeader;
+			bOk										= Network::DataReceive(client.mpSocket, &pCmdData[sizeof(cmdHeader)], cmdHeader.mSize-sizeof(cmdHeader));	
 		}
 
 		if( bOk )
 		{
 			switch( cmdHeader.mType )
 			{
-			case CmdHeader::kCmdPing:		
-				bPingReceived = true; 
-				break;
-			case CmdHeader::kCmdDisconnect:	
-				bOk = false; 
-				break;
-			case CmdHeader::kCmdInput:		
-				Communications_Incoming_Input(client, pCmdData);
-				pCmdData = nullptr; // Took ownership of the data, prevent Free
-				break;
-			default: break;
+			case CmdHeader::kCmdPing:		bPingReceived = true; break;
+			case CmdHeader::kCmdDisconnect:	bOk = false; break;
+			case CmdHeader::kCmdInput:		Communications_Incoming_Input(client, pCmdData); break;			
+			// Commands not received in main loop, by Client
+			case CmdHeader::kCmdInvalid:
+			case CmdHeader::kCmdVersion:
+			case CmdHeader::kCmdTexture:
+			case CmdHeader::kCmdDrawFrame:	break;
 			}
-		}
-		
+		}		
 		netImguiDeleteSafe(pCmdData);
 	}
 	return bOk;
@@ -174,50 +183,50 @@ bool Communications_Outgoing(ClientInfo& client)
 //=================================================================================================
 // COMMUNICATIONS THREAD 
 //=================================================================================================
-void Communications(ClientInfo* pClient)
+void Communications(void* pClientVoid)
 {	
+	ClientInfo* pClient = reinterpret_cast<ClientInfo*>(pClientVoid);
 	Communications_Initialize(*pClient);
-	while( pClient->mbConnected )
+	bool bConnected(pClient->mbConnected);
+	while( bConnected )
 	{
-		pClient->mbConnected =	Communications_Outgoing(*pClient) && 
-								Communications_Incoming(*pClient);
 		std::this_thread::sleep_for(std::chrono::milliseconds(8));
+		bConnected	= Communications_Outgoing(*pClient) && Communications_Incoming(*pClient);		
 	}
 	Network::Disconnect(pClient->mpSocket);
-	pClient->mbDisconnectRequest = false;
+	pClient->mbDisconnectRequest	= false;
+	pClient->mbConnected			= false;
 }
 
-void ClientInfo::ProcessTextures()
+void ClientInfo::TextureProcessPending()
 {
+	mbHasTextureUpdate |= mTexturesPendingCount > 0;
 	while( mTexturesPendingCount > 0 )
 	{
 		int32_t count				= mTexturesPendingCount.fetch_sub(1);
 		CmdTexture* pCmdTexture		= mTexturesPending[count-1];
 		mTexturesPending[count-1]	= nullptr;
 
-		// Find the TextureId from our list
-		int texIdx(0);
-		while( texIdx < mTextures.size() && pCmdTexture->mTextureId != mTextures[texIdx].mpCmdTexture->mTextureId )
+		// Find the TextureId from our list (or free slot)
+		int texIdx		= 0;
+		int texFreeSlot	= static_cast<int>(mTextures.size());
+		while( texIdx < mTextures.size() && ( !mTextures[texIdx].IsValid() || mTextures[texIdx].mpCmdTexture->mTextureId != pCmdTexture->mTextureId) )
+		{
+			texFreeSlot = !mTextures[texIdx].IsValid() ? texIdx : texFreeSlot;
 			++texIdx;
-
-		// Remove a texture
-		if( texIdx < mTextures.size() && pCmdTexture->mpTextureData.mOffset == 0 )
-		{
-			mTextures[texIdx].Set(nullptr);
-			mTextures[texIdx] = mTextures[mTextures.size()-1];
-			mTextures.resize(mTextures.size()-1); //SF Should improve this to avoid sizedown reallocation
-			netImguiDeleteSafe(pCmdTexture);
 		}
-		// Add/Update a texture
-		else if( pCmdTexture->mpTextureData.mOffset != 0 )
-		{
-			if( texIdx == mTextures.size() )
-				mTextures.resize(texIdx+1);
-			
-			mTextures[texIdx].Set( pCmdTexture );
-			mbHasTextureUpdate = true; //Only notify server of new/updated texture
-		}		
+
+		if( texIdx == mTextures.size() )
+			texIdx = texFreeSlot;
+		if( texIdx == mTextures.size() )
+			mTextures.push_back(ClientTexture());
+
+		mTextures[texIdx].Set( pCmdTexture );
+		mTextures[texIdx].mbSent = false;				
 	}
 }
 
 }}} // namespace NetImgui::Internal::Client
+
+#include "NetImgui_WarningReenable.h"
+#endif //#if NETIMGUI_ENABLED

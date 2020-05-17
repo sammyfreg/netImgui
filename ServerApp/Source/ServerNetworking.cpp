@@ -1,27 +1,37 @@
-#include <stdio.h>
-#include <thread>
-#include <winsock2.h>
+#include "stdafx.h"
 
+#ifdef _MSC_VER
+#pragma warning (disable: 4668)	// warning C4668 : xxxx is not defined as a preprocessor macro, replacing with '0' for '#if/#elif' (Winsock2.h)
+#pragma warning (disable: 4820)	// warning C4820 : xxx : '4' bytes padding added after data member yyy
+#endif
+#include <WinSock2.h>
+
+#include <thread>
 #include "ServerNetworking.h"
 #include "RemoteClient.h"
-#include <Private/NetImGui_Network.h>
-#include <Private/NetImGui_CmdPackets.h>
+#include <Private/NetImgui_Network.h>
+#include <Private/NetImgui_CmdPackets.h>
 
 namespace NetworkServer
 {
 
-void Communications_Incoming_CmdTexture(void* pCmdData, ClientRemote* pClient)
+static bool gbShutdown = false;
+
+void Communications_Incoming_CmdTexture(ClientRemote* pClient, uint8_t*& pCmdData)
 {
-	auto pCmdTexture = reinterpret_cast<NetImgui::Internal::CmdTexture*>(pCmdData);
+	auto pCmdTexture	= reinterpret_cast<NetImgui::Internal::CmdTexture*>(pCmdData);
+	pCmdData			= nullptr; // Take ownership of the data, prevent Free
 	pCmdTexture->mpTextureData.ToPointer();
-	pClient->ReceiveTexture(pCmdTexture);
+	pClient->ReceiveTexture(pCmdTexture);	
 }
 
-void Communications_Incoming_CmdDrawFrame(void* pCmdData, ClientRemote* pClient)
+void Communications_Incoming_CmdDrawFrame(ClientRemote* pClient, uint8_t*& pCmdData)
 {
-	auto pCmdDraw = reinterpret_cast<NetImgui::Internal::CmdDrawFrame*>(pCmdData);
+	auto pCmdDraw		= reinterpret_cast<NetImgui::Internal::CmdDrawFrame*>(pCmdData);
+	pCmdData			= nullptr; // Take ownership of the data, prevent Free
 	pCmdDraw->ToPointers();
 	pClient->ReceiveDrawFrame(pCmdDraw);
+
 }
 
 //=================================================================================================
@@ -40,15 +50,16 @@ bool Communications_Incoming(SOCKET Socket, ClientRemote* pClient)
 		// Receive all of the data from client, 
 		// and allocate memory to receive it if needed
 		//---------------------------------------------------------------------
-		char* pCmdAlloc	= nullptr;
+		uint8_t* pCmdData	= nullptr;
 		int sizeRead	= recv(Socket, reinterpret_cast<char*>(&cmdHeader), sizeof(cmdHeader), MSG_WAITALL);
 		bOk				= sizeRead == sizeof(cmdHeader);
 		if( bOk && cmdHeader.mSize > sizeof(cmdHeader) )
 		{
-			pCmdAlloc		= NetImgui::Internal::netImguiNew<char>(cmdHeader.mSize);
-			sizeRead		= recv(Socket, &pCmdAlloc[sizeof(cmdHeader)], cmdHeader.mSize-sizeof(cmdHeader), MSG_WAITALL);
-			bOk				= sizeRead == cmdHeader.mSize-sizeof(cmdHeader);
-			memcpy(pCmdAlloc, &cmdHeader, sizeof(cmdHeader));
+			pCmdData													= NetImgui::Internal::netImguiNew<uint8_t>(cmdHeader.mSize);
+			*reinterpret_cast<NetImgui::Internal::CmdHeader*>(pCmdData) = cmdHeader;
+			const int sizeToRead										= static_cast<int>(cmdHeader.mSize - sizeof(cmdHeader));
+			sizeRead													= recv(Socket, reinterpret_cast<char*>(&pCmdData[sizeof(cmdHeader)]), sizeToRead, MSG_WAITALL);
+			bOk															= sizeRead == sizeToRead;
 		}
 			
 		//---------------------------------------------------------------------
@@ -58,25 +69,18 @@ bool Communications_Incoming(SOCKET Socket, ClientRemote* pClient)
 		{
 			switch( cmdHeader.mType )
 			{
-			case NetImgui::Internal::CmdHeader::kCmdPing:		
-				bPingReceived = true; 
-				break;
-			case NetImgui::Internal::CmdHeader::kCmdDisconnect:	
-				bOk = false; 
-				break;
-			case NetImgui::Internal::CmdHeader::kCmdTexture:	
-				Communications_Incoming_CmdTexture(pCmdAlloc, pClient);
-				pCmdAlloc = nullptr;	// Prevents free of data since pClient was given ownership of it
-				break;
-			case NetImgui::Internal::CmdHeader::kCmdDrawFrame:	
-				Communications_Incoming_CmdDrawFrame(pCmdAlloc, pClient); 
-				pCmdAlloc = nullptr;	// Prevents free of data since pClient was given ownership of it
-				break; 
-			default: break;
+			case NetImgui::Internal::CmdHeader::kCmdPing:		bPingReceived = true; break;
+			case NetImgui::Internal::CmdHeader::kCmdDisconnect:	bOk = false; break;
+			case NetImgui::Internal::CmdHeader::kCmdTexture:	Communications_Incoming_CmdTexture(pClient, pCmdData);		break;
+			case NetImgui::Internal::CmdHeader::kCmdDrawFrame:	Communications_Incoming_CmdDrawFrame(pClient, pCmdData);	break;
+			// Commands not received in main loop, by Server
+			case NetImgui::Internal::CmdHeader::kCmdInvalid:
+			case NetImgui::Internal::CmdHeader::kCmdVersion:
+			case NetImgui::Internal::CmdHeader::kCmdInput:		break;
 			}
 		}
 
-		NetImgui::Internal::netImguiDeleteSafe(pCmdAlloc);
+		NetImgui::Internal::netImguiDeleteSafe(pCmdData);
 	}
 
 	return bOk;
@@ -92,7 +96,7 @@ bool Communications_Outgoing(SOCKET Socket, ClientRemote* pClient)
 	NetImgui::Internal::CmdInput* pInputCmd = pClient->CreateInputCommand();
 	if( pInputCmd )
 	{
-		int result	= send(Socket, reinterpret_cast<const char*>(pInputCmd), pInputCmd->mHeader.mSize, 0);
+		int result	= send(Socket, reinterpret_cast<const char*>(pInputCmd), static_cast<int>(pInputCmd->mHeader.mSize), 0);
 		bSuccess	= (result == static_cast<int>(pInputCmd->mHeader.mSize));
 		NetImgui::Internal::netImguiDeleteSafe(pInputCmd);
 	}
@@ -100,8 +104,8 @@ bool Communications_Outgoing(SOCKET Socket, ClientRemote* pClient)
 	// Always finish with a ping
 	{
 		NetImgui::Internal::CmdPing cmdPing;
-		int result = send(Socket, reinterpret_cast<const char*>(&cmdPing), cmdPing.mHeader.mSize, 0);
-		bSuccess &= (result == static_cast<int>(cmdPing.mHeader.mSize));
+		int result	= send(Socket, reinterpret_cast<const char*>(&cmdPing), static_cast<int>(cmdPing.mHeader.mSize), 0);
+		bSuccess	&= (result == static_cast<int>(cmdPing.mHeader.mSize));
 	}
 	return bSuccess;
 }
@@ -132,7 +136,7 @@ bool Communications_InitializeClient(SOCKET Socket, ClientRemote* pClient)
 	NetImgui::Internal::CmdVersion cmdVersionSend;
 	NetImgui::Internal::CmdVersion cmdVersionRcv;
 	strcpy_s(cmdVersionSend.mClientName,"Server");
-	int resultSend	= send(Socket, (const char*)&cmdVersionSend, cmdVersionSend.mHeader.mSize, 0);
+	int resultSend	= send(Socket, reinterpret_cast<const char*>(&cmdVersionSend), static_cast<int>(cmdVersionSend.mHeader.mSize), 0);
 	int resultRcv	= recv(Socket, reinterpret_cast<char*>(&cmdVersionRcv), sizeof(cmdVersionRcv), MSG_WAITALL);
 	
 	if(	resultSend > 0 && resultRcv > 0 && 
@@ -150,7 +154,7 @@ bool Communications_InitializeClient(SOCKET Socket, ClientRemote* pClient)
 //=================================================================================================
 void NetworkConnectionListen(SOCKET ListenSocket, ClientRemote* pClients, uint32_t ClientCount)
 {	
-	while( true )
+	while( !gbShutdown )
 	{
 		sockaddr	ClientAddress;
 		int			Size(sizeof(ClientAddress));
@@ -166,11 +170,11 @@ void NetworkConnectionListen(SOCKET ListenSocket, ClientRemote* pClients, uint32
 
 			if (pClientAvail && ClientAddress.sa_family == AF_INET)
 			{
-				pClientAvail->mConnectPort	= ((sockaddr_in*)&ClientAddress)->sin_port;
-				pClientAvail->mConnectIP[0]	= ((sockaddr_in*)&ClientAddress)->sin_addr.S_un.S_un_b.s_b1;
-				pClientAvail->mConnectIP[1]	= ((sockaddr_in*)&ClientAddress)->sin_addr.S_un.S_un_b.s_b2;
-				pClientAvail->mConnectIP[2]	= ((sockaddr_in*)&ClientAddress)->sin_addr.S_un.S_un_b.s_b3;
-				pClientAvail->mConnectIP[3]	= ((sockaddr_in*)&ClientAddress)->sin_addr.S_un.S_un_b.s_b4;
+				pClientAvail->mConnectPort	= reinterpret_cast<sockaddr_in*>(&ClientAddress)->sin_port;
+				pClientAvail->mConnectIP[0]	= reinterpret_cast<sockaddr_in*>(&ClientAddress)->sin_addr.S_un.S_un_b.s_b1;
+				pClientAvail->mConnectIP[1]	= reinterpret_cast<sockaddr_in*>(&ClientAddress)->sin_addr.S_un.S_un_b.s_b2;
+				pClientAvail->mConnectIP[2]	= reinterpret_cast<sockaddr_in*>(&ClientAddress)->sin_addr.S_un.S_un_b.s_b3;
+				pClientAvail->mConnectIP[3]	= reinterpret_cast<sockaddr_in*>(&ClientAddress)->sin_addr.S_un.S_un_b.s_b4;
 				pClientAvail->mName[0]		= 0;
 			}
 			
@@ -224,8 +228,8 @@ bool Startup(ClientRemote* pClients, uint32_t ClientCount, uint32_t ListenPort )
 	sockaddr_in server;
 	server.sin_family		= AF_INET;
 	server.sin_addr.s_addr	= INADDR_ANY;
-	server.sin_port			= htons( (USHORT)ListenPort );
-	if( bind(ListenSocket, (sockaddr *)&server , sizeof(server)) == SOCKET_ERROR)
+	server.sin_port			= htons(static_cast<USHORT>(ListenPort) );
+	if( bind(ListenSocket, reinterpret_cast<sockaddr*>(&server), sizeof(server)) == SOCKET_ERROR)
 	{
 		printf("Bind failed with error code : %d\n", WSAGetLastError());
 		closesocket(ListenSocket);
@@ -244,7 +248,8 @@ bool Startup(ClientRemote* pClients, uint32_t ClientCount, uint32_t ListenPort )
 }
 
 void Shutdown()
-{	
+{
+	gbShutdown = true;
 }
 
 

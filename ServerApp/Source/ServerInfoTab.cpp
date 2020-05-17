@@ -1,5 +1,6 @@
-#include <chrono>
-#include <NetImGui_Api.h>
+#include "stdafx.h"
+#include <NetImgui_Api.h>
+#include "ServerInfoTab.h"
 
 //SF TODO: Implement proper logging and data transfer stats
 
@@ -40,7 +41,7 @@ struct ExampleAppLog
                 LineOffsets.push_back(old_size + 1);
     }
 
-    void    Draw(const char* title, bool* p_open = NULL)
+    void    Draw(const char* title, bool* p_open = nullptr)
     {
         if (!ImGui::Begin(title, p_open))
         {
@@ -129,11 +130,26 @@ struct ExampleAppLog
 
 	static ExampleAppLog& Get()
 	{
-		static ExampleAppLog sInstance;
-		return sInstance;
+        if( !spInstance )
+            spInstance = new ExampleAppLog();
+        
+		return *spInstance;
 	}
+    
+    static void Destroy()
+    {
+        if( spInstance )
+        {
+            delete spInstance;
+            spInstance = nullptr;
+        }
+    }
+
+protected:
+    static ExampleAppLog* spInstance;
 };
 
+ExampleAppLog* ExampleAppLog::spInstance = nullptr;
 
 bool ServerInfoTab_Startup(unsigned int ServerPort)
 {	
@@ -149,17 +165,16 @@ bool ServerInfoTab_Startup(unsigned int ServerPort)
 	io.Fonts->AddFontDefault();
 	io.Fonts->Build();
     io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
-	NetImgui::SendDataTexture(0, pixels, (uint16_t)width, (uint16_t)height, NetImgui::kTexFmtRGBA8);	   
+	NetImgui::SendDataTexture(0, pixels, static_cast<uint16_t>(width), static_cast<uint16_t>(height), NetImgui::kTexFmtRGBA8);	   
 
     // Store our identifier
-    io.Fonts->TexID = (void*)0;
+    io.Fonts->TexID = reinterpret_cast<ImTextureID*>(0);
 
     // Cleanup (don't clear the input data if you want to append new fonts later)
     io.Fonts->ClearInputData();
     io.Fonts->ClearTexData();
 
-	uint8_t Ip[4] = {127,0,0,1};
-	if( !NetImgui::Connect("ServerLogs", Ip, ServerPort) )
+	if( !NetImgui::Connect("ServerLogs", "localhost", ServerPort) )
 		return false;
 
 	return true;
@@ -167,15 +182,19 @@ bool ServerInfoTab_Startup(unsigned int ServerPort)
 
 void ServerInfoTab_Shutdown()
 {
+    ExampleAppLog::Destroy();
 	ImGui::DestroyContext(ImGui::GetCurrentContext());
 }
 
-void ServerInfoTab_Draw()
+void ServerInfoTab_Draw(uint32_t clientCount)
 {
 	if( NetImgui::NewFrame() )
-	{
-		ExampleAppLog::Get().Draw("Logs");	
+	{        		
+        ImGui::BeginMainMenuBar();
+        ImGui::Text(clientCount <= 1 ? "Waiting for Connection..." : "Client connected : %i", clientCount - 1);
+        ImGui::EndMainMenuBar();        
 		NetImgui::EndFrame();
+        //ExampleAppLog::Get().Draw("Logs");
 	}
 }
 

@@ -8,19 +8,23 @@ namespace NetImgui { namespace Internal
 template <typename TType> 
 TType* netImguiNew(size_t placementSize)
 {
-	return IM_PLACEMENT_NEW( IM_ALLOC(placementSize != (size_t)-1 ? placementSize : sizeof(TType)) ) TType();
+	return new( ImGui::MemAlloc(placementSize != static_cast<size_t>(-1) ? placementSize : sizeof(TType)) ) TType();
 }
 
 template <typename TType> 
 void netImguiDelete(TType* pData)
 {
-	IM_DELETE(pData);
+	if( pData )
+	{
+		pData->~TType();
+		ImGui::MemFree(pData);
+	}
 }
 
 template <typename TType> 
 void netImguiDeleteSafe(TType*& pData)
 {
-	IM_DELETE(pData);
+	netImguiDelete(pData);
 	pData = nullptr;
 }
 
@@ -155,7 +159,7 @@ void Ringbuffer<TType,TCount>::ReadData(TType* pData, size_t& count)
 	count = i;
 }
 
-
+#if 0
 template <class T, class U>
 constexpr bool operator == (const stdAllocator<T>&, const stdAllocator<U>&) noexcept
 {
@@ -167,5 +171,6 @@ constexpr bool operator != (const stdAllocator<T>&, const stdAllocator<U>&) noex
 {
 	return false;
 }
+#endif
 
 }} //namespace NetImgui::Internal

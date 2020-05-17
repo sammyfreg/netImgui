@@ -60,6 +60,12 @@
     <ClInclude Include="Source\imgui_impl_win32.h">
       <Filter>sources</Filter>
     </ClInclude>
+    <ClInclude Include="..\ClientCode\Private\NetImgui_WarningReenable.h">
+      <Filter>ClientCode\Private</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ClientCode\Private\NetImgui_WarningDisable.h">
+      <Filter>ClientCode\Private</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="$(ProjectDir)Source\imgui_impl_dx11.cpp">

@@ -25,11 +25,27 @@
 //  2018-02-06: Misc: Removed call to ImGui::Shutdown() which is not available from 1.60 WIP, user needs to call CreateContext/DestroyContext themselves.
 //  2016-05-07: DirectX11: Disabling depth-write.
 
+//=============================================================================
+// EDIT TO ORIGINAL IMGUI imgui_impl_dx11.cpp
+// Added a few exceptions to compile in -Wall
+#if defined(__clang__)
+    #pragma clang diagnostic ignored "-Wzero-as-null-pointer-constant"
+    #pragma clang diagnostic ignored "-Wsign-conversion"
+    #pragma clang diagnostic ignored "-Wold-style-cast"
+    #pragma clang diagnostic ignored "-Wlanguage-extension-token"
+
+#elif defined(_MSC_VER) && !defined(__clang__)
+    #pragma warning (disable: 4061) // warning C4061: enumerator xxx in switch of enum yyy is not explicitly handled by a case label
+    #pragma warning (disable: 4820)	// warning C4820 : xxx 'yyy' bytes padding added after data member zzz
+    #pragma warning (disable: 4365)	// warning C4365 : '=' : conversion from xxx to yyy, signed / unsigned mismatch
+#endif
+
+//=============================================================================
+
 #include "imgui.h"
 #include "imgui_impl_dx11.h"
 
 // DirectX
-#include <stdio.h>
 #include <d3d11.h>
 #include <d3dcompiler.h>
 #ifdef _MSC_VER
@@ -39,7 +55,8 @@
 #include "SampleClient.h"
 
 // DirectX data
-static ID3D11Device*            g_pd3dDevice = NULL;
+extern ID3D11Device* g_pd3dDevice;
+ID3D11Device*                   g_pd3dDevice = NULL;
 static ID3D11DeviceContext*     g_pd3dDeviceContext = NULL;
 static IDXGIFactory*            g_pFactory = NULL;
 static ID3D11Buffer*            g_pVB = NULL;

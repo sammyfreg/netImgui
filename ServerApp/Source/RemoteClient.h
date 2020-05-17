@@ -1,7 +1,7 @@
 #pragma once
 
 #include <vector>
-#include <Private/NetImGui_CmdPackets.h>
+#include <Private/NetImgui_CmdPackets.h>
 #include "../DirectX/DirectX11.h"
 
 struct InputUpdate 
@@ -17,7 +17,7 @@ struct ClientRemote
 	using ExchPtrFrame	= NetImgui::Internal::ExchangePtr<NetImgui::Internal::CmdDrawFrame>;
 	using ExchPtrInput	= NetImgui::Internal::ExchangePtr<NetImgui::Internal::CmdInput>;
 	using PendingKeys	= NetImgui::Internal::Ringbuffer<uint16_t, 1024>;
-
+										ClientRemote();
 										~ClientRemote();
 	void								Reset();
 
@@ -27,12 +27,12 @@ struct ClientRemote
 	
 	void								UpdateInputToSend(HWND hWindows, InputUpdate& Input);
 	NetImgui::Internal::CmdInput*		CreateInputCommand();
-		
-	unsigned char						mConnectIP[4];
-	unsigned int						mConnectPort	= (unsigned int)-1;	
+
 	char								mName[32];
+	unsigned char						mConnectIP[4];
+	unsigned int						mConnectPort	= static_cast<unsigned int>(-1);	
 	UINT_PTR							mMenuId			= 0;
-	std::atomic_bool					mbConnected		= false;	// If connected to a remote client
+	std::atomic_bool					mbConnected;				// If connected to a remote client
 	bool								mbIsActive		= false;	// If currently selected client for display
 	NetImgui::Internal::CmdDrawFrame*	mpFrameDraw		= nullptr;	// Current valid DrawFrame
 	std::vector<dx::TextureHandle>		mvTextures;					// List of textures received and used by the client

@@ -30,9 +30,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Resource.h">
-      <Filter>Source Files\Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="DirectX\DirectX11.h">
       <Filter>Source Files\DirectX</Filter>
     </ClInclude>
@@ -88,6 +85,15 @@
       <Filter>Source Files\ThirdParty\Imgui</Filter>
     </ClInclude>
     <ClInclude Include="..\ClientCode\Private\NetImgui_CmdPackets_DrawFrame.h">
+      <Filter>Source Files\ClientCode\Private</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ClientCode\Private\NetImgui_WarningDisable.h">
+      <Filter>Source Files\ClientCode\Private</Filter>
+    </ClInclude>
+    <ClInclude Include="resource.h">
+      <Filter>Source Files\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ClientCode\Private\NetImgui_WarningReenable.h">
       <Filter>Source Files\ClientCode\Private</Filter>
     </ClInclude>
   </ItemGroup>

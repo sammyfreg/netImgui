@@ -1,5 +1,4 @@
-// ImGui - standalone example application for DirectX 11
-
+// File content from the ImGui standalone example application for DirectX 11
 #include <imgui.h>
 #include "imgui_impl_dx11.h"
 #include "imgui_impl_win32.h"
@@ -7,11 +6,22 @@
 #include <d3dcompiler.h>
 #include "SampleClient.h"
 
+//=============================================================================
+// EDIT TO ORIGINAL IMGUI main.cpp
+// Added a few exceptions to compile in -Wall
+#if defined(__clang__)
+#pragma clang diagnostic ignored "-Wold-style-cast"
+#pragma clang diagnostic ignored "-Wlanguage-extension-token"
+#pragma clang diagnostic ignored "-Wmissing-prototypes"
+#pragma clang diagnostic ignored "-Wzero-as-null-pointer-constant"
+#endif
+//=============================================================================
+
 // Data
-static ID3D11Device*            g_pd3dDevice = NULL;
-static ID3D11DeviceContext*     g_pd3dDeviceContext = NULL;
-static IDXGISwapChain*          g_pSwapChain = NULL;
-static ID3D11RenderTargetView*  g_mainRenderTargetView = NULL;
+static ID3D11Device* g_pd3dDevice = NULL;
+static ID3D11DeviceContext* g_pd3dDeviceContext = NULL;
+static IDXGISwapChain* g_pSwapChain = NULL;
+static ID3D11RenderTargetView* g_mainRenderTargetView = NULL;
 
 void CreateRenderTarget()
 {
@@ -35,7 +45,7 @@ void CleanupRenderTarget()
     if (g_mainRenderTargetView) 
 	{ 
 		g_mainRenderTargetView->Release(); 
-		g_mainRenderTargetView = NULL; 
+		g_mainRenderTargetView = NULL;
 	}
 }
 
@@ -152,7 +162,7 @@ int main(int, char**)
 
 	// Initialize network and other things
 	ImGui::SetCurrentContext( ImGui::CreateContext() );
-	if( SampleClient::Client_Startup()	&&
+	if( SampleClient::Client_Startup()	&& // EDIT TO ORIGINAL IMGUI main.cpp
 		ImGui_ImplWin32_Init(hwnd)		&&
 		ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext) )
 	{		
@@ -173,17 +183,17 @@ int main(int, char**)
 			// (if connected to remote, display a text message and disconnect menu item, else normal ImGui UI)
 			ImGui_ImplDX11_NewFrame();
 			ImGui_ImplWin32_NewFrame();
-			SampleClient::Client_DrawLocal(clear_col);
-			g_pd3dDeviceContext->ClearRenderTargetView(g_mainRenderTargetView, (float*)&clear_col);
-			ImGui::Render();
-			ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+            //=============================================================================
+            // EDIT TO ORIGINAL IMGUI main.cpp
+            ImDrawData* pDraw = SampleClient::Client_Draw(clear_col);
+            //=============================================================================
+			g_pd3dDeviceContext->ClearRenderTargetView(g_mainRenderTargetView, (float*)&clear_col);			
+			ImGui_ImplDX11_RenderDrawData(pDraw);
 			g_pSwapChain->Present(0, 0);
-
-			// Draw the normal ImGui and send it to the netImgui app (if connected)
-			SampleClient::Client_DrawRemote(clear_col);
 		}
 	}
-	SampleClient::Client_Shutdown();
+	SampleClient::Client_Shutdown(); // EDIT TO ORIGINAL IMGUI main.cpp
+
     ImGui_ImplDX11_Shutdown();
 	ImGui_ImplWin32_Shutdown();
     CleanupDeviceD3D();

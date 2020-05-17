@@ -1,14 +1,108 @@
 #include <chrono>
+#include <thread>
 #include "SampleClient.h"
 #include <NetImgui_Api.h>
 
-int				gConnectPort			= NetImgui::kDefaultServerPort;
-int				gConnectIP[4]			= {127,0,0,1};
+
+#include <d3d11.h>
+extern ID3D11Device* g_pd3dDevice;
 
 namespace SampleClient
 {
 
+static int							gConnectPort		= NetImgui::kDefaultServerPort;
+static char							gConnectIP[64]		= "127.0.0.1";
+static ImDrawData*					gpLastRemoteDraw	= nullptr;
+static bool							gEnableRemoteMirror	= false;
+static ID3D11ShaderResourceView*	gCustomTextureView	= nullptr;
 
+void	Imgui_DrawMainMenu();
+void	Imgui_DrawContent(ImVec4& clear_col);
+void	Imgui_DrawContentSecondary();
+void	Client_DrawLocal(ImVec4& clearColorOut);
+void	Client_DrawRemote(ImVec4& clearColorOut);
+void	CustomCommunicationThread(void ComFunctPtr(void*), void* pClient);
+void	CustomTextureCreate();
+void	CustomTextureDestroy();
+
+//=================================================================================================
+//! @brief		Custom Connect thread example
+//! @details	This function demonstrate own to provide your own function to start a new thread that
+//!				will handle communication with remote netImgui application. 
+//!				The default implementation also use std::thread
+//=================================================================================================
+void CustomCommunicationThread( void ComFunctPtr(void*), void* pClient )
+{
+	std::thread(ComFunctPtr, pClient).detach();
+}
+
+//=================================================================================================
+//
+//=================================================================================================
+void CustomTextureCreate()
+{
+	D3D11_TEXTURE2D_DESC desc;
+	D3D11_SUBRESOURCE_DATA subResource;
+	constexpr UINT Width = 8;
+	constexpr UINT Height = 8;
+	uint8_t pixelData[Width * Height * 4];
+	for (uint8_t y(0); y < Height; ++y)
+	{
+		for (uint8_t x(0); x < Width; ++x)
+		{
+			pixelData[(y * Width + x) * 4 + 0] = 0xFF * x / 8;
+			pixelData[(y * Width + x) * 4 + 1] = 0xFF * y / 8;
+			pixelData[(y * Width + x) * 4 + 2] = 0xFF;
+			pixelData[(y * Width + x) * 4 + 3] = 0xFF;
+		}
+	}	
+
+	ZeroMemory(&desc, sizeof(desc));
+	desc.Width							= Width;
+	desc.Height							= Height;
+	desc.MipLevels						= 1;
+	desc.ArraySize						= 1;
+	desc.Format							= DXGI_FORMAT_R8G8B8A8_UNORM;
+	desc.SampleDesc.Count				= 1;
+	desc.Usage							= D3D11_USAGE_DEFAULT;
+	desc.BindFlags						= D3D11_BIND_SHADER_RESOURCE;
+	desc.CPUAccessFlags					= 0;
+	
+	ID3D11Texture2D* pTexture			= nullptr;
+	subResource.pSysMem					= pixelData;
+	subResource.SysMemPitch				= desc.Width * 4;
+	subResource.SysMemSlicePitch		= 0;
+	g_pd3dDevice->CreateTexture2D(&desc, &subResource, &pTexture);
+
+	// Create texture view
+	D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
+	ZeroMemory(&srvDesc, sizeof(srvDesc));
+	srvDesc.Format						= DXGI_FORMAT_R8G8B8A8_UNORM;
+	srvDesc.ViewDimension				= D3D11_SRV_DIMENSION_TEXTURE2D;
+	srvDesc.Texture2D.MipLevels			= desc.MipLevels;
+	srvDesc.Texture2D.MostDetailedMip	= 0;
+	g_pd3dDevice->CreateShaderResourceView(pTexture, &srvDesc, &gCustomTextureView);
+
+	NetImgui::SendDataTexture(reinterpret_cast<uint64_t>(gCustomTextureView), pixelData, 8, 8, NetImgui::kTexFmtRGBA8);
+	pTexture->Release();
+}
+
+//=================================================================================================
+//
+//=================================================================================================
+void CustomTextureDestroy()
+{
+	if( gCustomTextureView )
+	{
+		NetImgui::SendDataTexture(reinterpret_cast<uint64_t>(gCustomTextureView), nullptr, 0, 0, NetImgui::kTexFmt_Invalid);
+		gCustomTextureView->Release();
+		gCustomTextureView = nullptr;
+	}
+}
+
+//=================================================================================================
+//
+//=================================================================================================
 bool Client_Startup()
 {
 	if( !NetImgui::Startup() )
@@ -34,40 +128,66 @@ bool Client_Startup()
 	return true;
 }
 
+//=================================================================================================
+//
+//=================================================================================================
 void Client_Shutdown()
 {	
 	NetImgui::Shutdown();
 }
 
+//=================================================================================================
+//
+//=================================================================================================
 void Client_AddFontTexture(uint64_t texId, void* pData, uint16_t width, uint16_t height)
 {
 	NetImgui::SendDataTexture(texId, pData, width, height, NetImgui::kTexFmtRGBA8 );
 }
 
+//=================================================================================================
+// 
+//=================================================================================================
+ImDrawData* Client_Draw(ImVec4& clearColorOut)
+{
+	Client_DrawLocal(clearColorOut);
+	Client_DrawRemote(clearColorOut);
+	return NetImgui::IsConnected() && gEnableRemoteMirror && gpLastRemoteDraw ? gpLastRemoteDraw : ImGui::GetDrawData();
+}
+
+
+//=================================================================================================
+//
+//=================================================================================================
 void Client_DrawLocal(ImVec4& clearColorOut)
 {
-	ImGui::NewFrame();
-	if( !NetImgui::IsConnected() )
-	{		
-		SampleClient::Imgui_DrawMainMenu();
-		SampleClient::Imgui_DrawContent(clearColorOut);
-	}
-	else
+	if( (NetImgui::IsConnected() && gEnableRemoteMirror) == false )
 	{
-		SampleClient::Imgui_DrawMainMenu();
-		SampleClient::Imgui_DrawContentSecondary();
+		ImGui::NewFrame();
+		if( !NetImgui::IsConnected() )
+		{		
+			SampleClient::Imgui_DrawMainMenu();
+			SampleClient::Imgui_DrawContent(clearColorOut);
+		}
+		else
+		{
+			SampleClient::Imgui_DrawMainMenu();
+			SampleClient::Imgui_DrawContentSecondary();
+		}
+		ImGui::Render();
 	}
 }
 
+//=================================================================================================
 // Normal DebugUI rendering
 // Can either be displayed locally or sent to remote netImguiApp server if connected
+//=================================================================================================
 void Client_DrawRemote(ImVec4& clearColorOut)
 {		
 	if( NetImgui::NewFrame() )
 	{		
 		SampleClient::Imgui_DrawMainMenu();
 		SampleClient::Imgui_DrawContent(clearColorOut);
-		NetImgui::EndFrame();
+		gpLastRemoteDraw = const_cast<ImDrawData*>(NetImgui::EndFrame()); //!< Note: the example function 'ImGui_ImplDX11_RenderDrawData' provided by imgui does not take a const object
 	}
 }
 
@@ -78,19 +198,19 @@ void Imgui_DrawMainMenu()
 	{
 		if( ImGui::Button("Disconnect") )
 			NetImgui::Disconnect();
+
+		ImGui::Checkbox("Mirror remote", &gEnableRemoteMirror);
+		if( gEnableRemoteMirror )
+			ImGui::TextUnformatted("(Can't control Imgui locally)");
 	}
 	else
 	{		
 		ImGui::Text("IP:");ImGui::SameLine();
-		ImGui::PushItemWidth(180); ImGui::DragInt4("##IP",gConnectIP,0,255); ImGui::PopItemWidth(); ImGui::SameLine();
+		ImGui::PushItemWidth(100); ImGui::InputText("HostIP", gConnectIP, sizeof(gConnectIP)); ImGui::PopItemWidth(); ImGui::SameLine();
 		ImGui::Text("Port:"); ImGui::SameLine();
-		ImGui::PushItemWidth(80); ImGui::InputInt("##PORT", &gConnectPort); ImGui::PopItemWidth(); ImGui::SameLine();
+		ImGui::PushItemWidth(100); ImGui::InputInt("##PORT", &gConnectPort); ImGui::PopItemWidth(); ImGui::SameLine();
 		if( ImGui::Button("Connect") )
-		{
-			unsigned char IpAddress[4] = {(uint8_t)gConnectIP[0], (uint8_t)gConnectIP[1], (uint8_t)gConnectIP[2], (uint8_t)gConnectIP[3] };
-			NetImgui::Connect("SampleClientPC", IpAddress, gConnectPort);
-		}
-			
+			NetImgui::Connect("SampleClientPC", gConnectIP, static_cast<uint32_t>(gConnectPort), CustomCommunicationThread);
 	}
 	ImGui::EndMainMenuBar();
 }
@@ -99,29 +219,34 @@ void Imgui_DrawContent(ImVec4& clear_col)
 {
 	// Straight from DearImgui sample
 	static bool show_test_window	= true;
-	static bool show_another_window	= false;
+
 	// 1. Show a simple window
 	// Tip: if we don't call ImGui::Begin()/ImGui::End() the widgets appears in a window automatically called "Debug"
 	{
 		static float f = 0.0f;
 		ImGui::Text("Hello, world!");
 		ImGui::SliderFloat("float", &f, 0.0f, 1.0f);
-		ImGui::ColorEdit3("clear color", (float*)&clear_col);
+		ImGui::ColorEdit3("clear color", reinterpret_cast<float*>(&clear_col));
 		if (ImGui::Button("Test Window")) show_test_window ^= 1;
-		if (ImGui::Button("Another Window")) show_another_window ^= 1;
-		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+		//SF TODO ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+		
+		// Only display this on remote connection (associated texture note created locally)		
+		if(!gCustomTextureView && ImGui::Button("Send Texture") )
+			CustomTextureCreate();
+		else if(gCustomTextureView && ImGui::Button("Remove Texture") )
+			CustomTextureDestroy();
+			
+		// Note: Test drawing with invalid texture (making sure netImgui App handles it) 
+		// Avoid drawing with invalid texture if will be displayed locally (not handled by 'ImGui_ImplDX11_RenderDrawData' example code)
+		if( gCustomTextureView || (NetImgui::IsRemoteDraw() && !gEnableRemoteMirror) )
+		{				
+			ImVec4 tint_col = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
+			ImVec4 border_col = ImVec4(1.0f, 1.0f, 1.0f, 0.5f);
+			ImGui::Image(reinterpret_cast<ImTextureID>(gCustomTextureView), ImVec2(128,32), ImVec2(0, 0), ImVec2(1, 1), tint_col, border_col);
+		}		
 	}
 
-	// 2. Show another simple window, this time using an explicit Begin/End pair
-	if (show_another_window)
-	{
-		ImGui::SetNextWindowSize(ImVec2(200,100), ImGuiCond_FirstUseEver);
-		ImGui::Begin("Another Window", &show_another_window);
-		ImGui::Text("Hello");
-		ImGui::End();
-	}
-
-	// 3. Show the ImGui test window. Most of the sample code is in ImGui::ShowTestWindow()
+	// 2. Show the ImGui test window. Most of the sample code is in ImGui::ShowTestWindow()
 	if (show_test_window)
 	{
 		ImGui::SetNextWindowPos(ImVec2(650, 20), ImGuiCond_FirstUseEver);     // Normally user code doesn't need/want to call it because positions are saved in .ini file anyway. Here we just want to make the demo initial state a bit more friendly!
@@ -133,6 +258,8 @@ void Imgui_DrawContentSecondary()
 {
 	ImGui::Begin("Notice", nullptr, ImGuiWindowFlags_NoTitleBar);
 	ImGui::Text("Client connected to remote netImguiApp");
+	ImGui::NewLine();
+	ImGui::TextWrapped("Can still use Imgui locally, with content different than displayed on netImgui App");
 	ImGui::End();	
 }
 

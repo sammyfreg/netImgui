@@ -1,7 +1,6 @@
 #pragma once
 
-#include <vector>
-#include "NetImGui_Shared.h"
+#include "NetImgui_Shared.h"
 
 //=============================================================================
 // Forward Declares
@@ -17,11 +16,11 @@ namespace NetImgui { namespace Internal { namespace Client
 //=============================================================================
 struct ClientTexture
 {
-	inline		~ClientTexture();
 	inline void	Set( CmdTexture* pCmdTexture );
-	inline bool	IsValid()const;
-	bool		mbSent		= false;
+	inline bool	IsValid()const;	
 	CmdTexture* mpCmdTexture= nullptr;
+	bool		mbSent		= false;
+	uint8_t		mPadding[7];
 };
 
 //=============================================================================
@@ -29,33 +28,42 @@ struct ClientTexture
 //=============================================================================
 struct ClientInfo
 {
-using VecTexture	= std::vector<ClientTexture, stdAllocator<ClientTexture> >;
+using VecTexture	= ImVector<ClientTexture>;
 using BufferKeys	= Ringbuffer<uint16_t, 1024>;
 using Time			= std::chrono::time_point<std::chrono::high_resolution_clock>;
 
-Network::SocketInfo*		mpSocket			= nullptr;
-char						mName[16]			= {0};
+							ClientInfo();
+Network::SocketInfo*		mpSocket				= nullptr;
+char						mName[16]				={0};
 VecTexture					mTextures;
 CmdTexture*					mTexturesPending[16];
-std::atomic_int32_t			mTexturesPendingCount = 0;
 ExchangePtr<CmdDrawFrame>	mPendingFrameOut;
 ExchangePtr<CmdInput>		mPendingInputIn;
 BufferKeys					mPendingKeyIn;
-bool						mbConnected			= false;
-bool						mbDisconnectRequest	= false;
-bool						mbHasTextureUpdate	= false;
-ImGuiContext*				mpContext			= nullptr;
-ImGuiContext*				mpContextRestore	= nullptr;
-float						mMouseWheelVertPrev	= 0.f;
-float						mMouseWheelHorizPrev= 0.f;
-void						ProcessTextures();
+ImGuiContext*				mpContext				= nullptr;
+ImGuiContext*				mpContextRestore		= nullptr;
+std::atomic_int32_t			mTexturesPendingCount;
+float						mMouseWheelVertPrev		= 0.f;
+float						mMouseWheelHorizPrev	= 0.f;
+bool						mbConnected				= false;	// Sucessfully Connected
+bool						mbDisconnectRequest		= false;	// Waiting to Disconnect
+bool						mbConnectRequest		= false;	// Waiting to Connect
+bool						mbHasTextureUpdate		= false;
+void						TextureProcessPending();
+void						TextureProcessRemoval();
+
+// Prevent warnings about implicitly created copy
+protected:
+	ClientInfo(const ClientInfo&){}
+	ClientInfo(const ClientInfo&&){}
+	ClientInfo& operator=(const ClientInfo&){return *this;}
 };
 
 //=============================================================================
 // Main communication thread, that should be started in its own thread
 //=============================================================================
-void Communications(ClientInfo* pClient);
+void Communications(void* pClientVoid);
 
 }}} //namespace NetImgui::Internal::Client
 
-#include "NetImGui_Client.inl"
+#include "NetImgui_Client.inl"

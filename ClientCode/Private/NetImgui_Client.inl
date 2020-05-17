@@ -1,12 +1,6 @@
 
 namespace NetImgui { namespace Internal { namespace Client {
 
-
-ClientTexture::~ClientTexture()
-{
-	netImguiDeleteSafe(mpCmdTexture);
-}
-
 void ClientTexture::Set( CmdTexture* pCmdTexture )
 {
 	netImguiDeleteSafe(mpCmdTexture);
