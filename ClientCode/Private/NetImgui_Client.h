@@ -54,9 +54,9 @@ void						TextureProcessRemoval();
 
 // Prevent warnings about implicitly created copy
 protected:
-	ClientInfo(const ClientInfo&){}
-	ClientInfo(const ClientInfo&&){}
-	ClientInfo& operator=(const ClientInfo&){return *this;}
+	ClientInfo(const ClientInfo&)=delete;
+	ClientInfo(const ClientInfo&&)=delete;
+	void operator=(const ClientInfo&)=delete;
 };
 
 //=============================================================================

@@ -1,14 +1,7 @@
 #include "NetImgui_Shared.h"
 
 #if NETIMGUI_ENABLED && NETIMGUI_WINSOCKET_ENABLED
-#include "NetImgui_WarningDisable.h"
-
-#if defined(_MSC_VER) && !defined(__clang__)
-#pragma warning (disable: 4668)	// warning C4668 : xxxx is not defined as a preprocessor macro, replacing with '0' for '#if/#elif' (Winsock2.h)
-#pragma warning (disable: 4820)	// warning C4820 : xxx : '4' bytes padding added after data member yyy
-#pragma warning (disable: 5045)	// warning C5045 : Compiler will insert Spectre mitigation for memory load if / Qspectre switch specified
-#endif
-
+#include "NetImgui_WarningDisableStd.h"
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 #ifdef _MSC_VER
@@ -82,5 +75,5 @@ bool DataSend(SocketInfo* pClientSocket, void* pDataOut, size_t Size)
 
 }}} // namespace NetImgui::Internal::Network
 
-#include "NetImgui_WarningDisable.h"
+#include "NetImgui_WarningReenable.h"
 #endif // #if NETIMGUI_ENABLED && NETIMGUI_WINSOCKET_ENABLED

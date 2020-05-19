@@ -9,9 +9,11 @@ Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		ClangDebug_Disabled|x64 = ClangDebug_Disabled|x64
 		ClangDebug|x64 = ClangDebug|x64
+		ClangRelease_Disabled|x64 = ClangRelease_Disabled|x64
 		ClangRelease|x64 = ClangRelease|x64
 		Debug_Disabled|x64 = Debug_Disabled|x64
 		Debug|x64 = Debug|x64
+		Release_Disabled|x64 = Release_Disabled|x64
 		Release|x64 = Release|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
@@ -19,12 +21,16 @@ Global
 		{9F316E83-5AE5-4939-A723-305A94F48005}.ClangDebug_Disabled|x64.Build.0 = ClangDebug_Disabled|x64
 		{9F316E83-5AE5-4939-A723-305A94F48005}.ClangDebug|x64.ActiveCfg = ClangDebug|x64
 		{9F316E83-5AE5-4939-A723-305A94F48005}.ClangDebug|x64.Build.0 = ClangDebug|x64
+		{9F316E83-5AE5-4939-A723-305A94F48005}.ClangRelease_Disabled|x64.ActiveCfg = ClangRelease_Disabled|x64
+		{9F316E83-5AE5-4939-A723-305A94F48005}.ClangRelease_Disabled|x64.Build.0 = ClangRelease_Disabled|x64
 		{9F316E83-5AE5-4939-A723-305A94F48005}.ClangRelease|x64.ActiveCfg = ClangRelease|x64
 		{9F316E83-5AE5-4939-A723-305A94F48005}.ClangRelease|x64.Build.0 = ClangRelease|x64
 		{9F316E83-5AE5-4939-A723-305A94F48005}.Debug_Disabled|x64.ActiveCfg = Debug_Disabled|x64
 		{9F316E83-5AE5-4939-A723-305A94F48005}.Debug_Disabled|x64.Build.0 = Debug_Disabled|x64
 		{9F316E83-5AE5-4939-A723-305A94F48005}.Debug|x64.ActiveCfg = Debug|x64
 		{9F316E83-5AE5-4939-A723-305A94F48005}.Debug|x64.Build.0 = Debug|x64
+		{9F316E83-5AE5-4939-A723-305A94F48005}.Release_Disabled|x64.ActiveCfg = Release_Disabled|x64
+		{9F316E83-5AE5-4939-A723-305A94F48005}.Release_Disabled|x64.Build.0 = Release_Disabled|x64
 		{9F316E83-5AE5-4939-A723-305A94F48005}.Release|x64.ActiveCfg = Release|x64
 		{9F316E83-5AE5-4939-A723-305A94F48005}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection

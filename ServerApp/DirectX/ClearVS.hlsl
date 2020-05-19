@@ -18,5 +18,6 @@ PS_INPUT main(uint VtxId : SV_VertexID)
 	Vertice.pos.z		= 0.5;
 	Vertice.pos.w		= 1;
 	Vertice.uv			= Vertice.pos.xy * 0.5 + 0.5; // Rescale [-1,1] to [0,1]
+	Vertice.uv.y		= 1.0 - Vertice.uv.y;
 	return Vertice;
 }

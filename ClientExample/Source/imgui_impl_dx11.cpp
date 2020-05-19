@@ -28,18 +28,13 @@
 //=============================================================================
 // EDIT TO ORIGINAL IMGUI imgui_impl_dx11.cpp
 // Added a few exceptions to compile in -Wall
-#if defined(__clang__)
-    #pragma clang diagnostic ignored "-Wzero-as-null-pointer-constant"
-    #pragma clang diagnostic ignored "-Wsign-conversion"
-    #pragma clang diagnostic ignored "-Wold-style-cast"
-    #pragma clang diagnostic ignored "-Wlanguage-extension-token"
-
-#elif defined(_MSC_VER) && !defined(__clang__)
-    #pragma warning (disable: 4061) // warning C4061: enumerator xxx in switch of enum yyy is not explicitly handled by a case label
-    #pragma warning (disable: 4820)	// warning C4820 : xxx 'yyy' bytes padding added after data member zzz
-    #pragma warning (disable: 4365)	// warning C4365 : '=' : conversion from xxx to yyy, signed / unsigned mismatch
+#include "Private/NetImgui_WarningDisableStd.h"
+#if defined (__clang__)
+#pragma clang diagnostic ignored "-Wzero-as-null-pointer-constant"
+#pragma clang diagnostic ignored "-Wsign-conversion"
+#pragma clang diagnostic ignored "-Wold-style-cast"
+#pragma clang diagnostic ignored "-Wlanguage-extension-token"
 #endif
-
 //=============================================================================
 
 #include "imgui.h"

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <stdint.h>
-#include <wtypes.h>
 struct ImDrawData;	// Forward declare
 struct ImVec4;		// Forward declare
 

@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "RemoteClient.h"
+
 #include <Private/NetImgui_CmdPackets.h>
 
 
@@ -93,7 +94,7 @@ void ClientRemote::UpdateInputToSend(HWND hWindows, InputUpdate& Input)
 	if( hWindows == GetFocus() && GetKeyboardState( KeyStates ) )
 	{
 		uint64_t Value(0);
-		for(uint64_t i(0); i<ARRAY_COUNT(KeyStates); ++i)
+		for(uint64_t i(0); i<NetImgui::Internal::ArrayCount(KeyStates); ++i)
 		{
 			Value |= (KeyStates[i] & 0x80) !=0 ? uint64_t(1) << (i % 64) : 0;
 			if( (i+1) % 64 == 0 )
@@ -117,7 +118,7 @@ NetImgui::Internal::CmdInput* ClientRemote::CreateInputCommand()
 	// Copy all of the character input into current command
 	if( pCmdInput )
 	{		
-		size_t keyCount(ARRAY_COUNT(pCmdInput->mKeyChars));		
+		size_t keyCount(NetImgui::Internal::ArrayCount(pCmdInput->mKeyChars));		
 		mPendingKeys.ReadData(pCmdInput->mKeyChars, keyCount);
 		pCmdInput->mKeyCharCount	= static_cast<uint8_t>(keyCount);
 	}

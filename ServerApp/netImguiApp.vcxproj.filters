@@ -96,6 +96,9 @@
     <ClInclude Include="..\ClientCode\Private\NetImgui_WarningReenable.h">
       <Filter>Source Files\ClientCode\Private</Filter>
     </ClInclude>
+    <ClInclude Include="..\ClientCode\Private\NetImgui_WarningDisableStd.h">
+      <Filter>Source Files\ClientCode\Private</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DirectX\DirectX11.cpp">

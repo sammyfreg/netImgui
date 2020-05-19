@@ -64,9 +64,45 @@ ExchangePtr<TType>::~ExchangePtr()
 //
 //=============================================================================
 template <typename TType>
+OffsetPointer<TType>::OffsetPointer()
+{
+	SetOff(0);
+}
+
+template <typename TType>
+OffsetPointer<TType>::OffsetPointer(TType* pPointer)
+{
+	SetPtr(pPointer);
+}
+
+template <typename TType>
+OffsetPointer<TType>::OffsetPointer(uint64_t offset)
+{
+	SetOff(offset);
+}
+
+template <typename TType>
+void OffsetPointer<TType>::SetPtr(TType* pPointer)
+{
+	mPointer = pPointer;
+}
+
+template <typename TType>
+void OffsetPointer<TType>::SetOff(uint64_t offset)
+{
+	mOffset = offset | 0x8000000000000000;
+}
+
+template <typename TType>
+uint64_t OffsetPointer<TType>::GetOff()const
+{
+	return mOffset & ~0x8000000000000000;
+}
+
+template <typename TType>
 bool OffsetPointer<TType>::IsOffset()const
 {
-	return mOffset < 128*1024; //Not certain, but should do for now
+	return (mOffset & 0x8000000000000000) != 0;
 }
 
 template <typename TType>
@@ -79,7 +115,7 @@ template <typename TType>
 TType* OffsetPointer<TType>::ToPointer()
 {
 	assert(IsOffset());
-	mPointer = reinterpret_cast<TType*>( reinterpret_cast<uint64_t>(&mPointer) + mOffset );
+	SetPtr( reinterpret_cast<TType*>( reinterpret_cast<uint64_t>(&mPointer) + GetOff() ) );
 	return mPointer;
 }
 
@@ -87,7 +123,7 @@ template <typename TType>
 uint64_t OffsetPointer<TType>::ToOffset()
 {
 	assert(IsPointer());
-	mOffset = reinterpret_cast<uint64_t>(mPointer) - reinterpret_cast<uint64_t>(&mPointer);
+	SetOff( reinterpret_cast<uint64_t>(mPointer) - reinterpret_cast<uint64_t>(&mPointer) );
 	return mOffset;
 }
 
@@ -158,19 +194,5 @@ void Ringbuffer<TType,TCount>::ReadData(TType* pData, size_t& count)
 	}
 	count = i;
 }
-
-#if 0
-template <class T, class U>
-constexpr bool operator == (const stdAllocator<T>&, const stdAllocator<U>&) noexcept
-{
-	return true;
-}
-
-template <class T, class U>
-constexpr bool operator != (const stdAllocator<T>&, const stdAllocator<U>&) noexcept
-{
-	return false;
-}
-#endif
 
 }} //namespace NetImgui::Internal

@@ -30,9 +30,6 @@
     <ClInclude Include="..\ClientCode\Private\NetImgui_CmdPackets.h">
       <Filter>ClientCode\Private</Filter>
     </ClInclude>
-    <ClInclude Include="..\ClientCode\Private\NetImgui_DrawFrame.h">
-      <Filter>ClientCode\Private</Filter>
-    </ClInclude>
     <ClInclude Include="..\ClientCode\Private\NetImgui_Network.h">
       <Filter>ClientCode\Private</Filter>
     </ClInclude>
@@ -64,6 +61,12 @@
       <Filter>ClientCode\Private</Filter>
     </ClInclude>
     <ClInclude Include="..\ClientCode\Private\NetImgui_WarningDisable.h">
+      <Filter>ClientCode\Private</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ClientCode\Private\NetImgui_CmdPackets_DrawFrame.h">
+      <Filter>ClientCode\Private</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ClientCode\Private\NetImgui_WarningDisableStd.h">
       <Filter>ClientCode\Private</Filter>
     </ClInclude>
   </ItemGroup>

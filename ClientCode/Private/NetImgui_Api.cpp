@@ -2,7 +2,6 @@
 #include "NetImgui_WarningDisable.h"
 
 #if NETIMGUI_ENABLED
-
 #include "NetImgui_Client.h"
 #include "NetImgui_Network.h"
 #include "NetImgui_CmdPackets.h"
@@ -19,7 +18,17 @@ bool InputUpdateData();
 //=================================================================================================
 //
 //=================================================================================================
-bool Connect(const char* clientName, const char* ServerHost, uint32_t serverPort, StartThreadFunctPtr startThreadFunctPtr)
+void DefaultStartCommunicationThread(void ComFunctPtr(void*), void* pClient)
+{
+	std::thread(ComFunctPtr, pClient).detach();
+}
+
+bool Connect(const char* clientName, const char* ServerHost, uint32_t serverPort)
+{
+	return Connect(DefaultStartCommunicationThread, clientName, ServerHost, serverPort);
+}
+
+bool Connect(StartThreadFunctPtr startThreadFunction, const char* clientName, const char* ServerHost, uint32_t serverPort)
 {
 	Client::ClientInfo& client	= *gpClientInfo;	
 	Disconnect();
@@ -31,11 +40,8 @@ bool Connect(const char* clientName, const char* ServerHost, uint32_t serverPort
 	client.mpSocket = Network::Connect(ServerHost, serverPort);
 	if( client.mpSocket )
 	{
-		CreateImguiContext();
-		if( startThreadFunctPtr )
-			startThreadFunctPtr(Client::Communications, &client);
-		else
-			std::thread(Client::Communications, &client).detach();
+		CreateImguiContext();		
+		startThreadFunction(Client::Communications, &client);		
 	}
 
 	client.mbConnectRequest = client.mpSocket != nullptr;
@@ -142,7 +148,7 @@ void SendDataTexture(uint64_t textureId, void* pData, uint16_t width, uint16_t h
 		uint32_t SizeNeeded					= PixelDataSize + sizeof(CmdTexture);
 		pCmdTexture							= netImguiNew<CmdTexture>(SizeNeeded);
 
-		pCmdTexture->mpTextureData.mPointer = reinterpret_cast<uint8_t*>(&pCmdTexture[1]);	
+		pCmdTexture->mpTextureData.SetPtr(reinterpret_cast<uint8_t*>(&pCmdTexture[1]));
 		memcpy(pCmdTexture->mpTextureData.Get(), pData, PixelDataSize);
 
 		pCmdTexture->mHeader.mSize			= SizeNeeded;
@@ -156,16 +162,16 @@ void SendDataTexture(uint64_t textureId, void* pData, uint16_t width, uint16_t h
 	else
 	{
 		pCmdTexture							= netImguiNew<CmdTexture>();
-		pCmdTexture->mTextureId				= textureId;
-		pCmdTexture->mpTextureData.mOffset	= 0;
+		pCmdTexture->mTextureId				= textureId;		
 		pCmdTexture->mWidth					= 0;
 		pCmdTexture->mHeight				= 0;
 		pCmdTexture->mFormat				= kTexFmt_Invalid;
+		pCmdTexture->mpTextureData.SetOff(0);
 	}
 
 	// In unlikely event of too many textures, wait for them to be processed 
 	// (if connected) or Process them now (if not)
-	while( client.mTexturesPendingCount >= static_cast<int32_t>(ARRAY_COUNT(client.mTexturesPending)) )
+	while( client.mTexturesPendingCount >= static_cast<int32_t>(ArrayCount(client.mTexturesPending)) )
 	{
 		if( IsConnected() )
 			std::this_thread::sleep_for (std::chrono::nanoseconds(1));
@@ -325,7 +331,7 @@ bool InputUpdateData()
 		//io.NavInputs //SF TODO
 
 		memset(io.KeysDown, 0, sizeof(io.KeysDown));
-		for (uint32_t i(0); i < ARRAY_COUNT(pCmdInput->mKeysDownMask) * 64; ++i)
+		for (uint32_t i(0); i < ArrayCount(pCmdInput->mKeysDownMask) * 64; ++i)
 			io.KeysDown[i] = (pCmdInput->mKeysDownMask[i / 64] & (uint64_t(1) << (i % 64))) != 0;
 
 		//SF TODO: Optimize this
@@ -355,7 +361,8 @@ namespace NetImgui {
 
 bool				Startup(void)													{ return false; }
 void				Shutdown(void)													{ }
-bool				Connect(const char*, const char*, uint32_t, StartThreadFunctPtr){ return false; }
+bool				Connect(const char*, const char*, uint32_t)						{ return false; }
+bool				Connect(StartThreadFunctPtr, const char*, const char*, uint32_t){ return false; }
 void				Disconnect(void)												{ }
 bool				IsConnected(void)												{ return false; }
 bool				IsRemoteDraw(void)												{ return false; }
@@ -369,5 +376,6 @@ uint32_t			GetTexture_BytePerImage(eTexFormat, uint32_t, uint32_t)			{ return 0;
 
 } // namespace NetImgui
 
-#include "NetImgui_WarningReenable.h"
 #endif //NETIMGUI_ENABLED
+
+#include "NetImgui_WarningDisable.h"

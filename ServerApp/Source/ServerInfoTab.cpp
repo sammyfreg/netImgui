@@ -15,7 +15,7 @@ struct ExampleAppLog
     ImGuiTextFilter     Filter;
     ImVector<int>       LineOffsets; // Index to lines offset. We maintain this with AddLog() calls.
     bool                AutoScroll;  // Keep scrolling if already at the bottom.
-
+    uint8_t             PADDING[7];
     ExampleAppLog()
     {
         AutoScroll = true;
@@ -146,7 +146,7 @@ struct ExampleAppLog
     }
 
 protected:
-    static ExampleAppLog* spInstance;
+    static ExampleAppLog* spInstance;    
 };
 
 ExampleAppLog* ExampleAppLog::spInstance = nullptr;

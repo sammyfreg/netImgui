@@ -1,12 +1,9 @@
 #include "stdafx.h"
+#include "Private/NetImgui_WarningDisableStd.h"
 
-#ifdef _MSC_VER
-#pragma warning (disable: 4668)	// warning C4668 : xxxx is not defined as a preprocessor macro, replacing with '0' for '#if/#elif' (Winsock2.h)
-#pragma warning (disable: 4820)	// warning C4820 : xxx : '4' bytes padding added after data member yyy
-#endif
 #include <WinSock2.h>
-
 #include <thread>
+
 #include "ServerNetworking.h"
 #include "RemoteClient.h"
 #include <Private/NetImgui_Network.h>

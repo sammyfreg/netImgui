@@ -1,29 +1,35 @@
+#include <NetImgui_Api.h>
+#include "SampleClient.h"
+
+#include "Private/NetImgui_WarningDisableStd.h"
 #include <chrono>
 #include <thread>
-#include "SampleClient.h"
-#include <NetImgui_Api.h>
+#include "Private/NetImgui_WarningReenable.h"
+
+#include "Private/NetImgui_WarningDisable.h"
 
 
-#include <d3d11.h>
-extern ID3D11Device* g_pd3dDevice;
+// Methods declared in main.cpp, to avoid having to include 'd3d11.h' here
+extern void TextureCreate(const uint8_t* pPixelData, uint32_t width, uint32_t height, void*& pTextureViewOut);
+extern void TextureDestroy(void*& pTextureView);
 
 namespace SampleClient
 {
 
-static int							gConnectPort		= NetImgui::kDefaultServerPort;
-static char							gConnectIP[64]		= "127.0.0.1";
-static ImDrawData*					gpLastRemoteDraw	= nullptr;
-static bool							gEnableRemoteMirror	= false;
-static ID3D11ShaderResourceView*	gCustomTextureView	= nullptr;
+static int			gConnectPort		= NetImgui::kDefaultServerPort;
+static char			gConnectIP[64]		= "127.0.0.1";
+static ImDrawData*	gpLastRemoteDraw	= nullptr;
+static bool			gEnableRemoteMirror	= false;
+static void*		gCustomTextureView	= nullptr;
 
-void	Imgui_DrawMainMenu();
-void	Imgui_DrawContent(ImVec4& clear_col);
-void	Imgui_DrawContentSecondary();
-void	Client_DrawLocal(ImVec4& clearColorOut);
-void	Client_DrawRemote(ImVec4& clearColorOut);
-void	CustomCommunicationThread(void ComFunctPtr(void*), void* pClient);
-void	CustomTextureCreate();
-void	CustomTextureDestroy();
+void				Imgui_DrawMainMenu();
+void				Imgui_DrawContent(ImVec4& clear_col);
+void				Imgui_DrawContentSecondary();
+void				Client_DrawLocal(ImVec4& clearColorOut);
+void				Client_DrawRemote(ImVec4& clearColorOut);
+void				CustomCommunicationThread(void ComFunctPtr(void*), void* pClient);
+void				CustomTextureCreate();
+void				CustomTextureDestroy();
 
 //=================================================================================================
 //! @brief		Custom Connect thread example
@@ -41,50 +47,21 @@ void CustomCommunicationThread( void ComFunctPtr(void*), void* pClient )
 //=================================================================================================
 void CustomTextureCreate()
 {
-	D3D11_TEXTURE2D_DESC desc;
-	D3D11_SUBRESOURCE_DATA subResource;
-	constexpr UINT Width = 8;
-	constexpr UINT Height = 8;
+	constexpr uint32_t Width = 8;
+	constexpr uint32_t Height = 8;
 	uint8_t pixelData[Width * Height * 4];
 	for (uint8_t y(0); y < Height; ++y)
 	{
 		for (uint8_t x(0); x < Width; ++x)
 		{
-			pixelData[(y * Width + x) * 4 + 0] = 0xFF * x / 8;
-			pixelData[(y * Width + x) * 4 + 1] = 0xFF * y / 8;
+			pixelData[(y * Width + x) * 4 + 0] = 0xFF * x / 8u;
+			pixelData[(y * Width + x) * 4 + 1] = 0xFF * y / 8u;
 			pixelData[(y * Width + x) * 4 + 2] = 0xFF;
 			pixelData[(y * Width + x) * 4 + 3] = 0xFF;
 		}
 	}	
-
-	ZeroMemory(&desc, sizeof(desc));
-	desc.Width							= Width;
-	desc.Height							= Height;
-	desc.MipLevels						= 1;
-	desc.ArraySize						= 1;
-	desc.Format							= DXGI_FORMAT_R8G8B8A8_UNORM;
-	desc.SampleDesc.Count				= 1;
-	desc.Usage							= D3D11_USAGE_DEFAULT;
-	desc.BindFlags						= D3D11_BIND_SHADER_RESOURCE;
-	desc.CPUAccessFlags					= 0;
-	
-	ID3D11Texture2D* pTexture			= nullptr;
-	subResource.pSysMem					= pixelData;
-	subResource.SysMemPitch				= desc.Width * 4;
-	subResource.SysMemSlicePitch		= 0;
-	g_pd3dDevice->CreateTexture2D(&desc, &subResource, &pTexture);
-
-	// Create texture view
-	D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
-	ZeroMemory(&srvDesc, sizeof(srvDesc));
-	srvDesc.Format						= DXGI_FORMAT_R8G8B8A8_UNORM;
-	srvDesc.ViewDimension				= D3D11_SRV_DIMENSION_TEXTURE2D;
-	srvDesc.Texture2D.MipLevels			= desc.MipLevels;
-	srvDesc.Texture2D.MostDetailedMip	= 0;
-	g_pd3dDevice->CreateShaderResourceView(pTexture, &srvDesc, &gCustomTextureView);
-
+	TextureCreate(pixelData, Width, Height, gCustomTextureView);
 	NetImgui::SendDataTexture(reinterpret_cast<uint64_t>(gCustomTextureView), pixelData, 8, 8, NetImgui::kTexFmtRGBA8);
-	pTexture->Release();
 }
 
 //=================================================================================================
@@ -92,11 +69,11 @@ void CustomTextureCreate()
 //=================================================================================================
 void CustomTextureDestroy()
 {
+	
 	if( gCustomTextureView )
 	{
 		NetImgui::SendDataTexture(reinterpret_cast<uint64_t>(gCustomTextureView), nullptr, 0, 0, NetImgui::kTexFmt_Invalid);
-		gCustomTextureView->Release();
-		gCustomTextureView = nullptr;
+		TextureDestroy(gCustomTextureView);
 	}
 }
 
@@ -210,7 +187,7 @@ void Imgui_DrawMainMenu()
 		ImGui::Text("Port:"); ImGui::SameLine();
 		ImGui::PushItemWidth(100); ImGui::InputInt("##PORT", &gConnectPort); ImGui::PopItemWidth(); ImGui::SameLine();
 		if( ImGui::Button("Connect") )
-			NetImgui::Connect("SampleClientPC", gConnectIP, static_cast<uint32_t>(gConnectPort), CustomCommunicationThread);
+			NetImgui::Connect(CustomCommunicationThread, "SampleClientPC", gConnectIP, static_cast<uint32_t>(gConnectPort));
 	}
 	ImGui::EndMainMenuBar();
 }

@@ -1,4 +1,16 @@
 // File content from the ImGui standalone example application for DirectX 11
+
+//=============================================================================
+// EDIT TO ORIGINAL IMGUI main.cpp
+// Added a few exceptions to compile in -Wall
+#include "Private/NetImgui_WarningDisableStd.h"
+#if defined(__clang__)
+    #pragma clang diagnostic ignored "-Wold-style-cast"
+    #pragma clang diagnostic ignored "-Wlanguage-extension-token"
+    #pragma clang diagnostic ignored "-Wzero-as-null-pointer-constant"
+#endif
+//=============================================================================
+
 #include <imgui.h>
 #include "imgui_impl_dx11.h"
 #include "imgui_impl_win32.h"
@@ -6,22 +18,67 @@
 #include <d3dcompiler.h>
 #include "SampleClient.h"
 
-//=============================================================================
-// EDIT TO ORIGINAL IMGUI main.cpp
-// Added a few exceptions to compile in -Wall
-#if defined(__clang__)
-#pragma clang diagnostic ignored "-Wold-style-cast"
-#pragma clang diagnostic ignored "-Wlanguage-extension-token"
-#pragma clang diagnostic ignored "-Wmissing-prototypes"
-#pragma clang diagnostic ignored "-Wzero-as-null-pointer-constant"
-#endif
-//=============================================================================
-
 // Data
 static ID3D11Device* g_pd3dDevice = NULL;
 static ID3D11DeviceContext* g_pd3dDeviceContext = NULL;
 static IDXGISwapChain* g_pSwapChain = NULL;
 static ID3D11RenderTargetView* g_mainRenderTargetView = NULL;
+
+//=================================================================================================
+// EDIT TO ORIGINAL IMGUI main.cpp
+// Texture creation.
+// Avoids adding DirectX11 dependencies in ClientSample, with all the disable warning required
+//=================================================================================================
+void TextureCreate(const uint8_t* pPixelData, uint32_t width, uint32_t height, void*& pTextureViewOut)
+{
+    D3D11_TEXTURE2D_DESC desc;
+    D3D11_SUBRESOURCE_DATA subResource;
+
+    ZeroMemory(&desc, sizeof(desc));
+    desc.Width = static_cast<UINT>(width);
+    desc.Height = static_cast<UINT>(height);
+    desc.MipLevels = 1;
+    desc.ArraySize = 1;
+    desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    desc.SampleDesc.Count = 1;
+    desc.Usage = D3D11_USAGE_DEFAULT;
+    desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+    desc.CPUAccessFlags = 0;
+
+    ID3D11Texture2D* pTexture = nullptr;
+    subResource.pSysMem = pPixelData;
+    subResource.SysMemPitch = desc.Width * 4;
+    subResource.SysMemSlicePitch = 0;
+    g_pd3dDevice->CreateTexture2D(&desc, &subResource, &pTexture);
+
+    // Create texture view
+    D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
+    ZeroMemory(&srvDesc, sizeof(srvDesc));
+    srvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+    srvDesc.Texture2D.MipLevels = desc.MipLevels;
+    srvDesc.Texture2D.MostDetailedMip = 0;
+    g_pd3dDevice->CreateShaderResourceView(pTexture, &srvDesc, reinterpret_cast<ID3D11ShaderResourceView**>(&pTextureViewOut));
+
+    pTexture->Release();
+}
+
+//=================================================================================================
+// EDIT TO ORIGINAL IMGUI main.cpp
+// Texture destruction
+// Avoids adding DirectX11 dependencies in ClientSample, with all the disable warning required
+//=================================================================================================
+void TextureDestroy(void*& pTextureView)
+{
+    if (pTextureView)
+    {
+        reinterpret_cast<ID3D11ShaderResourceView*>(pTextureView)->Release();
+        pTextureView = nullptr;
+    }
+}
+
+
+
 
 void CreateRenderTarget()
 {
@@ -178,13 +235,12 @@ int main(int, char**)
 				DispatchMessage(&msg);
 				continue;
 			}
-			
-			// Draw the Local Imgui UI
-			// (if connected to remote, display a text message and disconnect menu item, else normal ImGui UI)
+						
 			ImGui_ImplDX11_NewFrame();
 			ImGui_ImplWin32_NewFrame();
             //=============================================================================
             // EDIT TO ORIGINAL IMGUI main.cpp
+            // Draw the Local Imgui UI and remote imgui UI
             ImDrawData* pDraw = SampleClient::Client_Draw(clear_col);
             //=============================================================================
 			g_pd3dDeviceContext->ClearRenderTargetView(g_mainRenderTargetView, (float*)&clear_col);			
@@ -203,4 +259,3 @@ int main(int, char**)
 
     return 0;
 }
-

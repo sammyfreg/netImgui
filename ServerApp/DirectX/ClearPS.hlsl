@@ -5,13 +5,15 @@
 };
 
 float4 ClearColor;
+float4 TextureTint;
 
 sampler sampler0;
 Texture2D texture0;
             
 float4 main(PS_INPUT input) : SV_Target
 {
-	float4 out_col	= float4(1,1,1,1);
-	out_col.rgb		= lerp(texture0.Sample(sampler0, input.uv).rgb, ClearColor.rgb, ClearColor.a);
-	return out_col;
+	float4 outCol	= ClearColor;
+	float4 texCol	= texture0.Sample(sampler0, input.uv) * TextureTint;
+	outCol.rgb		= lerp(ClearColor.rgb, texCol.rgb, texCol.a);
+	return outCol;
 }

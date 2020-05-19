@@ -3,32 +3,14 @@
 //=================================================================================================
 // Include NetImgui_Api.h with almost no warning suppression.
 // this is to make sure library user does not need to suppress any
-#if defined(__clang__)
-	#pragma clang diagnostic push
-
-#elif defined(_MSC_VER) && !defined(__clang__)
-	#pragma warning	(push)
-	#pragma warning (disable: 5031)		// warning C5031: #pragma warning(pop): likely mismatch, popping warning state pushed in different file
-	#pragma warning (disable: 4464)		// warning C4464: relative include path contains '..'
-	#pragma warning (disable: 4514)		// unreferenced inline function has been removed
+#if defined(_MSC_VER)
+#pragma warning (disable: 4464)		// warning C4464: relative include path contains '..'
 #endif
 #include "../NetImgui_Api.h"
-#include "NetImgui_WarningReenable.h"
 
 //=================================================================================================
-// Disable a few warnings that the NetImgui client code generates in -wall
-#include "NetImgui_WarningDisable.h"	
-
-//=================================================================================================
-// Disable a few more warning caused by system includes
-#if defined(__clang__)
-	#pragma clang diagnostic push
-
-#elif defined(_MSC_VER) && !defined(__clang__)
-	#pragma warning	(push)
-	#pragma warning (disable: 4820)		// warning C4820 : xxx : yyy bytes padding added after data member zzz
-	#pragma warning (disable: 4710)		// warning C4710: 'xxx': function not inlined
-#endif
+// Include a few standard c++ header, with additional warning suppression
+#include "NetImgui_WarningDisableStd.h"
 #include <atomic>
 #include <thread>
 #include <chrono>
@@ -36,10 +18,8 @@
 #include "NetImgui_WarningReenable.h"
 //=================================================================================================
 
-
-#define MAYBE_UNUSED(_VAR_)		(void)_VAR_
-#define ARRAY_COUNT(_ARRAY_)	(sizeof(_ARRAY_)/sizeof(_ARRAY_[0]))
-
+//=================================================================================================
+#include "NetImgui_WarningDisable.h"
 namespace NetImgui { namespace Internal
 {
 
@@ -71,9 +51,9 @@ private:
 
 // Prevents warning about implicitly delete functions
 private:
-	ExchangePtr(const ExchangePtr&){}
-	ExchangePtr(const ExchangePtr&&){}
-	ExchangePtr operator=(const ExchangePtr&){}
+	ExchangePtr(const ExchangePtr&) = delete;
+	ExchangePtr(const ExchangePtr&&) = delete;
+	void operator=(const ExchangePtr&) = delete;
 };
 
 //=============================================================================
@@ -82,24 +62,32 @@ private:
 template <typename TType>
 struct OffsetPointer
 {
+	inline				OffsetPointer();
+	inline explicit		OffsetPointer(TType* pPointer);
+	inline explicit		OffsetPointer(uint64_t offset);
+
+	inline bool			IsPointer()const;
+	inline bool			IsOffset()const;
+
+	inline TType*		ToPointer();
+	inline uint64_t		ToOffset();
+	inline TType*		operator->();
+	inline const TType*	operator->()const;
+	inline TType&		operator[](size_t index);
+	inline const TType&	operator[](size_t index)const;
+
+	inline TType*		Get();
+	inline const TType*	Get()const;
+	inline uint64_t		GetOff()const;
+	inline void			SetPtr(TType* pPointer);
+	inline void			SetOff(uint64_t offset);
+	
+private:
 	union
 	{
 		uint64_t	mOffset;
 		TType*		mPointer;
-	};	
-	
-	bool			IsPointer()const;
-	bool			IsOffset()const;
-
-	TType*			ToPointer();
-	uint64_t		ToOffset();
-	TType*			operator->();
-	const TType*	operator->()const;
-	TType&			operator[](size_t index);
-	const TType&	operator[](size_t index)const;
-
-	TType*			Get();
-	const TType*	Get()const;
+	};
 };
 
 //=============================================================================
@@ -119,10 +107,17 @@ private:
 
 // Prevents warning about implicitly delete functions
 private:
-	Ringbuffer(const Ringbuffer&){}
-	Ringbuffer(const Ringbuffer&&){}
-	Ringbuffer operator=(const Ringbuffer&){}
+	Ringbuffer(const Ringbuffer&) =delete;
+	Ringbuffer(const Ringbuffer&&) = delete;
+	void operator=(const Ringbuffer&) = delete;
 };
+
+template <typename T, std::size_t N>
+constexpr std::size_t ArrayCount(T const (&)[N]) noexcept
+{
+	return N;
+}
+
 
 }} //namespace NetImgui::Internal
 

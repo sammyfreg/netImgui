@@ -11,12 +11,17 @@
 // EDIT TO ORIGINAL IMGUI imgui_impl_win32.cpp
 // Added a few exceptions to compile in -Wall
 #if defined(__clang__)
-#pragma clang diagnostic ignored "-Wnonportable-system-include-path"
-#pragma clang diagnostic ignored "-Wzero-as-null-pointer-constant"
-#pragma clang diagnostic ignored "-Wold-style-cast"
-#pragma clang diagnostic ignored "-Wextra-semi-stmt"
-#pragma clang diagnostic ignored "-Wmissing-prototypes"
-#pragma clang diagnostic ignored "-Wsign-conversion"
+    #pragma clang diagnostic ignored "-Wnonportable-system-include-path"
+    #pragma clang diagnostic ignored "-Wzero-as-null-pointer-constant"
+    #pragma clang diagnostic ignored "-Wold-style-cast"
+    #pragma clang diagnostic ignored "-Wextra-semi-stmt"
+    #pragma clang diagnostic ignored "-Wmissing-prototypes"
+    #pragma clang diagnostic ignored "-Wsign-conversion"
+
+#elif defined(_MSC_VER) && !defined(__clang__)
+    #pragma warning (disable: 4191) // warning C4191: 'type cast': unsafe conversion from 'xxx' to 'yyy'    
+    #pragma warning (disable: 4365)	// warning C4365 : '=' : conversion from xxx to yyy, signed / unsigned mismatch
+
 #endif
 //=============================================================================
 

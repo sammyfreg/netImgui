@@ -3,16 +3,18 @@
 #if defined(__clang__)
 #pragma clang diagnostic ignored "-Wlanguage-extension-token"	// Used with DirectX '__uuidof'
 #endif
-#ifdef _MSC_VER
+#if defined(_MSC_VER) && 0
 #pragma warning (disable: 4061)		// warning C4061: enumerator xxx in switch of enum yyy is not explicitly handled by a case label
 #pragma warning (disable: 4820)		// warning C4820 : xxx 'yyy' bytes padding added after data member zzz
 #pragma warning (disable: 4365)		// warning C4365 : '=' : conversion from xxx to yyy, signed / unsigned mismatch
 #endif
-
+#include "Private/NetImgui_WarningDisableStd.h"
 #include <mutex>
 #include <vector>
 #include <cstddef>
 #include <d3d11.h>
+//#include "Private/NetImgui_WarningReenable.h"
+
 #include "DirectX11.h"
 #include <ClearVS.h>
 #include <ClearPS.h>
@@ -41,8 +43,8 @@
 	#pragma clang diagnostic pop
 #elif _MSC_VER
 	#pragma warning (push)
-	//#pragma warning (disable: 4365)		// conversion from 'long' to 'unsigned int', signed/unsigned mismatch for <atomic>
-	#pragma warning (disable: 4296)			// warning C4296 : '>=' : expression is always true (compiling source file DirectX\DirectX11.cpp)
+	#pragma warning (disable: 4711)	// warning C4711: function 'xxx' selected for automatic inline expansion
+	#pragma warning (disable: 4296)	// warning C4296 : '>=' : expression is always true (compiling source file DirectX\DirectX11.cpp)
 	#include "../ThirdParty/stb_image.h"
 	#pragma warning (pop)	
 #endif
@@ -222,17 +224,17 @@ void CreateIdxBuffer(ResIdxBuffer& IndexBuffer, const void* pData, UINT DataSize
 	gpGfxRes->mDevice->CreateBuffer(&Desc, &subResource, IndexBuffer.GetForInit());
 }
 
-bool CreateShaderBinding(ResShaderRes& OutShaderBind, const BYTE* VS_Data, UINT VS_Size, const BYTE* PS_Data, UINT PS_Size, const D3D11_INPUT_ELEMENT_DESC* Layout, UINT LayoutCount )
+bool CreateShaderBinding(ResShaderRes& OutShaderBind, const BYTE* VS_Data, size_t VS_Size, const BYTE* PS_Data, size_t PS_Size, const D3D11_INPUT_ELEMENT_DESC* Layout, size_t LayoutCount )
 {	
-	HRESULT hr = gpGfxRes->mDevice->CreateVertexShader(VS_Data, VS_Size, nullptr, OutShaderBind.mShaderVS.GetForInit());
+	HRESULT hr = gpGfxRes->mDevice->CreateVertexShader(VS_Data, static_cast<UINT>(VS_Size), nullptr, OutShaderBind.mShaderVS.GetForInit());
 	if( hr != S_OK )
 		return false;
 
-	hr = gpGfxRes->mDevice->CreatePixelShader(PS_Data, PS_Size, nullptr, OutShaderBind.mShaderPS.GetForInit());
+	hr = gpGfxRes->mDevice->CreatePixelShader(PS_Data, static_cast<UINT>(PS_Size), nullptr, OutShaderBind.mShaderPS.GetForInit());
 	if( hr != S_OK )
 		return false;
 
-	hr = gpGfxRes->mDevice->CreateInputLayout(Layout, LayoutCount, VS_Data, VS_Size, OutShaderBind.mInputLayout.GetForInit() );
+	hr = gpGfxRes->mDevice->CreateInputLayout(Layout, static_cast<UINT>(LayoutCount), VS_Data, static_cast<UINT>(VS_Size), OutShaderBind.mInputLayout.GetForInit() );
 	if( hr != S_OK )
 		return false;
 	return true;
@@ -337,7 +339,7 @@ bool Startup(HWND hWindow)
 			{ "TEXCOORD", 0, DXGI_FORMAT_R16G16_UNORM,  0, offsetof(NetImgui::Internal::ImguiVert, mUV),  D3D11_INPUT_PER_VERTEX_DATA, 0 },
 			{ "COLOR",    0, DXGI_FORMAT_R8G8B8A8_UNORM,0, offsetof(NetImgui::Internal::ImguiVert, mColor), D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		};
-		if( !CreateShaderBinding( gpGfxRes->mImguiShaders, gpShader_ImguiVS, sizeof(gpShader_ImguiVS), gpShader_ImguiPS, sizeof(gpShader_ImguiPS), ImguiVtxLayout, ARRAY_COUNT(ImguiVtxLayout) ) )
+		if( !CreateShaderBinding( gpGfxRes->mImguiShaders, gpShader_ImguiVS, sizeof(gpShader_ImguiVS), gpShader_ImguiPS, sizeof(gpShader_ImguiPS), ImguiVtxLayout, NetImgui::Internal::ArrayCount(ImguiVtxLayout) ) )
 			return false;
 	}
 
@@ -400,11 +402,18 @@ void Render_Clear()
 {
 	CD3D11_VIEWPORT vp(0.f, 0.f, static_cast<float>(gpGfxRes->mScreenWidth), static_cast<float>(gpGfxRes->mScreenHeight));
 	const D3D11_RECT r = { 0, 0, static_cast<long>(gpGfxRes->mScreenWidth), static_cast<long>(gpGfxRes->mScreenHeight)};
+	const float BlendFactor[4] = { 1.f, 1.f, 1.f, 1.f };
 
 	ResCBuffer ClearCB;
-	float ClearColor[4] = {0,0,0,0.75f};
-	const float BlendFactor[4] = { 1.f, 1.f, 1.f, 1.f };
-	CreateCBuffer(ClearCB, &ClearColor, sizeof(ClearColor));	
+	struct ClearParam
+	{
+		ImVec4 mClearColor;
+		ImVec4 mTextureTint; 
+	} clearParam;
+	clearParam.mClearColor	= ImVec4(0.0f, 0.0f, 0.0f, 1.0f);
+	clearParam.mTextureTint = ImVec4(1.0f, 1.0f, 1.0f, 0.5f);
+		
+	CreateCBuffer(ClearCB, &clearParam, sizeof(clearParam));
 	gpGfxRes->mContext->OMSetRenderTargets(1, gpGfxRes->mBackbufferView.GetArray(), nullptr );
 	gpGfxRes->mContext->OMSetBlendState(gpGfxRes->mClearBlendState.Get(), BlendFactor, 0xFFFFFFFF);
 	gpGfxRes->mContext->RSSetViewports(1, &vp);
@@ -532,7 +541,7 @@ void Render(const std::vector<TextureHandle>& textures, const NetImgui::Internal
 	Render_DrawImgui(textures, pDrawFrame);
 		
 	ID3D11RenderTargetView* RenderTargetNone[4]={nullptr,nullptr,nullptr,nullptr};
-	gpGfxRes->mContext->OMSetRenderTargets(ARRAY_COUNT(RenderTargetNone), RenderTargetNone, nullptr );
+	gpGfxRes->mContext->OMSetRenderTargets( static_cast<UINT>(NetImgui::Internal::ArrayCount(RenderTargetNone)), RenderTargetNone, nullptr );
 	gpGfxRes->mSwapChain->Present(0, 0);		
 	gpGfxRes->mFrameIndex++;
 }
@@ -555,7 +564,7 @@ TextureHandle TextureCreate( NetImgui::Internal::CmdTexture* pCmdTexture )
 
 	// Add this texture to be added in main thread
 	//SF create a threadsafe consume/append buffer
-	while( gTexturesPendingCount == ARRAY_COUNT(gTexturesPending) )
+	while( gTexturesPendingCount == NetImgui::Internal::ArrayCount(gTexturesPending) )
 		Sleep(0);
 	auto idx							= gTexturesPendingCount.fetch_add(1);
 	gTexturesPending[idx].mIndex		= texHandle.mIndex;
@@ -568,7 +577,7 @@ void TextureRelease(TextureHandle& hTexture)
 {
 	if( hTexture.IsValid() )
 	{
-		while( gTexturesPendingCount == ARRAY_COUNT(gTexturesPending) )
+		while( gTexturesPendingCount == NetImgui::Internal::ArrayCount(gTexturesPending) )
 			Sleep(0);
 
 		auto idx							= gTexturesPendingCount.fetch_add(1);

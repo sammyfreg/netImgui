@@ -7,7 +7,9 @@
 //=================================================================================================
 // Set path to your 'dear imgui' header here
 //=================================================================================================
+#include "Private/NetImgui_WarningDisable.h"
 #include <imgui.h>
+#include "Private/NetImgui_WarningReenable.h"
 
 //=================================================================================================
 // Enable code compilation for this library
@@ -53,8 +55,9 @@ void				Shutdown(void);
 // Note:	Start a new communication thread using std::Thread by default, but can receive custom 
 //			thread start function instead. Look at ClientExample 'CustomCommunicationThread' 
 //=================================================================================================
-using StartThreadFunctPtr = void(void(void*), void*);
-bool				Connect(const char* clientName, const char* ServerHost, uint32_t serverPort=kDefaultServerPort, StartThreadFunctPtr=nullptr);
+typedef void StartThreadFunctPtr(void CommunicationLoop(void* pClientInfo), void* pClientInfo) ;
+bool				Connect(const char* clientName, const char* ServerHost, uint32_t serverPort=kDefaultServerPort);
+bool				Connect(StartThreadFunctPtr startThreadFunction, const char* clientName, const char* ServerHost, uint32_t serverPort = kDefaultServerPort);
 
 //=================================================================================================
 // Request a disconnect from the netImguiApp server

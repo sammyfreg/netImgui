@@ -108,9 +108,9 @@ CmdDrawFrame* CreateCmdDrawDrame(const ImDrawData* pDearImguiData, ImGuiMouseCur
 	pDrawFrame->mDisplayArea[1]		= pDearImguiData->DisplayPos.y;
 	pDrawFrame->mDisplayArea[2]		= pDearImguiData->DisplayPos.x + pDearImguiData->DisplaySize.x;
 	pDrawFrame->mDisplayArea[3]		= pDearImguiData->DisplayPos.y + pDearImguiData->DisplaySize.y;
-	pDrawFrame->mpIndices.mPointer	= reinterpret_cast<uint8_t*>(pRawData + indiceOffset);
-	pDrawFrame->mpVertices.mPointer	= reinterpret_cast<ImguiVert*>(pRawData + verticeOffset);
-	pDrawFrame->mpDraws.mPointer	= reinterpret_cast<ImguiDraw*>(pRawData + drawOffset);
+	pDrawFrame->mpIndices.SetPtr(reinterpret_cast<uint8_t*>(pRawData + indiceOffset));
+	pDrawFrame->mpVertices.SetPtr(reinterpret_cast<ImguiVert*>(pRawData + verticeOffset));
+	pDrawFrame->mpDraws.SetPtr(reinterpret_cast<ImguiDraw*>(pRawData + drawOffset));
 			
 	//-----------------------------------------------------------------------------------------
 	// Copy draw data (vertices, indices, drawcall info, ...)

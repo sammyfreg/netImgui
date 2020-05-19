@@ -215,6 +215,7 @@
     <ClInclude Include="..\ClientCode\Private\NetImgui_Network.h" />
     <ClInclude Include="..\ClientCode\Private\NetImgui_Shared.h" />
     <ClInclude Include="..\ClientCode\NetImgui_Api.h" />
+    <ClInclude Include="..\ClientCode\Private\NetImgui_WarningDisableStd.h" />
     <ClInclude Include="..\ClientCode\Private\NetImgui_WarningReenable.h" />
     <ClInclude Include="DirectX\DirectX11.h" />
     <ClInclude Include="resource.h" />

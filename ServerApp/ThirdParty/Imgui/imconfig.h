@@ -107,10 +107,11 @@ namespace ImGui
 }
 */
 
-#if defined(_MSC_VER) && !defined(__clang__)
-    #pragma warning (disable: 4820)             // warning C4820: xxx bytes padding added after data member yyy
-
-#elif defined(__clang__)
+#if defined(__clang__)
     #pragma clang diagnostic ignored "-Wc++98-compat-pedantic"
     #pragma clang diagnostic ignored "-Wreserved-id-macro"
+
+#elif defined(_MSC_VER)
+    #pragma warning (disable: 4820) // warning C4820: xxx bytes padding added after data member yyy
+    #pragma warning (disable: 4711) // warning C4711: function 'xxx' selected for automatic inline expansion
 #endif

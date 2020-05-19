@@ -5,8 +5,12 @@
 // Initialize the app & window, and run the mainloop with messages processing
 //=================================================================================================
 #include "stdafx.h"
+
+#include "Private/NetImgui_WarningDisableStd.h"
 #include <array>
 #include <chrono>
+#include "Private/NetImgui_WarningReenable.h"
+
 #include "../resource.h"
 #include "../DirectX/DirectX11.h"
 #include "ServerNetworking.h"
