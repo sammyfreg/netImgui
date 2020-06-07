@@ -29,8 +29,8 @@ void				CustomTextureDestroy();
 
 //=================================================================================================
 //! @brief		Custom Connect thread example
-//! @details	This function demonstrate own to provide your own function to start a new thread that
-//!				will handle communication with remote netImgui application. 
+//! @details	This function demonstrate how to provide your own function to start a new thread 
+//!				that will handle communication with remote netImgui application. 
 //!				The default implementation also use std::thread
 //=================================================================================================
 void CustomCommunicationThread( void ComFunctPtr(void*), void* pClient )

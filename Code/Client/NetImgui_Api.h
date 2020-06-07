@@ -63,8 +63,8 @@ void				Shutdown(void);
 //			thread start function instead. Look at ClientExample 'CustomCommunicationThread' 
 //=================================================================================================
 typedef void StartThreadFunctPtr(void CommunicationLoop(void* pClientInfo), void* pClientInfo) ;
-bool				Connect(const char* clientName, const char* ServerHost, uint32_t serverPort=kDefaultServerPort);
-bool				Connect(StartThreadFunctPtr startThreadFunction, const char* clientName, const char* ServerHost, uint32_t serverPort = kDefaultServerPort);
+bool				Connect(const char* clientName, const char* ServerHost, uint32_t serverPort=kDefaultServerPort, bool bReuseLocalTime=true);
+bool				Connect(StartThreadFunctPtr startThreadFunction, const char* clientName, const char* ServerHost, uint32_t serverPort = kDefaultServerPort, bool bReuseLocalTime=true);
 
 //=================================================================================================
 // Request a disconnect from the netImguiApp server

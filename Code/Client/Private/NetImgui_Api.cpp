@@ -23,12 +23,12 @@ void DefaultStartCommunicationThread(void ComFunctPtr(void*), void* pClient)
 	std::thread(ComFunctPtr, pClient).detach();
 }
 
-bool Connect(const char* clientName, const char* ServerHost, uint32_t serverPort)
+bool Connect(const char* clientName, const char* ServerHost, uint32_t serverPort, bool bReuseLocalTime)
 {
-	return Connect(DefaultStartCommunicationThread, clientName, ServerHost, serverPort);
+	return Connect(DefaultStartCommunicationThread, clientName, ServerHost, serverPort, bReuseLocalTime);
 }
 
-bool Connect(StartThreadFunctPtr startThreadFunction, const char* clientName, const char* ServerHost, uint32_t serverPort)
+bool Connect(StartThreadFunctPtr startThreadFunction, const char* clientName, const char* ServerHost, uint32_t serverPort, bool bReuseLocalTime)
 {
 	Client::ClientInfo& client	= *gpClientInfo;	
 	Disconnect();
@@ -37,7 +37,8 @@ bool Connect(StartThreadFunctPtr startThreadFunction, const char* clientName, co
 		std::this_thread::sleep_for(std::chrono::milliseconds(8));
 
 	strcpy_s(client.mName, clientName);
-	client.mpSocket = Network::Connect(ServerHost, serverPort);
+	client.mpSocket			= Network::Connect(ServerHost, serverPort);
+	client.mbReuseLocalTime = bReuseLocalTime;
 	if( client.mpSocket )
 	{
 		CreateImguiContext();		
@@ -88,15 +89,21 @@ bool NewFrame()
 	Client::ClientInfo& client = *gpClientInfo;
 	if( NetImgui::IsConnected() )
 	{		
+		double wantedTime				= ImGui::GetTime();
 		client.mpContextRestore			= ImGui::GetCurrentContext();
 		ImGui::SetCurrentContext(client.mpContext);
 		if( InputUpdateData() )
 		{
-			static auto lastTime		= std::chrono::high_resolution_clock::now();
-			auto currentTime			= std::chrono::high_resolution_clock::now();
-			auto duration				= std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime - lastTime);
-			lastTime					= currentTime;
-			ImGui::GetIO().DeltaTime	= duration.count() > 0 ? static_cast<float>(duration.count() / (1000000000.f)) : 1.f/1000.f;
+			ImGui::GetIO().DeltaTime		= static_cast<float>(wantedTime - ImGui::GetTime());
+			if(!client.mbReuseLocalTime)
+			{
+				static auto lastTime		= std::chrono::high_resolution_clock::now();
+				auto currentTime			= std::chrono::high_resolution_clock::now();
+				auto duration				= std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime - lastTime);
+				lastTime					= currentTime;
+				ImGui::GetIO().DeltaTime	= duration.count() > 0 ? static_cast<float>(duration.count() / (1000000000.f)) : 1.f/1000.f;
+			}
+			
 			ImGui::SetCurrentContext(client.mpContext);
 			ImGui::NewFrame();
 			return true;
