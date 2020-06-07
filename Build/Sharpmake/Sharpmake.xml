@@ -1,0 +1,3597 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>Sharpmake</name>
+    </assembly>
+    <members>
+        <member name="T:Sharpmake.Analyzer.Analyzer">
+            <summary>
+            Contains methods for specific analysis on a sharpmake DLL
+            </summary>
+        </member>
+        <member name="M:Sharpmake.Analyzer.Analyzer.AnalyzeConfigure(System.Func{Sharpmake.BuildContext.BaseBuildContext,Sharpmake.Builder},System.Boolean)">
+            <summary>
+            Analyzes configure methods to find all the Configure() dependent on the call order within the same priority 
+            </summary>
+            <param name="builderFactory">a Functor creator of builder</param>
+            <param name="stopOnFirstError"></param>
+            <returns>a collection of the method dependent on any other methods</returns>
+        </member>
+        <member name="T:Sharpmake.Analyzer.ConfigureMethodInfo">
+            <summary>
+            Typical wrapper for a Configure MethodInfo
+            Allows to keep a track of the dependency and the dependents of a configure method
+            </summary>
+        </member>
+        <member name="P:Sharpmake.Assembler.AssemblyDirectory">
+            <summary>
+            Extra user directory to load assembly from using statement detection
+            </summary>
+        </member>
+        <member name="P:Sharpmake.Assembler.Assemblies">
+            <summary>
+            Extra user assembly to use while compiling
+            </summary>
+        </member>
+        <member name="P:Sharpmake.Assembler.References">
+            <summary>
+            Extra user assembly file name to use while compiling
+            </summary>
+        </member>
+        <member name="P:Sharpmake.Assembler.AttributeParsers">
+            <summary>
+            Source attribute parser to use to add configuration based on source code
+            </summary>
+        </member>
+        <member name="P:Sharpmake.Assembler.ParsingFlowParsers">
+            <summary>
+            Parsing flow parsers to use to add configuration based on source code
+            </summary>
+        </member>
+        <member name="M:Sharpmake.Assembler.#cctor">
+            <summary>
+            Static constructor called at executable init time
+            </summary>
+        </member>
+        <member name="M:Sharpmake.Assembler.CleanupTmpAssemblies">
+            <summary>
+            This method is intended to be called at executable init time. 
+            It let us avoid exceptions when executing sharpmake several times in loops(exception can occur in the cs compiler
+            when it tries to create pdb files and some already exists. Maybe that previous sharpmake sometimes still has some handles to the file?).
+            With this cleanup code active there is no exception anymore on my PC. Previously I had the exception almost 100% on the second or third iteration
+            of a stability test(executing sharpmake in loop to insure it always generate the same thing).
+            </summary>
+            <remarks>
+            Was previously having the following exception when running stability tests(on subsequents sharpmake execution runs):
+            Unexpected error creating debug information file 'c:\Users\xxxx\AppData\Local\Temp\Sharpmake.Assembler_1.tmp.PDB' -- 'c:\Users\xxxx\AppData\Local\Temp\Sharpmake.Assembler_1.tmp.pdb: The process cannot access the file because it is being used by another process.
+            </remarks>
+        </member>
+        <member name="M:Sharpmake.Assembler.GetTmpAssemblyBasePath">
+            <summary>
+            Get the base path of temporary assembly files.
+            </summary>
+            <returns>the base path</returns>
+        </member>
+        <member name="M:Sharpmake.Assembler.GetTmpAssemblyFilePrefix">
+            <summary>
+            Get the assembly files common prefixes for all temporary assemblies generated in this process.
+            </summary>
+            <returns>the prefix</returns>
+        </member>
+        <member name="M:Sharpmake.Assembler.GetNextTmpAssemblyFilePath">
+            <summary>
+            Get the next temporary assembly file path.
+            </summary>
+            <returns>path of next temporary assembly</returns>
+        </member>
+        <member name="T:Sharpmake.ConfigurePriority">
+            <summary>
+            This method attribute is used to specify the execution order of Configure(...) within
+            a project or a solution generation
+            
+            If this attribute is not set a default value a 0 is used
+            
+            The configure methods using this property are sorted ascendingly.
+            ex: ... -1 before 0 before 1 ...
+            
+            See Configure method attribute and Configurable class for more details
+            </summary>
+        </member>
+        <member name="P:Sharpmake.ConfigurePriority.Priority">
+            <summary>
+            Priority level of the configure method
+            </summary>
+        </member>
+        <member name="M:Sharpmake.ConfigurePriority.#ctor(System.Int32)">
+            <summary>
+            Priority attribute of a configure method
+            </summary>
+            <param name="priority">Priority level of the configure method</param>
+        </member>
+        <member name="T:Sharpmake.CompositeFragmentAttribute">
+            <summary>
+            Marks elements of fragments that should not be considered individual fragments.
+            </summary>
+            <remarks>
+            When an enumeration is marked with <see cref="T:Sharpmake.Fragment"/>, Sharpmake normally ensure that
+            each element sets 1 and only 1 bit. However, it is often useful in a bit enum to combine
+            multiple bits together to create sets that go well together. To prevent Sharpmake from
+            considering those errors, you must decorate these enum members with
+            <see cref="T:Sharpmake.CompositeFragmentAttribute"/>.
+            </remarks>
+        </member>
+        <member name="M:Sharpmake.BuildContext.BaseBuildContext.CreateConfigureCollection(System.Type)">
+            <summary>
+            Creates and enumerable of Configure(...) method info based on the given type.
+            Useful to have different sorts to support old Sharpmake versions or to analyze
+            dependencies between Configure functions.
+            </summary>
+            <param name="type">type on which to get the configure methods</param>
+            <returns>an ordered enumeration of method info</returns>
+        </member>
+        <member name="T:Sharpmake.BuildContext.ConfigureDependencyAnalyzer.MethodTestCase">
+            <summary>
+            Tests a specific method to find it's closest dependency.
+            Doesn't find all dependencies.
+            </summary>
+        </member>
+        <member name="M:Sharpmake.BuildContext.ConfigureDependencyAnalyzer.MethodTestCase.CreateMethodTestCase(System.Type,Sharpmake.ConfigurePriority,System.Collections.Generic.IEnumerable{System.String})">
+            <summary>
+            Creates method test cases based on the information given
+            </summary>
+            <param name="type">Type of the project or solution to analyze</param>
+            <param name="priority">Priority group of the methods</param>
+            <param name="methods">Methods to analyze</param>
+            <returns>The test cases to execute</returns>
+        </member>
+        <member name="M:Sharpmake.BuildContext.ConfigureDependencyAnalyzer.MethodTestCase.CreateMethodTestCase(System.Type,Sharpmake.ConfigurePriority,System.Collections.Generic.IEnumerable{System.String},System.Collections.Generic.IEnumerable{Sharpmake.BuildContext.ConfigureSignature}@)">
+            <summary>
+            Creates method test cases based on the information given
+            Should be call if you know that the methods contains an error.
+            </summary>
+            <param name="type">Type of the project or solution to analyze</param>
+            <param name="priority">Priority group of the methods</param>
+            <param name="methods">Methods to analyze</param>
+            <param name="suspectedMethods">[out] The methods suspected before processing if any</param>
+            <returns>The test cases to execute</returns>
+        </member>
+        <member name="T:Sharpmake.BuildContext.ConfigureDependencyAnalyzer.PriorityTestCase">
+            <summary>
+            Tests a specific priority if either is contains dependent methods or not.
+            </summary>
+        </member>
+        <member name="M:Sharpmake.BuildContext.ConfigureDependencyAnalyzer.PriorityTestCase.CreatePriorityTestCase(System.Type,System.Collections.Generic.IEnumerable{System.Collections.Generic.KeyValuePair{Sharpmake.ConfigurePriority,System.Collections.Generic.IEnumerable{System.String}}})">
+            <summary>
+            Creates tests case for all given priority of needed.
+            </summary>
+            <param name="type">Source Type of the priorities and methods</param>
+            <param name="priorities">Priorities to analyze</param>
+            <returns>a list of test case to execute</returns>
+        </member>
+        <member name="M:Sharpmake.BuildContext.ConfigureDependencyAnalyzer.PriorityTestCase.CreatePriorityTestCase(System.Type,System.Collections.Generic.IEnumerable{System.Collections.Generic.KeyValuePair{Sharpmake.ConfigurePriority,System.Collections.Generic.IEnumerable{System.String}}},System.Collections.Generic.IEnumerable{Sharpmake.BuildContext.ConfigureSignature}@)">
+            <summary>
+            Creates the tests case to analyze a list of priority.
+            Must be used only if you are sure the type have dependent methods
+            </summary>
+            <param name="type">Type to analyze</param>
+            <param name="priorities">Priorities to analyze</param>
+            <param name="suspectedMethods">[out] the methods suspected before the first iteration</param>
+            <returns>a list of test case to execute</returns>
+        </member>
+        <member name="T:Sharpmake.BuildContext.ConfigureDependencyAnalyzer.TypeTestCase">
+            <summary>
+            Tests a specific type if either is contains dependent methods or not.
+            </summary>
+        </member>
+        <member name="T:Sharpmake.BuildContext.ConfigureDependencyAnalyzer.AnalysisFirstPass">
+            <summary>
+            First pass of the whole analysis. Builds and array of all the content to be analyzed
+            </summary>
+        </member>
+        <member name="T:Sharpmake.BuilderEventAttribute">
+            <summary>
+            Put this attribute on a static method that match the name and signature of an Event in the Builder class, and it will be called automatically.
+            </summary>
+        </member>
+        <member name="M:Sharpmake.BuilderExtension.RegisterExtensionAssembly(System.Reflection.Assembly)">
+            <summary>
+            Scans a Sharpmake extension assembly for builder's event extension, and then hook them to the builder's events.
+            </summary>
+            <param name="extensionAssembly">The <see cref="T:System.Reflection.Assembly"/> to scan.</param>
+        </member>
+        <member name="P:Sharpmake.Configuration.Owner">
+            <summary>
+            Default options is used to select an options if not set, default may be debug or release setting
+            see Sharpmake.Options class to know associated default setting to debug or release.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.ConfigureOrder.Old">
+            <summary>
+            Orders the configure methods by the first definition of the configure.
+            With default order given by reflection:
+            http://pierrerebours.com/blog/order-returned-getmethods
+            The order can't be predicted.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.ConfigureOrder.New">
+            <summary>
+            Orders the configure methods by the first definition of the configure and the MetadataToken of the method.
+            e.g. 
+            class A     { virtual  void foo() { }   void bar() { } }
+            class B : A { override void foo() { }   void buz() { } }
+            Assuming foo(), bar() and buz() are marked as configure methods,
+            if A is generated, foo() will be called then bar() will be called
+            if B is generated, the call sequence will be foo(), bar(), buz()
+            </summary>
+        </member>
+        <member name="T:Sharpmake.DebugBreaks">
+            <summary>
+            The DebugBreaks are used to help with debugging, allowing conditional breakpoints that are
+            built-in in code.  Feel free to add more as you need them while debugging Sharpmake. 
+            </summary>
+        </member>
+        <member name="T:Sharpmake.DebugProjectGenerator">
+            <summary>
+            Generates debug projects and solutions
+            </summary>
+        </member>
+        <member name="M:Sharpmake.DebugProjectGenerator.GenerateDebugSolution(System.String[],Sharpmake.Arguments,System.String)">
+            <summary>
+            Generates debug projects and solutions
+            </summary>
+            <param name="sources"></param>
+            <param name="arguments"></param>
+            <param name="startArguments"></param>
+        </member>
+        <member name="M:Sharpmake.DebugProjectGenerator.GenerateDebugSolution(System.String[],Sharpmake.Arguments,System.String,System.String[])">
+            <summary>
+            Generates debug projects and solutions
+            </summary>
+            <param name="sources"></param>
+            <param name="arguments"></param>
+            <param name="startArguments"></param>
+            <param name="defines"></param>
+        </member>
+        <member name="M:Sharpmake.DebugProjectGenerator.SetupProjectOptions(Sharpmake.Project.Configuration,System.String)">
+            <summary>
+            Set up debug configuration in user file
+            </summary>
+            <param name="conf"></param>
+            <param name="startArguments"></param>
+        </member>
+        <member name="T:Sharpmake.EnumExtensions">
+            <summary>
+            Provides a static utility object of methods and properties to interact
+            with enumerated types.
+            </summary>
+        </member>
+        <member name="M:Sharpmake.EnumExtensions.SetFlag``1(``0,``0,System.Boolean)">
+            <summary>
+            Sets a flag bit to 0 or 1
+            </summary>
+        </member>
+        <member name="M:Sharpmake.EnumExtensions.AddFlag``1(``0,``0)">
+            <summary>
+            Adds a flag to an enum
+            </summary>
+        </member>
+        <member name="M:Sharpmake.EnumExtensions.RemoveFlag``1(``0,``0)">
+            <summary>
+            Removes a flag from an enum
+            </summary>
+        </member>
+        <member name="M:Sharpmake.EnumExtensions.ToggleFlag``1(``0,``0)">
+            <summary>
+            Toggles a flag in an enum
+            </summary>
+        </member>
+        <member name="M:Sharpmake.EnumExtensions.EnumerateFlags``1(System.Enum)">
+            <summary>
+            Enumerates all flags set in the enum
+            </summary>
+        </member>
+        <member name="M:Sharpmake.EnumExtensions.ToFlags``1(System.Collections.Generic.IEnumerable{``0},``0)">
+            <summary>
+            Aggregates an enumerable of enum flags into one
+            </summary>
+        </member>
+        <member name="M:Sharpmake.EnumExtensions.EnumCast``1(System.Enum)">
+            <summary>
+            Casts an generic Enum to a specific one
+            </summary>
+        </member>
+        <member name="M:Sharpmake.EnumExtensions.EnumCast``1(System.Collections.Generic.IEnumerable{System.Enum})">
+            <summary>
+            Casts an generic Enum to a specific one
+            </summary>
+        </member>
+        <member name="M:Sharpmake.EnumUtils.TryParse``1(System.String,``0@)">
+            <summary>
+            Tries parsing a string as an enum type
+            </summary>
+        </member>
+        <member name="M:Sharpmake.EnumUtils.ParseOrDefault``1(System.String,``0)">
+            <summary>
+            Parses a string as an enum type. Returns the default value if it fails.
+            </summary>
+        </member>
+        <member name="M:Sharpmake.EnumUtils.EnumerateValues``1">
+            <summary>
+            Enumerates the values of an enum
+            </summary>
+        </member>
+        <member name="T:Sharpmake.ExtensionLoader">
+            <summary>
+            Helper for loading Sharpmake extensions.
+            </summary>
+            <remarks>
+            Normally, this should be done using reflection-only load, but the problem is that you have
+            to resolve the dependencies yourself. Turns out that it's simpler to actually let the CLR
+            do a full load in a temporary <see cref="T:System.AppDomain"/> that we can trash later.
+            </remarks>
+        </member>
+        <member name="M:Sharpmake.ExtensionLoader.Dispose">
+            <summary>
+            Releases the remote <see cref="T:System.AppDomain"/> if one was created.
+            </summary>
+        </member>
+        <member name="M:Sharpmake.ExtensionLoader.IsExtension(System.String)">
+            <summary>
+            Gets whether an assembly is a Sharpmake extension.
+            </summary>
+            <param name="assemblyPath">The path of the assembly to check whether it's an extension.</param>
+            <returns>`true` if it is an extension, `false` otherwise.</returns>
+            <remarks>
+            This method will instantiate a remote <see cref="T:System.AppDomain"/> if none was created.
+            </remarks>
+        </member>
+        <member name="M:Sharpmake.ExtensionLoader.LoadExtension(System.String,System.Boolean)">
+            <summary>
+            Loads a Sharpmake extension assembly.
+            </summary>
+            <param name="assemblyPath">The path of the assembly that contains the Sharpmake extension.</param>
+            <param name="fastLoad">Whether this method should load the assembly remotely first. See remarks.</param>
+            <returns>The loaded extension's <see cref="T:System.Reflection.Assembly"/>.</returns>
+            <remarks>
+            Because loading an extension in a remote assembly for validation is expensive, this
+            method provides the <paramref name="fastLoad"/> argument which, when `false`, will load
+            the extension in the current <see cref="T:System.AppDomain"/> instead of doing so in a remote
+            <see cref="T:System.AppDomain"/>, testing whether it contains
+            <see cref="T:Sharpmake.SharpmakeExtensionAttribute"/>, and then loading it again in
+            <see cref="P:System.AppDomain.CurrentDomain"/>. However, because it is impossible to unload a
+            loaded assembly from the CLR, if this method fail you have essentially polluted the
+            process' address space with an assembly that you may not need.
+            </remarks>
+        </member>
+        <member name="M:Sharpmake.ExtensionLoader.LoadExtensionsInDirectory(System.String)">
+            <summary>
+            Loads all Sharpmake extensions in a directory.
+            </summary>
+            <param name="directory">The path to the directory to scan for assemblies.</param>
+            <returns>A <see cref="T:System.Collections.Generic.IEnumerable`1"/> that contains the loaded <see cref="T:System.Reflection.Assembly"/>.</returns>
+        </member>
+        <member name="M:Sharpmake.ExtensionMethods.IsVisualStudio(Sharpmake.DevEnv)">
+            <summary>
+            Gets whether a <see cref="T:Sharpmake.DevEnv"/> is a Visual Studio version.
+            </summary>
+            <param name="devEnv">The <see cref="T:Sharpmake.DevEnv"/> to check.</param>
+            <returns>`true` if <paramref name="devEnv"/> is a Visual Studio version, `false` otherwise.</returns>
+        </member>
+        <member name="M:Sharpmake.ExtensionMethods.IsAbiCompatibleWith(Sharpmake.DevEnv,Sharpmake.DevEnv)">
+            <summary>
+            Gets whether two <see cref="T:Sharpmake.DevEnv"/> values generate ABI-compatible binaries with
+            their respective C++ compiler.
+            </summary>
+            <param name="devEnv">The <see cref="T:Sharpmake.DevEnv"/> to check for ABI-compatibility.</param>
+            <param name="other">The other <see cref="T:Sharpmake.DevEnv"/> to check for ABI-compatibility with.</param>
+            <returns>`true` if ABI-compatible, `false` otherwise.</returns>
+            <exception cref="T:System.ArgumentException"><paramref name="devEnv"/> is not a Visual Studio version.</exception>
+            <remarks>
+            Only works for Visual Studio versions because other DevEnvs (such as Eclipse) are not
+            shipped with a compiler version.
+            </remarks>
+        </member>
+        <!-- Badly formed XML comment ignored for member "M:Sharpmake.Util.GetTextTemplateDirectiveParam(System.String,System.String,System.String)" -->
+        <member name="M:Sharpmake.Util.GetPathIntersection(System.String,System.String)">
+            <summary>
+            Gets the absolute path up to the intersection of two specified absolute paths.
+            </summary>
+            <param name="absPathA">First absolute path.</param>
+            <param name="absPathB">Second absolute path.</param>
+            <returns>Returns an absolute path up to the intersection of both specified paths.</returns>
+        </member>
+        <!-- Badly formed XML comment ignored for member "M:Sharpmake.Util.ExecuteFilesAutoCleanup" -->
+        <member name="M:Sharpmake.Util.GetCurrentSharpmakeCallerInfo">
+            <summary>
+             Search the call stack and return the info about the topmost frame from a file that is edited by the user (.sharpmake or .sharpmake.cs)
+            </summary>
+            <returns> Caller info in a format clickable in the output console if a .sharpmake frame is found. Otherwise return an empty string. </returns>
+        </member>
+        <member name="M:Sharpmake.Util.GetCallerInfoFromStack">
+            <summary>
+             Lookup the callstack and return the info about the 2nd topmost frame (topmost being where this method is called from) .
+            </summary>
+            <returns> Caller info in a format clickable in the output console.</returns>
+        </member>
+        <member name="M:Sharpmake.Util.BuildGuid(System.String)">
+            <summary>
+            Build a fake Guid from input string value.
+            </summary>
+            <param name="value">String value to generate guid from.</param>
+            <returns></returns>
+        </member>
+        <member name="T:Sharpmake.Util.JsonSerializer">
+            A simple json serializer.
+            Does not serialize objects properties using reflection, data must be prepared by the caller.
+            Supported types : IEnumerable, IDictionnary, string and system value types.
+        </member>
+        <member name="P:Sharpmake.Util.VsInstallation.ProductID">
+            <summary>
+            The full list of products can be found here: https://docs.microsoft.com/en-us/visualstudio/install/workload-and-component-ids
+            </summary>
+        </member>
+        <member name="P:Sharpmake.Util.VsInstallation.Workloads">
+            <summary>
+            This can be used to check and limit by specific installed workloads.
+            
+            What is a Workload?
+            In the VS installer, a 'Workload' is a section that you see in the UI such as 'Desktop development with C++' or '.NET desktop development'.
+            
+            The full list of products is here: https://docs.microsoft.com/en-us/visualstudio/install/workload-and-component-ids
+            
+            For each product, clicking it will bring up a page of all of the possible Workloads.
+            For example: https://docs.microsoft.com/en-us/visualstudio/install/workload-component-id-vs-professional
+            </summary>
+        </member>
+        <member name="P:Sharpmake.Util.VsInstallation.Components">
+            <summary>
+            This can be used to check and limit by specific installed components.
+            What is a Component?
+            In the Visual Studio Installer, the 'Components' are individual components associated with each Workload (and some just on the side), 
+            that you can see in the Summary on the right.
+            Each workflow contains a number of mandatory components, but also a list of optional ones.
+            An example would be: 'NuGet package manager' or 'C++/CLI support'.
+            
+            The full list of products is here: https://docs.microsoft.com/en-us/visualstudio/install/workload-and-component-ids
+            
+            For each product, clicking it will bring up a page of all of the possible Workloads.
+            For example: https://docs.microsoft.com/en-us/visualstudio/install/workload-component-id-vs-professional
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Util.s_supportedVisualStudioProducts">
+             <summary>
+             The supported visual studio products, in order by priority in which Sharpmake will choose them.
+             We want to block products like the standalone Team Explorer, which is in the Visual Studio
+             family yet isn't a variant of Visual Studio proper.
+            
+             The list of Product IDs can be found here: https://docs.microsoft.com/en-us/visualstudio/install/workload-and-component-ids
+             </summary>
+        </member>
+        <member name="M:Sharpmake.Util.BuildGuid(System.String,System.String)">
+            <summary>
+            Generate a pseudo Guid base on relative path from the Project GuidReference path to the generated files
+            Need to do it that way because many vcproj may be generated from the same Project.
+            </summary>
+        </member>
+        <member name="M:Sharpmake.Util.GetValueOrAdd``2(System.Collections.Generic.IDictionary{``0,``1},``0,``1)">
+            <summary>
+            Extension GetValueOrAdd gets the value at the given key or adds at the given key the value provided
+            </summary>
+            <typeparam name="Key">Type of the key</typeparam>
+            <typeparam name="Value">Type of the value</typeparam>
+            <param name="dictionary">dictionary in which to search</param>
+            <param name="key">key of the value</param>
+            <param name="addValue">value created</param>
+            <returns>the value at the given key (created or not in this call)</returns>
+        </member>
+        <member name="M:Sharpmake.Util.PickOrConcatCallerInfo(System.String,System.String)">
+            <summary>
+            Look up 2 callerInfo string.
+            </summary>
+            <param name="callerInfo1"></param>
+            <param name="callerInfo2"></param>
+            <returns>
+            1.if they are both referring to file edited by sharpmake user (.sharpmake): concatenation of both separated by a line return
+            2.if only callerInfo2 refer to file edited by sharpmake user (.sharpmake): callerInfo2
+            3.otherwise: callerInfo1
+            </returns>
+        </member>
+        <member name="M:Sharpmake.Util.ReplaceHeadPath(System.String,System.String,System.String)">
+            <summary>
+            The input path got its beginning of path matching the inputHeadPath replaced by the replacementHeadPath.
+            
+            Throws if the fullInputPath doesn't start with inputHeadPath.
+            
+            Function is case insensitive but preserves path casing.
+            </summary>
+            <param name="fullInputPath">The path to be modified.</param>
+            <param name="inputHeadPath">The subpath in the head of fullInputPath to replace.</param>
+            <param name="replacementHeadPath">The subpath that will replace the inputHeadPath</param>
+            <returns></returns>
+        </member>
+        <member name="F:Sharpmake.FastBuildSettings.SystemRoot">
+            <summary>
+            Full path to the %WINDIR% directory.
+            Usually equals to `C:\WINDOWS`.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.FastBuildSettings.SystemDllRoot">
+            <summary>
+            Full path to the system dll folder where the ucrtbase.dll and api-ms-win-*.dll can be found.
+            If left null, dlls will be searched in the Redist\ucrt\DLLs\x64 subfolder of the WinSDK10 indicated in the KitsRootPaths.
+            </summary>
+        </member>
+        <!-- Badly formed XML comment ignored for member "F:Sharpmake.FastBuildSettings.CachePath" -->
+        <member name="F:Sharpmake.FastBuildSettings.CachePluginDLLFilePath">
+            <summary>
+            Path to the fastbuild plugin dll if any. This typically will be the path to the Ubisoft asset store plugin DLL but could be any other compatible implementation.
+            CachePath must also be set to an appropriate url.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.FastBuildSettings.CacheType">
+            <summary>
+            Cache configuration type for targets allowing the cache
+            </summary>
+        </member>
+        <member name="F:Sharpmake.FastBuildSettings.FastBuildAllowDBMigration">
+            <summary>
+            Allows retention of build state across BFF changes. Requires v0.97
+            </summary>
+        </member>
+        <member name="F:Sharpmake.FastBuildSettings.IncludeCompilerInMasterBFFFilename">
+            <summary>
+            Include the IDE version in master bff filename
+            </summary>
+        </member>
+        <member name="F:Sharpmake.FastBuildSettings.SeparateMasterBFFPerPlatform">
+            <summary>
+            Separate the Master bff content per platform
+            </summary>
+        </member>
+        <member name="F:Sharpmake.FastBuildSettings.FastBuildMasterBFFPath">
+            <summary>
+            The path of the master BFF is the folder relative to the source tree root.
+            ex: "projects"
+            </summary>
+        </member>
+        <member name="F:Sharpmake.FastBuildSettings.FastBuildMakeCommand">
+            <summary>
+            The path to the executable used to start a fastbuild compilation. This path is relative to the source tree root.
+            ex: @"tools\FastBuild\start-fbuild.bat"
+            </summary>
+        </member>
+        <member name="F:Sharpmake.FastBuildSettings.FastBuildSupportEnabled">
+            <summary>
+            Can be set to false to override all FastBuild settings and disable it
+            </summary>
+        </member>
+        <member name="F:Sharpmake.FastBuildSettings.IncludeBFFInProjects">
+            <summary>
+            Include the .bff files in the visual studio project files. Some programmer don't like that as when they do finds in Visual Studio, this
+            adds useless results to their finds whenever the string they are searching matches the name of a .cpp file.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.FastBuildSettings.EnableFastLinkPDBSupport">
+            <summary>
+            If true, activate PDB Support for FastLink. Instead of having a single .pdb file for a whole project, split in many smaller .pdb files.
+            This is incompatible with FastBuildSettings.EnablePrecompiledHeaders.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.FastBuildSettings.WriteAllConfigsSection">
+            <summary>
+            Adds an alias to the Master Bff containing all the configs
+            This section is used for example in the submit assistant on AC
+            </summary>
+        </member>
+        <member name="F:Sharpmake.FastBuildSettings.SetPathToResourceCompilerInEnvironment">
+            <summary>
+            link.exe on win64 executes rc.exe by itself on some occasions
+            if it doesn't find it, link errors can occur, like:
+            fatal error LNK1158: cannot run rc.exe!
+            
+            Setting this to true will have sharpmake detect if a rc.exe can
+            be found in the same folder as link.exe, and if not add the path
+            to one in the global settings Environment section, in the PATH variable
+            </summary>
+        </member>
+        <member name="F:Sharpmake.FastBuildSettings.EnableVS2012EnumBugWorkaround">
+             <summary>
+             This is used to activate a workaround in fastbuild for the VS2012 preprocessor enum bug. 
+             
+             Notes: Only win64 is affected by this bug it seems.
+             </summary>
+             <remarks>
+             VS 2012 sometimes generates corrupted code when preprocessing an already preprocessed file when it encounters
+             enum definitions.
+             Example:
+            enum dateorder
+            {
+                no_order, dmy, mdy, ymd, ydm
+            };
+             Become :
+            enummdateorder
+            {
+                no_order, dmy, mdy, ymd, ydm
+            };
+             And then compilation fails.
+             
+             It seems that by adding a space between the enum keyword and the name it avoids that problem that looks like memory corruption in the compiler.
+             Also it seems that this doesn't occurs with VS2013.
+             </remarks>
+        </member>
+        <member name="T:Sharpmake.FileSystemStringComparer">
+            <summary>
+            Implementation of <see cref="T:System.Collections.Generic.IEqualityComparer`1"/> that switches between case-sensitive
+            to case-insensitive based on the operating system.
+            </summary>
+            <remarks>
+            This class is a simple wrapper around either <see cref="P:System.StringComparer.Ordinal"/> (if the
+            host operating system is Linux or Max OSX) or
+            <see cref="P:System.StringComparer.OrdinalIgnoreCase"/> (on Windows operating systems.) You should
+            use an instance of this class as the comparer when creating collections indexed on with
+            file names.
+            </remarks>
+        </member>
+        <member name="M:Sharpmake.FileSystemStringComparer.#ctor">
+            <summary>
+            Creates a new <see cref="T:Sharpmake.FileSystemStringComparer"/> instance whose case sensitivity is
+            the same as the case sensitivity of the host operating system's file system.
+            </summary>
+        </member>
+        <member name="M:Sharpmake.FileSystemStringComparer.#ctor(System.Boolean)">
+            <summary>
+            Creates a new <see cref="T:Sharpmake.FileSystemStringComparer"/>.
+            </summary>
+            <param name="caseSensitive">The case-sensitivity mode to use in file name comparisons.</param>
+        </member>
+        <member name="T:Sharpmake.ICommandLineInterface">
+            <summary>
+            Interface for objects that expose additional command line interfaces for a given platform.
+            This allows platforms to extend the command line interface of Sharpmake.
+            </summary>
+        </member>
+        <member name="M:Sharpmake.ICommandLineInterface.Validate">
+            <summary>
+            Validates that the command line arguments are valid.
+            </summary>
+        </member>
+        <member name="T:Sharpmake.IPlatformDescriptor">
+            <summary>
+            Interface for objects that describe the general properties of a platform.
+            </summary>
+        </member>
+        <member name="P:Sharpmake.IPlatformDescriptor.SimplePlatformString">
+            <summary>
+            Gets a simple string that describes the platform.
+            </summary>
+        </member>
+        <member name="P:Sharpmake.IPlatformDescriptor.IsMicrosoftPlatform">
+            <summary>
+            Gets whether this is a proprietary platform owned by Microsoft Corporation.
+            </summary>
+        </member>
+        <member name="P:Sharpmake.IPlatformDescriptor.IsPcPlatform">
+            <summary>
+            Gets whether this is a PC platform. (Mac, Windows, etc.)
+            </summary>
+        </member>
+        <member name="P:Sharpmake.IPlatformDescriptor.IsUsingClang">
+            <summary>
+            Gets whether this platform supports Clang.
+            </summary>
+        </member>
+        <member name="P:Sharpmake.IPlatformDescriptor.HasDotNetSupport">
+            <summary>
+            Gets whether this is a .NET platform.
+            </summary>
+        </member>
+        <member name="P:Sharpmake.IPlatformDescriptor.HasSharedLibrarySupport">
+            <summary>
+            Gets whether that platform supports shared libraries. (aka: dynamic link libraries.)
+            </summary>
+        </member>
+        <member name="P:Sharpmake.IPlatformDescriptor.HasPrecompiledHeaderSupport">
+            <summary>
+            Gets whether precompiled headers are supported for that platform.
+            </summary>
+        </member>
+        <member name="M:Sharpmake.IPlatformDescriptor.GetPlatformEnvironmentResolver(Sharpmake.VariableAssignment[])">
+            <summary>
+            Gets an environment variable resolver suited for this platform.
+            </summary>
+            <param name="variables">A list of <see cref="T:Sharpmake.VariableAssignment"/> that describe the environment variables to resolve.</param>
+            <returns>An <see cref="T:Sharpmake.EnvironmentVariableResolver"/> instance suited for the platform.</returns>
+        </member>
+        <member name="T:Sharpmake.MSBuildGlobalSettings">
+            <summary>
+            This class contains some global msbuild settings
+            </summary>
+        </member>
+        <member name="M:Sharpmake.MSBuildGlobalSettings.SetCppPlatformFolder(Sharpmake.DevEnv,Sharpmake.Platform,System.String)">
+            <summary>
+            Allows overwriting the MSBuild platform folder used for a known sharpmake platform and Visual Studio version.
+            This is typically used if you want to put VS files in source control such as Perforce or nuget.
+            </summary>
+            <param name="devEnv">Visual studio version affected</param>
+            <param name="platform">Platform affected</param>
+            <param name="value">The location of the MSBuild platform folder. Warning: this *must* end with a trailing separator</param>
+            <returns></returns>
+        </member>
+        <member name="M:Sharpmake.MSBuildGlobalSettings.SetCppPlatformFolder(Sharpmake.DevEnv,System.String,System.String)">
+            <summary>
+            Allows overwriting the MSBuild platform folder used for a custom platform passed as a string and Visual Studio version.
+            This is typically used if you want to put VS files in source control such as Perforce or nuget.
+            </summary>
+            <param name="devEnv">Visual studio version affected</param>
+            <param name="platform">Platform affected</param>
+            <param name="value">The location of the MSBuild platform folder. Warning: this *must* end with a trailing separator</param>
+            <returns></returns>
+        </member>
+        <member name="M:Sharpmake.MSBuildGlobalSettings.ResetCppPlatformFolder(Sharpmake.DevEnv,System.String)">
+            <summary>
+            Use to reset the override of a platform
+            </summary>
+            <param name="devEnv">Visual studio version</param>
+            <param name="platform">Platform</param>
+        </member>
+        <member name="M:Sharpmake.MSBuildGlobalSettings.GetCppPlatformFolder(Sharpmake.DevEnv,Sharpmake.Platform)">
+            <summary>
+            Get the overwritten MSBuild platform folder used for a known sharpmake platform and Visual studio version.
+            This is typically used if you want to put your VS files in source control such as Perforce or nuget.
+            </summary>
+            <param name="devEnv">Visual studio version affected</param>
+            <param name="platform">Platform affected</param>
+            <returns>the registered msbuild foldervalue for the requested pair. null if not found</returns>
+        </member>
+        <member name="M:Sharpmake.MSBuildGlobalSettings.GetCppPlatformFolder(Sharpmake.DevEnv,System.String)">
+            <summary>
+            Get the overwritten MSBuild platform folder used for a custom platform passed as a string and Visual studio version.
+            This is typically used if you want to put your VS files in source control such as Perforce or nuget.
+            </summary>
+            <param name="devEnv">Visual studio version affected</param>
+            <param name="platform">Platform affected</param>
+            <returns>the registered msbuild foldervalue for the requested pair. null if not found</returns>
+        </member>
+        <member name="M:Sharpmake.MSBuildGlobalSettings.SetAdditionalVCTargetsPath(Sharpmake.DevEnv,Sharpmake.Platform,System.String)">
+            <summary>
+            Allows setting MSBuild vc targets path used for a known sharpmake platform and Visual Studio version.
+            This is typically used if you want to add platform specific files since vs2019 as the older _PlatformFolder way of doing it is deprecated.
+            </summary>
+            <param name="devEnv">Visual studio version affected</param>
+            <param name="platform">Platform affected</param>
+            <param name="value">The location of the MSBuild additional VC target path. Warning: this *must* end with a trailing separator</param>
+            <returns></returns>
+        </member>
+        <member name="M:Sharpmake.MSBuildGlobalSettings.SetAdditionalVCTargetsPath(Sharpmake.DevEnv,System.String,System.String)">
+            <summary>
+            Allows setting MSBuild vc target path used for a custom platform passed as a string and Visual Studio version.
+            This is typically used if you want to add platform specific files with vs2019 as the older way of doing it through _PlatformFolder is deprecated.
+            </summary>
+            <param name="devEnv">Visual studio version affected</param>
+            <param name="platform">Platform affected</param>
+            <param name="value">The location of the MSBuild additional VC target path. Warning: this *must* end with a trailing separator</param>
+            <returns></returns>
+        </member>
+        <member name="M:Sharpmake.MSBuildGlobalSettings.ResetAdditionalVCTargetsPath(Sharpmake.DevEnv,System.String)">
+            <summary>
+            Use to reset the set of AdditionalVCTargetsPath
+            </summary>
+            <param name="devEnv">Visual studio version</param>
+            <param name="platform">Platform</param>
+        </member>
+        <member name="M:Sharpmake.MSBuildGlobalSettings.GetAdditionalVCTargetsPath(Sharpmake.DevEnv,Sharpmake.Platform)">
+            <summary>
+            Get the MSBuild Additional VC targets path used for a known sharpmake platform and Visual studio version.
+            This is typically used if you want to add platform specific files with vs2019 as the older way of doing it through _PlatformFolder is deprecated.
+            </summary>
+            <param name="devEnv">Visual studio version affected</param>
+            <param name="platform">Platform affected</param>
+            <returns>the registered msbuild additional VC targets path for the requested pair. null if not found</returns>
+        </member>
+        <member name="M:Sharpmake.MSBuildGlobalSettings.GetAdditionalVCTargetsPath(Sharpmake.DevEnv,System.String)">
+            <summary>
+            Get the MSBuild Additional VC targets path used for a custom platform passed as a string and Visual studio version.
+            This is typically used if you want to add platform specific files with vs2019 as the older way of doing it through _PlatformFolder is deprecated.
+            </summary>
+            <param name="devEnv">Visual studio version affected</param>
+            <param name="platform">Platform affected</param>
+            <returns>the registered msbuild additional VC targets for the requested pair. null if not found</returns>
+        </member>
+        <member name="T:Sharpmake.Options.Android.General.AndroidHome">
+            <summary>
+            Android SDK path
+            If unset, will use Android.GlobalSettings.AndroidHome
+            </summary>
+        </member>
+        <member name="T:Sharpmake.Options.Android.General.NdkRoot">
+            <summary>
+            Android NDK path
+            If unset, will use Android.GlobalSettings.NdkRoot
+            </summary>
+        </member>
+        <member name="T:Sharpmake.Options.Android.General.JavaHome">
+            <summary>
+            Java SE Development Kit path
+            If unset, will use Android.GlobalSettings.JavaHome
+            </summary>
+        </member>
+        <member name="T:Sharpmake.Options.Android.General.AntHome">
+            <summary>
+            Apache Ant path
+            If unset, will use Android.GlobalSettings.AntHome
+            </summary>
+        </member>
+        <member name="T:Sharpmake.Options.Android.General.AndroidTargetsPath">
+            <summary>
+            Path to the AndroidProj MSBuild files
+            Expected to contain the files found in MSBuild\Microsoft\MDD\Android\V150
+            If unset, line won't be written
+            </summary>
+        </member>
+        <member name="T:Sharpmake.Options.Android.General.ApplicationTypeRevision">
+            <summary>
+            Application Type Revision
+            This must be a valid version string, of the form major.minor[.build[.revision]].
+            Examples: 1.0, 10.0.0.0
+            </summary>
+        </member>
+        <member name="T:Sharpmake.Options.Android.General.ShowAndroidPathsVerbosity">
+            <summary>
+            Verbosity of the tasks (vcxproj only)
+            At the time of this writing, this only control if on build env variables values are printed
+            </summary>
+        </member>
+        <member name="T:Sharpmake.Options.CSharp.SuppressWarning">
+            <summary>
+            Suppressed specific warnings in a C# project.
+            </summary>
+            <remarks>
+            This option generates a `NoWarn` element in the C# project XML.
+            </remarks>
+        </member>
+        <member name="M:Sharpmake.Options.CSharp.SuppressWarning.#ctor(System.String[])">
+            <summary>
+            Creates a new <see cref="T:Sharpmake.Options.CSharp.SuppressWarning"/> instance from a list of warning
+            code labels.
+            </summary>
+            <param name="warnings">The list of warning code labels to suppress. See remarks.</param>
+            <remarks>
+            If <paramref name="warnings"/> contains elements that are not C# compiler
+            warnings, those warning numbers *must* include the 2-letter prefix. For
+            example, NuGet warnings must be prefixed by `NU`. (ie: `NU1603`)
+            </remarks>
+        </member>
+        <member name="T:Sharpmake.Options.CSharp.WarningsNotAsErrors">
+            <summary>
+            Prevent specific warnings from being treated as errors when <see cref="T:Sharpmake.Options.CSharp.TreatWarningsAsErrors"/> is enabled
+            </summary>
+            <remarks>
+            This option generates a `WarningsNotAsErrors` element in the C# project XML.
+            </remarks>
+        </member>
+        <member name="M:Sharpmake.Options.CSharp.WarningsNotAsErrors.#ctor(System.String[])">
+            <summary>
+            Creates a new <see cref="T:Sharpmake.Options.CSharp.WarningsNotAsErrors"/> instance from a list of warning
+            code labels.
+            </summary>
+            <param name="warnings">The list of warning code labels to avoid treating as errors. See remarks.</param>
+            <remarks>
+            If <paramref name="warnings"/> contains elements that are not C# compiler
+            warnings, those warning numbers *must* include the 2-letter prefix. For
+            example, NuGet warnings must be prefixed by `NU`. (ie: `NU1603`)
+            </remarks>
+        </member>
+        <member name="T:Sharpmake.Options.CSharp.SonarQubeExclude">
+            <summary>
+            Exclude from SonarQube C# static analysis
+            </summary>
+        </member>
+        <member name="T:Sharpmake.Options.Vc.Linker.GenerateDebugInformation">
+            <summary>
+            Enable will write /DEBUG, and let MS linker decide to use FastLink or Full PDBs
+              If you want to force DEBUG:FULL, set both GenerateDebugInformation
+              and GenerateFullProgramDatabaseFile to Enable
+            </summary>
+        </member>
+        <member name="T:Sharpmake.Options.Vc.LLVM.UseClangCl">
+            <summary>
+            Use clang-cl for compiling.  If this option is disabled, the Microsoft compiler (cl.exe) will be used instead.
+            </summary>
+        </member>
+        <member name="T:Sharpmake.Options.Vc.LLVM.UseLldLink">
+            <summary>
+            Use lld-link for linking.  If this option is disabled, the Microsoft linker (link.exe) will be used instead.
+            </summary>
+        </member>
+        <member name="T:Sharpmake.Options.StringOption">
+            <summary>
+            Used to hold an option that has a string value
+            A default value can be set by adding a `public static readonly string Default` field, ex:
+                public static readonly string Default = "3.0";
+            </summary>
+        </member>
+        <member name="T:Sharpmake.Options.PathOption">
+            <summary>
+            Used to hold an option that's a path, either to a file or directory, that's gonna be resolved
+            </summary>
+        </member>
+        <member name="M:Sharpmake.Options.GetConfOption``1(System.Collections.Generic.IEnumerable{Sharpmake.Project.Configuration},System.String,System.String)">
+            <summary>
+            This method will retrieve a path option from all the configurations, ensuring it has the same value.
+            If none of the configurations have the option, it will return the fallback value
+            </summary>
+            <typeparam name="T">The type of the option to lookup in the configurations.</typeparam>
+            <param name="configurations">The list of configurations to look into.</param>
+            <param name="fallback">Optional: Fallback value to return in case none of the configurations have the option.</param>
+            <param name="rootpath">Optional: The rootpath to convert the path relative to.</param>
+            <returns></returns>
+        </member>
+        <member name="M:Sharpmake.Options.GetOptionValue(System.String,System.Collections.Generic.IEnumerable{System.Collections.Generic.IReadOnlyDictionary{System.String,System.String}},System.String)">
+            <summary>
+            This method will retrieve the values associated to a key in an enumerable of dictionaries,
+            ensuring that the value is identical in all of them, or doesn't exist at all.
+            If none of the dictionaries contain the key, it will return the fallback value
+            </summary>
+            <param name="key">The list of dictionaries to look into.</param>
+            <param name="dictionaries">The list of dictionaries to look into.</param>
+            <param name="fallback">Optional: Fallback value to return in case none of the dictionaries have the key.</param>
+            <returns></returns>
+        </member>
+        <member name="F:Sharpmake.PackageReferences.TemplateBeginPackageReference">
+            <remarks>
+            See : https://docs.microsoft.com/en-us/nuget/consume-packages/package-references-in-project-files#controlling-dependency-assets
+            </remarks>
+        </member>
+        <member name="T:Sharpmake.PlatformImplementationAttribute">
+            <summary>
+            Marks a concrete class as an implementation of given interfaces for given platforms. This
+            class must have a default constructor. Obviously, it also needs to actually implement the
+            interface it pretends to!
+            </summary>
+        </member>
+        <member name="P:Sharpmake.PlatformImplementationAttribute.Platforms">
+            <summary>
+            Gets the list of platforms that the object implements.
+            </summary>
+            <remarks>
+            As <see cref="T:Sharpmake.Platform"/> is a bitfield, it is possible to specify multiple supported
+            platforms.
+            </remarks>
+        </member>
+        <member name="P:Sharpmake.PlatformImplementationAttribute.InterfaceTypes">
+            <summary>
+            Gets a collection of the <see cref="T:System.Type"/> of the interfaces that the object
+            implements and exposes.
+            </summary>
+        </member>
+        <member name="M:Sharpmake.PlatformImplementationAttribute.#ctor(Sharpmake.Platform,System.Type[])">
+            <summary>
+            Creates a new <see cref="T:Sharpmake.PlatformImplementationAttribute"/> instance.
+            </summary>
+            <param name="platform">The implemented platform.</param>
+            <param name="ifaceTypes">An array that lists the <see cref="T:System.Type"/> of the interfaces that the object implements.</param>
+        </member>
+        <member name="T:Sharpmake.DefaultPlatformImplementationAttribute">
+            <summary>
+            Marks a concrete class as a default implementation of given interfaces. This class must
+            have a default constructor. Obviously, it also needs to actually implement the interface it
+            pretends to!
+            </summary>
+        </member>
+        <member name="P:Sharpmake.DefaultPlatformImplementationAttribute.InterfaceTypes">
+            <summary>
+            Gets the <see cref="T:System.Type"/> of the implemented interface.
+            </summary>
+        </member>
+        <member name="M:Sharpmake.DefaultPlatformImplementationAttribute.#ctor(System.Type[])">
+            <summary>
+            Creates a new <see cref="T:Sharpmake.PlatformImplementationAttribute"/> instance.
+            </summary>
+            <param name="ifaceTypes">An array that lists the <see cref="T:System.Type"/> of the interfaces that the object implements.</param>
+        </member>
+        <member name="T:Sharpmake.PlatformNotSupportedException">
+            <summary>
+            Exception thrown by <see cref="M:Sharpmake.PlatformRegistry.Get``1(Sharpmake.Platform)"/> when
+            requesting an interface for an interface implementation that is not implemented for the
+            requested platform and has no default implementation either.
+            </summary>
+        </member>
+        <member name="T:Sharpmake.DuplicatePlatformImplementationException">
+            <summary>
+            Exception thrown when <see cref="T:Sharpmake.PlatformRegistry"/> finds two or more implementation of an
+            interface for a given platform.
+            </summary>
+        </member>
+        <member name="T:Sharpmake.PlatformImplementationCreationException">
+            <summary>
+            Exception thrown when <see cref="T:Sharpmake.PlatformRegistry"/> is unable to instantiate an interface
+            implementation object. This is usually because the type has no constructor, or the
+            constructor threw an exception.
+            </summary>
+        </member>
+        <member name="T:Sharpmake.PlatformRegistry">
+            <summary>
+            Global registry that maps platform-specific implementations of interfaces with a concrete
+            implementation. This facility allows to add and remove platform-specific generators without
+            having to break any code.
+            </summary>
+            <remarks>
+            This class searches for implementations using .NET reflection when the
+            type is loaded by looking for types marked with <see cref="T:Sharpmake.PlatformImplementationAttribute"/>
+            in assemblies marked with <see cref="T:Sharpmake.SharpmakeExtensionAttribute"/>. It may
+            also store default implementations to fall-back to when it does not find any implementation
+            for a requested platform and interface. Default implementations must be marked with
+            <see cref="T:Sharpmake.DefaultPlatformImplementationAttribute"/>.
+            </remarks>
+        </member>
+        <member name="E:Sharpmake.PlatformRegistry.PlatformImplementationExtensionRegistered">
+            <summary>
+            Occurs when an extension assembly containing platform implementations is loaded.
+            </summary>
+        </member>
+        <member name="M:Sharpmake.PlatformRegistry.RegisterExtensionAssembly(System.Reflection.Assembly)">
+            <summary>
+            Scans a Sharpmake extension assembly for the platform implementations, and then
+            register those implementations.
+            </summary>
+            <param name="extensionAssembly">The <see cref="T:System.Reflection.Assembly"/> to scan.</param>
+            <exception cref="T:System.ArgumentNullException"><paramref name="extensionAssembly"/> is `null`.</exception>
+            <exception cref="T:System.InvalidOperationException"><paramref name="extensionAssembly"/> was loaded in reflection-only.</exception>
+            <exception cref="T:System.NotSupportedException"><paramref name="extensionAssembly"/> is a dynamically compiled assembly.</exception>
+        </member>
+        <member name="M:Sharpmake.PlatformRegistry.RegisterImplementation(System.Type)">
+            <summary>
+            Registers a platform implementation given an implementation class.
+            </summary>
+            <param name="implType">The <see cref="T:System.Type"/> of the implementation class.</param>
+            <exception cref="T:System.ArgumentNullException"><paramref name="implType"/> is `null`.</exception>
+            <exception cref="T:System.ArgumentException"><paramref name="implType"/> does not have a default constructor, or is an abstract class or an interface.</exception>
+            <remarks>
+            This method will search through the <see cref="T:Sharpmake.PlatformImplementationAttribute"/> on
+            <paramref name="implType"/> to find what platform/interface pairs to register.
+            </remarks>
+        </member>
+        <member name="M:Sharpmake.PlatformRegistry.RegisterImplementation(Sharpmake.Platform,System.Type,System.Type)">
+            <summary>
+            Registers a platform and an interface to a given implementation class.
+            </summary>
+            <param name="platform">The <see cref="T:Sharpmake.Platform"/> to register to.</param>
+            <param name="ifaceType">The interface to register to.</param>
+            <param name="implType">The <see cref="T:System.Type"/> of the implementing class. See remarks.</param>
+            <exception cref="T:System.ArgumentNullException"><paramref name="ifaceType"/> or <paramref name="implType"/> are `null`.</exception>
+            <exception cref="T:System.ArgumentException"><paramref name="implType"/> does not implement <paramref name="ifaceType"/>, or <paramref name="implType"/> does not have a default constructor, or <paramref name="implType"/> is an abstract class or an interface.</exception>
+            <remarks>
+            <para>
+            This method ignores the attributes on <paramref name="implType"/> and registers it for
+            <paramref name="platform"/> and <paramref name="ifaceType"/>.
+            </para>
+            <para>
+            <paramref name="implType"/> must have a default constructor because this method will
+            attempt to create an instance.
+            </para>
+            </remarks>
+        </member>
+        <member name="M:Sharpmake.PlatformRegistry.RegisterImplementation(Sharpmake.Platform,System.Type,System.Object)">
+            <summary>
+            Registers a platform and an interface to an object that implements the interface.
+            </summary>
+            <param name="platform">The <see cref="T:Sharpmake.Platform"/> to register to.</param>
+            <param name="ifaceType">The interface to register to.</param>
+            <param name="implementation">An <see cref="T:System.Object"/> that implements <paramref name="ifaceType"/>.</param>
+            <exception cref="T:System.ArgumentNullException"><paramref name="ifaceType"/> or <paramref name="implementation"/> are `null`.</exception>
+            <exception cref="T:System.ArgumentException"><paramref name="implementation"/> does not implement <paramref name="ifaceType"/>.</exception>
+            <remarks>
+            This method ignores the attributes on <paramref name="implementation"/>'s
+            <see cref="T:System.Type"/> and registers it for <paramref name="platform"/> and
+            <paramref name="ifaceType"/>.
+            </remarks>
+        </member>
+        <member name="M:Sharpmake.PlatformRegistry.RegisterImplementation``1">
+            <summary>
+            Registers a platform implementation given an implementation class.
+            </summary>
+            <typeparam name="TImplementation">The type of the implementation class.</typeparam>
+            <remarks>
+            This method will search through the <see cref="T:Sharpmake.PlatformImplementationAttribute"/> on
+            <typeparamref name="TImplementation"/> to find what platform/interface pairs to register.
+            </remarks>
+        </member>
+        <member name="M:Sharpmake.PlatformRegistry.RegisterImplementation``2(Sharpmake.Platform)">
+            <summary>
+            Registers a platform and an interface to a given implementation class.
+            </summary>
+            <typeparam name="TInterface">The interface to register to.</typeparam>
+            <typeparam name="TImplementation">The type of the implementing class.</typeparam>
+            <param name="platform">The <see cref="T:Sharpmake.Platform"/> to register to.</param>
+            <remarks>
+            This method ignores the attributes on <typeparamref name="TImplementation"/> and
+            registers it for <paramref name="platform"/> and <typeparamref name="TInterface"/>.
+            </remarks>
+        </member>
+        <member name="M:Sharpmake.PlatformRegistry.RegisterImplementation``1(Sharpmake.Platform,``0)">
+            <summary>
+            Registers a platform and an interface to an object that implements the interface.
+            </summary>
+            <typeparam name="TInterface">The interface to register to.</typeparam>
+            <param name="platform">The <see cref="T:Sharpmake.Platform"/> to register to.</param>
+            <param name="implementation">A <typeparamref name="TInterface"/> that provides the implementation.</param>
+            <exception cref="T:System.ArgumentNullException"><paramref name="implementation"/> is `null`.</exception>
+            <remarks>
+            This method ignores the attributes on <paramref name="implementation"/>'s
+            <see cref="T:System.Type"/> and registers it for <paramref name="platform"/> and
+            <typeparamref name="TInterface"/>.
+            </remarks>
+        </member>
+        <member name="M:Sharpmake.PlatformRegistry.Has``1(Sharpmake.Platform)">
+            <summary>
+            Checks if the registry contains an implementation of a given interface for a given
+            platform.
+            </summary>
+            <typeparam name="TInterface">The type of the interface needed.</typeparam>
+            <param name="platform">The platform for which the interface must be implemented.</param>
+            <returns>`true` if the interface is there, `false` otherwise.</returns>
+        </member>
+        <member name="M:Sharpmake.PlatformRegistry.GetDefault``1">
+            <summary>
+            Gets the default implementation of a given interface. This is what is returned if an
+            interface is not implemented for any platform.
+            </summary>
+            <typeparam name="TInterface">The type of the interface to get.</typeparam>
+            <returns>The default interface, as a <typeparamref name="TInterface"/> instance.</returns>
+            <exception cref="T:Sharpmake.PlatformNotSupportedException">There is no default implementation of <typeparamref name="TInterface"/>.</exception>
+        </member>
+        <member name="M:Sharpmake.PlatformRegistry.QueryDefault``1">
+            <summary>
+            Gets the default implementation of a given interface if it has one. Does not throw if
+            there is no default implementation.
+            </summary>
+            <typeparam name="TInterface">The type of the interface to get.</typeparam>
+            <returns>The default interface, as a <typeparamref name="TInterface"/> instance, if such an interface exists. Returns `null` if there is no default interface.</returns>
+        </member>
+        <member name="M:Sharpmake.PlatformRegistry.Get``1(Sharpmake.Platform)">
+            <summary>
+            Gets the implementation of a given interface for a given platform. If no implementation
+            was defined for that platform, returns the default implementation instead, if one was
+            defined.
+            </summary>
+            <typeparam name="TInterface">The type of the interface to get.</typeparam>
+            <param name="platform">The platform whose implementation is requested.</param>
+            <returns>The implementation of <typeparamref name="TInterface"/> for a given platform.</returns>
+            <exception cref="T:Sharpmake.PlatformNotSupportedException">There is neither an implementation nor a default implementation of <typeparamref name="TInterface"/> for that platform.</exception>
+        </member>
+        <member name="M:Sharpmake.PlatformRegistry.Query``1(Sharpmake.Platform)">
+            <summary>
+            Gets the implementation of a given interface for a given platform. If no implementation
+            was defined for that platform, returns the default implementation instead, if one was
+            defined. Does not throw an exception if no platform implementation is found.
+            </summary>
+            <typeparam name="TInterface">The type of the interface to get.</typeparam>
+            <param name="platform">The platform whose implementation is requested.</param>
+            <returns>The implementation of <typeparamref name="TInterface"/> for a given platform, or `null` if no such implementation or default implementation exists for that platform.</returns>
+        </member>
+        <member name="M:Sharpmake.PlatformRegistry.GetAvailablePlatforms``1">
+            <summary>
+            Gets the list of platforms for which a given interface is available.
+            </summary>
+            <typeparam name="TInterface">The type of the interface to check availability for.</typeparam>
+            <returns>The collection of available platforms.</returns>
+        </member>
+        <member name="T:Sharpmake.IParsingFlowParser">
+            <summary>
+            IParsingFlowParser classes must also implement ISourceParser.
+            Given the lines of a file, they can decide whether the other parsers should parse the current line or not. 
+            </summary>
+        </member>
+        <member name="M:Sharpmake.IParsingFlowParser.ShouldParseLine">
+            <summary>
+            Returns true if the line should be parsed by the other source parsers.
+            </summary>
+        </member>
+        <member name="M:Sharpmake.IParsingFlowParser.FileParsingBegin(System.String)">
+            <summary>
+            Called when a file is being parsed
+            </summary>
+        </member>
+        <member name="M:Sharpmake.IParsingFlowParser.FileParsingEnd(System.String)">
+            <summary>
+            Called when a file is done being parsed
+            </summary>
+        </member>
+        <member name="T:Sharpmake.PreprocessorConditionParser">
+            <summary>
+            The parsing flow parser that parses the #if, #elif, #else inside the Sharpmake files
+            Depending if the current block is defined (lets say #if SYMBOL, where SYMBOL has been passed in the application's parameters)
+            This parser is used to prevent parsing Includes and References from blocks are not defined.
+            </summary>
+        </member>
+        <member name="P:Sharpmake.PreprocessorConditionParser.State.NestedFileStates">
+            <summary>
+            All nested files analyzed
+            </summary>
+        </member>
+        <member name="P:Sharpmake.PreprocessorConditionParser.State.IsCurrentCodeBlockDefined">
+            <summary>
+            The current code block is defined if we are currently parsing a line that is inside a block where all nested conditions are defined.
+            </summary>
+        </member>
+        <member name="P:Sharpmake.PreprocessorConditionParser.FileState.FilePath">
+            <summary>
+            Current nested file path.
+            </summary>
+        </member>
+        <member name="P:Sharpmake.PreprocessorConditionParser.FileState.NestedConditionBlocks">
+            <summary>
+            All nested condition blocks parsed so far (#if inside #if)
+            </summary>
+        </member>
+        <member name="P:Sharpmake.PreprocessorConditionParser.FileState.IsCurrentCodeBlockDefined">
+            <summary>
+            The current code block is defined if we are currently parsing a line that is inside a block where all nested conditions are defined.
+            </summary>
+        </member>
+        <member name="P:Sharpmake.PreprocessorConditionParser.ConditionBlock.Resolved">
+            <summary>
+            Did at least one branch of the (if, elif, else) branches has been resolved (did we entered one of the block) ?
+            </summary>
+        </member>
+        <member name="P:Sharpmake.PreprocessorConditionParser.ConditionBlock.Defined">
+            <summary>
+            Is the current block of code being defined (condition evaluated as true) ?
+            </summary>
+        </member>
+        <member name="P:Sharpmake.PreprocessorConditionParser.ConditionBlock.CurrentDefine">
+            <summary>
+            Name of the define being tested.
+            </summary>
+        </member>
+        <member name="T:Sharpmake.DependencySetting">
+            <summary>
+            Options to specify the properties of the dependencies between projects. This is used with
+            <see cref="M:Sharpmake.Project.Configuration.AddPublicDependency(Sharpmake.ITarget,System.Type,Sharpmake.DependencySetting,System.String,System.Int32)"/> and
+            <see cref="M:Sharpmake.Project.Configuration.AddPrivateDependency(Sharpmake.ITarget,System.Type,Sharpmake.DependencySetting,System.String,System.Int32)"/>.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.DependencySetting.OnlyBuildOrder">
+            <summary>
+            The dependent project must be built after the dependency.
+             Otherwise the two files have no dependencies.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.DependencySetting.LibraryFiles">
+            <summary>
+            The dependent project inherits the library files of the dependency.
+            Valid only when the project is a C or a C++ project.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.DependencySetting.LibraryPaths">
+            <summary>
+            The dependent project inherits the library paths of the dependency.
+            Valid only when the project is a C or a C++ project.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.DependencySetting.IncludePaths">
+            <summary>
+            The dependent project inherits the include paths of the dependency.
+            Valid only when the project is a C or a C++ project.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.DependencySetting.Defines">
+            <summary>
+            The dependent project inherits the defined symbols of the dependency.
+            Valid only when the project is a C or a C++ project.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.DependencySetting.AdditionalUsingDirectories">
+            <summary>
+            The dependent project inherits the `using` paths of the dependency.
+            Valid only if the project is a C# project and uses Microsoft C++/CX extensions .
+            </summary>
+        </member>
+        <member name="F:Sharpmake.DependencySetting.Default">
+            <summary>
+            Specifies that the dependent project inherits the dependency's library files, library
+            paths, include paths and defined symbols.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.DependencySetting.DefaultWithoutLinking">
+            <summary>
+            Specifies that the dependent project inherits the dependency's include paths and
+            defined symbols, but not it's library files or library paths. Use this for header-only
+            C++ libraries.
+            </summary>
+        </member>
+        <member name="T:Sharpmake.DependencyType">
+            <summary>
+            Visibility types for inter-project dependency relationships. This setting is
+            usually only meaningful in cases where a library depends on another library because
+            one of its executables has an end-point in the other's dependency graph.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.DependencyType.Private">
+            <summary>
+            Specifies that the dependency relationship is private. The dependent project will not
+            expose the dependency's exported properties, such as it's include paths.
+            </summary>
+            <remarks>
+            A library that has a private dependency relationship with another library will use that
+            library internally when compiled but will not expose the private dependency's
+            exported properties (library paths, include paths, etc.) when other projects link to
+            it. For example, if library B has a private dependency on C and A wants to link to B,
+            A will not inherit any of C's include paths, library paths, etc.
+            </remarks>
+        </member>
+        <member name="F:Sharpmake.DependencyType.Public">
+            <summary>
+            Specifies that the dependency relationship is public. The dependent project will expose
+            the dependency's exported properties as it's own.
+            </summary>
+            <remarks>
+            A library that has a public dependency relationship with another library will expose
+            that dependency's include paths, library paths, etc. to any project that has a public
+            dependency on it. For example, if library B has a public dependency on C and A wants to
+            link to B, A will inherit all of C's include paths, library paths, etc.
+            </remarks>
+        </member>
+        <!-- Badly formed XML comment ignored for member "T:Sharpmake.Project.Configuration" -->
+        <member name="T:Sharpmake.Project.Configuration.IConfigurationTasks">
+            <summary>
+            Interface for classes that implement platform-specific tasks for generating
+            configurations. An implementation of this interface is required when generating
+            for a platform.
+            </summary>
+            <remarks>
+            Implementations can assume that they will only be called by Sharpmake, and that the
+            arguments are sane (ex: <see cref="M:Sharpmake.Project.Configuration.IConfigurationTasks.SetupStaticLibraryPaths(Sharpmake.Project.Configuration,Sharpmake.DependencySetting,Sharpmake.Project.Configuration)"/> is passed valid (non-null)
+            configurations).
+            </remarks>
+        </member>
+        <member name="M:Sharpmake.Project.Configuration.IConfigurationTasks.SetupDynamicLibraryPaths(Sharpmake.Project.Configuration,Sharpmake.DependencySetting,Sharpmake.Project.Configuration)">
+            <summary>
+            Sets up the library paths when adding a dependency on a dynamic library.
+            </summary>
+            <param name="configuration">The <see cref="T:Sharpmake.Project.Configuration"/> instance on which
+                   to set the paths.</param>
+            <param name="dependencySetting">The <see cref="T:Sharpmake.DependencySetting"/> bitflags
+                   that specify the properties of the dependency relationship.</param>
+            <param name="dependency">The <see cref="T:Sharpmake.Project.Configuration"/> instance of the dependency.</param>
+        </member>
+        <member name="M:Sharpmake.Project.Configuration.IConfigurationTasks.SetupStaticLibraryPaths(Sharpmake.Project.Configuration,Sharpmake.DependencySetting,Sharpmake.Project.Configuration)">
+            <summary>
+            Sets up the library paths when adding a dependency on a static library.
+            </summary>
+            <param name="configuration">The <see cref="T:Sharpmake.Project.Configuration"/> instance on which to 
+                   set the paths.</param>
+            <param name="dependencySetting">The <see cref="T:Sharpmake.DependencySetting"/> bitflags
+                   that specify the properties of the dependency relationship.</param>
+            <param name="dependency">The <see cref="T:Sharpmake.Project.Configuration"/> instance of the dependency.</param>
+        </member>
+        <member name="M:Sharpmake.Project.Configuration.IConfigurationTasks.GetDefaultOutputExtension(Sharpmake.Project.Configuration.OutputType)">
+            <summary>
+            Gets the default file extension for a given output type.
+            </summary>
+            <param name="outputType">The <see cref="T:Sharpmake.Project.Configuration.OutputType"/> whose default file extension we are seeking.</param>
+            <returns>A string, containing the file extension (not including the dot (.) prefix).</returns>
+        </member>
+        <member name="M:Sharpmake.Project.Configuration.IConfigurationTasks.GetPlatformLibraryPaths(Sharpmake.Project.Configuration)">
+            <summary>
+            Gets the library paths native to the specified configuration's platform.
+            </summary>
+            <param name="configuration">The <see cref="T:Sharpmake.Project.Configuration"/> to get the paths for.</param>
+            <returns>A list of library paths for the specified configuration and platform.</returns>
+        </member>
+        <member name="P:Sharpmake.Project.Configuration.Count">
+            <summary>
+            Gets the number of generated <see cref="T:Sharpmake.Project.Configuration"/> instances.
+            </summary>
+        </member>
+        <member name="M:Sharpmake.Project.Configuration.SimpleOutputType(Sharpmake.Project.Configuration.OutputType)">
+            <summary>
+            Maps the .NET <see cref="T:Sharpmake.Project.Configuration.OutputType"/> into its native counterpart.
+            </summary>
+            <param name="type">Specifies the <see cref="T:Sharpmake.Project.Configuration.OutputType"/> to map.</param>
+            <returns> Returns the mapped <see cref="T:Sharpmake.Project.Configuration.OutputType"/> value.</returns>
+            <remarks>
+            This method maps values of <see cref="T:Sharpmake.Project.Configuration.OutputType"/> in the following way:
+                * <see cref="F:Sharpmake.Project.Configuration.OutputType.DotNetConsoleApp"/> and <see cref="F:Sharpmake.Project.Configuration.OutputType.DotNetWindowsApp"/> are mapped to <see cref="F:Sharpmake.Project.Configuration.OutputType.Exe"/>.
+                * <see cref="F:Sharpmake.Project.Configuration.OutputType.DotNetClassLibrary"/> is mapped to <see cref="F:Sharpmake.Project.Configuration.OutputType.Dll"/>.
+                * Other values are mapped to themselves.
+            </remarks>
+        </member>
+        <member name="T:Sharpmake.Project.Configuration.OutputType">
+            <summary>
+            Output types for the <see cref="T:Sharpmake.Project.Configuration"/>.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.OutputType.Exe">
+            <summary>
+            Output is an executable/>.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.OutputType.Lib">
+            <summary>
+            Output is a static library/>.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.OutputType.Dll">
+            <summary>
+            Output is a DLL(Dynamic Link library)/>.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.OutputType.Utility">
+            <summary>
+            The project does not produce any code. It is either a header-only library, or a
+            utility project that is used as part of the build system but does not produce
+            any code.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.OutputType.DotNetConsoleApp">
+            <summary>
+            The output is an executable .NET program that opens a console window on
+            startup. The extension is always <c>.exe</c>.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.OutputType.DotNetClassLibrary">
+            <summary>
+            The output is a .NET class library that can be added as a reference. The
+            extension is always <c>.dll</c>.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.OutputType.DotNetWindowsApp">
+            <summary>
+            The output is an executable .NET program that does not display a console window
+            on startup. The extension is always <c>.exe</c>.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.OutputType.IosApp">
+            <summary>
+            The output is an iOS app.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.OutputType.IosTestBundle">
+            <summary>
+            The output is an iOS test bundle.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.OutputType.None">
+            <summary>
+            Specifies no output. Do not use this.
+            </summary>
+        </member>
+        <member name="T:Sharpmake.Project.Configuration.InputFileStrategy">
+            <summary>
+            Methods to list source files.
+            </summary>
+            <remarks>
+            This is only used for FASTBuild generation.
+            </remarks>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.InputFileStrategy.Include">
+            <summary>
+            Explicitly refer to files in FASTBuild configuration files using file lists.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.InputFileStrategy.Exclude">
+            <summary>
+            Implicitly refer to files in FASTBuild configuration files using paths and
+            exclusion file lists.
+            </summary>
+        </member>
+        <member name="T:Sharpmake.Project.Configuration.DeoptimizationWritableFiles">
+            <summary>
+            FASTBuild deoptimization strategies for writable files.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.DeoptimizationWritableFiles.NoDeoptimization">
+            <summary>
+            No deoptimization. This is the default.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.DeoptimizationWritableFiles.DeoptimizeWritableFiles">
+            <summary>
+            Deoptimize all files with a writable flag on the file system.
+            </summary>
+            <remarks>
+            This is useful when using Perforce, since files that have not been modified are
+            typically read-only. That is, this option enables automatic deoptimization of modified files.
+            </remarks>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.DeoptimizationWritableFiles.DeoptimizeWritableFilesWithToken">
+            <summary>
+            When the <c>FASTBUILD_DEOPTIMIZE_OBJECT</c> token is specified,
+            deoptimize files with writable status. 
+            </summary>
+            <remarks>
+            This is useful when using Perforce, since files that have not been modified are
+            typically read-only. That is, this enables automatic deoptimization of modified files.
+            </remarks>
+        </member>
+        <member name="T:Sharpmake.Project.Configuration.UACExecutionLevel">
+            <summary>
+            When the output is an executable program, this lists the levels of privileges that
+            it can require upon execution, using Windows' User Account Control (UAC.)
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.UACExecutionLevel.asInvoker">
+            <summary>
+            Use the same privileges as the process that created the program.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.UACExecutionLevel.highestAvailable">
+            <summary>
+            Use the highest privileges available to the current user.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.UACExecutionLevel.requireAdministrator">
+            <summary>
+            Always run with administrator privileges. This will usually open a UAC dialog
+            box for the user.
+            </summary>
+        </member>
+        <member name="P:Sharpmake.Project.Configuration.Output">
+            <summary>
+            Gets or sets the output type of the current configuration, exe, lib or dll.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.OutputExtension">
+            <summary>
+            Gets or sets the project's output extension (ie: .dll, .self, .exe, .dlu).
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.ExecuteTargetCopy">
+            <summary>
+            Gets or sets whether to copy output files to the output directory.
+            </summary>
+            <remarks>
+            This setting is provided for libraries, because they are usually intermediate
+            artifacts during the compilation process and do not need to be in the final output
+            directory unless it's necessary. 
+            <para>
+            The default is <c>false</c>. Setting this to <c>true</c> will force the generators
+            to copy the library artifacts.
+            </para>
+            <para>
+            If <see cref="P:Sharpmake.Project.Configuration.Output"/> is set to a value that corresponds to an executable program
+            (ie: <see cref="F:Sharpmake.Project.Configuration.OutputType.Exe"/>), the generators disregard this property and
+            always copy the results.
+            </para>
+            </remarks>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.CopyCompilerPdbToDependentTargets">
+            <summary>
+            Gets or sets whether dependent projects will copy their debugging database to the
+            target path of their dependency projects. The default value is <c>false</c>.
+            </summary>
+        </member>
+        <member name="T:Sharpmake.Project.Configuration.TargetCopyCommandCreator">
+            <summary>
+            Command to execute <see cref="F:Sharpmake.Project.Configuration.TargetCopyFiles"/>.
+            </summary>
+            <param name="relativeSourcePath">The relative path to the files.</param>
+            <param name="relativeTargetPath">The relative path to the target directory.</param>
+            <param name="workingPath">The path to the working directory.</param>
+            <returns>The mapped <see cref="T:Sharpmake.Project.Configuration.OutputType"/> value as a string.</returns>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.ExportAdditionalLibrariesEvenForStaticLib">
+            <summary>
+            Setting this boolean to true forces Sharpmake to fill in the AD fields in the current static
+            library project.
+            </summary>
+            <remarks>
+            Since Sharpmake handles all dependencies, using an <c>AdditionalDependencies</c> field in
+            your project is typically useless for static libraries. However, when dependents aren't
+            generated by Sharpmake, (that is, when a .sln contains Sharpmake generated projects as static
+            libraries as well as manually maintained dependent projects) this feature can be useful.
+            <para>
+            The default is <c>false</c>. Set this boolean to <c>true</c> to make Sharpmake fill in the fields
+            for the current static library project.
+            </para>
+            </remarks>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.ProjectName">
+            <summary>
+            Gets or sets the name of the project, as viewed by the configuration.
+            </summary>
+            <remarks>
+            Under normal circumstances, you should not need to edit this property. The name of
+            the project is set in <see cref="F:Sharpmake.Project.Configuration.Name"/> and this is the default value.
+            </remarks>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.ProjectFileName">
+            <summary>
+            Gets or sets the file name for the generated project, without any file extension.
+            (ex: `"MyProject"`)
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.ProjectPath">
+            <summary>
+            Gets or sets the directory in which the project will be generated.
+            </summary>
+            <remarks>
+            By default, this is set to the same directory that this Sharpmake script is running in.
+            </remarks>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.AssemblyName">
+            <summary>
+            Gets or sets the name of the generated .NET assembly.
+            </summary>
+            <remarks>
+            Ignored in projects that are not built on the .NET framework.
+            </remarks>
+        </member>
+        <member name="P:Sharpmake.Project.Configuration.ProjectFullFileName">
+            <summary>
+            Gets the full path of the project file, including the directory and the
+            file name. This doesn't include the file extension which depends on
+            the generator.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.SolutionFolder">
+            <summary>
+            Gets or sets the solution folder that will hold the Visual Studio solution for this project.
+            </summary>
+            <remarks>
+            Ignored unless building a Visual Studio project.
+            <para>
+            To place the project in a sub-directory, use a `/` as a directory separator.
+            </para>
+            </remarks>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.LinkerPdbSuffix">
+            <summary>
+            Gets or sets the suffix to use in <see cref="F:Sharpmake.Project.Configuration.LinkerPdbSuffix"/>.
+            If unset, the pdb file names will be the target name with a suffix and the .pdb extension.
+            </summary>
+            <remarks>
+            Always put a separate pdb for the compiler in the intermediate path to avoid
+            conflicts with the one from the linker.
+            This helps the following things:
+            1. Makes the linker go faster
+            2. Avoid pdbs for dlls and .exe(s) growing and growing at each link
+            3. Makes incremental linking work better.
+            </remarks>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.LinkerPdbFilePath">
+            <summary>
+            Gets or sets the directory and file name of the Visual Studio *linker* PDB file,
+            including the file extension.
+            </summary>
+            <remarks>
+            Used only when generating a Visual Studio project.
+            <para>
+            The default value is:
+            <c>[conf.TargetPath]/[conf.TargetFileFullName][conf.LinkerPdbSuffix].pdb</c>.
+            </para>
+            <para>
+            Always put a separate PDB for the compiler in the intermediate path to avoid
+            conflicts with the one from the linker.
+            </para>
+            </remarks>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.CompilerPdbSuffix">
+            <summary>
+            Gets or sets the suffix to use in <see cref="F:Sharpmake.Project.Configuration.CompilerPdbFilePath"/>.
+            </summary>
+            <remarks>
+            Provided only as a convenience as it is only used in the default
+            value of <see cref="F:Sharpmake.Project.Configuration.CompilerPdbFilePath"/> to assign a suffix to the PDB. If you
+            change <see cref="F:Sharpmake.Project.Configuration.CompilerPdbFilePath"/> so that it doesn't use this property,
+            then it isn't used.
+            </remarks>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.CompilerPdbFilePath">
+            <summary>
+            Gets or sets the directory and file name of the Visual Studio <i>compiler</i> PDB file,
+            including the file extension.
+            </summary>
+            <remarks>
+            Used only when generating a Visual Studio project.
+            <para>
+            The default value is
+            <c>[conf.IntermediatePath]/[conf.TargetFileFullName][conf.CompilerPdbSuffix].pdb</c>.
+            </para>
+            <para>
+            The default file name in <see cref="F:Sharpmake.Project.Configuration.CompilerPdbFilePath"/> in Sharpmake does not
+            match its default file name in Visual Studio for compiler PDB, which is <c>VCx0.pdb</c>.
+            See <externalLink>
+            <linkText> /Fd (Program Database File Name)</linkText>
+            <linkUri>https://msdn.microsoft.com/en-us/library/9wst99a9.aspx</linkUri>
+            </externalLink>.
+            If you mean to use Visual Studio's default value, you must set this property to <c>null</c>.
+            </para>
+            <para>
+            Always put a separate PDB for the compiler in the intermediate path to avoid
+            conflicts with the one from the linker.
+            </para>
+            </remarks>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.UseRelativePdbPath">
+            <summary>
+            Gets or sets whether <see cref="F:Sharpmake.Project.Configuration.CompilerPdbFilePath"/> and
+            <see cref="F:Sharpmake.Project.Configuration.LinkerPdbFilePath"/> are relative.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.ManifestFileSuffix">
+            <summary>
+            Gets or sets the suffix of the manifests when building a project that uses
+            Microsoft's C++/CX with the build option *Embed Manifest*.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.EmbeddedResourceOutputPrefix">
+            <summary>
+            Prefix for compiled embedded resource files
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.IntermediatePath">
+            <summary>
+            Gets or sets the directory where the compiler will place the intermediate files.
+            </summary>
+            <remarks>
+            This corresponds to the <i>Intermediate</i> directory in the Visual Studio project
+            configuration.
+            <para>
+            The default value is <c>[conf.ProjectPath]/obj/[target.Platform]</c>.
+            </para>
+            </remarks>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.BaseIntermediateOutputPath">
+            <summary>
+            Base Intermediate devEnv directory. Only used in csproj
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.Defines">
+            <summary>
+            Gets the list of defined symbols to use when compiling the project.
+            </summary>
+            <remarks>
+            Generators are allowed to add new symbols to this list when needed. For example,
+            you don't need to explicitly add <c>_WIN32</c> to the list when building for Windows.
+            <para>
+            These symbols are defined during the compilation, not when the project is used as a library.
+            The symbols that need to be defined when this project is being consumed as a
+            library, must be added to <seealso cref="F:Sharpmake.Project.Configuration.ExportDefines"/> instead.
+            </para>
+            </remarks>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.ExportDefines">
+            <summary>
+            Gets the list of symbols that are exported when the project is being used as a
+            library.
+            </summary>
+            <remarks>
+            Not used if the project is not a library.
+            <para>
+            The symbols defined in this list are not defined when building the library. You
+            must define them in <seealso cref="F:Sharpmake.Project.Configuration.Defines"/>.
+            </para>
+            </remarks>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.SourceFilesBuildExclude">
+            <summary>
+            Excludes the specified files from the build. Removes the files in this list from
+            project.SourceFiles and matches project.SourceFilesRegex.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.SourceFilesBuildExcludeRegex">
+            <summary>
+            Gets a list of regular expressions that are used to filter matching source files
+            out of the build.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.SourceFilesFiltersRegex">
+            <summary>
+            Gets a list of regular expressions that are used to filter matching source files
+            into the build.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.SourceFilesCompileAsCRegex">
+            <summary>
+            Source files that match this regex will be compiled as C Files.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.SourceFilesCompileAsCPPRegex">
+            <summary>
+            Source files that match this regex will be compiled as CPP Files.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.SourceFilesCompileAsCLRRegex">
+            <summary>
+            Source files that match this regex will be compiled as CLR Files.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.SourceFilesCompileAsCLRExcludeRegex">
+            <summary>
+            Source files that match this regex will be excluded from the CLR Files list.
+            Used on C++ projects rather than C++/CLI projects.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.SourceFilesCompileAsNonCLRRegex">
+            <summary>
+            Source files that match this regex will be explicitly not compiled as CLR files.
+            Used on C++/CLI projects to force certain files to be compiled without the <c>/clr</c> switch.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.IncludePaths">
+            <summary>
+            Gets a list of include paths for compiling C and C++ projects.
+            </summary>
+            <remarks>
+            If the project is a library, the include paths are imported in dependent
+            projects. Use <see cref="F:Sharpmake.Project.Configuration.IncludePrivatePaths"/> if you need to use include paths
+            that are only used to compile the library.
+            </remarks>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.IncludePrivatePaths">
+            <summary>
+            Gets a list of include paths for compiling C and C++ libraries that are not
+            shared with dependent projects.
+            </summary>
+        </member>
+        <!-- Badly formed XML comment ignored for member "F:Sharpmake.Project.Configuration.IncludeSystemPaths" -->
+        <member name="F:Sharpmake.Project.Configuration.ResourceIncludePaths">
+            <summary>
+            Include paths for resource compilation.
+            These paths will propagate via the IncludePaths DependencySetting, use ResourceIncludePrivatePaths if you want to avoid this
+            </summary>
+        </member>
+        <member name="P:Sharpmake.Project.Configuration.DependenciesResourceIncludePaths">
+            <summary>
+            Include paths for resource compilation.
+            These paths are received from dependencies via the IncludePaths DependencySetting.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.ResourceIncludePrivatePaths">
+            <summary>
+            Include paths for resource compilation.
+            These paths will never propagate.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.AdditionalCompilerOptions">
+            <summary>
+            Gets a list of compiler options to send when calling the compiler.
+            </summary>
+            <remarks>
+            Generators are allowed to transform the textual representation of the options added
+            here so that they work with the shell of the operating system or with the makefile
+            format.
+            <list type="bullet">
+            <item>The values in this list are simply concatenated, separated with spaces, sanitized
+            for the shell, and then appended directly to the command that calls the compiler.
+            </item>
+            <item>
+            They are not translated from one compiler to the other. When you
+            use this property, you need to know which C++ compiler you're using.
+            </item>
+            </list>
+            <para>
+            This property is for the compiler. Its counterpart for the linker is
+            <see cref="F:Sharpmake.Project.Configuration.AdditionalLinkerOptions"/>.
+            </para>
+            </remarks>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.AdditionalNone">
+            <summary>
+            Gets a list of file extensions that are added to a Visual Studio project with the
+            <b>None</b> build action.
+            </summary>
+            <remarks>
+            Used only by the Visual Studio generators.
+            </remarks>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.AdditionalDebuggerCommands">
+            <summary>
+            Adds commands for VS debugger
+            </summary>
+            <remarks>
+            Used only by the Visual Studio generators.
+            </remarks>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.PrecompSource">
+            <summary>
+            Gets or sets the name of the source file for the precompiled header in C and C++
+            projects, ie: <c>stdafx.cpp</c>. This property must be <c>null</c> for projects that don't
+            have a precompiled header.
+            </summary>
+            <remarks>
+            Both <see cref="F:Sharpmake.Project.Configuration.PrecompHeader"/> and <see cref="F:Sharpmake.Project.Configuration.PrecompSource"/> must be <c>null</c> if
+            the project doesn't have precompiled headers.
+            <para>
+            Sharpmake assumes that a relative path here is relative to <see cref="P:Sharpmake.Project.SourceRootPath"/>.
+            If that isn't correct, you must use an absolute path.
+            </para>
+            </remarks>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.PrecompHeader">
+            <summary>
+            Gets or sets the name of the precompiled header in C and C++ projects,
+            ie: <c>stdafx.h</c>. This property must be <c>null</c> for projects that do not have a
+            precompiled header.
+            </summary>
+            <remarks>
+            Both <see cref="F:Sharpmake.Project.Configuration.PrecompHeader"/> and <see cref="F:Sharpmake.Project.Configuration.PrecompSource"/> must be <c>null</c> if
+            the project doesn't have precompiled headers.
+            <para>
+            Sharpmake assumes that any relative path entered here is relative to
+            <see cref="P:Sharpmake.Project.SourceRootPath"/>. If that isn't correct, you must use an absolute path.
+            </para>
+            <note>
+            The source files must manually include this header or you will have
+            compiler errors. Sharpmake merely tells the compiler to expect a precompiled
+            header. The compiler doesn't implicitly include the header.
+            </note>
+            </remarks>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.PrecompHeaderOutputFolder">
+            <summary>
+            Gets or sets the output directory for the precompiled header's binary file in C and C++
+            projects.
+            </summary>
+            <remarks>
+            If this property is set to <c>null</c>, Sharpmake will simply write the binary file to
+            <see cref="F:Sharpmake.Project.Configuration.IntermediatePath"/>, the same as the object file.
+            <para>
+            If defined, precompiled headers are written to this directory instead of the intermediate directory.
+            </para>
+            </remarks>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.PrecompSourceExclude">
+            <summary>
+            Gets a list of files that don't use the precompiled headers.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.PrecompSourceExcludeExtension">
+            <summary>
+            Gets a list of file extensions that don't use the precompiled headers.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.PrecompSourceExcludeFolders">
+            <summary>
+            Gets the list of directories that contain source files that don't use the
+            precompiled headers.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.ForcedIncludes">
+            <summary>
+            List of headers passed to the preprocessor to be parsed.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.ConsumeWinRTExtensions">
+            <summary>
+            List of files that are built to consume WinRT Extensions.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.SourceFilesCompileAsWinRTRegex">
+            <summary>
+            Regex-based list of files that are built to consume WinRT Extensions.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.ExcludeWinRTExtensions">
+            <summary>
+            List of files that are excluded from being built to consume WinRT Extensions.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.SourceFilesExcludeAsWinRTRegex">
+            <summary>
+            Regex-based list of files that are excluded from being built to consume WinRT Extensions.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.SourceFilesExceptionsEnabled">
+            <summary>
+            Gets a list of files that must be compiled using the compiler's default exception settings
+            and with exceptions enabled.
+            </summary>
+            <remarks>
+            If the source file is compiled with WinRT extensions, it is implicitly added to
+            this list.
+            </remarks>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.SourceFilesExceptionsEnabledWithExternC">
+            <summary>
+            Gets a list of files that must be compiled with <c>extern C</c> exceptions enabled.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.SourceFilesExceptionsEnabledWithSEH">
+            <summary>
+            Gets a list of files that must be compiled with SEH exceptions enabled.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.DumpDependencyGraph">
+            <summary>
+            Enables (true) or disables (false) a dump of the dependency graph for this configuration.
+            </summary>
+        </member>
+        <member name="M:Sharpmake.Project.Configuration.AddSourceFileWithExceptionSetting(System.String,Sharpmake.Options.Vc.Compiler.Exceptions)">
+            <summary>
+            Adds a C or C++ source file with a specific exception setting.
+            </summary>
+            <param name="filename">The path of the source file.</param>
+            <param name="exceptionSetting">The C++ exception setting.</param>
+            <exception cref="T:System.ArgumentNullException"><paramref name="filename"/> is <c>null</c>.</exception>
+            <exception cref="T:System.ArgumentException"><paramref name="exceptionSetting"/> is not a known value.</exception>
+            <exception cref="T:Sharpmake.Error"><paramref name="filename"/> has already been added with a different exception mode.</exception>
+            <remarks>
+            This is a utility method for selecting either
+            <see cref="F:Sharpmake.Project.Configuration.SourceFilesExceptionsEnabled"/>,
+            <see cref="F:Sharpmake.Project.Configuration.SourceFilesExceptionsEnabledWithExternC"/> or
+            <see cref="F:Sharpmake.Project.Configuration.SourceFilesExceptionsEnabledWithSEH"/> and for making sure that the file has
+            not already been included with another exception setting.
+            </remarks>
+        </member>
+        <member name="M:Sharpmake.Project.Configuration.GetExceptionSettingForFile(System.String)">
+            <summary>
+            Gets which exception setting has been set for a given file in a C or C++ project.
+            </summary>
+            <param name="filename">The path of the file to examine.</param>
+            <returns>A value from the <see cref="T:Sharpmake.Options.Vc.Compiler.Exceptions"/> enumerated type that specifies which exception mode is used for the specified file.</returns>
+            <exception cref="T:System.ArgumentNullException"><paramref name="filename"/> is <c>null</c>.</exception>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.LibraryPaths">
+            <summary>
+            Gets a list of the search directories for static libraries.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.LibraryFiles">
+            <summary>
+            Gets a list of the static libraries to link to.
+            </summary>
+            <remarks>
+            This should only be used for third party libraries that are not part of the compiled
+            source code. Libraries that are part of the compiled source code should be included
+            by calling either
+            <see cref="M:Sharpmake.Project.Configuration.AddPublicDependency``1(Sharpmake.ITarget,Sharpmake.DependencySetting,System.String,System.Int32)"/>
+            or <see cref="M:Sharpmake.Project.Configuration.AddPrivateDependency``1(Sharpmake.ITarget,Sharpmake.DependencySetting,System.String,System.Int32)"/>.
+            This makes things much easier because Sharpmake will automatically take care
+            of setting the library paths, library files, include paths, and build order
+            according to the dependency graph.
+            <para>
+            Unless your library name contains a <c>.</c>(dot) in its file name, you don't need to add
+            the file extension of any library you add here. If you do, Sharpmake will
+            automatically remove it.
+            </para>
+            </remarks>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.AdditionalUsingDirectories">
+            <summary>
+            Gets a list of "using" directories for compiling WinRT C++ extensions.
+            </summary>
+            <remarks>
+            As WinRT is a Microsoft extension, this property is only used by the Visual Studio
+            generators.
+            </remarks>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.DotNetPublicDependencies">
+            <summary>
+            Gets the list of public dependencies for .NET projects.
+            </summary>
+            <remarks>
+            You should use
+            <see cref="M:Sharpmake.Project.Configuration.AddPublicDependency``1(Sharpmake.ITarget,Sharpmake.DependencySetting,System.String,System.Int32)"/>
+            instead of adding elements directly into this list.
+            </remarks>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.DotNetPrivateDependencies">
+            <summary>
+            Gets the list of private dependencies for .NET projects.
+            </summary>
+            <remarks>
+            You should use
+            <see cref="M:Sharpmake.Project.Configuration.AddPrivateDependency``1(Sharpmake.ITarget,Sharpmake.DependencySetting,System.String,System.Int32)"/>
+            instead of adding elements directly to this list.
+            </remarks>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.AdditionalLibrarianOptions">
+            <summary>
+            Options passed to the librarian / archiver
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.AdditionalLinkerOptions">
+            <summary>
+            Gets a list of linker options to send when calling the compiler.
+            </summary>
+            <remarks>
+            Generators are allowed to transform the textual representation of the options added
+            here so that they work with the operating system's shell or with the makefile
+            format.
+            <para>
+            The values in this list are simply concatenated, separated with spaces, sanitized
+            for the shell, and then appended directly to the command that calls the linker.
+            </para>
+            <para>
+            The options added here are not translated from one linker to the other. When you
+            use this property, you need to know which C++ compiler you're using.
+            </para>
+            <para>
+            This property is for the linker. Its counterpart for the compiler is
+            <see cref="F:Sharpmake.Project.Configuration.AdditionalCompilerOptions"/>.
+            </para>
+            </remarks>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.TargetPath">
+            <summary>
+            Target path, where the output files will be compiled, ex: exe, dll, self, xex
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.CppCliExportsNativeLib">
+            <summary>
+            Gets or sets whether a .NET class library generates an import library instead of a
+            managed assembly (DLL).
+            </summary>
+            <remark>
+            This property has no effect unless <see cref="T:Sharpmake.Project.Configuration.OutputType"/> is set to
+            <see cref="F:Sharpmake.Project.Configuration.OutputType.DotNetClassLibrary"/>.
+            </remark>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.SkipFilterGeneration">
+            <summary>
+            Gets or sets whether to skip generating a Visual Studio filter file for this project.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.ModuleDefinitionFile">
+            <summary>
+            Gets or sets the path of the module definition file to be passed to the linker.
+            </summary>
+            <remarks>
+            This is only used by the Visual Studio generators.
+            </remarks>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration._blobPath">
+            <summary>
+            Gets or sets the path where the blob files will be generated.
+            </summary>
+            <remarks>
+            <note>
+            FASTBuild supports blobbing via it's "unity" files and the FASTBuild
+            generators use <see cref="P:Sharpmake.Project.Configuration.FastBuildUnityPath"/> to determine where to put the unity files.
+            </note>
+            </remarks>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.GeneratableBlobCount">
+            <summary>
+            How many static blob files would this configuration generate
+            </summary>
+        </member>
+        <member name="P:Sharpmake.Project.Configuration.FastBuildUnityPath">
+            <summary>
+            Gets or sets the path of the unity files generated by the FASTBuild build system.
+            </summary>
+            <remarks>
+            This property is only used when generating FASTBuild makefiles. When using the
+            usual compiler, use <see cref="P:Sharpmake.Project.Configuration.BlobPath"/> to set the location of the blob files.
+            </remarks>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.BlobWorkFileHeader">
+            <summary>
+            If specified, overrides <c>Project.DefaultBlobWorkFileHeader</c>.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.BlobWorkFileFooter">
+            <summary>
+            If specified, overrides <c>Project.DefaultBlobWorkFileFooter</c>.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.BlobSize">
+            <summary>
+            If specified, overrides Project.BlobSize .
+            </summary>
+        </member>
+        <member name="P:Sharpmake.Project.Configuration.FastBuildUnityCount">
+            <summary>
+            Gets or sets the number of "unity" files to generate when using FASTBuild.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.IncludeBlobbedSourceFiles">
+            <summary>
+            Gets or sets whether to include blobs in the project.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.FastBuildCustomActionsBeforeBuildCommand">
+            <summary>
+            Custom Actions to do before invoking FastBuildExecutable.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.BffFileName">
+            <summary>
+            Gets or sets the name of the FASTBuild BFF file.
+            </summary>
+        </member>
+        <member name="P:Sharpmake.Project.Configuration.BffFullFileName">
+            <summary>
+            Gets the full file path of the FASTBuild BFF file. This includes the directory and
+            file name.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.DoNotGenerateFastBuild">
+            <summary>
+            Gets or sets whether to generate a FASTBuild (.bff) file when using FASTBuild.
+            </summary>
+            <remarks>
+            For projects merging multiple targets, sometimes what is wanted is to not generate FastBuild
+             .bff files but, instead, include any existing .bff files from the appropriate targets.
+            </remarks>
+        </member>
+        <member name="T:Sharpmake.Project.Configuration.BuildStepExecutable">
+            <summary>
+            Represents a build step that invokes an executable on the file system.
+            </summary>
+        </member>
+        <member name="M:Sharpmake.Project.Configuration.BuildStepExecutable.#ctor(System.String,System.String,System.String,System.String,System.String,System.Boolean,System.Boolean)">
+            <summary>
+            Creates a new <see cref="T:Sharpmake.Project.Configuration.BuildStepExecutable"/> instance.
+            </summary>
+            <param name="executableFile">The executable file.</param>
+            <param name="executableInputFileArgumentOption">The command line option that specifies the input file.</param>
+            <param name="executableOutputFileArgumentOption">The command line option that specifies the output file.</param>
+            <param name="executableOtherArguments">Any other command line arguments to pass to the executable.</param>
+            <param name="executableWorkingDirectory">The working directory of the executable.</param>
+            <param name="isNameSpecific">???</param>
+            <param name="useStdOutAsOutput">If `true`, the output is to *stdout*.</param>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.BuildStepExecutable.ExecutableFile">
+            <summary>
+            Gets or sets the name of the executable file.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.BuildStepExecutable.ExecutableInputFileArgumentOption">
+            <summary>
+            Gets or sets the command line option that specifies the input file.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.BuildStepExecutable.ExecutableOutputFileArgumentOption">
+            <summary>
+            Gets or sets the command line option that specifies the output file.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.BuildStepExecutable.ExecutableOtherArguments">
+            <summary>
+            Gets or sets any other command line option to pass to the executable.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.BuildStepExecutable.ExecutableWorkingDirectory">
+            <summary>
+            Gets or sets the working directory to use when calling the executable.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.BuildStepExecutable.FastBuildExecutableInputFiles">
+            <summary>
+            Sets multiple files as executable input. Only supported by Bff generator.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.BuildStepExecutable.FastBuildUseStdOutAsOutput">
+            <summary>
+            Gets or sets whether the output is to *stdout*.
+            </summary>
+        </member>
+        <member name="T:Sharpmake.Project.Configuration.NMakeBuildSettings">
+            <summary>
+            Settings for NMake projects with custom execution
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.ObjectFileName">
+            <summary>
+            If specified, every obj will be output to intermediate directories corresponding to the source hierarchy.
+            </summary>
+            <remarks>
+            <note type="warning">
+            This will slow down your project's compile time!
+            <externalLink>
+            <linkText>See a discussion of this in StackOverflow</linkText>
+            <linkUri>http://stackoverflow.com/a/1999344</linkUri>
+            </externalLink>.
+            </note>
+            </remarks>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.Name">
+            <summary>
+            Gets or sets the name of the current configuration.
+            </summary>
+            <remarks>
+            In Visual Studio, the name of the configuration is displayed in the drop-down list.
+            </remarks>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.TargetFileName">
+            <summary>
+            Gets or sets the base file name of the target.
+            </summary>
+            <remarks>
+            Despite the name of the property, this is actually the base name. You can prepend
+            and append suffixes using <see cref="F:Sharpmake.Project.Configuration.TargetFilePrefix"/> and
+            <see cref="F:Sharpmake.Project.Configuration.TargetFileSuffix"/>.
+            <para>
+            The default value is the name of the project.
+            </para>
+            </remarks>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.TargetFileSuffix">
+            <summary>
+            Gets or sets the suffix to append to the target name.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.TargetFilePrefix">
+            <summary>
+            Gets or sets the prefix to prepend to the target name.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.TargetFileFullName">
+            <summary>
+            Gets or sets the full file name of the target, without the path but with the suffix
+            and the prefix.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.TargetFileOrderNumber">
+            <summary>
+            Gets or sets the ordering index of the target when added as a library to another
+            project.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.TargetLibraryPathOrderNumber">
+            <summary>
+            Gets or sets the ordering index of the library paths when added as a library to
+            another project.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.TargetCopyFiles">
+            <summary>
+            Gets or sets the list of files to copy to the output directory.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.TargetDependsFiles">
+            <summary>
+            Gets or sets the list of files that the target depends on.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.IsExcludedFromBuild">
+            <summary>
+            Gets or sets whether this configuration is included in or excluded from the build.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.CopyDependenciesBuildStep">
+            <summary>
+            Gets or sets a custom <see cref="T:Sharpmake.Project.Configuration.FileCustomBuild"/> that is used to copy
+            dependencies after a build.
+            </summary>
+            <remarks>
+            This can be used to add a custom build tool on a dummy file to copy the
+            dependencies' DLLs and PDBs. Works better than a PostBuildStep.
+            </remarks>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.EventPreBuild">
+            <summary>
+            Gets or sets a list of shell commands to add as a prebuild script.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.EventPreBuildDescription">
+            <summary>
+            Gets or sets the name of the prebuild script (that is written to the build
+            output).
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.EventPreBuildExcludedFromBuild">
+            <summary>
+            Gets or sets whether the prebuild is excluded from the build.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.EventPreBuildExe">
+            <summary>
+            Gets or sets a list of <see cref="T:Sharpmake.Project.Configuration.BuildStepBase"/> instances that call executables
+            at prebuild.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.EventCustomPreBuildExe">
+            <summary>
+            Gets or sets a list of <see cref="T:Sharpmake.Project.Configuration.BuildStepBase"/> instances that call executables
+            at prebuild.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.EventPreLink">
+            <summary>
+            Gets or sets a list of shell commands to execute before linking a C or C++ project.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.EventPreLinkDescription">
+            <summary>
+            Gets or sets a description to write to the build output before linking a C or C++
+            project.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.EventPreLinkExcludedFromBuild">
+            <summary>
+            Gets or sets whether the pre-link is excluded from the build.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.EventPrePostLink">
+            <summary>
+            Gets or sets a list of shell commands to execute after linking to a C or C++
+            project.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.EventPrePostLinkDescription">
+            <summary>
+            Gets or sets a description to write to the build output after linking to a C or C++
+            project.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.EventPrePostLinkExcludedFromBuild">
+            <summary>
+            Gets or sets whether the post-link is excluded from the build.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.EventPostBuild">
+            <summary>
+            Gets or sets a list of shell commands to execute after building the project.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.EventPostBuildDescription">
+            <summary>
+            Gets or sets a description to write to the build output after building the
+            project.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.EventPostBuildExcludedFromBuild">
+            <summary>
+            Gets or sets whether the post-build is excluded from the build.
+            </summary>
+        </member>
+        <member name="T:Sharpmake.Project.Configuration.CustomFileBuildStepData">
+            <summary>
+            This is all the data specific to a custom build step.
+            The ones stored in the project configuration use absolute paths
+            but we need relative paths when we're ready to export a specific
+            project file.
+            </summary>
+        </member>
+        <member name="T:Sharpmake.Project.Configuration.CustomFileBuildStepData.ProjectFilter">
+            <summary>
+            This lets us filter which type of project files should have this custom build step.
+            This is specifically used to deal with the limitations of different build systems.
+            </summary>
+            <remarks>
+            Visual studio only supports one build action per file, so if you need both compilation and
+            some other build steps such as QT or Documentation generation on the same file, you need to put the rule
+            on a different input file that also depends on the real input file.
+            <para>
+            FASTBuild is key based, not file based. So it can have two different operations on the same file.
+            If you need support for FASTBuild, you can make two different custom build rules with one specific to BFF 
+            and the other excluding BFF.
+            </para>
+            </remarks>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.CustomFileBuildStepData.ProjectFilter.AllProjects">
+            <summary>
+            The custom build step is used for both project file and FASTBuild generation.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.CustomFileBuildStepData.ProjectFilter.ExcludeBFF">
+            <summary>
+            The custom build step excludes BFF.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.CustomFileBuildStepData.ProjectFilter.BFFOnly">
+            <summary>
+            The custom build step is specific to BFF 
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.CustomFileBuildStepData.KeyInput">
+            <summary>
+            File custom builds are bound to a specific existing file. They run when the file is changed.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.CustomFileBuildStepData.Executable">
+            <summary>
+            This is the executable for the custom build step.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.CustomFileBuildStepData.ExecutableArguments">
+            <summary>
+            These are the arguments to pass to the executable.
+            </summary>
+            <remarks>
+            We support [input] and [output] tags in the executable arguments that will auto-resolve to the relative
+            paths to <see cref="F:Sharpmake.Project.Configuration.CustomFileBuildStepData.KeyInput"/> and <see cref="F:Sharpmake.Project.Configuration.CustomFileBuildStepData.Output"/>.
+            </remarks>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.CustomFileBuildStepData.Description">
+            <summary>
+            This is what will appear in the project file under "description". It's also the key used
+            for FASTBuild, so it should be unique per build step if you want to use FASTBuild.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.CustomFileBuildStepData.Output">
+            <summary>
+            For FASTBuild compatibility, we can only have one input and one output per custom command.
+            This is what we tell the build system we're going to produce.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.CustomFileBuildStepData.AdditionalInputs">
+            <summary>
+            Not supported by FASTBuild.
+            Additional files that will cause a re-run of this custom build step can be be specified here.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.CustomFileBuildStepData.Filter">
+            <summary>
+            Specifies whether this step should run in builds for project files or FASTBuild or both.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.CustomFileBuildSteps">
+            <summary>
+            Specifies a list of custom build steps that will be executed when this configuration is active.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.StartWorkingDirectory">
+            <summary>
+            Gets or sets the working directory when a C# project is started from Visual Studio.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.XmlDocumentationFile">
+             <summary>
+             Defines where the compiler will generate an XML documentation file at compile time.
+             </summary>
+            
+             The compiler generated XML file can be distributed alongside your .NET assembly so that
+             Visual Studio and other IDEs can use IntelliSense to show quick information about types
+             or members.
+             Additionally, the XML file can be run through tools like DocFX and Sandcastle
+             to generate API reference websites
+            
+             The following will output an XML file in the target directory with the same root filename as the assembly
+            
+                 conf.XmlDocumentationFile = @"[conf.TargetPath]\[project.AssemblyName].xml";
+            
+             <remarks>C# only</remarks>
+        </member>
+        <member name="P:Sharpmake.Project.Configuration.Project">
+            <summary>
+            Gets the <see cref="P:Sharpmake.Project.Configuration.Project"/> that this <see cref="T:Sharpmake.Project.Configuration"/>
+            belongs to.
+            </summary>
+            <remarks>
+            If this is a C# project, <see cref="P:Sharpmake.Project.Configuration.Project"/> can be safely cast to
+            <see cref="T:Sharpmake.CSharpProject"/>.
+            </remarks>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.DeployProject">
+            <summary>
+            Gets or sets whether this project is deployed.
+            </summary>
+            <remarks>
+            This property only applies to Visual Studio projects.
+            </remarks>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.IsBlobbed">
+            <summary>
+            Gets or sets whether blobbing is enabled for this configuration.
+            </summary>
+            <remarks>
+            Blobbing is only used for C and C++ projects. FASTBuild uses it's own blobbing
+            strategy (called unity files), which is enabled by setting FASTBuild properties.
+            </remarks>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.BlobFileDefine">
+            <summary>
+            Gets or sets the defined symbol that tells a C++ project that it is being built
+            using a blobbing strategy.
+            </summary>
+            <remarks>
+            Blobbing is only used for C and C++ projects. FASTBuild uses it's own blobbing
+            strategy (called unity files), which is enabled by setting FASTBuild properties.
+            </remarks>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.ApplicationPermissions">
+            <summary>
+            Gets or sets the Windows UAC permissions required to run the program.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.ResourceFileDefine">
+            <summary>
+            Gets or sets the defined symbol that can be used from C and C++ projects to detect
+            that a Windows resource file (.rc) is being used.
+            </summary>
+        </member>
+        <member name="P:Sharpmake.Project.Configuration.ExecutableExtension">
+            <summary>
+            Gets the file extension for executables.
+            </summary>
+        </member>
+        <member name="P:Sharpmake.Project.Configuration.CompressedExecutableExtension">
+            <summary>
+            Gets the file extension for compressed executables, such as bundles, game packages
+            for consoles, etc.
+            </summary>
+        </member>
+        <member name="P:Sharpmake.Project.Configuration.DllExtension">
+            <summary>
+            Gets the file extension for shared libraries.
+            </summary>
+        </member>
+        <member name="P:Sharpmake.Project.Configuration.ProgramDatabaseExtension">
+            <summary>
+            Gets the file extension for program debug databases.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.IsFastBuild">
+            <summary>
+            Gets or sets whether FASTBuild will be used to build the project.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.FastBuildBlobbed">
+            <summary>
+            Gets or sets whether FASTBuild blobs (unities) will be used in the build.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.FastBuildDistribution">
+            <summary>
+            Gets or sets whether FASTBuild tasks will be distributed on the network.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.FastBuildCacheAllowed">
+            <summary>
+            Gets or sets whether FASTBuild will use cached results to accelerate the build.
+            </summary>
+            <remarks>
+            If caching is allowed, FASTBuild will use the value specified in
+            <see cref="F:Sharpmake.FastBuildSettings.CacheType"/>.
+            </remarks>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.FastBuildBlobbingStrategy">
+            <summary>
+            Gets or sets the strategy to use to select files that are blobbed.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.FastBuildNoBlobStrategy">
+            <summary>
+            Gets or sets the strategy to use to select files that are not blobbed.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.FastBuildDeoptimization">
+            <summary>
+            Gets or sets the generic criteria by which files are deoptimized (compiled individually)
+            by FASTBuild.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.FastBuildCustomArgs">
+            <summary>
+            Gets or sets custom command line arguments to pass to FASTBuild when building the
+            project with this configuration.
+            </summary>
+        </member>
+        <member name="P:Sharpmake.Project.Configuration.ResolvedTargetCopyFiles">
+            <summary>
+            Gets the list of resolved files to copy.
+            </summary>
+        </member>
+        <member name="P:Sharpmake.Project.Configuration.ResolvedTargetDependsFiles">
+            <summary>
+            Gets the list of resolved dependency files.
+            </summary>
+        </member>
+        <member name="P:Sharpmake.Project.Configuration.ResolvedEventPreBuildExe">
+            <summary>
+            Gets the list of resolved pre-build executables.
+            </summary>
+        </member>
+        <member name="P:Sharpmake.Project.Configuration.ResolvedEventPostBuildExe">
+            <summary>
+            Gets the list of resolved post-build executables.
+            </summary>
+        </member>
+        <member name="P:Sharpmake.Project.Configuration.ProjectGuid">
+            <summary>
+            Gets or sets the GUID of the Visual Studio project.
+            </summary>
+            <remarks>
+            This is only relevant to Visual Studio generators.
+            <para>
+            This property coerces any value set to it to use an uppercase
+            `00000000-0000-0000-0000-000000000000` format for the GUID.
+            </para>
+            </remarks>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.ProjectFullFileNameWithExtension">
+            <summary>
+            Gets or sets the full file name of the project.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Project.Configuration.PreferRelativePaths">
+            <summary>
+            Generate relative paths in places where it would be otherwise beneficial to use absolute paths.
+            </summary>
+        </member>
+        <member name="M:Sharpmake.Project.Configuration.GetDependencySetting(System.Type)">
+            <summary>
+            Gets the dependency settings configuration for the given project type of this configuration.
+            </summary>
+            <param name="projectType"> The project type.</param>
+            <returns>The specified project's dependency settings with related flags activated.
+            </returns>
+        </member>
+        <member name="M:Sharpmake.Project.XResourcesImgContainer.Add(System.String,System.String)">
+            <summary>
+            Adds a new XResourcesImg path, with an optional link
+            </summary>
+            <param name="path">The path</param>
+            <param name="link">An optional link</param>
+        </member>
+        <member name="F:Sharpmake.Project.ContainsASM">
+            maps relative source directory to a custom filter path for vcxproj.filter files
+        </member>
+        <member name="P:Sharpmake.Project.BlobFixCasing">
+            <summary>
+            This property controls the casing of includes within the generated blob files.
+            If true, the case will be fixed. Default is false.
+            </summary>
+        </member>
+        <member name="M:Sharpmake.Project.#ctor(System.Type,System.Type,System.Boolean)">
+            <summary>
+            Special constructor for utility projects generated internally,
+            since these projects must handle paths differently
+            </summary>
+            <param name="targetType"></param>
+            <param name="configurationType"></param>
+            <param name="isInternal">Indicates if the class is defined within Sharpmake</param>
+        </member>
+        <member name="M:Sharpmake.Project.PreConfigure">
+            <summary>
+            Called before configuration
+            </summary>
+        </member>
+        <member name="M:Sharpmake.Project.IsValidConfigurationOutputType(Sharpmake.Project.Configuration.OutputType)">
+            <summary>
+            Validate that a configuration output type is supported by the current project type.
+            </summary>
+            <param name="outputType">The configuration output type to validate.</param>
+            <returns>Returns true if the current project type supports the specified output type, otherwise false.</returns>
+        </member>
+        <member name="F:Sharpmake.CSharpProject.ExplicitNugetRestoreProjectStyle">
+            <summary>
+            If set to true. Will explicit the RestoreProjectStyle in the project file
+            </summary>
+        </member>
+        <member name="T:Sharpmake.AndroidPackageProject">
+            <summary>
+            A package project for deployment on Android device.
+            </summary>
+        </member>
+        <member name="P:Sharpmake.AndroidPackageProject.AppLibType">
+            <summary>
+            The project type to lookup in the dependencies of the package to be used as the application library.
+            This library is the first to be loaded when the package is started.
+            </summary>
+            <remarks>
+            It is an error if the specified type can't be found in the configuration dependencies.
+            </remarks>
+        </member>
+        <!-- Badly formed XML comment ignored for member "T:Sharpmake.ReferenceAlias`1" -->
+        <member name="T:Sharpmake.ReferenceAliasAttribute">
+            <summary>
+            Enum value on attribute used to define reference alias
+            </summary>
+        </member>
+        <!-- Badly formed XML comment ignored for member "T:Sharpmake.ReferenceAliasInitAttribute" -->
+        <!-- Badly formed XML comment ignored for member "T:Sharpmake.ReferenceAliasInitMethodAttribute" -->
+        <!-- Badly formed XML comment ignored for member "T:Sharpmake.ReferenceAliasManager`1" -->
+        <member name="M:Sharpmake.ReferenceAliasManager`1.AddReference(`0,Sharpmake.Project.Configuration,Sharpmake.ITarget,Sharpmake.Project)">
+            <summary>
+            Main AddReference method called by extensions. 
+            This one is using aliasValue and call the proper add reference for sharpmake projet
+            </summary>
+            <param name="aliasValue"></param>
+            <param name="conf"></param>
+            <param name="target"></param>
+            <param name="project"></param>
+        </member>
+        <member name="T:Sharpmake.ReferenceAliasForwardManager`2">
+            <summary>
+            Helper ReferenceAliasManager that allow to forward AddReference from one enum type to another, based on enum value name matching
+            This is used to match a publicly exposed enum to a private enum definition for example.
+            </summary>
+            <typeparam name="T">Source enum type</typeparam>
+            <typeparam name="TDest">Destination enum type</typeparam>
+        </member>
+        <member name="T:Sharpmake.ReferenceAliasExtensions">
+            <summary>
+            Those extensions will let you use AddReference on conf object in your Configure
+            ex : 
+                conf.AddReferences(MyEnum.Lib1, MyEnum.Lib2);
+                conf.AddReference(MyEnum.Lib3, target, project);
+            </summary>
+        </member>
+        <!-- Badly formed XML comment ignored for member "T:Sharpmake.Resolver" -->
+        <member name="T:Sharpmake.SharpmakeExtensionAttribute">
+            <summary>
+            Marks a .NET assembly as a host of Sharpmake extension types (platform implementations for Sharpmake generators, builder...).
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Solution.Configuration.s_count">
+            <summary>
+            Gets the number of <see cref="T:Sharpmake.Solution.Configuration"/> instances created so far during
+            Sharpmake's execution.
+            </summary>
+        </member>
+        <member name="M:Sharpmake.Solution.Configuration.#ctor">
+            <summary>
+            Creates a new <see cref="T:Sharpmake.Solution.Configuration"/> instance.
+            </summary>
+        </member>
+        <member name="P:Sharpmake.Solution.Configuration.Solution">
+            <summary>
+            Gets the <see cref="P:Sharpmake.Solution.Configuration.Solution"/> instance that owns this configuration.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Solution.Configuration.Name">
+            <summary>
+            Name of this solution configuration.
+            </summary>
+            <remarks>
+            This name will be displayed in Visual Studio's configuration drop down list. (Or
+            other development tools that support multiple configuration per workspace.)
+            </remarks>
+        </member>
+        <member name="F:Sharpmake.Solution.Configuration.SolutionFileName">
+            <summary>
+            File name (without extension) of the solution that this
+            configuration must be written into.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Solution.Configuration.SolutionPath">
+            <summary>
+            Directory of the solution that this configuration must be written into.
+            </summary>
+        </member>
+        <member name="P:Sharpmake.Solution.Configuration.SolutionFilePath">
+            <summary>
+            Gets the file name (without extension) of the solution that this configuration must
+            be written info.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Solution.Configuration.MasterBffFileName">
+            <summary>
+            File name (without extension) of the master BFF for this solution configuration.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Solution.Configuration.MasterBffDirectory">
+            <summary>
+            Directory of the master BFF for this solution configuration.
+            </summary>
+        </member>
+        <member name="P:Sharpmake.Solution.Configuration.MasterBffFilePath">
+            <summary>
+            Gets the file path (without extension) of the master BFF for this solution
+            configuration.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Solution.Configuration.IncludedProjectInfo.SolutionFolder">
+            <summary>
+            The solution folder to use for the project in this solution. It overrides <see cref="F:Sharpmake.Project.Configuration.SolutionFolder"/>
+            </summary>
+        </member>
+        <member name="P:Sharpmake.Solution.Configuration.ProjectReferencesByPath">
+            <summary>
+            Holds the path references to projects that should be added in the solution
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Solution.GenerateFastBuildAllOnlyForConfThatNeedIt">
+            <summary>
+            In case we've generated a "FastBuildAll" project, this flag will determine if we generate it for all
+            the configurations, or only the ones that need it
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Solution.ExtraItems">
+            <summary>
+            For adding additional files/folders to the solution
+            Keys are names of the directories in the virtual solution hierarchy, values are paths
+            </summary>
+        </member>
+        <member name="T:Sharpmake.ISourceParser">
+            <summary>
+            ISourceParser classes are tasked with parsing lines in a file.
+            They can add Sharpmake references through the AssemblerContext.
+            </summary>
+        </member>
+        <member name="M:Sharpmake.ISourceParser.ParseLine(System.String,System.IO.FileInfo,System.Int32,Sharpmake.IAssemblerContext)">
+            <summary>
+            Parse the current line of the file and update the context if necessary. Parsers MUST NOT assume that the lines will be parsed sequentially.
+            </summary>
+        </member>
+        <member name="T:Sharpmake.ISourceAttributeParser">
+            <summary>
+            A parser that parses C# Attributes, eg [Sharpmake.Include(...)]
+            </summary>
+        </member>
+        <member name="T:Sharpmake.OrderableStrings">
+            <summary>
+            Same as Strings but support to specify additionally an order number for every entry.
+            Every entry has by default the value 0.  Putting negative values will result in the entries
+            to be first after a sort, putting positive will result in the entries to be last after a
+            sort.  Order numbers are kept when copying container to another OrderableStrings.
+            It is forbidden to specify 2 different non-zero order numbers for the exact same string
+            in 2 merged together OrderableStrings.
+            </summary>
+        </member>
+        <member name="M:Sharpmake.OrderableStrings.IntersectWith(System.Collections.Generic.IEnumerable{System.String},Sharpmake.Strings)">
+            <param name="collection">The collection to intersect with</param>
+            <param name="rest">Contains elements in both containers that are did not intersect</param>
+        </member>
+        <member name="T:Sharpmake.DevEnv">
+            <summary>
+            The development environments supported by Sharpmake generators.
+            </summary>
+            <remarks>
+            This fragment is mandatory in every target.
+            </remarks>
+        </member>
+        <member name="F:Sharpmake.DevEnv.vs2010">
+            <summary>
+            Visual Studio 2010.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.DevEnv.vs2012">
+            <summary>
+            Visual Studio 2012
+            </summary>
+        </member>
+        <member name="F:Sharpmake.DevEnv.vs2013">
+            <summary>
+            Visual Studio 2013
+            </summary>
+        </member>
+        <member name="F:Sharpmake.DevEnv.vs2015">
+            <summary>
+            Visual Studio 2015
+            </summary>
+        </member>
+        <member name="F:Sharpmake.DevEnv.vs2017">
+            <summary>
+            Visual Studio 2017
+            </summary>
+        </member>
+        <member name="F:Sharpmake.DevEnv.vs2019">
+            <summary>
+            Visual Studio 2019
+            </summary>
+        </member>
+        <member name="F:Sharpmake.DevEnv.xcode4ios">
+            <summary>
+            iOS project with Xcode.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.DevEnv.eclipse">
+            <summary>
+            Eclipse.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.DevEnv.make">
+            <summary>
+            GNU Makefiles.
+            </summary>
+        </member>
+        <member name="F:Sharpmake.DevEnv.VisualStudio">
+            <summary>
+            All supported Visual Studio versions.
+            </summary>
+        </member>
+        <member name="M:Sharpmake.Targets.SetGlobalFragmentMask(System.Object[])">
+            <summary>
+            The global fragment mask will add the mask or and it with previously existing masks
+            </summary>
+            <param name="masks"></param>
+        </member>
+        <member name="T:Sharpmake.UniqueList`1">
+            <summary>
+            Same as Strings with configurable type
+            </summary>
+            <typeparam name="T"></typeparam>
+        </member>
+        <member name="M:Sharpmake.UniqueList`1.IntersectWith(Sharpmake.UniqueList{`0},Sharpmake.UniqueList{`0})">
+            <param name="otherList">the other container to intersect with</param>
+            <param name="rest">Contains elements in both containers that are did not intersect</param>
+        </member>
+        <member name="T:Sharpmake.VariableAssignment">
+            <summary>
+            Simple class that wraps a variable name and it's assigned value.
+            </summary>
+        </member>
+        <member name="P:Sharpmake.VariableAssignment.Identifier">
+            <summary>
+            Gets the name of the variable or parameter to assign the value to.
+            </summary>
+        </member>
+        <member name="P:Sharpmake.VariableAssignment.Value">
+            <summary>
+            Gets the value to assign.
+            </summary>
+        </member>
+        <member name="M:Sharpmake.VariableAssignment.#ctor(System.String,System.Object)">
+            <summary>
+            Creates a new <see cref="T:Sharpmake.VariableAssignment"/> instance.
+            </summary>
+            <param name="identifier">The name of the variable or parameter to assign.</param>
+            <param name="value">The value to assign to <paramref name="identifier"/>.</param>
+            <exception cref="T:System.ArgumentNullException"><paramref name="identifier"/> is `null`.</exception>
+        </member>
+        <member name="T:JetBrains.Annotations.CanBeNullAttribute">
+            <summary>
+            Indicates that the value of the marked element could be <c>null</c> sometimes,
+            so the check for <c>null</c> is necessary before its usage.
+            </summary>
+            <example><code>
+            [CanBeNull] object Test() => null;
+            
+            void UseTest() {
+              var p = Test();
+              var s = p.ToString(); // Warning: Possible 'System.NullReferenceException'
+            }
+            </code></example>
+        </member>
+        <member name="T:JetBrains.Annotations.NotNullAttribute">
+            <summary>
+            Indicates that the value of the marked element could never be <c>null</c>.
+            </summary>
+            <example><code>
+            [NotNull] object Foo() {
+              return null; // Warning: Possible 'null' assignment
+            }
+            </code></example>
+        </member>
+        <member name="T:JetBrains.Annotations.ItemNotNullAttribute">
+            <summary>
+            Can be appplied to symbols of types derived from IEnumerable as well as to symbols of Task
+            and Lazy classes to indicate that the value of a collection item, of the Task.Result property
+            or of the Lazy.Value property can never be null.
+            </summary>
+        </member>
+        <member name="T:JetBrains.Annotations.ItemCanBeNullAttribute">
+            <summary>
+            Can be appplied to symbols of types derived from IEnumerable as well as to symbols of Task
+            and Lazy classes to indicate that the value of a collection item, of the Task.Result property
+            or of the Lazy.Value property can be null.
+            </summary>
+        </member>
+        <member name="T:JetBrains.Annotations.StringFormatMethodAttribute">
+            <summary>
+            Indicates that the marked method builds string by format pattern and (optional) arguments.
+            Parameter, which contains format string, should be given in constructor. The format string
+            should be in <see cref="M:System.String.Format(System.IFormatProvider,System.String,System.Object[])"/>-like form.
+            </summary>
+            <example><code>
+            [StringFormatMethod("message")]
+            void ShowError(string message, params object[] args) { /* do something */ }
+            
+            void Foo() {
+              ShowError("Failed: {0}"); // Warning: Non-existing argument in format string
+            }
+            </code></example>
+        </member>
+        <member name="M:JetBrains.Annotations.StringFormatMethodAttribute.#ctor(System.String)">
+            <param name="formatParameterName">
+            Specifies which parameter of an annotated method should be treated as format-string
+            </param>
+        </member>
+        <member name="T:JetBrains.Annotations.ValueProviderAttribute">
+            <summary>
+            For a parameter that is expected to be one of the limited set of values.
+            Specify fields of which type should be used as values for this parameter.
+            </summary>
+        </member>
+        <member name="T:JetBrains.Annotations.InvokerParameterNameAttribute">
+            <summary>
+            Indicates that the function argument should be string literal and match one
+            of the parameters of the caller function. For example, ReSharper annotates
+            the parameter of <see cref="T:System.ArgumentNullException"/>.
+            </summary>
+            <example><code>
+            void Foo(string param) {
+              if (param == null)
+                throw new ArgumentNullException("par"); // Warning: Cannot resolve symbol
+            }
+            </code></example>
+        </member>
+        <member name="T:JetBrains.Annotations.NotifyPropertyChangedInvocatorAttribute">
+             <summary>
+             Indicates that the method is contained in a type that implements
+             <c>System.ComponentModel.INotifyPropertyChanged</c> interface and this method
+             is used to notify that some property value changed.
+             </summary>
+             <remarks>
+             The method should be non-static and conform to one of the supported signatures:
+             <list>
+             <item><c>NotifyChanged(string)</c></item>
+             <item><c>NotifyChanged(params string[])</c></item>
+             <item><c>NotifyChanged{T}(Expression{Func{T}})</c></item>
+             <item><c>NotifyChanged{T,U}(Expression{Func{T,U}})</c></item>
+             <item><c>SetProperty{T}(ref T, T, string)</c></item>
+             </list>
+             </remarks>
+             <example><code>
+             public class Foo : INotifyPropertyChanged {
+               public event PropertyChangedEventHandler PropertyChanged;
+             
+               [NotifyPropertyChangedInvocator]
+               protected virtual void NotifyChanged(string propertyName) { ... }
+            
+               string _name;
+             
+               public string Name {
+                 get { return _name; }
+                 set { _name = value; NotifyChanged("LastName"); /* Warning */ }
+               }
+             }
+             </code>
+             Examples of generated notifications:
+             <list>
+             <item><c>NotifyChanged("Property")</c></item>
+             <item><c>NotifyChanged(() =&gt; Property)</c></item>
+             <item><c>NotifyChanged((VM x) =&gt; x.Property)</c></item>
+             <item><c>SetProperty(ref myField, value, "Property")</c></item>
+             </list>
+             </example>
+        </member>
+        <member name="T:JetBrains.Annotations.ContractAnnotationAttribute">
+            <summary>
+            Describes dependency between method input and output.
+            </summary>
+            <syntax>
+            <p>Function Definition Table syntax:</p>
+            <list>
+            <item>FDT      ::= FDTRow [;FDTRow]*</item>
+            <item>FDTRow   ::= Input =&gt; Output | Output &lt;= Input</item>
+            <item>Input    ::= ParameterName: Value [, Input]*</item>
+            <item>Output   ::= [ParameterName: Value]* {halt|stop|void|nothing|Value}</item>
+            <item>Value    ::= true | false | null | notnull | canbenull</item>
+            </list>
+            If method has single input parameter, it's name could be omitted.<br/>
+            Using <c>halt</c> (or <c>void</c>/<c>nothing</c>, which is the same) for method output
+            means that the methos doesn't return normally (throws or terminates the process).<br/>
+            Value <c>canbenull</c> is only applicable for output parameters.<br/>
+            You can use multiple <c>[ContractAnnotation]</c> for each FDT row, or use single attribute
+            with rows separated by semicolon. There is no notion of order rows, all rows are checked
+            for applicability and applied per each program state tracked by R# analysis.<br/>
+            </syntax>
+            <examples><list>
+            <item><code>
+            [ContractAnnotation("=&gt; halt")]
+            public void TerminationMethod()
+            </code></item>
+            <item><code>
+            [ContractAnnotation("halt &lt;= condition: false")]
+            public void Assert(bool condition, string text) // regular assertion method
+            </code></item>
+            <item><code>
+            [ContractAnnotation("s:null =&gt; true")]
+            public bool IsNullOrEmpty(string s) // string.IsNullOrEmpty()
+            </code></item>
+            <item><code>
+            // A method that returns null if the parameter is null,
+            // and not null if the parameter is not null
+            [ContractAnnotation("null =&gt; null; notnull =&gt; notnull")]
+            public object Transform(object data) 
+            </code></item>
+            <item><code>
+            [ContractAnnotation("=&gt; true, result: notnull; =&gt; false, result: null")]
+            public bool TryParse(string s, out Person result)
+            </code></item>
+            </list></examples>
+        </member>
+        <member name="T:JetBrains.Annotations.LocalizationRequiredAttribute">
+            <summary>
+            Indicates that marked element should be localized or not.
+            </summary>
+            <example><code>
+            [LocalizationRequiredAttribute(true)]
+            class Foo {
+              string str = "my string"; // Warning: Localizable string
+            }
+            </code></example>
+        </member>
+        <member name="T:JetBrains.Annotations.CannotApplyEqualityOperatorAttribute">
+            <summary>
+            Indicates that the value of the marked type (or its derivatives)
+            cannot be compared using '==' or '!=' operators and <c>Equals()</c>
+            should be used instead. However, using '==' or '!=' for comparison
+            with <c>null</c> is always permitted.
+            </summary>
+            <example><code>
+            [CannotApplyEqualityOperator]
+            class NoEquality { }
+            
+            class UsesNoEquality {
+              void Test() {
+                var ca1 = new NoEquality();
+                var ca2 = new NoEquality();
+                if (ca1 != null) { // OK
+                  bool condition = ca1 == ca2; // Warning
+                }
+              }
+            }
+            </code></example>
+        </member>
+        <member name="T:JetBrains.Annotations.BaseTypeRequiredAttribute">
+            <summary>
+            When applied to a target attribute, specifies a requirement for any type marked
+            with the target attribute to implement or inherit specific type or types.
+            </summary>
+            <example><code>
+            [BaseTypeRequired(typeof(IComponent)] // Specify requirement
+            class ComponentAttribute : Attribute { }
+            
+            [Component] // ComponentAttribute requires implementing IComponent interface
+            class MyComponent : IComponent { }
+            </code></example>
+        </member>
+        <member name="T:JetBrains.Annotations.UsedImplicitlyAttribute">
+            <summary>
+            Indicates that the marked symbol is used implicitly (e.g. via reflection, in external library),
+            so this symbol will not be marked as unused (as well as by other usage inspections).
+            </summary>
+        </member>
+        <member name="T:JetBrains.Annotations.MeansImplicitUseAttribute">
+            <summary>
+            Should be used on attributes and causes ReSharper to not mark symbols marked with such attributes
+            as unused (as well as by other usage inspections)
+            </summary>
+        </member>
+        <member name="F:JetBrains.Annotations.ImplicitUseKindFlags.Access">
+            <summary>Only entity marked with attribute considered used.</summary>
+        </member>
+        <member name="F:JetBrains.Annotations.ImplicitUseKindFlags.Assign">
+            <summary>Indicates implicit assignment to a member.</summary>
+        </member>
+        <member name="F:JetBrains.Annotations.ImplicitUseKindFlags.InstantiatedWithFixedConstructorSignature">
+            <summary>
+            Indicates implicit instantiation of a type with fixed constructor signature.
+            That means any unused constructor parameters won't be reported as such.
+            </summary>
+        </member>
+        <member name="F:JetBrains.Annotations.ImplicitUseKindFlags.InstantiatedNoFixedConstructorSignature">
+            <summary>Indicates implicit instantiation of a type.</summary>
+        </member>
+        <member name="T:JetBrains.Annotations.ImplicitUseTargetFlags">
+            <summary>
+            Specify what is considered used implicitly when marked
+            with <see cref="T:JetBrains.Annotations.MeansImplicitUseAttribute"/> or <see cref="T:JetBrains.Annotations.UsedImplicitlyAttribute"/>.
+            </summary>
+        </member>
+        <member name="F:JetBrains.Annotations.ImplicitUseTargetFlags.Members">
+            <summary>Members of entity marked with attribute are considered used.</summary>
+        </member>
+        <member name="F:JetBrains.Annotations.ImplicitUseTargetFlags.WithMembers">
+            <summary>Entity marked with attribute and all its members considered used.</summary>
+        </member>
+        <member name="T:JetBrains.Annotations.PublicAPIAttribute">
+            <summary>
+            This attribute is intended to mark publicly available API
+            which should not be removed and so is treated as used.
+            </summary>
+        </member>
+        <member name="T:JetBrains.Annotations.InstantHandleAttribute">
+            <summary>
+            Tells code analysis engine if the parameter is completely handled when the invoked method is on stack.
+            If the parameter is a delegate, indicates that delegate is executed while the method is executed.
+            If the parameter is an enumerable, indicates that it is enumerated while the method is executed.
+            </summary>
+        </member>
+        <member name="T:JetBrains.Annotations.PureAttribute">
+            <summary>
+            Indicates that a method does not make any observable state changes.
+            The same as <c>System.Diagnostics.Contracts.PureAttribute</c>.
+            </summary>
+            <example><code>
+            [Pure] int Multiply(int x, int y) => x * y;
+            
+            void M() {
+              Multiply(123, 42); // Waring: Return value of pure method is not used
+            }
+            </code></example>
+        </member>
+        <member name="T:JetBrains.Annotations.MustUseReturnValueAttribute">
+            <summary>
+            Indicates that the return value of method invocation must be used.
+            </summary>
+        </member>
+        <member name="T:JetBrains.Annotations.ProvidesContextAttribute">
+            <summary>
+            Indicates the type member or parameter of some type, that should be used instead of all other ways
+            to get the value that type. This annotation is useful when you have some "context" value evaluated
+            and stored somewhere, meaning that all other ways to get this value must be consolidated with existing one.
+            </summary>
+            <example><code>
+            class Foo {
+              [ProvidesContext] IBarService _barService = ...;
+            
+              void ProcessNode(INode node) {
+                DoSomething(node, node.GetGlobalServices().Bar);
+                //              ^ Warning: use value of '_barService' field
+              }
+            }
+            </code></example>
+        </member>
+        <member name="T:JetBrains.Annotations.PathReferenceAttribute">
+            <summary>
+            Indicates that a parameter is a path to a file or a folder within a web project.
+            Path can be relative or absolute, starting from web root (~).
+            </summary>
+        </member>
+        <member name="T:JetBrains.Annotations.SourceTemplateAttribute">
+            <summary>
+            An extension method marked with this attribute is processed by ReSharper code completion
+            as a 'Source Template'. When extension method is completed over some expression, it's source code
+            is automatically expanded like a template at call site.
+            </summary>
+            <remarks>
+            Template method body can contain valid source code and/or special comments starting with '$'.
+            Text inside these comments is added as source code when the template is applied. Template parameters
+            can be used either as additional method parameters or as identifiers wrapped in two '$' signs.
+            Use the <see cref="T:JetBrains.Annotations.MacroAttribute"/> attribute to specify macros for parameters.
+            </remarks>
+            <example>
+            In this example, the 'forEach' method is a source template available over all values
+            of enumerable types, producing ordinary C# 'foreach' statement and placing caret inside block:
+            <code>
+            [SourceTemplate]
+            public static void forEach&lt;T&gt;(this IEnumerable&lt;T&gt; xs) {
+              foreach (var x in xs) {
+                 //$ $END$
+              }
+            }
+            </code>
+            </example>
+        </member>
+        <member name="T:JetBrains.Annotations.MacroAttribute">
+            <summary>
+            Allows specifying a macro for a parameter of a <see cref="T:JetBrains.Annotations.SourceTemplateAttribute">source template</see>.
+            </summary>
+            <remarks>
+            You can apply the attribute on the whole method or on any of its additional parameters. The macro expression
+            is defined in the <see cref="P:JetBrains.Annotations.MacroAttribute.Expression"/> property. When applied on a method, the target
+            template parameter is defined in the <see cref="P:JetBrains.Annotations.MacroAttribute.Target"/> property. To apply the macro silently
+            for the parameter, set the <see cref="P:JetBrains.Annotations.MacroAttribute.Editable"/> property value = -1.
+            </remarks>
+            <example>
+            Applying the attribute on a source template method:
+            <code>
+            [SourceTemplate, Macro(Target = "item", Expression = "suggestVariableName()")]
+            public static void forEach&lt;T&gt;(this IEnumerable&lt;T&gt; collection) {
+              foreach (var item in collection) {
+                //$ $END$
+              }
+            }
+            </code>
+            Applying the attribute on a template method parameter:
+            <code>
+            [SourceTemplate]
+            public static void something(this Entity x, [Macro(Expression = "guid()", Editable = -1)] string newguid) {
+              /*$ var $x$Id = "$newguid$" + x.ToString();
+              x.DoSomething($x$Id); */
+            }
+            </code>
+            </example>
+        </member>
+        <member name="P:JetBrains.Annotations.MacroAttribute.Expression">
+            <summary>
+            Allows specifying a macro that will be executed for a <see cref="T:JetBrains.Annotations.SourceTemplateAttribute">source template</see>
+            parameter when the template is expanded.
+            </summary>
+        </member>
+        <member name="P:JetBrains.Annotations.MacroAttribute.Editable">
+            <summary>
+            Allows specifying which occurrence of the target parameter becomes editable when the template is deployed.
+            </summary>
+            <remarks>
+            If the target parameter is used several times in the template, only one occurrence becomes editable;
+            other occurrences are changed synchronously. To specify the zero-based index of the editable occurrence,
+            use values >= 0. To make the parameter non-editable when the template is expanded, use -1.
+            </remarks>>
+        </member>
+        <member name="P:JetBrains.Annotations.MacroAttribute.Target">
+            <summary>
+            Identifies the target parameter of a <see cref="T:JetBrains.Annotations.SourceTemplateAttribute">source template</see> if the
+            <see cref="T:JetBrains.Annotations.MacroAttribute"/> is applied on a template method.
+            </summary>
+        </member>
+        <member name="T:JetBrains.Annotations.AspMvcActionAttribute">
+            <summary>
+            ASP.NET MVC attribute. If applied to a parameter, indicates that the parameter
+            is an MVC action. If applied to a method, the MVC action name is calculated
+            implicitly from the context. Use this attribute for custom wrappers similar to
+            <c>System.Web.Mvc.Html.ChildActionExtensions.RenderAction(HtmlHelper, String)</c>.
+            </summary>
+        </member>
+        <member name="T:JetBrains.Annotations.AspMvcAreaAttribute">
+            <summary>
+            ASP.NET MVC attribute. Indicates that a parameter is an MVC area.
+            Use this attribute for custom wrappers similar to
+            <c>System.Web.Mvc.Html.ChildActionExtensions.RenderAction(HtmlHelper, String)</c>.
+            </summary>
+        </member>
+        <member name="T:JetBrains.Annotations.AspMvcControllerAttribute">
+            <summary>
+            ASP.NET MVC attribute. If applied to a parameter, indicates that the parameter is
+            an MVC controller. If applied to a method, the MVC controller name is calculated
+            implicitly from the context. Use this attribute for custom wrappers similar to
+            <c>System.Web.Mvc.Html.ChildActionExtensions.RenderAction(HtmlHelper, String, String)</c>.
+            </summary>
+        </member>
+        <member name="T:JetBrains.Annotations.AspMvcMasterAttribute">
+            <summary>
+            ASP.NET MVC attribute. Indicates that a parameter is an MVC Master. Use this attribute
+            for custom wrappers similar to <c>System.Web.Mvc.Controller.View(String, String)</c>.
+            </summary>
+        </member>
+        <member name="T:JetBrains.Annotations.AspMvcModelTypeAttribute">
+            <summary>
+            ASP.NET MVC attribute. Indicates that a parameter is an MVC model type. Use this attribute
+            for custom wrappers similar to <c>System.Web.Mvc.Controller.View(String, Object)</c>.
+            </summary>
+        </member>
+        <member name="T:JetBrains.Annotations.AspMvcPartialViewAttribute">
+            <summary>
+            ASP.NET MVC attribute. If applied to a parameter, indicates that the parameter is an MVC
+            partial view. If applied to a method, the MVC partial view name is calculated implicitly
+            from the context. Use this attribute for custom wrappers similar to
+            <c>System.Web.Mvc.Html.RenderPartialExtensions.RenderPartial(HtmlHelper, String)</c>.
+            </summary>
+        </member>
+        <member name="T:JetBrains.Annotations.AspMvcSuppressViewErrorAttribute">
+            <summary>
+            ASP.NET MVC attribute. Allows disabling inspections for MVC views within a class or a method.
+            </summary>
+        </member>
+        <member name="T:JetBrains.Annotations.AspMvcDisplayTemplateAttribute">
+            <summary>
+            ASP.NET MVC attribute. Indicates that a parameter is an MVC display template.
+            Use this attribute for custom wrappers similar to 
+            <c>System.Web.Mvc.Html.DisplayExtensions.DisplayForModel(HtmlHelper, String)</c>.
+            </summary>
+        </member>
+        <member name="T:JetBrains.Annotations.AspMvcEditorTemplateAttribute">
+            <summary>
+            ASP.NET MVC attribute. Indicates that a parameter is an MVC editor template.
+            Use this attribute for custom wrappers similar to
+            <c>System.Web.Mvc.Html.EditorExtensions.EditorForModel(HtmlHelper, String)</c>.
+            </summary>
+        </member>
+        <member name="T:JetBrains.Annotations.AspMvcTemplateAttribute">
+            <summary>
+            ASP.NET MVC attribute. Indicates that a parameter is an MVC template.
+            Use this attribute for custom wrappers similar to
+            <c>System.ComponentModel.DataAnnotations.UIHintAttribute(System.String)</c>.
+            </summary>
+        </member>
+        <member name="T:JetBrains.Annotations.AspMvcViewAttribute">
+            <summary>
+            ASP.NET MVC attribute. If applied to a parameter, indicates that the parameter
+            is an MVC view component. If applied to a method, the MVC view name is calculated implicitly
+            from the context. Use this attribute for custom wrappers similar to
+            <c>System.Web.Mvc.Controller.View(Object)</c>.
+            </summary>
+        </member>
+        <member name="T:JetBrains.Annotations.AspMvcViewComponentAttribute">
+            <summary>
+            ASP.NET MVC attribute. If applied to a parameter, indicates that the parameter
+            is an MVC view component name.
+            </summary>
+        </member>
+        <member name="T:JetBrains.Annotations.AspMvcViewComponentViewAttribute">
+            <summary>
+            ASP.NET MVC attribute. If applied to a parameter, indicates that the parameter
+            is an MVC view component view. If applied to a method, the MVC view component view name is default.
+            </summary>
+        </member>
+        <member name="T:JetBrains.Annotations.AspMvcActionSelectorAttribute">
+            <summary>
+            ASP.NET MVC attribute. When applied to a parameter of an attribute,
+            indicates that this parameter is an MVC action name.
+            </summary>
+            <example><code>
+            [ActionName("Foo")]
+            public ActionResult Login(string returnUrl) {
+              ViewBag.ReturnUrl = Url.Action("Foo"); // OK
+              return RedirectToAction("Bar"); // Error: Cannot resolve action
+            }
+            </code></example>
+        </member>
+        <member name="T:JetBrains.Annotations.RazorSectionAttribute">
+            <summary>
+            Razor attribute. Indicates that a parameter or a method is a Razor section.
+            Use this attribute for custom wrappers similar to 
+            <c>System.Web.WebPages.WebPageBase.RenderSection(String)</c>.
+            </summary>
+        </member>
+        <member name="T:JetBrains.Annotations.CollectionAccessAttribute">
+            <summary>
+            Indicates how method, constructor invocation or property access
+            over collection type affects content of the collection.
+            </summary>
+        </member>
+        <member name="F:JetBrains.Annotations.CollectionAccessType.None">
+            <summary>Method does not use or modify content of the collection.</summary>
+        </member>
+        <member name="F:JetBrains.Annotations.CollectionAccessType.Read">
+            <summary>Method only reads content of the collection but does not modify it.</summary>
+        </member>
+        <member name="F:JetBrains.Annotations.CollectionAccessType.ModifyExistingContent">
+            <summary>Method can change content of the collection but does not add new elements.</summary>
+        </member>
+        <member name="F:JetBrains.Annotations.CollectionAccessType.UpdatedContent">
+            <summary>Method can add new elements to the collection.</summary>
+        </member>
+        <member name="T:JetBrains.Annotations.AssertionMethodAttribute">
+            <summary>
+            Indicates that the marked method is assertion method, i.e. it halts control flow if
+            one of the conditions is satisfied. To set the condition, mark one of the parameters with 
+            <see cref="T:JetBrains.Annotations.AssertionConditionAttribute"/> attribute.
+            </summary>
+        </member>
+        <member name="T:JetBrains.Annotations.AssertionConditionAttribute">
+            <summary>
+            Indicates the condition parameter of the assertion method. The method itself should be
+            marked by <see cref="T:JetBrains.Annotations.AssertionMethodAttribute"/> attribute. The mandatory argument of
+            the attribute is the assertion type.
+            </summary>
+        </member>
+        <member name="T:JetBrains.Annotations.AssertionConditionType">
+            <summary>
+            Specifies assertion type. If the assertion method argument satisfies the condition,
+            then the execution continues. Otherwise, execution is assumed to be halted.
+            </summary>
+        </member>
+        <member name="F:JetBrains.Annotations.AssertionConditionType.IS_TRUE">
+            <summary>Marked parameter should be evaluated to true.</summary>
+        </member>
+        <member name="F:JetBrains.Annotations.AssertionConditionType.IS_FALSE">
+            <summary>Marked parameter should be evaluated to false.</summary>
+        </member>
+        <member name="F:JetBrains.Annotations.AssertionConditionType.IS_NULL">
+            <summary>Marked parameter should be evaluated to null value.</summary>
+        </member>
+        <member name="F:JetBrains.Annotations.AssertionConditionType.IS_NOT_NULL">
+            <summary>Marked parameter should be evaluated to not null value.</summary>
+        </member>
+        <member name="T:JetBrains.Annotations.TerminatesProgramAttribute">
+            <summary>
+            Indicates that the marked method unconditionally terminates control flow execution.
+            For example, it could unconditionally throw exception.
+            </summary>
+        </member>
+        <member name="T:JetBrains.Annotations.LinqTunnelAttribute">
+            <summary>
+            Indicates that method is pure LINQ method, with postponed enumeration (like Enumerable.Select,
+            .Where). This annotation allows inference of [InstantHandle] annotation for parameters
+            of delegate type by analyzing LINQ method chains.
+            </summary>
+        </member>
+        <member name="T:JetBrains.Annotations.NoEnumerationAttribute">
+            <summary>
+            Indicates that IEnumerable, passed as parameter, is not enumerated.
+            </summary>
+        </member>
+        <member name="T:JetBrains.Annotations.RegexPatternAttribute">
+            <summary>
+            Indicates that parameter is regular expression pattern.
+            </summary>
+        </member>
+        <member name="T:JetBrains.Annotations.NoReorderAttribute">
+            <summary>
+            Prevents the Member Reordering feature from tossing members of the marked class.
+            </summary>
+            <remarks>
+            The attribute must be mentioned in your member reordering patterns
+            </remarks>
+        </member>
+        <member name="T:JetBrains.Annotations.XamlItemsControlAttribute">
+            <summary>
+            XAML attribute. Indicates the type that has <c>ItemsSource</c> property and should be treated
+            as <c>ItemsControl</c>-derived type, to enable inner items <c>DataContext</c> type resolve.
+            </summary>
+        </member>
+        <member name="T:JetBrains.Annotations.XamlItemBindingOfItemsControlAttribute">
+            <summary>
+            XAML attribute. Indicates the property of some <c>BindingBase</c>-derived type, that
+            is used to bind some item of <c>ItemsControl</c>-derived type. This annotation will
+            enable the <c>DataContext</c> type resolve for XAML bindings for such properties.
+            </summary>
+            <remarks>
+            Property should have the tree ancestor of the <c>ItemsControl</c> type or
+            marked with the <see cref="T:JetBrains.Annotations.XamlItemsControlAttribute"/> attribute.
+            </remarks>
+        </member>
+    </members>
+</doc>
