@@ -7,20 +7,24 @@ Initially created to assist game developpers in debuging their game from a PC wh
 #### 1. Input ease of use
 A program might not be running on a platform with access to a keyboard and mouse. With **netImgui** you have the confort of your computer's inputs while controlling your program remotely.
 
-***Before***
+###### Before
 ![DearImGui](https://github.com/sammyfreg/netImgui/blob/master/Web/img/InputIssues.gif)
 
-***With netImgui***
+###### With netImgui
 ![NetImgui](https://github.com/sammyfreg/netImgui/blob/master/Web/img/InputWithNetImgui.gif)
+
+------------
 
 #### 2. Declutter display
 **Dear ImGui** is often used to display relevant debug informations during developement, but its UI elements might obscure the regular window content. **NetImgui** send the debug menus to a separate window, leaving the original display free of clutter and with freedom to use the entire screen for more elaborate debug content.
 
-***Before***
+###### Before
 ![DearImGui](https://github.com/sammyfreg/netImgui/blob/master/Web/img/AppWithoutNetImgui.png)
 
-***With netImgui***
+###### With netImgui
 ![netImGui](https://github.com/sammyfreg/netImgui/blob/master/Web/img/AppWithNetImguiGif.gif)
+
+------------
 
 # Integration
 - Download the latest version and compile the **netImguiServer** application.
