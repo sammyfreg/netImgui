@@ -1,22 +1,22 @@
 # Summary
-**NetImgui** is a library to remotely display and control **[Dear ImGui](https://github.com/ocornut/imgui)** menus with an associated **netImgui server** application. Designed to painlessly integrate into existing codebase with few changes required to display the UI remotely rather than locally on screen.
+**NetImgui** is a library to remotely display and control **[Dear ImGui](https://github.com/ocornut/imgui)** menus with an associated **netImgui server** application. Designed to painlessly integrate into existing codebase with few changes required to the existing logic.
 
 # Purpose
-Initially created to assist game developpers in debuging their game from a PC while it runs on console. However, its use can easily extend beyong this.
+Initially created to assist game developpers in debuging their game from a PC while it runs on console. However, its use can easily be extended to other fields.
 
-**1. Inputs ease of use**
+#### 1. Input ease of use
 A program might not be running on a platform with access to a keyboard and mouse. With **netImgui** you have the confort of your computer's inputs while controlling your program remotely.
 
-***Dear ImGui***
+***Before***
 ![DearImGui](https://github.com/sammyfreg/netImgui/blob/master/Web/img/InputIssues.gif)
 
 ***With netImgui***
-...
+![NetImgui](https://github.com/sammyfreg/netImgui/blob/master/Web/img/InputWithNetImgui.gif)
 
-**2. Declutter screen**
-**Dear ImGui** is often used to display relevant debug informations during developement, but its UI elements might obscure the regular window content. **NetImgui** send the debug menus to a separate window, leaving the original display free of clutter and with freedom to use the entire screen for more elaborate content.
+#### 2. Declutter display
+**Dear ImGui** is often used to display relevant debug informations during developement, but its UI elements might obscure the regular window content. **NetImgui** send the debug menus to a separate window, leaving the original display free of clutter and with freedom to use the entire screen for more elaborate debug content.
 
-***Dear ImGui***
+***Before***
 ![DearImGui](https://github.com/sammyfreg/netImgui/blob/master/Web/img/AppWithoutNetImgui.png)
 
 ***With netImgui***
@@ -28,14 +28,14 @@ A program might not be running on a platform with access to a keyboard and mouse
 - In your codebase :
   - [once] Call ***NetImgui::Connect*** (starts connection to **netImguiServer**).
   - [Every Redraw]
-    - Call ***NetImgui::NewFrame*** (instead of *ImGui::NewFrame*).
+    - Replace ***ImGui::NewFrame*** call, with ***NetImgui::NewFrame***.
     - Draw your ImGui menu as usual.
-    - Call **NetImgui::EndFrame** (instead of *ImGui::EndFrame*).
+    - Replace ***ImGui::EndFrame*** call, with ***NetImgui::EndFrame***.
 
 (More integration details can be found on the [Wiki](https://github.com/sammyfreg/netImgui/wiki "Wiki")).
 
 #### Note
-- It is possible to have both local and remote **Dear ImGui** content displayed simultaneously.
+- It is possible to have different **Dear ImGui** content displayed locally and remotely at the same time.
 - ***NetImgui::IsConnected*** and ***NetImgui::IsRemoteDraw*** can be used during menu udpate, to modify its content.
 
 # Other
