@@ -7,10 +7,6 @@ Initially created to assist game developpers in debuging their game from a PC wh
 #### 1. Input ease of use
 A program might not be running on a platform with access to a keyboard and mouse. With **netImgui** you have the confort of your computer's inputs while controlling your program remotely.
 
-###### Before
-![DearImGui](https://github.com/sammyfreg/netImgui/blob/master/Web/img/InputIssues.gif)
-
-###### With netImgui
 ![NetImgui](https://github.com/sammyfreg/netImgui/blob/master/Web/img/InputWithNetImgui.gif)
 
 ------------
@@ -23,8 +19,6 @@ A program might not be running on a platform with access to a keyboard and mouse
 
 ###### With netImgui
 ![netImGui](https://github.com/sammyfreg/netImgui/blob/master/Web/img/AppWithNetImguiGif.gif)
-
-------------
 
 # Integration
 - Download the latest version and compile the **netImguiServer** application.
