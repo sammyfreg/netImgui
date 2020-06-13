@@ -1,5 +1,8 @@
+ <span style="display:block;text-align:center">![NetImgui](https://github.com/sammyfreg/netImgui/blob/master/Web/img/netImguiLogo.png)</span>
+
 # Summary
 **NetImgui** is a library to remotely display and control **[Dear ImGui](https://github.com/ocornut/imgui)** menus with an associated **netImgui server** application. Designed to painlessly integrate into existing codebase with few changes required to the existing logic.
+ <span style="display:block;text-align:center">![NetImgui](https://github.com/sammyfreg/netImgui/blob/master/Web/img/netImgui.png)</span>
 
 # Purpose
 Initially created to assist game developers in debugging their game from a PC while it runs on console. However, its use can easily be extended to other fields.
@@ -7,13 +10,7 @@ Initially created to assist game developers in debugging their game from a PC wh
 #### 1. Input ease of use
 For programs running on hardware without easy access to a keyboard and mouse, **netImgui** provides the  comfort of your computer's inputs while controlling it remotely.
 
-###### Before
-![DearImGui](https://github.com/sammyfreg/netImgui/blob/master/Web/img/InputIssues.gif)
-
-###### With netImgui
 ![NetImgui](https://github.com/sammyfreg/netImgui/blob/master/Web/img/InputWithNetImgui.gif)
-
-------------
 
 #### 2. Declutter display
 **Dear ImGui** is often used to display relevant debug information during development, but its UI elements can obscure the regular window content. **NetImgui** sends the debug menus to a separate window, leaving the original display clutter-free and with freedom to use the entire screen for more elaborate debug content.

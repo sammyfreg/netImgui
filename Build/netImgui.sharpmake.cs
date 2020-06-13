@@ -219,7 +219,7 @@ namespace NetImgui
 			conf.IncludePaths.Add(SourceRootPath + @"\Source");
 			conf.IncludePaths.Add(@"[project.SharpmakeCsPath]\..\Code\ThirdParty\" + SolutionAll.sDefaultImguiVersion);
 			conf.IncludePaths.Add(@"[project.SharpmakeCsPath]\..\Code\Client");
-			conf.EventPostBuild.Add(@"xcopy [project.SharpmakeCsPath]\..\Code\ServerApp\Background.png " + conf.TargetPath + " /D");
+			conf.EventPostBuild.Add(@"xcopy [project.SharpmakeCsPath]\..\Code\ServerApp\Background.png " + conf.TargetPath + " /D /Y");
 		}
     }
 	
