@@ -48,9 +48,10 @@ Version 1.0
 - netImgui client code (for integration into external codebase)
 
 ###### To do
-- Support of addional texture formats
+- Support of additional texture formats
 - Commands to assign custom backgrounds
 - Handle Linear/sRGB vertex color format
+- Add logging information in netImgui server application
 
 [Release Notes](https://github.com/sammyfreg/netImgui/blob/master/Web/ReleaseNotes.md)
 

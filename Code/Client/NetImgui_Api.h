@@ -1,7 +1,17 @@
+//=================================================================================================
+//! @Name		: netImgui
+//=================================================================================================
+//! @author		: Sammy Fatnassi
+//! @date		: 2020/06/13
+//!	@version	: v1.00
+//! @Details	: For integration info : https://github.com/sammyfreg/netImgui/wiki
+//=================================================================================================
+
 #pragma once
 #include <stdint.h>
 
-// Note: Use memory allocator assigned to ImGui
+#define NETIMGUI_VERSION               "1.00"
+#define NETIMGUI_VERSION_NUM           10000
 
 //=================================================================================================
 // Set the path to 'imgui.h' used by your codebase here. 
@@ -22,7 +32,7 @@
 
 //=================================================================================================
 // Enable default Win32 networking code
-// Note:	Usefull to turn off and implement your own implementation. 
+// Note:	Useful to turn off and implement your own implementation. 
 //			If disabled, then functions implementng 'NetImgui_Network.h' need to be provided
 //			If enabled, then 'ws2_32.lib' library need to be included in project input
 //=================================================================================================

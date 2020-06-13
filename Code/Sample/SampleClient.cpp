@@ -28,6 +28,39 @@ void				CustomTextureCreate();
 void				CustomTextureDestroy();
 
 //=================================================================================================
+// Helper function to start a new Imgui frame.
+// Can be used when Imgui Content is only displayed locally or remotely, but not both
+//
+//! @return : True when we started a new ImGui frame and drawing should be done.
+//=================================================================================================
+bool Imgui_NewFrame()
+{
+	if( NetImgui::IsConnected() )
+	{
+		return NetImgui::NewFrame();
+	}
+	ImGui::NewFrame();
+	return true;
+}
+
+//=================================================================================================
+// Helper function to end a new Imgui frame.
+// Can be used when Imgui Content is only displayed locally or remotely, but not both
+//
+//! @return : True when a local ImGui render has completed, and should be displayed onscreen
+//=================================================================================================
+bool Imgui_EndFrame()
+{
+	if( NetImgui::IsRemoteDraw() )
+	{
+		NetImgui::EndFrame();
+		return false;
+	}	
+	ImGui::Render();
+	return true;	
+}
+
+//=================================================================================================
 //! @brief		Custom Connect thread example
 //! @details	This function demonstrate how to provide your own function to start a new thread 
 //!				that will handle communication with remote netImgui application. 
