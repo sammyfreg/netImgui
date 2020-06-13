@@ -1,8 +1,8 @@
- <span style="display:block;text-align:center">![NetImgui](https://github.com/sammyfreg/netImgui/blob/master/Web/img/netImguiLogo.png)</span>
+ <p align="center"><img src="https://github.com/sammyfreg/netImgui/blob/master/Web/img/netImguiLogo.png" width=128 height=128></p>
 
 # Summary
 **NetImgui** is a library to remotely display and control **[Dear ImGui](https://github.com/ocornut/imgui)** menus with an associated **netImgui server** application. Designed to painlessly integrate into existing codebase with few changes required to the existing logic.
- <span style="display:block;text-align:center">![NetImgui](https://github.com/sammyfreg/netImgui/blob/master/Web/img/netImgui.png)</span>
+![NetImgui](https://github.com/sammyfreg/netImgui/blob/master/Web/img/netImgui.png)
 
 # Purpose
 Initially created to assist game developers in debugging their game from a PC while it runs on console. However, its use can easily be extended to other fields.
