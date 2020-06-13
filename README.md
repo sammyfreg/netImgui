@@ -40,5 +40,21 @@ For programs running on hardware without easy access to a keyboard and mouse, **
 - Different **Dear ImGui** content can be displayed locally and remotely at the same time.
 - *NetImgui::IsConnected* and *NetImgui::IsRemoteDraw* can be used during menu udpate, to make decisions on what content to draw.
 
+# Release information
+Version 1.0
+###### Changes
+- Initial Release
+- netImgui server application
+- netImgui client code (for integration into external codebase)
+
+###### To do
+- Support of addional texture formats
+- Commands to assign custom backgrounds
+- Handle Linear/sRGB vertex color format
+
+[Release Notes](https://github.com/sammyfreg/netImgui/blob/master/Web/ReleaseNotes.md)
+
 # Credits
 Sincere thanks to [Omar Cornut](https://github.com/ocornut/imgui/commits?author=ocornut) for the incredible work on **[Dear ImGui](https://github.com/ocornut/imgui)**.
+
+Support of image formats with [*stb_image.h*](https://github.com/nothings/stb/blob/master/stb_image.h) by Sean Barrett (public domain).
