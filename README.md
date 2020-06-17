@@ -48,12 +48,18 @@ Version 1.0
 - netImgui client code (for integration into external codebase)
 
 ###### To do
-- Support of additional texture formats
+- Support of addional texture formats
 - Commands to assign custom backgrounds
 - Handle Linear/sRGB vertex color format
 - Add logging information in netImgui server application
+- Profile and optimize performances
+- Add copy/past support
+- Add new **Dear ImGui** multi windows support (docking branch)
 
 [Release Notes](https://github.com/sammyfreg/netImgui/blob/master/Web/ReleaseNotes.md)
+
+# Contact
+Author can be reach for feedback / comments at: zenengine3d (at) gmail . com
 
 # Credits
 Sincere thanks to [Omar Cornut](https://github.com/ocornut/imgui/commits?author=ocornut) for the incredible work on **[Dear ImGui](https://github.com/ocornut/imgui)**.

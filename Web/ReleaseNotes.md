@@ -13,3 +13,6 @@
 - Commands to assign custom backgrounds
 - Handle Linear/sRGB vertex color format
 - Add logging information in netImgui server application
+- Profile and optimize performances
+- Add copy/past support
+- Add new **Dear ImGui** multi windows support (docking branch)
