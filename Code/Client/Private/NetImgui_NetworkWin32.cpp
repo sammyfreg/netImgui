@@ -54,7 +54,7 @@ void Disconnect(SocketInfo* pClientSocket)
 	if( pClientSocket )
 	{
 		closesocket(pClientSocket->mSocket);
-		delete pClientSocket;
+		ImGui::MemFree(pClientSocket);
 	}
 }
 
