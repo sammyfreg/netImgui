@@ -36,7 +36,8 @@ bool Connect(StartThreadFunctPtr startThreadFunction, const char* clientName, co
 	while( client.mbDisconnectRequest )
 		std::this_thread::sleep_for(std::chrono::milliseconds(8));
 
-	strcpy_s(client.mName, clientName);
+	strncpy(client.mName, clientName, sizeof(client.mName) - 1);
+ 	client.mName[sizeof(client.mName) - 1] = 0;
 	client.mpSocket			= Network::Connect(ServerHost, serverPort);
 	client.mbReuseLocalTime = bReuseLocalTime;
 	if( client.mpSocket )

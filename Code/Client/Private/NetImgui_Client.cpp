@@ -26,7 +26,8 @@ bool Communications_Initialize(ClientInfo& client)
 {
 	CmdVersion cmdVersionSend;
 	CmdVersion cmdVersionRcv;	
-	strcpy_s(cmdVersionSend.mClientName, client.mName);
+	strncpy(cmdVersionSend.mClientName, client.mName, sizeof(cmdVersionSend.mClientName) - 1);
+	cmdVersionSend.mClientName[sizeof(cmdVersionSend.mClientName) - 1] = 0;
 	bool bResultSend =		Network::DataSend(client.mpSocket, &cmdVersionSend, cmdVersionSend.mHeader.mSize);
 	bool bResultRcv	=		Network::DataReceive(client.mpSocket, &cmdVersionRcv, sizeof(cmdVersionRcv));		
 	client.mbConnected =	bResultRcv && bResultSend && 
