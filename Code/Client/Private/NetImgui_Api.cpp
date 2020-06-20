@@ -95,16 +95,17 @@ bool NewFrame()
 		ImGui::SetCurrentContext(client.mpContext);
 		if( InputUpdateData() )
 		{
-			ImGui::GetIO().DeltaTime		= static_cast<float>(wantedTime - ImGui::GetTime());
+			float deltaTime					= static_cast<float>(wantedTime - ImGui::GetTime());
 			if(!client.mbReuseLocalTime)
 			{
 				static auto lastTime		= std::chrono::high_resolution_clock::now();
 				auto currentTime			= std::chrono::high_resolution_clock::now();
 				auto duration				= std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime - lastTime);
 				lastTime					= currentTime;
-				ImGui::GetIO().DeltaTime	= duration.count() > 0 ? static_cast<float>(duration.count() / (1000000000.f)) : 1.f/1000.f;
+				deltaTime					= static_cast<float>(duration.count() / (1000000000.f));
 			}
 			
+			ImGui::GetIO().DeltaTime		= deltaTime > 0 ? deltaTime : 1.f/1000.f;			
 			ImGui::SetCurrentContext(client.mpContext);
 			ImGui::NewFrame();
 			return true;
@@ -153,7 +154,7 @@ void SendDataTexture(uint64_t textureId, void* pData, uint16_t width, uint16_t h
 	{		
 		uint32_t PixelDataSize				= GetTexture_BytePerImage(format, width, height);
 		uint32_t SizeNeeded					= PixelDataSize + sizeof(CmdTexture);
-		pCmdTexture							= netImguiNew<CmdTexture>(SizeNeeded);
+		pCmdTexture							= netImguiSizedNew<CmdTexture>(SizeNeeded);
 
 		pCmdTexture->mpTextureData.SetPtr(reinterpret_cast<uint8_t*>(&pCmdTexture[1]));
 		memcpy(pCmdTexture->mpTextureData.Get(), pData, PixelDataSize);

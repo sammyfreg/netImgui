@@ -174,7 +174,7 @@ bool ServerInfoTab_Startup(unsigned int ServerPort)
     io.Fonts->ClearInputData();
     io.Fonts->ClearTexData();
 
-	if( !NetImgui::Connect("ServerLogs", "localhost", ServerPort) )
+	if( !NetImgui::Connect("ServerLogs", "localhost", ServerPort, false) )
 		return false;
 
 	return true;

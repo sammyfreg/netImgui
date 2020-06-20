@@ -98,7 +98,7 @@ CmdDrawFrame* CreateCmdDrawDrame(const ImDrawData* pDearImguiData, ImGuiMouseCur
 	//-----------------------------------------------------------------------------------------
 	// Allocate Data and init general frame informations
 	//-----------------------------------------------------------------------------------------	
-	CmdDrawFrame* pDrawFrame		= netImguiNew<CmdDrawFrame>(dataSize);
+	CmdDrawFrame* pDrawFrame		= netImguiSizedNew<CmdDrawFrame>(dataSize);
 	uint8_t* pRawData				= reinterpret_cast<uint8_t*>(pDrawFrame);
 	pDrawFrame->mVerticeCount		= static_cast<uint32_t>(pDearImguiData->TotalVtxCount);
 	pDrawFrame->mIndiceByteSize		= indiceSize;

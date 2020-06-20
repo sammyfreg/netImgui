@@ -30,9 +30,10 @@ constexpr size_t	sizeInvalid	= static_cast<size_t>(-1);
 // All allocations made by netImgui goes through here. 
 // Relies in ImGui allocator
 //=============================================================================
-template <typename TType> TType*	netImguiNew(size_t placementSize=static_cast<size_t>(-1));
-template <typename TType> void		netImguiDelete(TType* pData);
-template <typename TType> void		netImguiDeleteSafe(TType*& pData);
+template <typename TType, typename... Args> TType*	netImguiNew(Args... args);
+template <typename TType> TType*					netImguiSizedNew(size_t placementSize);
+template <typename TType> void						netImguiDelete(TType* pData);
+template <typename TType> void						netImguiDeleteSafe(TType*& pData);
 
 //=============================================================================
 // Class to exchange a pointer between two threads, safely

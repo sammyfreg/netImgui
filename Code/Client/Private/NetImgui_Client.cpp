@@ -138,7 +138,7 @@ bool Communications_Incoming(ClientInfo& client)
 		bOk					= Network::DataReceive(client.mpSocket, &cmdHeader, sizeof(cmdHeader));
 		if( bOk && cmdHeader.mSize > sizeof(CmdHeader) )
 		{
-			pCmdData								= netImguiNew<uint8_t>(cmdHeader.mSize);
+			pCmdData								= netImguiSizedNew<uint8_t>(cmdHeader.mSize);
 			*reinterpret_cast<CmdHeader*>(pCmdData) = cmdHeader;
 			bOk										= Network::DataReceive(client.mpSocket, &pCmdData[sizeof(cmdHeader)], cmdHeader.mSize-sizeof(cmdHeader));	
 		}

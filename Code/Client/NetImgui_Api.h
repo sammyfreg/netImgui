@@ -1,17 +1,17 @@
+#pragma once
+
 //=================================================================================================
 //! @Name		: netImgui
 //=================================================================================================
 //! @author		: Sammy Fatnassi
-//! @date		: 2020/06/13
-//!	@version	: v1.00
+//! @date		: 2020/06/20
+//!	@version	: v1.00.001
 //! @Details	: For integration info : https://github.com/sammyfreg/netImgui/wiki
 //=================================================================================================
+#define NETIMGUI_VERSION		"1.00.001"
+#define NETIMGUI_VERSION_NUM	100001
 
-#pragma once
 #include <stdint.h>
-
-#define NETIMGUI_VERSION               "1.00"
-#define NETIMGUI_VERSION_NUM           10000
 
 //=================================================================================================
 // Set the path to 'imgui.h' used by your codebase here. 
@@ -23,12 +23,11 @@
 
 //=================================================================================================
 // Enable code compilation for this library
-// Note: Usefull to turn off 'netImgui' on unsupported build targets.
+// Note: Useful to disable 'netImgui' on unsupported builds while keeping functions declared
 //=================================================================================================
 #ifndef NETIMGUI_ENABLED
 #define NETIMGUI_ENABLED	1
 #endif
-
 
 //=================================================================================================
 // Enable default Win32 networking code

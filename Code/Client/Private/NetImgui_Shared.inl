@@ -5,10 +5,16 @@
 namespace NetImgui { namespace Internal
 {
 
-template <typename TType> 
-TType* netImguiNew(size_t placementSize)
+template <typename TType, typename... Args> 
+TType* netImguiNew(Args... args)
 {
-	return new( ImGui::MemAlloc(placementSize != static_cast<size_t>(-1) ? placementSize : sizeof(TType)) ) TType();
+	return new( ImGui::MemAlloc(sizeof(TType)) ) TType(args...);
+}
+
+template <typename TType> 
+TType* netImguiSizedNew(size_t placementSize)
+{
+	return new( ImGui::MemAlloc(placementSize > sizeof(TType) ? placementSize : sizeof(TType)) ) TType();
 }
 
 template <typename TType> 

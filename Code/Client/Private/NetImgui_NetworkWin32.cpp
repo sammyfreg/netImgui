@@ -41,7 +41,7 @@ SocketInfo* Connect(const char* ServerHost, uint32_t ServerPort)
 	while( pResults )
 	{
 		if( connect(ConnectSocket, pResults->ai_addr, static_cast<int>(pResults->ai_addrlen)) == 0 )
-			return new( ImGui::MemAlloc(sizeof(SocketInfo)) ) SocketInfo(ConnectSocket);
+			return netImguiNew<SocketInfo>(ConnectSocket);
 				
 		pResults = pResults->ai_next;
 	}
@@ -54,7 +54,7 @@ void Disconnect(SocketInfo* pClientSocket)
 	if( pClientSocket )
 	{
 		closesocket(pClientSocket->mSocket);
-		delete pClientSocket;
+		netImguiDelete(pClientSocket);
 	}
 }
 

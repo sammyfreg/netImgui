@@ -12,7 +12,8 @@
 namespace NetworkServer
 {
 
-static bool gbShutdown = false;
+static bool						gbShutdown = false;
+static std::atomic_uint32_t		gActiveThreads;
 
 void Communications_Incoming_CmdTexture(ClientRemote* pClient, uint8_t*& pCmdData)
 {
@@ -52,7 +53,7 @@ bool Communications_Incoming(SOCKET Socket, ClientRemote* pClient)
 		bOk				= sizeRead == sizeof(cmdHeader);
 		if( bOk && cmdHeader.mSize > sizeof(cmdHeader) )
 		{
-			pCmdData													= NetImgui::Internal::netImguiNew<uint8_t>(cmdHeader.mSize);
+			pCmdData													= NetImgui::Internal::netImguiSizedNew<uint8_t>(cmdHeader.mSize);
 			*reinterpret_cast<NetImgui::Internal::CmdHeader*>(pCmdData) = cmdHeader;
 			const int sizeToRead										= static_cast<int>(cmdHeader.mSize - sizeof(cmdHeader));
 			sizeRead													= recv(Socket, reinterpret_cast<char*>(&pCmdData[sizeof(cmdHeader)]), sizeToRead, MSG_WAITALL);
@@ -113,7 +114,8 @@ bool Communications_Outgoing(SOCKET Socket, ClientRemote* pClient)
 void Communications_ClientExchangeLoop(SOCKET Socket, ClientRemote* pClient)
 {	
 	bool bConnected(true);
-	while (bConnected && pClient->mbConnected)
+	gActiveThreads++;
+	while (bConnected && pClient->mbConnected && !gbShutdown)
 	{		
 		bConnected =	Communications_Outgoing(Socket, pClient) && 
 						Communications_Incoming(Socket, pClient);
@@ -122,6 +124,7 @@ void Communications_ClientExchangeLoop(SOCKET Socket, ClientRemote* pClient)
 	closesocket(Socket);
 	pClient->mName[0]		= 0;
 	pClient->mbConnected	= false;
+	gActiveThreads--;
 }
 
 //=================================================================================================
@@ -213,7 +216,7 @@ bool Startup(ClientRemote* pClients, uint32_t ClientCount, uint32_t ListenPort )
 		printf("Could not initialize network library : %d\n" , WSAGetLastError());		
 		return false;
 	}
-
+	
 	SOCKET ListenSocket;
 	if((ListenSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) == INVALID_SOCKET)
 	{
@@ -240,6 +243,7 @@ bool Startup(ClientRemote* pClients, uint32_t ClientCount, uint32_t ListenPort )
 		return false;
 	}
 
+	gActiveThreads = 0;
 	std::thread(NetworkConnectionListen, ListenSocket, pClients, ClientCount).detach();
 	return true;
 }
@@ -247,6 +251,8 @@ bool Startup(ClientRemote* pClients, uint32_t ClientCount, uint32_t ListenPort )
 void Shutdown()
 {
 	gbShutdown = true;
+	while( gActiveThreads > 0 )
+		Sleep(0);
 }
 
 

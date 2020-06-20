@@ -41,20 +41,26 @@ For programs running on hardware without easy access to a keyboard and mouse, **
 - *NetImgui::IsConnected* and *NetImgui::IsRemoteDraw* can be used during menu udpate, to make decisions on what content to draw.
 
 # Release information
-Version 1.0
-###### Changes
-- Initial Release
-- netImgui server application
-- netImgui client code (for integration into external codebase)
+#### Version 1.0.001
+- **Changes**
+ - Few fixes
+ 
+#### Version 1.0
 
-###### To do
-- Support of addional texture formats
-- Commands to assign custom backgrounds
-- Handle Linear/sRGB vertex color format
-- Add logging information in netImgui server application
-- Profile and optimize performances
-- Add copy/past support
-- Add new **Dear ImGui** multi windows support (docking branch)
+- **Changes**
+ - Initial Release
+ - netImgui server application
+ - netImgui client code (for integration into external codebase)
+
+- **To do**
+ - Support of addional texture formats
+ - Commands to assign custom backgrounds
+ - Handle Linear/sRGB vertex color format
+ - Add logging information in netImgui server application
+ - Profile and optimize performances
+ - Add copy/past support
+ - Add new **Dear ImGui** multi windows support (docking branch)
+ - Support of data packet compression
 
 [Release Notes](https://github.com/sammyfreg/netImgui/blob/master/Web/ReleaseNotes.md)
 
@@ -64,4 +70,6 @@ Author can be reach for feedback / comments at: zenengine3d (at) gmail . com
 # Credits
 Sincere thanks to [Omar Cornut](https://github.com/ocornut/imgui/commits?author=ocornut) for the incredible work on **[Dear ImGui](https://github.com/ocornut/imgui)**.
 
-Support of image formats with [*stb_image.h*](https://github.com/nothings/stb/blob/master/stb_image.h) by Sean Barrett (public domain).
+Support of image formats via [**stb_image.h**](https://github.com/nothings/stb/blob/master/stb_image.h) by Sean Barrett (public domain).
+
+Support of Solutions generation via [**Sharpmake**](https://github.com/ubisoft/Sharpmake) by Ubisoft (public domain).
