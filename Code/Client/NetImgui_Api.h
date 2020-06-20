@@ -37,7 +37,11 @@
 //			If enabled, then 'ws2_32.lib' library need to be included in project input
 //=================================================================================================
 #ifndef NETIMGUI_WINSOCKET_ENABLED
-#define NETIMGUI_WINSOCKET_ENABLED	(_WIN32 && 1)
+#ifdef _WIN32
+#define NETIMGUI_WINSOCKET_ENABLED	1
+#else
+#define NETIMGUI_WINSOCKET_ENABLED	0
+#endif
 #endif
 
 //=================================================================================================
