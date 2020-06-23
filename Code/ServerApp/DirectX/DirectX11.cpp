@@ -127,7 +127,7 @@ bool CreateTexture(ResTexture2D& OutTexture, NetImgui::eTexFormat format, uint16
 	D3D11_TEXTURE2D_DESC texDesc;
 	
     ZeroMemory(&texDesc, sizeof(texDesc));	
-	DXGI_FORMAT texFmt;
+	DXGI_FORMAT texFmt(DXGI_FORMAT_UNKNOWN);
 	switch( format )
 	{
 	case NetImgui::kTexFmtA8:		texFmt = DXGI_FORMAT_R8_UNORM; break;
