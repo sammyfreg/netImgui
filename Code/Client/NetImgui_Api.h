@@ -30,16 +30,21 @@
 #endif
 
 //=================================================================================================
-// Enable default Win32 networking code
-// Note:	Useful to turn off and implement your own implementation. 
-//			If disabled, then functions implementng 'NetImgui_Network.h' need to be provided
-//			If enabled, then 'ws2_32.lib' library need to be included in project input
+// Enable default Win32/Posix networking code
+// Node:	By default, netImgui uses Winsock on Windows and Posix sockets on non-Windows
+//		platforms. On Windows, make sure you link with 'ws2_32.lib' in your project.
+//
+//		Turn off NETIMGUI_WINSOCKET_ENABLED and NETIMGUI_POSIX_SOCKETS_ENABLED to add your
+//		own implementation. If you do this, you'll have to provide your own implementations
+//		for the functions in 'NetImgui_Network.h'.
 //=================================================================================================
 #ifndef NETIMGUI_WINSOCKET_ENABLED
 #ifdef _WIN32
 #define NETIMGUI_WINSOCKET_ENABLED	1
+#define NETIMGUI_POSIX_SOCKETS_ENABLED	0
 #else
 #define NETIMGUI_WINSOCKET_ENABLED	0
+#define NETIMGUI_POSIX_SOCKETS_ENABLED	1
 #endif
 #endif
 
