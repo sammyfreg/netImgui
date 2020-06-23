@@ -1,6 +1,6 @@
 #include "NetImgui_Shared.h"
 
-#if NETIMGUI_ENABLED && !NETIMGUI_WINSOCKET_ENABLED
+#if NETIMGUI_ENABLED && NETIMGUI_POSIX_SOCKETS_ENABLED
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
@@ -68,5 +68,5 @@ bool DataSend(SocketInfo* pClientSocket, void* pDataOut, size_t Size)
 
 }}} // namespace NetImgui::Internal::Network
 
-#endif // #if NETIMGUI_ENABLED && !NETIMGUI_WINSOCKET_ENABLED
+#endif // #if NETIMGUI_ENABLED && NETIMGUI_POSIX_SOCKETS_ENABLED
 
