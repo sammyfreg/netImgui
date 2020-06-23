@@ -4,12 +4,12 @@
 //! @Name		: netImgui
 //=================================================================================================
 //! @author		: Sammy Fatnassi
-//! @date		: 2020/06/20
-//!	@version	: v1.00.002
+//! @date		: 2020/06/23
+//!	@version	: v1.01.000
 //! @Details	: For integration info : https://github.com/sammyfreg/netImgui/wiki
 //=================================================================================================
-#define NETIMGUI_VERSION		"1.00.002"
-#define NETIMGUI_VERSION_NUM	100001
+#define NETIMGUI_VERSION		"1.01.000"
+#define NETIMGUI_VERSION_NUM	101000
 
 #include <stdint.h>
 
@@ -26,7 +26,7 @@
 // Note: Useful to disable 'netImgui' on unsupported builds while keeping functions declared
 //=================================================================================================
 #ifndef NETIMGUI_ENABLED
-#define NETIMGUI_ENABLED	1
+	#define NETIMGUI_ENABLED	1
 #endif
 
 //=================================================================================================
@@ -40,11 +40,11 @@
 //=================================================================================================
 #ifndef NETIMGUI_WINSOCKET_ENABLED
 #ifdef _WIN32
-#define NETIMGUI_WINSOCKET_ENABLED	1
-#define NETIMGUI_POSIX_SOCKETS_ENABLED	0
+	#define NETIMGUI_WINSOCKET_ENABLED	1
+	#define NETIMGUI_POSIX_SOCKETS_ENABLED	0
 #else
-#define NETIMGUI_WINSOCKET_ENABLED	0
-#define NETIMGUI_POSIX_SOCKETS_ENABLED	1
+	#define NETIMGUI_WINSOCKET_ENABLED	0
+	#define NETIMGUI_POSIX_SOCKETS_ENABLED	1
 #endif
 #endif
 
