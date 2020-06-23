@@ -1,6 +1,7 @@
 #pragma once
 
 #include <assert.h>
+#include <string.h>
 
 namespace NetImgui { namespace Internal
 {
@@ -199,6 +200,18 @@ void Ringbuffer<TType,TCount>::ReadData(TType* pData, size_t& count)
 		++mPosCur;
 	}
 	count = i;
+}
+
+
+//=============================================================================
+//=============================================================================
+void StringCopy(char* zDest, size_t destLen, const char* zSource )
+{
+#if defined (__clang__) || defined(_MSC_VER) 
+	strncpy_s(zDest, destLen, zSource, destLen - 1);
+#else
+	strncpy(zDest, zSource, destLen - 1);
+#endif
 }
 
 }} //namespace NetImgui::Internal

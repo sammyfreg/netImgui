@@ -32,12 +32,13 @@ struct alignas(8) CmdVersion
 {
 	enum eVersion : uint32_t
 	{
-		kVer_Initial = 1,
+		kVer_Initial			= 1,
+		kVer_NewTextureFormat	= 2,
 		// Insert new version here
 
 		//--------------------------------
 		kVer_Count,
-		kVer_Current = kVer_Count -1
+		kVer_Current			= kVer_Count -1
 	};
 
 	CmdHeader	mHeader			= CmdHeader(CmdHeader::kCmdVersion, sizeof(CmdVersion));

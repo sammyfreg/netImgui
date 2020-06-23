@@ -127,11 +127,14 @@ bool CreateTexture(ResTexture2D& OutTexture, NetImgui::eTexFormat format, uint16
 	D3D11_TEXTURE2D_DESC texDesc;
 	
     ZeroMemory(&texDesc, sizeof(texDesc));	
-	DXGI_FORMAT texFmt					=	format == NetImgui::kTexFmtRGBA8 ? DXGI_FORMAT_R8G8B8A8_UNORM : 
-											//format == NetImgui::kTexFmtR8 ?		DXGI_FORMAT_R8_UNORM :
-											//format == NetImgui::kTexFmtRG8 ?	DXGI_FORMAT_R8G8_UNORM :
-											//format == NetImgui::kTexFmtRGB8 ?	DXGI_FORMAT_B8G8R8X8_UNORM : //SF Need swizzle here											
-																				DXGI_FORMAT_UNKNOWN;
+	DXGI_FORMAT texFmt;
+	switch( format )
+	{
+	case NetImgui::kTexFmtA8:		texFmt = DXGI_FORMAT_R8_UNORM; break;
+	case NetImgui::kTexFmtRGBA8:	texFmt = DXGI_FORMAT_R8G8B8A8_UNORM; break;
+	case NetImgui::kTexFmt_Invalid:	texFmt = DXGI_FORMAT_UNKNOWN; break;
+	}
+
 	if( texFmt == DXGI_FORMAT_UNKNOWN )
 		return false;
 
@@ -342,9 +345,9 @@ bool Startup(HWND hWindow)
 			delete[] pBGPixels;
 		}
 
-		uint8_t TransparentPixels[4*8*8];
+		uint8_t TransparentPixels[8*8];
 		memset(TransparentPixels, 0, sizeof(TransparentPixels));
-		CreateTexture(gpGfxRes->mTransparentTex, NetImgui::kTexFmtRGBA8, 8, 8, TransparentPixels);		
+		CreateTexture(gpGfxRes->mTransparentTex, NetImgui::kTexFmtA8, 8, 8, TransparentPixels);		
 	}
 	return true;
 }
@@ -439,6 +442,7 @@ void Render_DrawImgui(const std::vector<TextureHandle>& textures, const NetImgui
 	const unsigned int stride = sizeof(NetImgui::Internal::ImguiVert);
 	const unsigned int offset = 0;
 	ResCBuffer VertexCB;
+	ResCBuffer PixelCB;
 	ResVtxBuffer VertexBuffer;
 	ResVtxBuffer IndexBuffer;
 	CreateCBuffer(VertexCB, reinterpret_cast<const void*>(mvp), sizeof(mvp));
@@ -454,7 +458,8 @@ void Render_DrawImgui(const std::vector<TextureHandle>& textures, const NetImgui
 	gpGfxRes->mContext->IASetVertexBuffers(0, 1, VertexBuffer.GetArray(), &stride, &offset);
 
 	CD3D11_RECT RectPrevious(0,0,0,0);
-	uint64_t lastTextureId = NetImgui::Internal::u64Invalid;
+	uint64_t	lastTextureId	= NetImgui::Internal::u64Invalid;
+	uint32_t	eLastTexFmt		= NetImgui::eTexFormat::kTexFmt_Invalid;
 	for(unsigned int i(0); i<pDrawFrame->mDrawCount; ++i)
 	{
 		const auto* pDraw = &pDrawFrame->mpDraws[i];
@@ -470,22 +475,31 @@ void Render_DrawImgui(const std::vector<TextureHandle>& textures, const NetImgui
 			gpGfxRes->mContext->RSSetScissorRects(1, &RectPrevious);
 		}
 
-		//SF TODO support various textures format
 		if( i == 0 || lastTextureId != pDraw->mTextureId )
-		{
-			ResTexture2D* pTexture	= &gpGfxRes->mTransparentTex;	// Default texture if not found
-			lastTextureId			= pDraw->mTextureId;			
-			for(size_t j(0); j<textures.size(); ++j)
+		{			
+			int foundIdx = -1;
+			for(size_t j(0); foundIdx < 0 && j<textures.size(); ++j)
 			{
-				if( textures[j].mImguiId == lastTextureId && 
+				if( textures[j].mImguiId == pDraw->mTextureId && 
 					textures[j].mIndex < gpGfxRes->mTextures.size() &&
 					gpGfxRes->mTextures[textures[j].mIndex].mBuffer.Get() != nullptr )
 				{
-					pTexture = &gpGfxRes->mTextures[textures[j].mIndex];
-					break;
+					foundIdx = static_cast<int>(j);
 				}
 			}
+						
+			ResTexture2D* pTexture	= foundIdx < 0 ? &gpGfxRes->mTransparentTex : &gpGfxRes->mTextures[textures[foundIdx].mIndex];	// Default texture if not found
+			uint32_t eTexFmt		= foundIdx < 0 ? NetImgui::eTexFormat::kTexFmtA8 : textures[foundIdx].mTextureFormat;
+			if( eTexFmt != eLastTexFmt )
+			{
+				uint32_t pixelParams[4] = {eTexFmt,0,0,0};
+				CreateCBuffer(PixelCB, reinterpret_cast<const void*>(pixelParams), sizeof(pixelParams));
+				
+			}
 			gpGfxRes->mContext->PSSetShaderResources(0, 1, pTexture->mView.GetArray() );
+			gpGfxRes->mContext->PSSetConstantBuffers(0, 1, PixelCB.GetArray());
+			lastTextureId	= pDraw->mTextureId;
+			eLastTexFmt		= eTexFmt;
 		}
 
 		gpGfxRes->mContext->DrawIndexed(pDraw->mIdxCount, pDraw->mIdxOffset/pDraw->mIndexSize, static_cast<INT>(pDraw->mVtxOffset));
@@ -549,6 +563,7 @@ TextureHandle TextureCreate( NetImgui::Internal::CmdTexture* pCmdTexture )
 	if( !texHandle.IsValid() )
 		texHandle.mIndex = gTexturesMaxCount.fetch_add(1);		
 	texHandle.mImguiId					= pCmdTexture->mTextureId;
+	texHandle.mTextureFormat			= pCmdTexture->mFormat;
 
 	// Add this texture to be added in main thread
 	//SF create a threadsafe consume/append buffer

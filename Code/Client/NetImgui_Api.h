@@ -5,10 +5,10 @@
 //=================================================================================================
 //! @author		: Sammy Fatnassi
 //! @date		: 2020/06/20
-//!	@version	: v1.00.001
+//!	@version	: v1.00.002
 //! @Details	: For integration info : https://github.com/sammyfreg/netImgui/wiki
 //=================================================================================================
-#define NETIMGUI_VERSION		"1.00.001"
+#define NETIMGUI_VERSION		"1.00.002"
 #define NETIMGUI_VERSION_NUM	100001
 
 #include <stdint.h>
@@ -49,8 +49,10 @@
 namespace NetImgui 
 { 
 enum eTexFormat { 
-	/*kTexFmtR8, kTexFmtRG8, kTexFmtRGB8,*/ //SF To implement
-	kTexFmtRGBA8, kTexFmt_Invalid };
+	kTexFmtA8, 
+	kTexFmtRGBA8, 
+	kTexFmt_Count,
+	kTexFmt_Invalid=kTexFmt_Count };
 
 //=================================================================================================
 // Port used by connect the Server and Client together

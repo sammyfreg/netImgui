@@ -237,8 +237,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 		// Render the Imgui client currently active
 		auto currentTime = std::chrono::high_resolution_clock::now();
 		if( std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lastTime).count() > 4 )
-		{
-			
+		{			
 			// Redraw the ImGui Server tab with infos.
 			// This tab works exactly like a remote client connected to this server, 
 			// to allow debuging of communications
@@ -276,9 +275,9 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 					gMouseCursor = wantedCursor;
 					::SetCursor(::LoadCursor(nullptr, gMouseCursor));
 				}
-			}
-			
+			}						
 			lastTime = currentTime;
+			Sleep(4);
 		}
 		
     }

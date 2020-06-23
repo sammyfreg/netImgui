@@ -16,7 +16,7 @@ static int			gConnectPort		= NetImgui::kDefaultServerPort;
 static char			gConnectIP[64]		= "127.0.0.1";
 static ImDrawData*	gpLastRemoteDraw	= nullptr;
 static bool			gEnableRemoteMirror	= false;
-static void*		gCustomTextureView	= nullptr;
+static void*		gCustomTextureView[NetImgui::kTexFmt_Count];
 
 void				Imgui_DrawMainMenu();
 void				Imgui_DrawContent(ImVec4& clear_col);
@@ -74,35 +74,47 @@ void CustomCommunicationThread( void ComFunctPtr(void*), void* pClient )
 //=================================================================================================
 //
 //=================================================================================================
-void CustomTextureCreate()
+void CustomTextureCreate(NetImgui::eTexFormat eTexFmt)
 {
-	constexpr uint32_t Width = 8;
-	constexpr uint32_t Height = 8;
-	uint8_t pixelData[Width * Height * 4];
-	for (uint8_t y(0); y < Height; ++y)
+	constexpr uint32_t BytePerPixelMax	= 4;
+	constexpr uint32_t Width			= 8;
+	constexpr uint32_t Height			= 8;
+	uint8_t pixelData[Width * Height * BytePerPixelMax];
+
+	switch( eTexFmt )
 	{
-		for (uint8_t x(0); x < Width; ++x)
-		{
-			pixelData[(y * Width + x) * 4 + 0] = 0xFF * x / 8u;
-			pixelData[(y * Width + x) * 4 + 1] = 0xFF * y / 8u;
-			pixelData[(y * Width + x) * 4 + 2] = 0xFF;
-			pixelData[(y * Width + x) * 4 + 3] = 0xFF;
-		}
-	}	
-	TextureCreate(pixelData, Width, Height, gCustomTextureView);
-	NetImgui::SendDataTexture(reinterpret_cast<uint64_t>(gCustomTextureView), pixelData, 8, 8, NetImgui::kTexFmtRGBA8);
+	case NetImgui::kTexFmtA8:
+		for (uint8_t y(0); y < Height; ++y) {
+			for (uint8_t x(0); x < Width; ++x) 
+			{
+				pixelData[(y * Width + x)] = 0xFF * x / 8u;
+			}
+		}break;
+	case NetImgui::kTexFmtRGBA8:
+		for (uint8_t y(0); y < Height; ++y) {
+			for (uint8_t x(0); x < Width; ++x) 
+			{
+				pixelData[(y * Width + x) * 4 + 0] = 0xFF * x / 8u;
+				pixelData[(y * Width + x) * 4 + 1] = 0xFF * y / 8u;
+				pixelData[(y * Width + x) * 4 + 2] = 0xFF;
+				pixelData[(y * Width + x) * 4 + 3] = 0xFF;
+			}
+		}break;
+	case NetImgui::kTexFmt_Invalid: assert(0); break;	
+	}
+	TextureCreate(pixelData, Width, Height, gCustomTextureView[eTexFmt]);
+	NetImgui::SendDataTexture(reinterpret_cast<uint64_t>(gCustomTextureView[eTexFmt]), pixelData, Width, Height, eTexFmt);
 }
 
 //=================================================================================================
 //
 //=================================================================================================
-void CustomTextureDestroy()
-{
-	
-	if( gCustomTextureView )
+void CustomTextureDestroy(NetImgui::eTexFormat eTexFmt)
+{	
+	if( gCustomTextureView[eTexFmt] )
 	{
-		NetImgui::SendDataTexture(reinterpret_cast<uint64_t>(gCustomTextureView), nullptr, 0, 0, NetImgui::kTexFmt_Invalid);
-		TextureDestroy(gCustomTextureView);
+		NetImgui::SendDataTexture(reinterpret_cast<uint64_t>(gCustomTextureView[eTexFmt]), nullptr, 0, 0, NetImgui::kTexFmt_Invalid);
+		TextureDestroy(gCustomTextureView[eTexFmt]);
 	}
 }
 
@@ -130,7 +142,7 @@ bool Client_Startup()
     //io.Fonts->AddFontFromFileTTF("../../extra_fonts/DroidSans.ttf", 18.0f);
     //io.Fonts->AddFontFromFileTTF("../../extra_fonts/fontawesome-webfont.ttf", 18.0f, &icons_config, icons_ranges);
 
-	// Save the default Imgui State and create a secondary one for use locally while debug menu displayed in netImguiApp		
+	memset(gCustomTextureView, 0, sizeof(gCustomTextureView));
 	return true;
 }
 
@@ -139,6 +151,8 @@ bool Client_Startup()
 //=================================================================================================
 void Client_Shutdown()
 {	
+	for(int i=0; i<NetImgui::kTexFmt_Count; ++i)
+		CustomTextureDestroy(static_cast<NetImgui::eTexFormat>(i));
 	NetImgui::Shutdown();
 }
 
@@ -235,21 +249,29 @@ void Imgui_DrawContent(ImVec4& clear_col)
 		ImGui::ColorEdit3("clear color", reinterpret_cast<float*>(&clear_col));
 		if (ImGui::Button("Test Window")) show_test_window ^= 1;
 		//SF TODO ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-		
-		// Only display this on remote connection (associated texture note created locally)		
-		if(!gCustomTextureView && ImGui::Button("Send Texture") )
-			CustomTextureCreate();
-		else if(gCustomTextureView && ImGui::Button("Remove Texture") )
-			CustomTextureDestroy();
+		const char* zFormatName[]={"R8", "RGBA8", ""};
+		ImGui::TextUnformatted("Note: Textures displayed properly on remote server only");
+		for(int i=0; i<NetImgui::kTexFmt_Count; ++i)
+		{
+			// Only display this on remote connection (associated texture note created locally)
+			ImGui::PushID(i);
+			if(!gCustomTextureView[i] && ImGui::Button("Texture Send") )
+				CustomTextureCreate(static_cast<NetImgui::eTexFormat>(i));
+			else if(gCustomTextureView[i] && ImGui::Button("Texture Rem ") )
+				CustomTextureDestroy(static_cast<NetImgui::eTexFormat>(i));
 			
-		// Note: Test drawing with invalid texture (making sure netImgui App handles it) 
-		// Avoid drawing with invalid texture if will be displayed locally (not handled by 'ImGui_ImplDX11_RenderDrawData' example code)
-		if( gCustomTextureView || (NetImgui::IsRemoteDraw() && !gEnableRemoteMirror) )
-		{				
-			ImVec4 tint_col = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
-			ImVec4 border_col = ImVec4(1.0f, 1.0f, 1.0f, 0.5f);
-			ImGui::Image(reinterpret_cast<ImTextureID>(gCustomTextureView), ImVec2(128,32), ImVec2(0, 0), ImVec2(1, 1), tint_col, border_col);
-		}		
+			// Note: Test drawing with invalid texture (making sure netImgui App handles it) 
+			// Avoid drawing with invalid texture if will be displayed locally (not handled by 'ImGui_ImplDX11_RenderDrawData' example code)			
+			if( gCustomTextureView[i] || (NetImgui::IsRemoteDraw() && !gEnableRemoteMirror) )
+			{				
+				ImVec4 tint_col = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
+				ImVec4 border_col = ImVec4(1.0f, 1.0f, 1.0f, 0.5f);
+				ImGui::SameLine();
+				ImGui::Image(reinterpret_cast<ImTextureID>(gCustomTextureView[i]), ImVec2(128,32), ImVec2(0, 0), ImVec2(1, 1), tint_col, border_col);
+			}
+			ImGui::SameLine(); ImGui::TextUnformatted(zFormatName[i]);
+			ImGui::PopID();
+		}
 	}
 
 	// 2. Show the ImGui test window. Most of the sample code is in ImGui::ShowTestWindow()

@@ -1,6 +1,7 @@
 #pragma once
 
-#include <stdint.h>
+#include <NetImgui_Api.h>
+
 #include <vector>
 
 namespace NetImgui { namespace Internal { struct CmdDrawFrame;  struct CmdTexture; } }
@@ -10,11 +11,12 @@ namespace dx
 
 struct TextureHandle
 {
-				TextureHandle(): mImguiId(0), mIndex(static_cast<uint64_t>(-1)){}	
-	inline bool IsValid(){ return mIndex != static_cast<uint64_t>(-1); }
-	inline void SetInvalid(){ mIndex = static_cast<uint64_t>(-1); }
+				TextureHandle(): mImguiId(0), mIndex(0), mTextureFormat(NetImgui::kTexFmt_Invalid){}	
+	inline bool IsValid(){ return mTextureFormat != NetImgui::kTexFmt_Invalid; }
+	inline void SetInvalid(){ mTextureFormat = NetImgui::kTexFmt_Invalid; }
 	uint64_t	mImguiId;
-	uint64_t	mIndex;
+	uint32_t	mIndex;
+	uint32_t	mTextureFormat;	// NetImgui::eTexFormat
 };
 
 bool			Startup(HWND hWindow);

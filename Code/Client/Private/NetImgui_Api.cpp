@@ -36,7 +36,7 @@ bool Connect(StartThreadFunctPtr startThreadFunction, const char* clientName, co
 	while( client.mbDisconnectRequest )
 		std::this_thread::sleep_for(std::chrono::milliseconds(8));
 
-	strncpy(client.mName, clientName, sizeof(client.mName) - 1);
+	StringCopy(client.mName, sizeof(client.mName), (clientName == nullptr || clientName[0] == 0 ? "UnnamedClient" : clientName));
  	client.mName[sizeof(client.mName) - 1] = 0;
 	client.mpSocket			= Network::Connect(ServerHost, serverPort);
 	client.mbReuseLocalTime = bReuseLocalTime;
@@ -235,9 +235,7 @@ uint8_t GetTexture_BitsPerPixel(eTexFormat eFormat)
 {
 	switch(eFormat)
 	{
-	//case kTexFmtR8:		return 8*1;
-	//case kTexFmtRG8:		return 8*2;
-	//case kTexFmtRGB8:		return 8*3;
+	case kTexFmtA8:			return 8*1;
 	case kTexFmtRGBA8:		return 8*4;
 	case kTexFmt_Invalid:	return 0;
 	}
