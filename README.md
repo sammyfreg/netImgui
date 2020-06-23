@@ -41,12 +41,15 @@ For programs running on hardware without easy access to a keyboard and mouse, **
 - *NetImgui::IsConnected* and *NetImgui::IsRemoteDraw* can be used during menu udpate, to make decisions on what content to draw.
 
 # Release information
-#### Version 1.0.001
+### Version 1.1
+(2020/23)
 - **Changes**
  - Few fixes
+ - Added support to Posix sockets (Unix/Mac/Android support)
+ - Added texture format A8
  
-#### Version 1.0
-
+### Version 1.0
+(2020/06)
 - **Changes**
  - Initial Release
  - netImgui server application

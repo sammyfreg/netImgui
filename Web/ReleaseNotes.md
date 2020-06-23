@@ -1,5 +1,13 @@
 # Release notes
 
+### Version 1.1
+(2020/23)
+
+- **Changes**
+ - Few fixes
+ - Added support to Posix sockets (Unix/Mac/Android support)
+ - Added texture format A8
+ 
 ### Version 1.0 
 (2020/06)
 
