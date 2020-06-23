@@ -76,3 +76,5 @@ Sincere thanks to [Omar Cornut](https://github.com/ocornut/imgui/commits?author=
 Support of image formats via [**stb_image.h**](https://github.com/nothings/stb/blob/master/stb_image.h) by Sean Barrett (public domain).
 
 Support of Solutions generation via [**Sharpmake**](https://github.com/ubisoft/Sharpmake) by Ubisoft (public domain).
+
+support of Posix sockets thanks to [Aaron Lieberman](https://github.com/AaronLieberman)
