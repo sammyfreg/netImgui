@@ -1,26 +1,17 @@
 # Release notes
 
+### Version 1.1.001
+(2020/07/02)
+- Added ImGui 1.77 support
+
 ### Version 1.1
-(2020/23)
-
-- **Changes**
- - Few fixes
- - Added support to Posix sockets (Unix/Mac/Android support)
- - Added texture format A8
+(2020/06/23)
+- Few fixes
+- Added support to Posix sockets (Unix/Mac/Android support)
+- Added texture format A8
  
-### Version 1.0 
-(2020/06)
-
-###### Changes
+### Version 1.0
+(2020/06/13)
 - Initial Release
 - netImgui server application
 - netImgui client code (for integration into external codebase)
-
-###### To do
-- Support of additional texture formats
-- Commands to assign custom backgrounds
-- Handle Linear/sRGB vertex color format
-- Add logging information in netImgui server application
-- Profile and optimize performances
-- Add copy/past support
-- Add new **Dear ImGui** multi windows support (docking branch)

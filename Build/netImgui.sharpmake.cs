@@ -185,6 +185,7 @@ namespace NetImgui
 
 	[Sharpmake.Generate] public class ProjectNetImgui_17500 : ProjectNetImgui { public ProjectNetImgui_17500() : base("Imgui_17500"){} }	
 	[Sharpmake.Generate] public class ProjectNetImgui_17600 : ProjectNetImgui { public ProjectNetImgui_17600() : base("Imgui_17600"){} }
+	[Sharpmake.Generate] public class ProjectNetImgui_17700 : ProjectNetImgui { public ProjectNetImgui_17700() : base("Imgui_17700"){} }
 	[Sharpmake.Generate] public class ProjectNetImgui_Dock17601 : ProjectNetImgui { public ProjectNetImgui_Dock17601() : base("Imgui_Dock17601") {} }
 
 
@@ -302,11 +303,13 @@ namespace NetImgui
         {
 			base.ConfigureAll(conf, target);
 			conf.AddProject<ProjectNetImguiServer>(target);
-            conf.AddProject<ProjectSample>(target);			
-
-			conf.AddProject<ProjectNetImgui_17500>(target, false, "Compatibility Tests");
-			conf.AddProject<ProjectNetImgui_17600>(target, false, "Compatibility Tests");
-			conf.AddProject<ProjectNetImgui_Dock17601>(target, false, "Compatibility Tests");
+            conf.AddProject<ProjectSample>(target);
+			
+			string SolutionFolder = @"Compatibility Tests";
+			conf.AddProject<ProjectNetImgui_17500>(target, false, SolutionFolder);
+			conf.AddProject<ProjectNetImgui_17600>(target, false, SolutionFolder);
+			conf.AddProject<ProjectNetImgui_17700>(target, false, SolutionFolder);
+			conf.AddProject<ProjectNetImgui_Dock17601>(target, false, SolutionFolder);
 		}
  
         [Sharpmake.Main]
@@ -317,6 +320,6 @@ namespace NetImgui
 			arguments.Generate<SolutionSample>();
         }
 		
-		static public string sDefaultImguiVersion	= @"Imgui_Dock17601";
+		static public string sDefaultImguiVersion	= @"Imgui_17700";
 	}
 }

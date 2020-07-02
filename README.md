@@ -40,35 +40,38 @@ For programs running on hardware without easy access to a keyboard and mouse, **
 - Different **Dear ImGui** content can be displayed locally and remotely at the same time.
 - *NetImgui::IsConnected* and *NetImgui::IsRemoteDraw* can be used during menu udpate, to make decisions on what content to draw.
 
-# Release information
+# Release notes
+### To do
+- Support of additional texture formats
+- Commands to assign custom backgrounds
+- Handle Linear/sRGB vertex color format
+- Add logging information in netImgui server application
+- Profile and optimize performances
+- Add copy/paste support
+- Add new **Dear ImGui** multi windows support (docking branch)
+- Networking: Add support of client accepting connection from netImgui App
+
+### Version 1.1.001
+(2020/07/02)
+- Added ImGui 1.77 support
+
 ### Version 1.1
-(2020/23)
-- **Changes**
- - Few fixes
- - Added support to Posix sockets (Unix/Mac/Android support)
- - Added texture format A8
+(2020/06/23)
+- Few fixes
+- Added support to Posix sockets (Unix/Mac/Android support)
+- Added texture format A8
  
 ### Version 1.0
-(2020/06)
-- **Changes**
- - Initial Release
- - netImgui server application
- - netImgui client code (for integration into external codebase)
-
-- **To do**
- - Support of addional texture formats
- - Commands to assign custom backgrounds
- - Handle Linear/sRGB vertex color format
- - Add logging information in netImgui server application
- - Profile and optimize performances
- - Add copy/past support
- - Add new **Dear ImGui** multi windows support (docking branch)
- - Support of data packet compression
-
+(2020/06/13)
+- Initial Release
+- netImgui server application
+- netImgui client code (for integration into external codebase)
+ 
+### Older
 [Release Notes](https://github.com/sammyfreg/netImgui/blob/master/Web/ReleaseNotes.md)
 
 # Contact
-Author can be reach for feedback / comments at: zenengine3d (at) gmail . com
+Author can be reached for feedbacks / comments at: sammyfreg (at) gmail . com
 
 # Credits
 Sincere thanks to [Omar Cornut](https://github.com/ocornut/imgui/commits?author=ocornut) for the incredible work on **[Dear ImGui](https://github.com/ocornut/imgui)**.
@@ -77,4 +80,4 @@ Support of image formats via [**stb_image.h**](https://github.com/nothings/stb/b
 
 Support of Solutions generation via [**Sharpmake**](https://github.com/ubisoft/Sharpmake) by Ubisoft (public domain).
 
-support of Posix sockets thanks to [Aaron Lieberman](https://github.com/AaronLieberman)
+support of Posix sockets thanks to [Aaron Lieberman](https://github.com/AaronLieberman).
