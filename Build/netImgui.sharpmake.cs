@@ -183,17 +183,31 @@ namespace NetImgui
 		string mVersion;
     }
 
+	// Generate the default Imgui Library  (used to link against with Samples/Server)
+	[Sharpmake.Generate] public class ProjectImgui_Default : ProjectImgui { public ProjectImgui_Default() : base(SolutionAll.sDefaultImguiVersion) {} }
+	
+	// Generate the default netImgui library (used to link against with Samples/Server)
+	[Sharpmake.Generate] public class ProjectNetImgui_Default : ProjectNetImgui { 
+		public ProjectNetImgui_Default() : base(SolutionAll.sDefaultImguiVersion) { Name = "netImguiLib"; } 
+	}
+	
+	// Test compiling netImgui with the Disabled Define
+	[Sharpmake.Generate] public class ProjectNetImgui_Disabled : ProjectNetImgui { 
+		public ProjectNetImgui_Disabled() : base(SolutionAll.sDefaultImguiVersion) { Name = "netImguiLib (Disabled)"; }
+		
+		[Configure()]
+		public new void ConfigureAll(Configuration conf, NetImguiTarget target)
+        {
+			base.ConfigureAll(conf, target);
+			conf.Defines.Add("NETIMGUI_ENABLED=0");
+		}
+	}
+	
+	// Try compiling netImgui against various version of Imgui releases
 	[Sharpmake.Generate] public class ProjectNetImgui_17500 : ProjectNetImgui { public ProjectNetImgui_17500() : base("Imgui_17500"){} }	
 	[Sharpmake.Generate] public class ProjectNetImgui_17600 : ProjectNetImgui { public ProjectNetImgui_17600() : base("Imgui_17600"){} }
 	[Sharpmake.Generate] public class ProjectNetImgui_17700 : ProjectNetImgui { public ProjectNetImgui_17700() : base("Imgui_17700"){} }
 	[Sharpmake.Generate] public class ProjectNetImgui_Dock17601 : ProjectNetImgui { public ProjectNetImgui_Dock17601() : base("Imgui_Dock17601") {} }
-
-
-	[Sharpmake.Generate] public class ProjectImgui_Default : ProjectImgui { public ProjectImgui_Default() : base(SolutionAll.sDefaultImguiVersion) {} }
-
-	[Sharpmake.Generate] public class ProjectNetImgui_Default : ProjectNetImgui { 
-		public ProjectNetImgui_Default() : base(SolutionAll.sDefaultImguiVersion) { Name = "netImguiLib"; } 
-	}
 	
 	[Sharpmake.Generate]
     public class ProjectNetImguiServer : ProjectBase
@@ -310,6 +324,7 @@ namespace NetImgui
 			conf.AddProject<ProjectNetImgui_17600>(target, false, SolutionFolder);
 			conf.AddProject<ProjectNetImgui_17700>(target, false, SolutionFolder);
 			conf.AddProject<ProjectNetImgui_Dock17601>(target, false, SolutionFolder);
+			conf.AddProject<ProjectNetImgui_Disabled>(target, false, SolutionFolder);			
 		}
  
         [Sharpmake.Main]

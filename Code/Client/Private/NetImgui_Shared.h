@@ -8,6 +8,8 @@
 #endif
 #include "../NetImgui_Api.h"
 
+#if NETIMGUI_ENABLED
+
 //=================================================================================================
 // Include a few standard c++ header, with additional warning suppression
 #include "NetImgui_WarningDisableStd.h"
@@ -125,3 +127,5 @@ inline void StringCopy(char* zDest, size_t destLen, const char* zSource );
 
 #include "NetImgui_Shared.inl"
 #include "NetImgui_WarningReenable.h"
+
+#endif //NETIMGUI_ENABLED
