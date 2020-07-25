@@ -165,7 +165,7 @@ bool ServerInfoTab_Startup(unsigned int ServerPort)
 	io.Fonts->AddFontDefault();
 	io.Fonts->Build();
     io.Fonts->GetTexDataAsAlpha8(&pixels, &width, &height);
-	NetImgui::SendDataTexture(0, pixels, static_cast<uint16_t>(width), static_cast<uint16_t>(height), NetImgui::kTexFmtA8);	   
+	NetImgui::SendDataTexture(0, pixels, static_cast<uint16_t>(width), static_cast<uint16_t>(height), NetImgui::eTexFormat::kTexFmtA8);	   
 
     // Store our identifier
     io.Fonts->TexID = reinterpret_cast<ImTextureID*>(0);

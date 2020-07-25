@@ -17,19 +17,24 @@ static std::atomic_uint32_t		gActiveThreads;
 
 void Communications_Incoming_CmdTexture(ClientRemote* pClient, uint8_t*& pCmdData)
 {
-	auto pCmdTexture	= reinterpret_cast<NetImgui::Internal::CmdTexture*>(pCmdData);
-	pCmdData			= nullptr; // Take ownership of the data, prevent Free
-	pCmdTexture->mpTextureData.ToPointer();
-	pClient->ReceiveTexture(pCmdTexture);	
+	if( pCmdData )
+	{
+		auto pCmdTexture	= reinterpret_cast<NetImgui::Internal::CmdTexture*>(pCmdData);
+		pCmdData			= nullptr; // Take ownership of the data, prevent Free
+		pCmdTexture->mpTextureData.ToPointer();
+		pClient->ReceiveTexture(pCmdTexture);
+	}
 }
 
 void Communications_Incoming_CmdDrawFrame(ClientRemote* pClient, uint8_t*& pCmdData)
 {
-	auto pCmdDraw		= reinterpret_cast<NetImgui::Internal::CmdDrawFrame*>(pCmdData);
-	pCmdData			= nullptr; // Take ownership of the data, prevent Free
-	pCmdDraw->ToPointers();
-	pClient->ReceiveDrawFrame(pCmdDraw);
-
+	if( pCmdData )
+	{
+		auto pCmdDraw		= reinterpret_cast<NetImgui::Internal::CmdDrawFrame*>(pCmdData);
+		pCmdData			= nullptr; // Take ownership of the data, prevent Free
+		pCmdDraw->ToPointers();
+		pClient->ReceiveDrawFrame(pCmdDraw);
+	}
 }
 
 //=================================================================================================
@@ -67,14 +72,14 @@ bool Communications_Incoming(SOCKET Socket, ClientRemote* pClient)
 		{
 			switch( cmdHeader.mType )
 			{
-			case NetImgui::Internal::CmdHeader::kCmdPing:		bPingReceived = true; break;
-			case NetImgui::Internal::CmdHeader::kCmdDisconnect:	bOk = false; break;
-			case NetImgui::Internal::CmdHeader::kCmdTexture:	Communications_Incoming_CmdTexture(pClient, pCmdData);		break;
-			case NetImgui::Internal::CmdHeader::kCmdDrawFrame:	Communications_Incoming_CmdDrawFrame(pClient, pCmdData);	break;
+			case NetImgui::Internal::CmdHeader::eCommands::Ping:		bPingReceived = true; break;
+			case NetImgui::Internal::CmdHeader::eCommands::Disconnect:	bOk = false; break;
+			case NetImgui::Internal::CmdHeader::eCommands::Texture:		Communications_Incoming_CmdTexture(pClient, pCmdData);		break;
+			case NetImgui::Internal::CmdHeader::eCommands::DrawFrame:	Communications_Incoming_CmdDrawFrame(pClient, pCmdData);	break;
 			// Commands not received in main loop, by Server
-			case NetImgui::Internal::CmdHeader::kCmdInvalid:
-			case NetImgui::Internal::CmdHeader::kCmdVersion:
-			case NetImgui::Internal::CmdHeader::kCmdInput:		break;
+			case NetImgui::Internal::CmdHeader::eCommands::Invalid:
+			case NetImgui::Internal::CmdHeader::eCommands::Version:
+			case NetImgui::Internal::CmdHeader::eCommands::Input:		break;
 			}
 		}
 
@@ -140,8 +145,8 @@ bool Communications_InitializeClient(SOCKET Socket, ClientRemote* pClient)
 	int resultRcv	= recv(Socket, reinterpret_cast<char*>(&cmdVersionRcv), sizeof(cmdVersionRcv), MSG_WAITALL);
 	
 	if(	resultSend > 0 && resultRcv > 0 && 
-		cmdVersionRcv.mHeader.mType == NetImgui::Internal::CmdHeader::kCmdVersion && 
-		cmdVersionRcv.mVersion == NetImgui::Internal::CmdVersion::kVer_Current )
+		cmdVersionRcv.mHeader.mType == NetImgui::Internal::CmdHeader::eCommands::Version && 
+		cmdVersionRcv.mVersion == NetImgui::Internal::CmdVersion::eVersion::_Current )
 	{
 		strncpy_s(pClient->mName, cmdVersionRcv.mClientName, sizeof(pClient->mName));
 		return true;

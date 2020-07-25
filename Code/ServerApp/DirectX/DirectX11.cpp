@@ -31,8 +31,14 @@
 	#pragma clang diagnostic pop
 #elif _MSC_VER
 	#pragma warning (push)
-	#pragma warning (disable: 4711)	// warning C4711: function 'xxx' selected for automatic inline expansion
-	#pragma warning (disable: 4296)	// warning C4296 : '>=' : expression is always true
+	#pragma warning (disable: 4711)		// function 'xxx' selected for automatic inline expansion	
+	#pragma warning (disable: 4296)		// '>=' : expression is always true
+	#pragma warning (disable: 6011)		// Dereferencing NULL pointer 'y'. 
+	#pragma warning (disable: 6262)		// Function uses '35012' bytes of stack:  exceeds /analyze:stacksize '16384'.  Consider moving some data to heap.	
+	#pragma warning (disable: 6308)		// 'realloc' might return null pointer: assigning null pointer to 'out', which is passed as an argument to 'realloc', will cause the original memory block to be leaked.
+	#pragma warning (disable: 6387)		// 'out+((((layers-1))*stride))' could be '0':  this does not adhere to the specification for the function 'memcpy'. 
+	#pragma warning (disable: 26451)	// Arithmetic overflow: Using operator '+' on a 4 byte value and then casting the result to a 8 byte value. ...	
+	#pragma warning (disable: 28182)	// Dereferencing NULL pointer. '*delays' contains the same NULL value as 'realloc()`6615' did. 
 	#include "../ThirdParty/stb_image.h"
 	#pragma warning (pop)	
 #endif
@@ -84,10 +90,10 @@ using ResTexture2D	= TDXBufferViewRes<ID3D11Texture2D, ID3D11ShaderResourceView>
 struct GfxResources
 {	
 										GfxResources(){}
-	HWND								mhWindow;
-	UINT								mFrameIndex;
-	UINT								mScreenWidth;
-	UINT								mScreenHeight;
+	HWND								mhWindow			= NULL;
+	UINT								mFrameIndex			= 0;
+	UINT								mScreenWidth		= 0;
+	UINT								mScreenHeight		= 0;
 	TDXResource<ID3D11Device>			mDevice;
 	TDXResource<IDXGISwapChain>			mSwapChain;	
 	TDXResource<ID3D11DeviceContext>	mContext;	
@@ -104,10 +110,10 @@ struct GfxResources
 	std::vector<ResTexture2D>			mTextures;
 	std::mutex							mTextureLock;
 private:
-	GfxResources(const GfxResources&){}
-	GfxResources(const GfxResources&&){}
-	GfxResources& operator=(const GfxResources&){ return *this;}
-	GfxResources& operator=(const GfxResources&&){return *this;}
+	GfxResources(const GfxResources&) noexcept {}
+	GfxResources(const GfxResources&&) noexcept {}
+	GfxResources& operator=(const GfxResources&)noexcept {return *this;}
+	GfxResources& operator=(const GfxResources&&)noexcept{return *this;}
 };
 
 struct TextureUpdate 
@@ -130,9 +136,9 @@ bool CreateTexture(ResTexture2D& OutTexture, NetImgui::eTexFormat format, uint16
 	DXGI_FORMAT texFmt(DXGI_FORMAT_UNKNOWN);
 	switch( format )
 	{
-	case NetImgui::kTexFmtA8:		texFmt = DXGI_FORMAT_R8_UNORM; break;
-	case NetImgui::kTexFmtRGBA8:	texFmt = DXGI_FORMAT_R8G8B8A8_UNORM; break;
-	case NetImgui::kTexFmt_Invalid:	texFmt = DXGI_FORMAT_UNKNOWN; break;
+	case NetImgui::eTexFormat::kTexFmtA8:		texFmt = DXGI_FORMAT_R8_UNORM; break;
+	case NetImgui::eTexFormat::kTexFmtRGBA8:	texFmt = DXGI_FORMAT_R8G8B8A8_UNORM; break;
+	case NetImgui::eTexFormat::kTexFmt_Invalid:	texFmt = DXGI_FORMAT_UNKNOWN; break;
 	}
 
 	if( texFmt == DXGI_FORMAT_UNKNOWN )
@@ -341,13 +347,13 @@ bool Startup(HWND hWindow)
 		if( pBGPixels )
 		{		
 			//SF TODO CreateTexture(gpGfxRes->mBackgroundTex, Channel==1 ? NetImgui::kTexFmtR8 : Channel==2 ? NetImgui::kTexFmtRG8 : Channel==3 ? NetImgui::kTexFmtRGB8 : NetImgui::kTexFmtRGBA8, uint16_t(Width), uint16_t(Height), pBGPixels);
-			CreateTexture(gpGfxRes->mBackgroundTex, NetImgui::kTexFmtRGBA8, uint16_t(Width), uint16_t(Height), pBGPixels);
+			CreateTexture(gpGfxRes->mBackgroundTex, NetImgui::eTexFormat::kTexFmtRGBA8, uint16_t(Width), uint16_t(Height), pBGPixels);
 			delete[] pBGPixels;
 		}
 
 		uint8_t TransparentPixels[8*8];
 		memset(TransparentPixels, 0, sizeof(TransparentPixels));
-		CreateTexture(gpGfxRes->mTransparentTex, NetImgui::kTexFmtA8, 8, 8, TransparentPixels);		
+		CreateTexture(gpGfxRes->mTransparentTex, NetImgui::eTexFormat::kTexFmtA8, 8, 8, TransparentPixels);		
 	}
 	return true;
 }
@@ -374,18 +380,20 @@ void Render_UpdateWindowSize()
 		gpGfxRes->mContext->ClearState();
 		gpGfxRes->mBackbufferView.Release();
 		HRESULT hr = gpGfxRes->mSwapChain->ResizeBuffers(0, gpGfxRes->mScreenWidth, gpGfxRes->mScreenHeight, DXGI_FORMAT_UNKNOWN, 0);
-		
-		DXGI_SWAP_CHAIN_DESC sd;
-		gpGfxRes->mSwapChain->GetDesc(&sd);
-		D3D11_RENDER_TARGET_VIEW_DESC render_target_view_desc;
-		ZeroMemory(&render_target_view_desc, sizeof(render_target_view_desc));
-		render_target_view_desc.Format = sd.BufferDesc.Format;
-		render_target_view_desc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
-
-		TDXResource<ID3D11Texture2D> BackBuffer;	
-		hr = gpGfxRes->mSwapChain->GetBuffer(0, __uuidof( ID3D11Texture2D ), reinterpret_cast<void**>(BackBuffer.GetForInit()));
 		if( hr == S_OK )
-			hr = gpGfxRes->mDevice->CreateRenderTargetView(BackBuffer.Get(), &render_target_view_desc, gpGfxRes->mBackbufferView.GetForInit());
+		{
+			DXGI_SWAP_CHAIN_DESC sd;
+			gpGfxRes->mSwapChain->GetDesc(&sd);
+			D3D11_RENDER_TARGET_VIEW_DESC render_target_view_desc;
+			ZeroMemory(&render_target_view_desc, sizeof(render_target_view_desc));
+			render_target_view_desc.Format			= sd.BufferDesc.Format;
+			render_target_view_desc.ViewDimension	= D3D11_RTV_DIMENSION_TEXTURE2D;
+
+			TDXResource<ID3D11Texture2D> BackBuffer;	
+			hr = gpGfxRes->mSwapChain->GetBuffer(0, __uuidof( ID3D11Texture2D ), reinterpret_cast<void**>(BackBuffer.GetForInit()));
+			if( hr == S_OK )
+				gpGfxRes->mDevice->CreateRenderTargetView(BackBuffer.Get(), &render_target_view_desc, gpGfxRes->mBackbufferView.GetForInit());
+		}
 	}
 }
 
@@ -457,9 +465,9 @@ void Render_DrawImgui(const std::vector<TextureHandle>& textures, const NetImgui
 	gpGfxRes->mContext->VSSetConstantBuffers(0, 1, VertexCB.GetArray());
 	gpGfxRes->mContext->IASetVertexBuffers(0, 1, VertexBuffer.GetArray(), &stride, &offset);
 
-	CD3D11_RECT RectPrevious(0,0,0,0);
-	uint64_t	lastTextureId	= NetImgui::Internal::u64Invalid;
-	uint32_t	eLastTexFmt		= NetImgui::eTexFormat::kTexFmt_Invalid;
+	CD3D11_RECT				RectPrevious(0,0,0,0);
+	uint64_t				lastTextureId	= NetImgui::Internal::u64Invalid;
+	NetImgui::eTexFormat	eLastTexFmt		= NetImgui::eTexFormat::kTexFmt_Invalid;
 	for(unsigned int i(0); i<pDrawFrame->mDrawCount; ++i)
 	{
 		const auto* pDraw = &pDrawFrame->mpDraws[i];
@@ -488,11 +496,11 @@ void Render_DrawImgui(const std::vector<TextureHandle>& textures, const NetImgui
 				}
 			}
 						
-			ResTexture2D* pTexture	= foundIdx < 0 ? &gpGfxRes->mTransparentTex : &gpGfxRes->mTextures[textures[foundIdx].mIndex];	// Default texture if not found
-			uint32_t eTexFmt		= foundIdx < 0 ? NetImgui::eTexFormat::kTexFmtA8 : textures[foundIdx].mTextureFormat;
+			ResTexture2D* pTexture			= foundIdx < 0 ? &gpGfxRes->mTransparentTex			: &gpGfxRes->mTextures[textures[foundIdx].mIndex];	// Default texture if not found
+			NetImgui::eTexFormat eTexFmt	= foundIdx < 0 ? NetImgui::eTexFormat::kTexFmtA8	: textures[foundIdx].mTextureFormat;
 			if( eTexFmt != eLastTexFmt )
 			{
-				uint32_t pixelParams[4] = {eTexFmt,0,0,0};
+				uint32_t pixelParams[4] = {static_cast<uint32_t>(eTexFmt),0,0,0};
 				CreateCBuffer(PixelCB, reinterpret_cast<const void*>(pixelParams), sizeof(pixelParams));
 				
 			}

@@ -23,7 +23,8 @@ void CmdDrawFrame::ToOffsets()
 
 bool CmdInput::IsKeyDown(eVirtualKeys vkKey)const
 {
-	return (mKeysDownMask[vkKey/64] & (uint64_t(1)<<(vkKey%64))) != 0;
+	const uint64_t key = static_cast<uint64_t>(vkKey);
+	return (mKeysDownMask[key/64] & (uint64_t(1)<<(key%64))) != 0;
 }
 
 }} // namespace NetImgui::Internal

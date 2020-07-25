@@ -10,48 +10,48 @@ namespace NetImgui { namespace Internal
 
 struct CmdHeader
 {
-	enum eCommands : uint8_t { kCmdInvalid, kCmdPing, kCmdDisconnect, kCmdVersion, kCmdTexture, kCmdInput, kCmdDrawFrame };
+	enum class eCommands : uint8_t { Invalid, Ping, Disconnect, Version, Texture, Input, DrawFrame };
 				CmdHeader(){}
-				CmdHeader(CmdHeader::eCommands CmdType, uint16_t Size) : mSize(Size), mType(CmdType){}
+				CmdHeader(eCommands CmdType, uint16_t Size) : mSize(Size), mType(CmdType){}
 	uint32_t	mSize		= 0;
-	eCommands	mType		= kCmdInvalid;
+	eCommands	mType		= eCommands::Invalid;
 	uint8_t		mPadding[3]	= {0,0,0};
 };
 
 struct alignas(8) CmdPing
 {
-	CmdHeader mHeader = CmdHeader(CmdHeader::kCmdPing, sizeof(CmdPing));
+	CmdHeader mHeader = CmdHeader(CmdHeader::eCommands::Ping, sizeof(CmdPing));
 };
 
 struct alignas(8) CmdDisconnect
 {
-	CmdHeader mHeader = CmdHeader(CmdHeader::kCmdDisconnect, sizeof(CmdDisconnect));
+	CmdHeader mHeader = CmdHeader(CmdHeader::eCommands::Disconnect, sizeof(CmdDisconnect));
 };
 
 struct alignas(8) CmdVersion
 {
-	enum eVersion : uint32_t
+	enum class eVersion : uint32_t
 	{
-		kVer_Initial			= 1,
-		kVer_NewTextureFormat	= 2,
+		Initial				= 1,
+		NewTextureFormat	= 2,
 		// Insert new version here
 
 		//--------------------------------
-		kVer_Count,
-		kVer_Current			= kVer_Count -1
+		_Count,
+		_Current			= _Count -1
 	};
 
-	CmdHeader	mHeader			= CmdHeader(CmdHeader::kCmdVersion, sizeof(CmdVersion));
-	eVersion	mVersion		= kVer_Current;
-	char		mClientName[16];
-	char		mPad[4];
+	CmdHeader	mHeader			= CmdHeader(CmdHeader::eCommands::Version, sizeof(CmdVersion));
+	eVersion	mVersion		= eVersion::_Current;
+	char		mClientName[16]	= {0};
+	char		mPad[4]			= {0};
 };
 
 struct alignas(8) CmdInput
 {
 	// From Windows Virtual Keys Code
 	// https://docs.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes
-	enum eVirtualKeys{ 
+	enum class eVirtualKeys{ 
 		vkMouseBtnLeft		= 0x01,
 		vkMouseBtnRight		= 0x02,
 		vkMouseBtnMid		= 0x04,
@@ -78,36 +78,36 @@ struct alignas(8) CmdInput
 	};
 	inline bool IsKeyDown(eVirtualKeys vkKey)const;
 
-	CmdHeader	mHeader		= CmdHeader(CmdHeader::kCmdInput, sizeof(CmdInput));
-	uint16_t	mScreenSize[2];
-	int16_t		mMousePos[2];	
-	float		mMouseWheelVert;
-	float		mMouseWheelHoriz;
-	uint16_t	mKeyChars[64];			// Input characters	
-	uint64_t	mKeysDownMask[256/64];	// List of keys currently pressed (follow Windows Virtual-Key codes)
-	uint8_t		mKeyCharCount;			// Number of valid input characters
-	uint8_t		PADDING[7];
+	CmdHeader					mHeader			= CmdHeader(CmdHeader::eCommands::Input, sizeof(CmdInput));
+	uint16_t					mScreenSize[2];
+	int16_t						mMousePos[2];	
+	float						mMouseWheelVert;
+	float						mMouseWheelHoriz;
+	uint16_t					mKeyChars[64];			// Input characters	
+	uint64_t					mKeysDownMask[256/64];	// List of keys currently pressed (follow Windows Virtual-Key codes)
+	uint8_t						mKeyCharCount;			// Number of valid input characters
+	uint8_t						PADDING[7]		= {0};
 };
 
 struct alignas(8) CmdTexture
 {		
-	CmdHeader				mHeader			= CmdHeader(CmdHeader::kCmdTexture, sizeof(CmdTexture));
-	OffsetPointer<uint8_t>	mpTextureData;
-	uint64_t				mTextureId;
-	uint16_t				mWidth;
-	uint16_t				mHeight;
-	uint8_t					mFormat;			// eTexFormat
-	uint8_t					PADDING[3];
+	CmdHeader					mHeader			= CmdHeader(CmdHeader::eCommands::Texture, sizeof(CmdTexture));
+	OffsetPointer<uint8_t>		mpTextureData;
+	uint64_t					mTextureId		= 0;
+	uint16_t					mWidth			= 0;
+	uint16_t					mHeight			= 0;
+	eTexFormat					mFormat			= eTexFormat::kTexFmt_Invalid;	// eTexFormat
+	uint8_t						PADDING[3]		= {0};
 };
 
 struct alignas(8) CmdDrawFrame
 {
-	CmdHeader					mHeader		= CmdHeader(CmdHeader::kCmdDrawFrame, sizeof(CmdDrawFrame));	
-	uint32_t					mVerticeCount;		
-	uint32_t					mIndiceByteSize;	
-	uint32_t					mDrawCount;
-	uint32_t					mMouseCursor;	// ImGuiMouseCursor value
-	float						mDisplayArea[4];
+	CmdHeader					mHeader			= CmdHeader(CmdHeader::eCommands::DrawFrame, sizeof(CmdDrawFrame));	
+	uint32_t					mVerticeCount	= 0;		
+	uint32_t					mIndiceByteSize	= 0;	
+	uint32_t					mDrawCount		= 0;
+	uint32_t					mMouseCursor	= 0;	// ImGuiMouseCursor value
+	float						mDisplayArea[4]	= {0};
 	OffsetPointer<ImguiVert>	mpVertices;
 	OffsetPointer<uint8_t>		mpIndices;
 	OffsetPointer<ImguiDraw>	mpDraws;

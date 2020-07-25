@@ -16,7 +16,7 @@ static int			gConnectPort		= NetImgui::kDefaultServerPort;
 static char			gConnectIP[64]		= "127.0.0.1";
 static ImDrawData*	gpLastRemoteDraw	= nullptr;
 static bool			gEnableRemoteMirror	= false;
-static void*		gCustomTextureView[NetImgui::kTexFmt_Count];
+static void*		gCustomTextureView[static_cast<int>(NetImgui::eTexFormat::kTexFmt_Count)];
 
 void				Imgui_DrawMainMenu();
 void				Imgui_DrawContent(ImVec4& clear_col);
@@ -83,14 +83,14 @@ void CustomTextureCreate(NetImgui::eTexFormat eTexFmt)
 
 	switch( eTexFmt )
 	{
-	case NetImgui::kTexFmtA8:
+	case NetImgui::eTexFormat::kTexFmtA8:
 		for (uint8_t y(0); y < Height; ++y) {
 			for (uint8_t x(0); x < Width; ++x) 
 			{
 				pixelData[(y * Width + x)] = 0xFF * x / 8u;
 			}
 		}break;
-	case NetImgui::kTexFmtRGBA8:
+	case NetImgui::eTexFormat::kTexFmtRGBA8:
 		for (uint8_t y(0); y < Height; ++y) {
 			for (uint8_t x(0); x < Width; ++x) 
 			{
@@ -100,10 +100,10 @@ void CustomTextureCreate(NetImgui::eTexFormat eTexFmt)
 				pixelData[(y * Width + x) * 4 + 3] = 0xFF;
 			}
 		}break;
-	case NetImgui::kTexFmt_Invalid: assert(0); break;	
+	case NetImgui::eTexFormat::kTexFmt_Invalid: assert(0); break;	
 	}
-	TextureCreate(pixelData, Width, Height, gCustomTextureView[eTexFmt]);
-	NetImgui::SendDataTexture(reinterpret_cast<uint64_t>(gCustomTextureView[eTexFmt]), pixelData, Width, Height, eTexFmt);
+	TextureCreate(pixelData, Width, Height, gCustomTextureView[static_cast<int>(eTexFmt)]);
+	NetImgui::SendDataTexture(reinterpret_cast<uint64_t>(gCustomTextureView[static_cast<int>(eTexFmt)]), pixelData, Width, Height, eTexFmt);
 }
 
 //=================================================================================================
@@ -111,10 +111,10 @@ void CustomTextureCreate(NetImgui::eTexFormat eTexFmt)
 //=================================================================================================
 void CustomTextureDestroy(NetImgui::eTexFormat eTexFmt)
 {	
-	if( gCustomTextureView[eTexFmt] )
+	if( gCustomTextureView[static_cast<int>(eTexFmt)] )
 	{
-		NetImgui::SendDataTexture(reinterpret_cast<uint64_t>(gCustomTextureView[eTexFmt]), nullptr, 0, 0, NetImgui::kTexFmt_Invalid);
-		TextureDestroy(gCustomTextureView[eTexFmt]);
+		NetImgui::SendDataTexture(reinterpret_cast<uint64_t>(gCustomTextureView[static_cast<int>(eTexFmt)]), nullptr, 0, 0, NetImgui::eTexFormat::kTexFmt_Invalid);
+		TextureDestroy(gCustomTextureView[static_cast<int>(eTexFmt)]);
 	}
 }
 
@@ -151,7 +151,7 @@ bool Client_Startup()
 //=================================================================================================
 void Client_Shutdown()
 {	
-	for(int i=0; i<NetImgui::kTexFmt_Count; ++i)
+	for(int i=0; i<static_cast<int>(NetImgui::eTexFormat::kTexFmt_Count); ++i)
 		CustomTextureDestroy(static_cast<NetImgui::eTexFormat>(i));
 	NetImgui::Shutdown();
 }
@@ -161,7 +161,7 @@ void Client_Shutdown()
 //=================================================================================================
 void Client_AddFontTexture(uint64_t texId, void* pData, uint16_t width, uint16_t height)
 {
-	NetImgui::SendDataTexture(texId, pData, width, height, NetImgui::kTexFmtRGBA8 );
+	NetImgui::SendDataTexture(texId, pData, width, height, NetImgui::eTexFormat::kTexFmtRGBA8 );
 }
 
 //=================================================================================================
@@ -251,7 +251,7 @@ void Imgui_DrawContent(ImVec4& clear_col)
 		//SF TODO ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 		const char* zFormatName[]={"R8", "RGBA8", ""};
 		ImGui::TextUnformatted("Note: Textures displayed properly on remote server only");
-		for(int i=0; i<NetImgui::kTexFmt_Count; ++i)
+		for(int i=0; i<static_cast<int>(NetImgui::eTexFormat::kTexFmt_Count); ++i)
 		{
 			// Only display this on remote connection (associated texture note created locally)
 			ImGui::PushID(i);

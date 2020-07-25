@@ -20,7 +20,7 @@ struct ClientTexture
 	inline bool	IsValid()const;	
 	CmdTexture* mpCmdTexture= nullptr;
 	bool		mbSent		= false;
-	uint8_t		mPadding[7];
+	uint8_t		mPadding[7]	= {0};
 };
 
 //=============================================================================

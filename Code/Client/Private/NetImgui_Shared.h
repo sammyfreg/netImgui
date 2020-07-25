@@ -104,13 +104,13 @@ public:
 	void					AddData(const TType* pData, size_t& count);
 	void					ReadData(TType* pData, size_t& count);
 private:
-	TType					mBuffer[TCount];
+	TType					mBuffer[TCount] = {0};
 	std::atomic_uint64_t	mPosCur;
 	std::atomic_uint64_t	mPosLast;
 
 // Prevents warning about implicitly delete functions
 private:
-	Ringbuffer(const Ringbuffer&) =delete;
+	Ringbuffer(const Ringbuffer&) = delete;
 	Ringbuffer(const Ringbuffer&&) = delete;
 	void operator=(const Ringbuffer&) = delete;
 };

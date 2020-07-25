@@ -102,7 +102,7 @@ bool NewFrame()
 				auto currentTime			= std::chrono::high_resolution_clock::now();
 				auto duration				= std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime - lastTime);
 				lastTime					= currentTime;
-				deltaTime					= static_cast<float>(duration.count() / (1000000000.f));
+				deltaTime					= static_cast<float>(duration.count()) / 1000000000.f;
 			}
 			
 			ImGui::GetIO().DeltaTime		= deltaTime > 0 ? deltaTime : 1.f/1000.f;			
@@ -163,7 +163,7 @@ void SendDataTexture(uint64_t textureId, void* pData, uint16_t width, uint16_t h
 		pCmdTexture->mWidth					= width;
 		pCmdTexture->mHeight				= height;
 		pCmdTexture->mTextureId				= textureId;
-		pCmdTexture->mFormat				= static_cast<uint8_t>(format);
+		pCmdTexture->mFormat				= format;
 		pCmdTexture->mpTextureData.ToOffset();
 	}
 	// Texture to remove
@@ -173,7 +173,7 @@ void SendDataTexture(uint64_t textureId, void* pData, uint16_t width, uint16_t h
 		pCmdTexture->mTextureId				= textureId;		
 		pCmdTexture->mWidth					= 0;
 		pCmdTexture->mHeight				= 0;
-		pCmdTexture->mFormat				= kTexFmt_Invalid;
+		pCmdTexture->mFormat				= eTexFormat::kTexFmt_Invalid;
 		pCmdTexture->mpTextureData.SetOff(0);
 	}
 
@@ -235,9 +235,9 @@ uint8_t GetTexture_BitsPerPixel(eTexFormat eFormat)
 {
 	switch(eFormat)
 	{
-	case kTexFmtA8:			return 8*1;
-	case kTexFmtRGBA8:		return 8*4;
-	case kTexFmt_Invalid:	return 0;
+	case eTexFormat::kTexFmtA8:			return 8*1;
+	case eTexFormat::kTexFmtRGBA8:		return 8*4;
+	case eTexFormat::kTexFmt_Invalid:	return 0;
 	}
 	return 0;
 }
@@ -346,24 +346,24 @@ void CreateImguiContext()
 //=================================================================================================
 bool InputUpdateData()
 {
-	Client::ClientInfo& client = *gpClientInfo;
-	CmdInput* pCmdInput = client.mPendingInputIn.Release();
-	ImGuiIO& io = ImGui::GetIO();
+	Client::ClientInfo& client	= *gpClientInfo;
+	CmdInput* pCmdInput			= client.mPendingInputIn.Release();
+	ImGuiIO& io					= ImGui::GetIO();
 	if (pCmdInput)
 	{
-		io.DisplaySize = ImVec2(pCmdInput->mScreenSize[0], pCmdInput->mScreenSize[1]);
-		io.MousePos = ImVec2(pCmdInput->mMousePos[0], pCmdInput->mMousePos[1]);
-		io.MouseWheel = pCmdInput->mMouseWheelVert - client.mMouseWheelVertPrev;
-		io.MouseWheelH = pCmdInput->mMouseWheelHoriz - client.mMouseWheelHorizPrev;
-		io.MouseDown[0] = pCmdInput->IsKeyDown(CmdInput::vkMouseBtnLeft);
-		io.MouseDown[1] = pCmdInput->IsKeyDown(CmdInput::vkMouseBtnRight);
-		io.MouseDown[2] = pCmdInput->IsKeyDown(CmdInput::vkMouseBtnMid);
-		io.MouseDown[3] = pCmdInput->IsKeyDown(CmdInput::vkMouseBtnExtra1);
-		io.MouseDown[4] = pCmdInput->IsKeyDown(CmdInput::vkMouseBtnExtra2);
-		io.KeyShift = pCmdInput->IsKeyDown(CmdInput::vkKeyboardShift);
-		io.KeyCtrl = pCmdInput->IsKeyDown(CmdInput::vkKeyboardCtrl);
-		io.KeyAlt = pCmdInput->IsKeyDown(CmdInput::vkKeyboardAlt);
-		io.KeySuper = pCmdInput->IsKeyDown(CmdInput::vkKeyboardSuper1) || pCmdInput->IsKeyDown(CmdInput::vkKeyboardSuper2);
+		io.DisplaySize	= ImVec2(pCmdInput->mScreenSize[0], pCmdInput->mScreenSize[1]);
+		io.MousePos		= ImVec2(pCmdInput->mMousePos[0], pCmdInput->mMousePos[1]);
+		io.MouseWheel	= pCmdInput->mMouseWheelVert - client.mMouseWheelVertPrev;
+		io.MouseWheelH	= pCmdInput->mMouseWheelHoriz - client.mMouseWheelHorizPrev;
+		io.MouseDown[0] = pCmdInput->IsKeyDown(CmdInput::eVirtualKeys::vkMouseBtnLeft);
+		io.MouseDown[1] = pCmdInput->IsKeyDown(CmdInput::eVirtualKeys::vkMouseBtnRight);
+		io.MouseDown[2] = pCmdInput->IsKeyDown(CmdInput::eVirtualKeys::vkMouseBtnMid);
+		io.MouseDown[3] = pCmdInput->IsKeyDown(CmdInput::eVirtualKeys::vkMouseBtnExtra1);
+		io.MouseDown[4] = pCmdInput->IsKeyDown(CmdInput::eVirtualKeys::vkMouseBtnExtra2);
+		io.KeyShift		= pCmdInput->IsKeyDown(CmdInput::eVirtualKeys::vkKeyboardShift);
+		io.KeyCtrl		= pCmdInput->IsKeyDown(CmdInput::eVirtualKeys::vkKeyboardCtrl);
+		io.KeyAlt		= pCmdInput->IsKeyDown(CmdInput::eVirtualKeys::vkKeyboardAlt);
+		io.KeySuper		= pCmdInput->IsKeyDown(CmdInput::eVirtualKeys::vkKeyboardSuper1) || pCmdInput->IsKeyDown(CmdInput::eVirtualKeys::vkKeyboardSuper2);
 		//io.NavInputs //SF TODO
 
 		memset(io.KeysDown, 0, sizeof(io.KeysDown));

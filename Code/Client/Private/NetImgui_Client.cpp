@@ -31,8 +31,8 @@ bool Communications_Initialize(ClientInfo& client)
 	bool bResultSend =		Network::DataSend(client.mpSocket, &cmdVersionSend, cmdVersionSend.mHeader.mSize);
 	bool bResultRcv	=		Network::DataReceive(client.mpSocket, &cmdVersionRcv, sizeof(cmdVersionRcv));		
 	client.mbConnected =	bResultRcv && bResultSend && 
-							cmdVersionRcv.mHeader.mType == CmdHeader::kCmdVersion && 
-							cmdVersionRcv.mVersion == CmdVersion::kVer_Current;
+							cmdVersionRcv.mHeader.mType == CmdHeader::eCommands::Version && 
+							cmdVersionRcv.mVersion == CmdVersion::eVersion::_Current;
 	client.mbConnectRequest = false;
 	if( client.mbConnected )
 	{
@@ -51,11 +51,14 @@ bool Communications_Initialize(ClientInfo& client)
 //=================================================================================================
 void Communications_Incoming_Input(ClientInfo& client, uint8_t*& pCmdData)
 {
-	auto pCmdInput	= reinterpret_cast<CmdInput*>(pCmdData);
-	pCmdData		= nullptr; // Take ownership of the data, prevent Free
-	size_t keyCount(pCmdInput->mKeyCharCount);
-	client.mPendingKeyIn.AddData(pCmdInput->mKeyChars, keyCount);
-	client.mPendingInputIn.Assign(pCmdInput);	
+	if( pCmdData )
+	{
+		auto pCmdInput	= reinterpret_cast<CmdInput*>(pCmdData);
+		pCmdData		= nullptr; // Take ownership of the data, prevent Free
+		size_t keyCount(pCmdInput->mKeyCharCount);
+		client.mPendingKeyIn.AddData(pCmdInput->mKeyChars, keyCount);
+		client.mPendingInputIn.Assign(pCmdInput);	
+	}
 }
 
 //=================================================================================================
@@ -74,7 +77,7 @@ bool Communications_Outgoing_Textures(ClientInfo& client)
 			{
 				bSuccess			&= Network::DataSend(client.mpSocket, cmdTexture.mpCmdTexture, cmdTexture.mpCmdTexture->mHeader.mSize);
 				cmdTexture.mbSent	= bSuccess;
-				if( cmdTexture.mbSent && cmdTexture.mpCmdTexture->mFormat == kTexFmt_Invalid )
+				if( cmdTexture.mbSent && cmdTexture.mpCmdTexture->mFormat == eTexFormat::kTexFmt_Invalid )
 					netImguiDeleteSafe(cmdTexture.mpCmdTexture);					
 			}
 		}
@@ -147,14 +150,14 @@ bool Communications_Incoming(ClientInfo& client)
 		{
 			switch( cmdHeader.mType )
 			{
-			case CmdHeader::kCmdPing:		bPingReceived = true; break;
-			case CmdHeader::kCmdDisconnect:	bOk = false; break;
-			case CmdHeader::kCmdInput:		Communications_Incoming_Input(client, pCmdData); break;			
+			case CmdHeader::eCommands::Ping:		bPingReceived = true; break;
+			case CmdHeader::eCommands::Disconnect:	bOk = false; break;
+			case CmdHeader::eCommands::Input:		Communications_Incoming_Input(client, pCmdData); break;			
 			// Commands not received in main loop, by Client
-			case CmdHeader::kCmdInvalid:
-			case CmdHeader::kCmdVersion:
-			case CmdHeader::kCmdTexture:
-			case CmdHeader::kCmdDrawFrame:	break;
+			case CmdHeader::eCommands::Invalid:
+			case CmdHeader::eCommands::Version:
+			case CmdHeader::eCommands::Texture:
+			case CmdHeader::eCommands::DrawFrame:	break;
 			}
 		}		
 		netImguiDeleteSafe(pCmdData);
@@ -207,23 +210,25 @@ void ClientInfo::TextureProcessPending()
 		int32_t count				= mTexturesPendingCount.fetch_sub(1);
 		CmdTexture* pCmdTexture		= mTexturesPending[count-1];
 		mTexturesPending[count-1]	= nullptr;
-
-		// Find the TextureId from our list (or free slot)
-		int texIdx		= 0;
-		int texFreeSlot	= static_cast<int>(mTextures.size());
-		while( texIdx < mTextures.size() && ( !mTextures[texIdx].IsValid() || mTextures[texIdx].mpCmdTexture->mTextureId != pCmdTexture->mTextureId) )
+		if( pCmdTexture )
 		{
-			texFreeSlot = !mTextures[texIdx].IsValid() ? texIdx : texFreeSlot;
-			++texIdx;
+			// Find the TextureId from our list (or free slot)
+			int texIdx		= 0;
+			int texFreeSlot	= static_cast<int>(mTextures.size());
+			while( texIdx < mTextures.size() && ( !mTextures[texIdx].IsValid() || mTextures[texIdx].mpCmdTexture->mTextureId != pCmdTexture->mTextureId) )
+			{
+				texFreeSlot = !mTextures[texIdx].IsValid() ? texIdx : texFreeSlot;
+				++texIdx;
+			}
+
+			if( texIdx == mTextures.size() )
+				texIdx = texFreeSlot;
+			if( texIdx == mTextures.size() )
+				mTextures.push_back(ClientTexture());
+
+			mTextures[texIdx].Set( pCmdTexture );
+			mTextures[texIdx].mbSent = false;
 		}
-
-		if( texIdx == mTextures.size() )
-			texIdx = texFreeSlot;
-		if( texIdx == mTextures.size() )
-			mTextures.push_back(ClientTexture());
-
-		mTextures[texIdx].Set( pCmdTexture );
-		mTextures[texIdx].mbSent = false;				
 	}
 }
 

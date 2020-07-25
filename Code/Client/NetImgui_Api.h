@@ -17,13 +17,14 @@ struct ImDrawData;
 #include <stdint.h>
 
 #include "NetImgui_Config.h"
+#include "Private/NetImgui_WarningDisable.h"
 
 //=================================================================================================
 // List of texture format supported
 //=================================================================================================
 namespace NetImgui 
 { 
-enum eTexFormat { 
+enum class eTexFormat : uint8_t { 
 	kTexFmtA8, 
 	kTexFmtRGBA8, 
 	kTexFmt_Count,
@@ -99,3 +100,4 @@ uint32_t			GetTexture_BytePerLine	(eTexFormat eFormat, uint32_t pixelWidth);
 uint32_t			GetTexture_BytePerImage	(eTexFormat eFormat, uint32_t pixelWidth, uint32_t pixelHeight);
 } 
 
+#include "Private/NetImgui_WarningReenable.h"

@@ -33,8 +33,8 @@ struct ClientRemote
 	void								UpdateInputToSend(HWND hWindows, InputUpdate& Input);
 	NetImgui::Internal::CmdInput*		CreateInputCommand();
 
-	char								mName[32];
-	unsigned char						mConnectIP[4];
+	char								mName[32]		= {0};
+	unsigned char						mConnectIP[4]	= {0};
 	unsigned int						mConnectPort	= static_cast<unsigned int>(-1);	
 	UINT_PTR							mMenuId			= 0;		
 	NetImgui::Internal::CmdDrawFrame*	mpFrameDraw		= nullptr;	// Current valid DrawFrame

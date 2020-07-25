@@ -59,7 +59,7 @@ void UpdateActiveClient(uint32_t NewClientId)
 
 void AddRemoteClient(uint32_t NewClientIndex)
 {	
-	(*gpClients)[NewClientIndex].mMenuId = kUIClientIFirstID + NewClientIndex;
+	(*gpClients)[NewClientIndex].mMenuId = static_cast<uint64_t>(kUIClientIFirstID) + static_cast<uint64_t>(NewClientIndex);
 	AppendMenuA(GetMenu(ghMainWindow), MF_STRING, (*gpClients)[NewClientIndex].mMenuId, "");
 	UpdateActiveClient(NewClientIndex);
 }

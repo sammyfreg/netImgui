@@ -11,12 +11,12 @@ namespace dx
 
 struct TextureHandle
 {
-				TextureHandle(): mImguiId(0), mIndex(0), mTextureFormat(NetImgui::kTexFmt_Invalid){}	
-	inline bool IsValid(){ return mTextureFormat != NetImgui::kTexFmt_Invalid; }
-	inline void SetInvalid(){ mTextureFormat = NetImgui::kTexFmt_Invalid; }
-	uint64_t	mImguiId;
-	uint32_t	mIndex;
-	uint32_t	mTextureFormat;	// NetImgui::eTexFormat
+							TextureHandle(): mImguiId(0), mIndex(0), mTextureFormat(NetImgui::eTexFormat::kTexFmt_Invalid){}	
+	inline bool				IsValid(){ return mTextureFormat != NetImgui::eTexFormat::kTexFmt_Invalid; }
+	inline void				SetInvalid(){ mTextureFormat = NetImgui::eTexFormat::kTexFmt_Invalid; }
+	uint64_t				mImguiId;
+	uint32_t				mIndex;
+	NetImgui::eTexFormat	mTextureFormat;
 };
 
 bool			Startup(HWND hWindow);
