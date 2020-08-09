@@ -2,19 +2,26 @@
 #include "Private/NetImgui_WarningDisableStd.h"
 
 #include <WinSock2.h>
+#include <WS2tcpip.h>
 #include <thread>
 
 #include "ServerNetworking.h"
-#include "RemoteClient.h"
+#include "ClientRemote.h"
+#include "ClientConfig.h"
+
 #include <Private/NetImgui_Network.h>
 #include <Private/NetImgui_CmdPackets.h>
 
 namespace NetworkServer
 {
 
-static bool						gbShutdown = false;
-static std::atomic_uint32_t		gActiveThreads;
+static constexpr DWORD			kComsTimeoutMs	= 2000;
+static bool						gbShutdown		= false;
+static std::atomic_uint32_t		gActiveClientThreadCount;
 
+//=================================================================================================
+//
+//=================================================================================================
 void Communications_Incoming_CmdTexture(ClientRemote* pClient, uint8_t*& pCmdData)
 {
 	if( pCmdData )
@@ -26,6 +33,9 @@ void Communications_Incoming_CmdTexture(ClientRemote* pClient, uint8_t*& pCmdDat
 	}
 }
 
+//=================================================================================================
+//
+//=================================================================================================
 void Communications_Incoming_CmdDrawFrame(ClientRemote* pClient, uint8_t*& pCmdData)
 {
 	if( pCmdData )
@@ -104,6 +114,13 @@ bool Communications_Outgoing(SOCKET Socket, ClientRemote* pClient)
 		NetImgui::Internal::netImguiDeleteSafe(pInputCmd);
 	}
 	
+	if( pClient->mbPendingDisconnect )
+	{
+		NetImgui::Internal::CmdDisconnect cmdDisconnect;
+		int result	= send(Socket, reinterpret_cast<const char*>(&cmdDisconnect), static_cast<int>(cmdDisconnect.mHeader.mSize), 0);
+		bSuccess	&= (result == static_cast<int>(cmdDisconnect.mHeader.mSize));
+	}
+
 	// Always finish with a ping
 	{
 		NetImgui::Internal::CmdPing cmdPing;
@@ -119,17 +136,23 @@ bool Communications_Outgoing(SOCKET Socket, ClientRemote* pClient)
 void Communications_ClientExchangeLoop(SOCKET Socket, ClientRemote* pClient)
 {	
 	bool bConnected(true);
-	gActiveThreads++;
-	while (bConnected && pClient->mbConnected && !gbShutdown)
+	gActiveClientThreadCount++;
+
+	ClientConfig::SetProperty_Connected(pClient->mClientConfigID, true);
+	while (bConnected && pClient->mbIsConnected && !pClient->mbPendingDisconnect && !gbShutdown)
 	{		
 		bConnected =	Communications_Outgoing(Socket, pClient) && 
 						Communications_Incoming(Socket, pClient);
-		Sleep(8);
+		std::this_thread::sleep_for(std::chrono::milliseconds(8));
 	}
+	ClientConfig::SetProperty_Connected(pClient->mClientConfigID, false);
 	closesocket(Socket);
-	pClient->mName[0]		= 0;
-	pClient->mbConnected	= false;
-	gActiveThreads--;
+	
+	pClient->mName[0]				= 0;
+	pClient->mbPendingDisconnect	= false;
+	pClient->mbIsConnected			= false;
+	pClient->mbIsFree				= true;
+	gActiveClientThreadCount--;
 }
 
 //=================================================================================================
@@ -147,17 +170,50 @@ bool Communications_InitializeClient(SOCKET Socket, ClientRemote* pClient)
 	if(	resultSend > 0 && resultRcv > 0 && 
 		cmdVersionRcv.mHeader.mType == NetImgui::Internal::CmdHeader::eCommands::Version && 
 		cmdVersionRcv.mVersion == NetImgui::Internal::CmdVersion::eVersion::_Current )
-	{
-		strncpy_s(pClient->mName, cmdVersionRcv.mClientName, sizeof(pClient->mName));
+	{		
+		ClientConfig clientConfig;
+		if( ClientConfig::GetConfigByID(pClient->mClientConfigID, clientConfig) )
+			sprintf_s(pClient->mName, "%s (%s)", clientConfig.ClientName, cmdVersionRcv.mClientName);
+		else
+			sprintf_s(pClient->mName, "%s", cmdVersionRcv.mClientName);
 		return true;
 	}
 	return false;
 }
 
+void NetworkConnectionNew(SOCKET ClientSocket, ClientRemote* pNewClient)
+{
+	const char* zErrorMsg(nullptr);
+	if (pNewClient == nullptr)
+		zErrorMsg = "Too many connection on server already";
+
+	setsockopt(ClientSocket, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<const char*>(&kComsTimeoutMs), sizeof(kComsTimeoutMs));
+	setsockopt(ClientSocket, SOL_SOCKET, SO_SNDTIMEO, reinterpret_cast<const char*>(&kComsTimeoutMs), sizeof(kComsTimeoutMs));
+	if (zErrorMsg == nullptr && Communications_InitializeClient(ClientSocket, pNewClient) == false)
+		zErrorMsg = "Initialization failed. Wrong communication version?";
+
+	if (zErrorMsg == nullptr)
+	{
+		pNewClient->mbIsConnected = true;
+		std::thread(Communications_ClientExchangeLoop, ClientSocket, pNewClient).detach();
+	}
+	else
+	{
+		if (pNewClient)
+		{
+			pNewClient->mbIsFree = true;
+			printf("Error connecting to client '%s:%i' (%s)\n", pNewClient->mConnectHost, pNewClient->mConnectPort, zErrorMsg);
+		}
+		else
+			printf("Error connecting to client (%s)\n", zErrorMsg);
+		closesocket(ClientSocket);
+	}
+}
+
 //=================================================================================================
 // Thread waiting on Client Connection request
 //=================================================================================================
-void NetworkConnectionListen(SOCKET ListenSocket, ClientRemote* pClients, uint32_t ClientCount)
+void NetworkConnectRequest_Receive(SOCKET ListenSocket)
 {	
 	while( !gbShutdown )
 	{
@@ -166,54 +222,89 @@ void NetworkConnectionListen(SOCKET ListenSocket, ClientRemote* pClients, uint32
 		SOCKET		ClientSocket = accept(ListenSocket , &ClientAddress, &Size) ;
 		if( ClientSocket != INVALID_SOCKET )
 		{
-			ClientRemote* pClientAvail(nullptr);
-			for(uint32_t i(0); i<ClientCount && pClientAvail==nullptr; ++i)
+			uint32_t freeIndex = ClientRemote::GetFreeIndex();
+			if( freeIndex != ClientRemote::kInvalidClient )
 			{
-				if( pClients[i].mbConnected.exchange(true) == false)
-					pClientAvail = &pClients[i];
-			}
-
-			if (pClientAvail && ClientAddress.sa_family == AF_INET)
-			{
-				pClientAvail->mConnectPort	= reinterpret_cast<sockaddr_in*>(&ClientAddress)->sin_port;
-				pClientAvail->mConnectIP[0]	= reinterpret_cast<sockaddr_in*>(&ClientAddress)->sin_addr.S_un.S_un_b.s_b1;
-				pClientAvail->mConnectIP[1]	= reinterpret_cast<sockaddr_in*>(&ClientAddress)->sin_addr.S_un.S_un_b.s_b2;
-				pClientAvail->mConnectIP[2]	= reinterpret_cast<sockaddr_in*>(&ClientAddress)->sin_addr.S_un.S_un_b.s_b3;
-				pClientAvail->mConnectIP[3]	= reinterpret_cast<sockaddr_in*>(&ClientAddress)->sin_addr.S_un.S_un_b.s_b4;
-				pClientAvail->mName[0]		= 0;
-			}
-			
-			const char* zErrorMsg(nullptr);
-			if( pClientAvail == nullptr )
-				zErrorMsg = "Too many connection on server already";
-
-			if( zErrorMsg == nullptr && Communications_InitializeClient(ClientSocket, pClientAvail) == false )
-				zErrorMsg = "Initialization failed. Wrong communication version?";
-			
-			if(zErrorMsg == nullptr)
-			{
-				std::thread(Communications_ClientExchangeLoop, ClientSocket, pClientAvail).detach();
+				ClientRemote& newClient = ClientRemote::Get(freeIndex);
+				newClient.mClientConfigID = ClientConfig::kInvalidRuntimeID;
+				getnameinfo(&ClientAddress, sizeof(ClientAddress), newClient.mConnectHost, sizeof(newClient.mConnectHost), nullptr, 0, 0);
+				NetworkConnectionNew(ClientSocket, &newClient);
 			}
 			else
-			{
-				if( pClientAvail )
-				{
-					pClientAvail->mbConnected = false;
-					printf("Error connecting to client %03i.%03i.%03i.%03i:%i (%s)\n", pClientAvail->mConnectIP[3], pClientAvail->mConnectIP[2], pClientAvail->mConnectIP[1], pClientAvail->mConnectIP[0], pClientAvail->mConnectPort, zErrorMsg);
-				}
-				else
-					printf("Error connecting to client (%s)\n", zErrorMsg);
 				closesocket(ClientSocket);
-			}			
 		}
 	}
 	closesocket(ListenSocket);
 }
 
 //=================================================================================================
+// Thread trying to reach out Client
+//=================================================================================================
+void NetworkConnectRequest_Send()
+{		
+	uint64_t loopIndex(0);
+	ClientConfig clientConfig;
+	SOCKET ConnectSocket(INVALID_SOCKET);
+	while( !gbShutdown )
+	{						
+		addrinfo* pAdrResults(nullptr);
+		uint32_t clientConfigID(ClientConfig::kInvalidRuntimeID);
+		
+		if( ConnectSocket == INVALID_SOCKET ) 	
+			ConnectSocket = socket(AF_INET, SOCK_STREAM, 0);
+
+		// Find next client configuration to attempt connection to
+		uint64_t configCount	= static_cast<uint64_t>(ClientConfig::GetConfigCount());
+		uint32_t configIdx		= configCount ? static_cast<uint32_t>(loopIndex++ % configCount) : 0;
+		if( ClientConfig::GetConfigByIndex(configIdx, clientConfig) )
+		{
+			if( (clientConfig.ConnectAuto || clientConfig.ConnectRequest) && !clientConfig.Connected )
+			{
+				char zPortName[10];
+				sprintf_s(zPortName, "%i", clientConfig.HostPort);
+				getaddrinfo(clientConfig.HostName, zPortName, nullptr, &pAdrResults);
+				ClientConfig::SetProperty_ConnectRequest(clientConfig.RuntimeID, false);	// Reset the Connection request, we are processing it
+				clientConfigID = clientConfig.RuntimeID;									// Keep track of ClientConfig we are attempting to connect to				
+			}
+		}			
+	
+		// Attempt to reach the Client, over all resolved addresses
+		bool bConnected(false);
+		addrinfo* pAdrResultCur(pAdrResults);
+		while( ConnectSocket != INVALID_SOCKET && pAdrResultCur && !bConnected )
+		{
+			bConnected		= connect(ConnectSocket, pAdrResultCur->ai_addr, static_cast<int>(pAdrResultCur->ai_addrlen)) == 0;
+			pAdrResultCur	= bConnected ? pAdrResultCur : pAdrResultCur->ai_next;
+		}
+
+		// Connection successful, find an available client slot
+		if( bConnected )
+		{			
+			uint32_t freeIndex = ClientRemote::GetFreeIndex();
+			if( freeIndex != ClientRemote::kInvalidClient )
+			{			
+				ClientRemote& newClient = ClientRemote::Get(freeIndex);
+				if( ClientConfig::GetConfigByID(clientConfigID, clientConfig) )
+				{
+					strcpy_s(newClient.mName, clientConfig.ClientName);
+					newClient.mConnectPort		= clientConfig.HostPort;
+					newClient.mClientConfigID	= clientConfigID;					
+				}
+				getnameinfo(pAdrResultCur->ai_addr, static_cast<socklen_t>(pAdrResultCur->ai_addrlen), newClient.mConnectHost, sizeof(newClient.mConnectHost), nullptr, 0, 0);
+				NetworkConnectionNew(ConnectSocket, &newClient);
+				ConnectSocket = INVALID_SOCKET;
+			}
+		}
+		freeaddrinfo(pAdrResults);
+		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+	}	
+	closesocket( ConnectSocket );
+}
+
+//=================================================================================================
 // Initialize Networking and start listening thread
 //=================================================================================================
-bool Startup(ClientRemote* pClients, uint32_t ClientCount, uint32_t ListenPort )
+bool Startup( uint32_t ListenPort )
 {	
 	// Relying on shared network implementation for Winsock Init
 	if( !NetImgui::Internal::Network::Startup() )
@@ -248,16 +339,17 @@ bool Startup(ClientRemote* pClients, uint32_t ClientCount, uint32_t ListenPort )
 		return false;
 	}
 
-	gActiveThreads = 0;
-	std::thread(NetworkConnectionListen, ListenSocket, pClients, ClientCount).detach();
+	gActiveClientThreadCount = 0;
+	std::thread(NetworkConnectRequest_Receive, ListenSocket).detach();
+	std::thread(NetworkConnectRequest_Send).detach();
 	return true;
 }
 
 void Shutdown()
 {
 	gbShutdown = true;
-	while( gActiveThreads > 0 )
-		Sleep(0);
+	while( gActiveClientThreadCount > 0 )
+		std::this_thread::yield();
 }
 
 

@@ -64,7 +64,8 @@ protected:
 //=============================================================================
 // Main communication thread, that should be started in its own thread
 //=============================================================================
-void Communications(void* pClientVoid);
+void CommunicationsClient(void* pClientVoid);
+void CommunicationsHost(void* pClientVoid);
 
 }}} //namespace NetImgui::Internal::Client
 

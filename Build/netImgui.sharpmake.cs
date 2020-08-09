@@ -138,6 +138,7 @@ namespace NetImgui
 				conf.VcxprojUserFile.LocalDebuggerWorkingDirectory = "$(TargetDir)";
 				conf.Options.Add(Options.Vc.Linker.SubSystem.Application);
 				conf.LibraryFiles.Add("D3D11.lib");
+				conf.IncludePaths.Add(@"[project.SharpmakeCsPath]\..\Code");
 			}
 
 			conf.Options.Add(Options.Vc.General.TreatWarningsAsErrors.Enable);

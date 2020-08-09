@@ -31,17 +31,58 @@ SocketInfo* Connect(const char* ServerHost, uint32_t ServerPort)
 		return nullptr;
 	
 	char zPortName[32];
-	addrinfo* pResults(nullptr);
+	addrinfo*	pResults	= nullptr;
+	SocketInfo* pSocketInfo	= nullptr;
 	sprintf(zPortName, "%i", ServerPort);
 	getaddrinfo(ServerHost, zPortName, nullptr, &pResults);
-	while( pResults )
+	addrinfo*	pResultCur	= pResults;
+	while( pResultCur && !pSocketInfo)
 	{
-		if( connect(ConnectSocket, pResults->ai_addr, static_cast<int>(pResults->ai_addrlen)) == 0 )
-			return netImguiNew<SocketInfo>(ConnectSocket);
+		if( connect(ConnectSocket, pResultCur->ai_addr, static_cast<int>(pResultCur->ai_addrlen)) == 0 )
+			pSocketInfo = netImguiNew<SocketInfo>(ConnectSocket);
 				
-		pResults = pResults->ai_next;
+		pResultCur = pResultCur->ai_next;
 	}
-		
+
+	freeaddrinfo(pResults);
+	return pSocketInfo;
+}
+
+SocketInfo* ListenStart(uint32_t ListenPort)
+{
+#if 0 //SF TODO (copy of Winsock at the moment)
+	SOCKET ListenSocket = INVALID_SOCKET;
+	if ((ListenSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) != INVALID_SOCKET)
+	{
+		sockaddr_in server;
+		server.sin_family = AF_INET;
+		server.sin_addr.s_addr = INADDR_ANY;
+		server.sin_port = htons(static_cast<USHORT>(ListenPort));
+		if (bind(ListenSocket, reinterpret_cast<sockaddr*>(&server), sizeof(server)) != SOCKET_ERROR &&
+			listen(ListenSocket, 0) != SOCKET_ERROR)
+		{
+			return netImguiNew<SocketInfo>(ListenSocket);
+		}
+		closesocket(ListenSocket);
+	}
+#endif
+	return nullptr;
+}
+
+SocketInfo* ListenConnect(SocketInfo* ListenSocket)
+{
+#if 0 //SF TODO (copy of Winsock at the moment)
+	if (ListenSocket)
+	{
+		sockaddr ClientAddress;
+		int	Size(sizeof(ClientAddress));
+		SOCKET ServerSocket = accept(ListenSocket->mSocket, &ClientAddress, &Size) ;
+		if (ServerSocket != INVALID_SOCKET)
+		{
+			return netImguiNew<SocketInfo>(ServerSocket);
+		}
+	}
+#endif
 	return nullptr;
 }
 

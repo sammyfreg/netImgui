@@ -187,7 +187,7 @@ bool Communications_Outgoing(ClientInfo& client)
 //=================================================================================================
 // COMMUNICATIONS THREAD 
 //=================================================================================================
-void Communications(void* pClientVoid)
+void CommunicationsClient(void* pClientVoid)
 {	
 	ClientInfo* pClient = reinterpret_cast<ClientInfo*>(pClientVoid);
 	Communications_Initialize(*pClient);
@@ -198,10 +198,47 @@ void Communications(void* pClientVoid)
 		bConnected	= Communications_Outgoing(*pClient) && Communications_Incoming(*pClient);		
 	}
 	Network::Disconnect(pClient->mpSocket);
+	pClient->mpSocket				= nullptr;
 	pClient->mbDisconnectRequest	= false;
-	pClient->mbConnected			= false;
+	pClient->mbConnected			= false;	
 }
 
+//=================================================================================================
+// COMMUNICATIONS WAIT THREAD 
+//=================================================================================================
+void CommunicationsHost(void* pClientVoid)
+{
+	ClientInfo* pClient					= reinterpret_cast<ClientInfo*>(pClientVoid);	
+	Network::SocketInfo* pListenSocket	= pClient->mpSocket;
+	pClient->mpSocket					= nullptr;
+
+	while( !pClient->mbDisconnectRequest )
+	{		
+		pClient->mbConnectRequest		= true;
+		pClient->mpSocket				= Network::ListenConnect( pListenSocket );
+		if( pClient->mpSocket )
+		{
+			Communications_Initialize(*pClient);
+			bool bConnected				= pClient->mbConnected;
+			pClient->mbConnectRequest	= !bConnected;
+			while (bConnected)
+			{
+				std::this_thread::sleep_for(std::chrono::milliseconds(8));
+				bConnected				= Communications_Outgoing(*pClient) && Communications_Incoming(*pClient);
+			}
+			Network::Disconnect(pClient->mpSocket);
+			pClient->mpSocket			= nullptr;
+			pClient->mbConnected		= false;
+		}			
+	}
+	Network::Disconnect(pListenSocket);	
+	pListenSocket						= nullptr;
+	pClient->mbDisconnectRequest		= false;
+}
+
+//=================================================================================================
+//
+//=================================================================================================
 void ClientInfo::TextureProcessPending()
 {
 	mbHasTextureUpdate |= mTexturesPendingCount > 0;

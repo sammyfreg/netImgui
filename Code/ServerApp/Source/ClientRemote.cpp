@@ -1,10 +1,21 @@
 #include "stdafx.h"
-#include "RemoteClient.h"
+#include "ClientRemote.h"
+#include "ClientConfig.h"
 #include <Private/NetImgui_CmdPackets.h>
 
 
+static ClientRemote* gpClients	= nullptr;	// Table of all potentially connected clients to this server
+static uint32_t gClientCountMax = 0;
+
 ClientRemote::ClientRemote()
-: mbConnected(false)
+: mConnectPort(0)
+, mMenuId(0)
+, mpFrameDraw(nullptr)
+, mbIsActive(false)
+, mbIsFree(true)
+, mbIsConnected(false)
+, mbPendingDisconnect(false)
+, mClientConfigID(ClientConfig::kInvalidRuntimeID)
 {
 }
 
@@ -60,12 +71,17 @@ void ClientRemote::Reset()
 	for(auto& texHandle : mvTextures )
 		dx::TextureRelease(texHandle);
 	mvTextures.clear();
-
-	mMenuId		= 0;
-	mName[0]	= 0;
+		
 	mPendingFrame.Free();
 	mPendingInput.Free();
 	netImguiDeleteSafe(mpFrameDraw);
+
+	mName[0]			= 0;
+	mMenuId				= 0;	
+	mClientConfigID		= ClientConfig::kInvalidRuntimeID;
+	mbPendingDisconnect	= false;
+	mbIsConnected		= false;
+	mbIsFree			= true;	
 }
 
 void ClientRemote::UpdateInputToSend(HWND hWindows, InputUpdate& Input) 
@@ -124,3 +140,38 @@ NetImgui::Internal::CmdInput* ClientRemote::CreateInputCommand()
 	return pCmdInput;
 }
 
+bool ClientRemote::Startup(uint32_t clientCountMax)
+{
+	gClientCountMax = clientCountMax;
+	gpClients		= new ClientRemote[clientCountMax];
+	return gpClients != nullptr;
+}
+
+void ClientRemote::Shutdown()
+{
+	gClientCountMax = 0;
+	SafeDeleteArray(gpClients); 
+}
+
+uint32_t ClientRemote::GetCountMax()
+{
+	return gClientCountMax;
+}
+
+ClientRemote& ClientRemote::Get(uint32_t index)
+{
+	bool bValid = gpClients && index < gClientCountMax;
+	static ClientRemote sInvalidClient;
+	assert( bValid );
+	return bValid ? gpClients[index] : sInvalidClient;
+}
+
+uint32_t ClientRemote::GetFreeIndex()
+{
+	for (uint32_t i(0); i < gClientCountMax; ++i)
+	{
+		if( gpClients[i].mbIsFree.exchange(false) == true )
+			return i;
+	}
+	return kInvalidClient;
+}

@@ -69,12 +69,23 @@ struct alignas(8) CmdInput
 		vkKeyboardPageDown	= 0x22,
 		vkKeyboardHome		= 0x24,
 		vkKeyboardEnd		= 0x23,
-		vkKeyboardDel		= 0x2E,
+		vkKeyboardInsert	= 0x2D,
+		vkKeyboardDelete	= 0x2E,
 		vkKeyboardBackspace	= 0x08,
+		vkKeyboardSpace		= 0x20,
 		vkKeyboardEnter		= 0x0D,
 		vkKeyboardEscape	= 0x1B,
 		vkKeyboardSuper1	= 0x5B, // VK_LWIN
 		vkKeyboardSuper2	= 0x5C, // VK_LWIN
+		vkKeyboardSuperF1	= 0x70, // F1 ... F24
+		vkKeyboardA			= 0x41, // A ... Z
+		vkKeyboard0			= 0x30,	// 0 ... 9
+		vkNumpad0			= 0x60, // 0 ... 9
+		vkNumpadAdd			= 0x6B,
+		vkNumpadSub			= 0x6D,
+		vkNumpadMul			= 0x6A,
+		vkNumpadDiv			= 0x6F,
+		vkNumpadDecimal		= 0x6E,
 	};
 	inline bool IsKeyDown(eVirtualKeys vkKey)const;
 

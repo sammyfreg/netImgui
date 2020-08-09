@@ -12,3 +12,6 @@
 #include <Windows.h>				// Windows Header Files
 
 #include "WarningDisable.h"
+
+#define SafeDelete(pData) if(pData){ delete pData; pData = nullptr; }
+#define SafeDeleteArray(pData) if(pData){ delete[] pData; pData = nullptr; }

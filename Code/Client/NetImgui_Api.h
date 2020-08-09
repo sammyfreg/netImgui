@@ -33,9 +33,8 @@ enum class eTexFormat : uint8_t {
 //=================================================================================================
 // Port used by connect the Server and Client together
 //=================================================================================================
-enum eConstants{
-	kDefaultServerPort = 8888
-};
+constexpr uint32_t kDefaultServerPort = 8888;
+constexpr uint32_t kDefaultClientPort = 8889;
 
 //=================================================================================================
 // Initialize the Network Library
@@ -50,12 +49,20 @@ void				Shutdown(void);
 //=================================================================================================
 // Try to establish a connection to netImguiApp server. 
 // Will create a new ImGui Context by copying the current settings
+//
+// Can establish connection with netImgui server application, by either trying to reach it 
+// directly with 'ConnectToApp' or wait for the application to connect to us (when added to client list) 
+// with 'ConnectWait'
+//
 // Note:	Start a new communication thread using std::Thread by default, but can receive custom 
 //			thread start function instead. Look at ClientExample 'CustomCommunicationThread' 
 //=================================================================================================
 typedef void StartThreadFunctPtr(void CommunicationLoop(void* pClientInfo), void* pClientInfo) ;
-bool				Connect(const char* clientName, const char* ServerHost, uint32_t serverPort=kDefaultServerPort, bool bReuseLocalTime=true);
-bool				Connect(StartThreadFunctPtr startThreadFunction, const char* clientName, const char* ServerHost, uint32_t serverPort = kDefaultServerPort, bool bReuseLocalTime=true);
+
+bool				ConnectToApp(const char* clientName, const char* ServerHost, uint32_t serverPort=kDefaultServerPort, bool bReuseLocalTime=true);
+bool				ConnectToApp(StartThreadFunctPtr startThreadFunction, const char* clientName, const char* ServerHost, uint32_t serverPort = kDefaultServerPort, bool bReuseLocalTime=true);
+bool				ConnectFromApp(const char* clientName, uint32_t serverPort=kDefaultServerPort, bool bReuseLocalTime=true);
+bool				ConnectFromApp(StartThreadFunctPtr startThreadFunction, const char* clientName, uint32_t serverPort=kDefaultServerPort, bool bReuseLocalTime=true);
 
 //=================================================================================================
 // Request a disconnect from the netImguiApp server
@@ -66,6 +73,11 @@ void				Disconnect(void);
 // True if connected to netImguiApp server
 //=================================================================================================
 bool				IsConnected(void);
+
+//=================================================================================================
+// True if connection request is waiting to be completed
+//=================================================================================================
+bool				IsConnectionPending(void);
 
 //=================================================================================================
 // True Dear ImGui is currently expecting draw commands sent to remote netImgui app.

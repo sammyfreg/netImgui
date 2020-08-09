@@ -16,19 +16,22 @@ void CreateImguiContext();
 bool InputUpdateData();
 
 //=================================================================================================
-//
-//=================================================================================================
 void DefaultStartCommunicationThread(void ComFunctPtr(void*), void* pClient)
+//=================================================================================================
 {
 	std::thread(ComFunctPtr, pClient).detach();
 }
 
-bool Connect(const char* clientName, const char* ServerHost, uint32_t serverPort, bool bReuseLocalTime)
+//=================================================================================================
+bool ConnectToApp(const char* clientName, const char* ServerHost, uint32_t serverPort, bool bReuseLocalTime)
+//=================================================================================================
 {
-	return Connect(DefaultStartCommunicationThread, clientName, ServerHost, serverPort, bReuseLocalTime);
+	return ConnectToApp(DefaultStartCommunicationThread, clientName, ServerHost, serverPort, bReuseLocalTime);
 }
 
-bool Connect(StartThreadFunctPtr startThreadFunction, const char* clientName, const char* ServerHost, uint32_t serverPort, bool bReuseLocalTime)
+//=================================================================================================
+bool ConnectToApp(StartThreadFunctPtr startThreadFunction, const char* clientName, const char* ServerHost, uint32_t serverPort, bool bReuseLocalTime)
+//=================================================================================================
 {
 	Client::ClientInfo& client	= *gpClientInfo;	
 	Disconnect();
@@ -36,24 +39,54 @@ bool Connect(StartThreadFunctPtr startThreadFunction, const char* clientName, co
 	while( client.mbDisconnectRequest )
 		std::this_thread::sleep_for(std::chrono::milliseconds(8));
 
-	StringCopy(client.mName, sizeof(client.mName), (clientName == nullptr || clientName[0] == 0 ? "UnnamedClient" : clientName));
- 	client.mName[sizeof(client.mName) - 1] = 0;
-	client.mpSocket			= Network::Connect(ServerHost, serverPort);
-	client.mbReuseLocalTime = bReuseLocalTime;
+	StringCopy(client.mName, sizeof(client.mName), (clientName == nullptr || clientName[0] == 0 ? "Unnamed" : clientName));
+ 	client.mName[sizeof(client.mName)-1]= 0;
+	client.mbReuseLocalTime				= bReuseLocalTime;
+	client.mpSocket						= Network::Connect(ServerHost, serverPort);	
+	client.mbConnectRequest				= client.mpSocket != nullptr;
+
 	if( client.mpSocket )
 	{
 		CreateImguiContext();		
-		startThreadFunction(Client::Communications, &client);		
+		startThreadFunction(Client::CommunicationsClient, &client);		
 	}
-
-	client.mbConnectRequest = client.mpSocket != nullptr;
-	return client.mbConnectRequest;
+	
+	return client.mpSocket != nullptr;
 }
 
 //=================================================================================================
-//
+bool ConnectFromApp(const char* clientName, uint32_t serverPort, bool bReuseLocalTime)
 //=================================================================================================
-void Disconnect()
+{
+	return ConnectFromApp(DefaultStartCommunicationThread, clientName, serverPort, bReuseLocalTime);
+}
+
+//=================================================================================================
+bool ConnectFromApp(StartThreadFunctPtr startThreadFunction, const char* clientName, uint32_t serverPort, bool bReuseLocalTime)
+//=================================================================================================
+{
+	Client::ClientInfo& client = *gpClientInfo;
+	Disconnect();
+
+	while (client.mbDisconnectRequest)
+		std::this_thread::sleep_for(std::chrono::milliseconds(8));
+
+	StringCopy(client.mName, sizeof(client.mName), (clientName == nullptr || clientName[0] == 0 ? "Unnamed" : clientName));
+	client.mName[sizeof(client.mName)-1]= 0;
+	client.mbReuseLocalTime				= bReuseLocalTime;	
+	client.mpSocket						= Network::ListenStart(serverPort);
+	client.mbConnectRequest				= client.mpSocket != nullptr;
+	if( client.mpSocket )
+	{
+		CreateImguiContext();
+		startThreadFunction(Client::CommunicationsHost, &client);
+	}
+	return client.mpSocket != nullptr;
+}
+
+//=================================================================================================
+void Disconnect(void)
+//=================================================================================================
 {
 	Client::ClientInfo& client	= *gpClientInfo;
 	client.mbDisconnectRequest	= client.mbConnected;
@@ -61,9 +94,8 @@ void Disconnect()
 }
 
 //=================================================================================================
-//
+bool IsConnected(void)
 //=================================================================================================
-bool IsConnected()
 {
 	if( gpClientInfo )
 	{
@@ -74,18 +106,28 @@ bool IsConnected()
 }
 
 //=================================================================================================
-//
+bool IsConnectionPending(void)
 //=================================================================================================
-bool IsRemoteDraw()
+{
+	if( gpClientInfo )
+	{
+		Client::ClientInfo& client = *gpClientInfo;
+		return !client.mbDisconnectRequest && client.mbConnectRequest;
+	}
+	return false;
+}
+
+//=================================================================================================
+bool IsRemoteDraw(void)
+//=================================================================================================
 {
 	Client::ClientInfo& client	= *gpClientInfo;
 	return ImGui::GetCurrentContext() == client.mpContext && client.mpContextRestore != nullptr;
 }
 
 //=================================================================================================
-//
+bool NewFrame(void)
 //=================================================================================================
-bool NewFrame()
 {
 	Client::ClientInfo& client = *gpClientInfo;
 	if( NetImgui::IsConnected() )
@@ -121,10 +163,10 @@ bool NewFrame()
 }
 
 //=================================================================================================
-//! @note:	Be carefull with the returned value, the pointer remain valid only as long as
+//! @note:	Be careful with the returned value, the pointer remain valid only as long as
 //!			a new imgui frame hasn't been started for the netImgui remote app
+const ImDrawData* EndFrame(void)
 //=================================================================================================
-const ImDrawData* EndFrame()
 {
 	Client::ClientInfo& client		= *gpClientInfo;
 	const ImDrawData* pDraw			= nullptr;
@@ -142,9 +184,8 @@ const ImDrawData* EndFrame()
 }
 
 //=================================================================================================
-//
-//=================================================================================================
 void SendDataTexture(uint64_t textureId, void* pData, uint16_t width, uint16_t height, eTexFormat format)
+//=================================================================================================
 {
 	Client::ClientInfo& client				= *gpClientInfo;
 	CmdTexture* pCmdTexture					= nullptr;
@@ -195,18 +236,16 @@ void SendDataTexture(uint64_t textureId, void* pData, uint16_t width, uint16_t h
 }
 
 //=================================================================================================
-//
+bool Startup(void)
 //=================================================================================================
-bool Startup()
 {
 	gpClientInfo = netImguiNew<Client::ClientInfo>();
 	return Network::Startup();
 }
 
 //=================================================================================================
-//
+void Shutdown(void)
 //=================================================================================================
-void Shutdown()
 {
 	Disconnect();
 	while( gpClientInfo->mbConnected )
@@ -220,18 +259,16 @@ void Shutdown()
 }
 
 //=================================================================================================
-//
+ImGuiContext* GetRemoteContext(void)
 //=================================================================================================
-ImGuiContext* GetRemoteContext()
 {
 	Client::ClientInfo& client = *gpClientInfo;
 	return client.mpContext;
 }
 
 //=================================================================================================
-//
-//=================================================================================================
 uint8_t GetTexture_BitsPerPixel(eTexFormat eFormat)
+//=================================================================================================
 {
 	switch(eFormat)
 	{
@@ -243,9 +280,8 @@ uint8_t GetTexture_BitsPerPixel(eTexFormat eFormat)
 }
 
 //=================================================================================================
-//
-//=================================================================================================
 uint32_t GetTexture_BytePerLine(eTexFormat eFormat, uint32_t pixelWidth)
+//=================================================================================================
 {		
 	uint32_t bitsPerPixel = static_cast<uint32_t>(GetTexture_BitsPerPixel(eFormat));
 	return pixelWidth * bitsPerPixel / 8;
@@ -253,18 +289,16 @@ uint32_t GetTexture_BytePerLine(eTexFormat eFormat, uint32_t pixelWidth)
 }
 	
 //=================================================================================================
-//
-//=================================================================================================
 uint32_t GetTexture_BytePerImage(eTexFormat eFormat, uint32_t pixelWidth, uint32_t pixelHeight)
+//=================================================================================================
 {
 	return GetTexture_BytePerLine(eFormat, pixelWidth) * pixelHeight;
 	//Note: If adding support to BC compression format, have to take into account 4x4 size alignement
 }
 
 //=================================================================================================
-//
+void CreateImguiContext(void)
 //=================================================================================================
-void CreateImguiContext()
 {
 	Client::ClientInfo& client = *gpClientInfo;
 	if (client.mpContext)
@@ -338,13 +372,35 @@ void CreateImguiContext()
 	newIO.ConfigViewportsNoDefaultParent	= sourceIO.ConfigViewportsNoDefaultParent;
 #endif
 
+	newIO.KeyMap[ImGuiKey_Tab]			= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardTab);
+	newIO.KeyMap[ImGuiKey_LeftArrow]	= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardLeft);
+	newIO.KeyMap[ImGuiKey_RightArrow]	= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardRight);
+	newIO.KeyMap[ImGuiKey_UpArrow]		= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardUp);
+	newIO.KeyMap[ImGuiKey_DownArrow]	= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardDown);
+	newIO.KeyMap[ImGuiKey_PageUp]		= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardPageUp);
+	newIO.KeyMap[ImGuiKey_PageDown]		= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardPageDown);
+	newIO.KeyMap[ImGuiKey_Home]			= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardHome);
+	newIO.KeyMap[ImGuiKey_End]			= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardEnd);
+	newIO.KeyMap[ImGuiKey_Insert]		= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardInsert);
+	newIO.KeyMap[ImGuiKey_Delete]		= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardDelete);
+	newIO.KeyMap[ImGuiKey_Backspace]	= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardBackspace);
+	newIO.KeyMap[ImGuiKey_Space]		= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardSpace);
+	newIO.KeyMap[ImGuiKey_Enter]		= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardEnter);
+	newIO.KeyMap[ImGuiKey_Escape]		= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardEscape);
+	newIO.KeyMap[ImGuiKey_KeyPadEnter]	= 0;//static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardKeypadEnter);
+	newIO.KeyMap[ImGuiKey_A]			= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardA);
+	newIO.KeyMap[ImGuiKey_C]			= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardTab);
+	newIO.KeyMap[ImGuiKey_V]			= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardTab);
+	newIO.KeyMap[ImGuiKey_X]			= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardTab);
+	newIO.KeyMap[ImGuiKey_Y]			= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardTab);
+	newIO.KeyMap[ImGuiKey_Z]			= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardTab);
+
 	ImGui::SetCurrentContext(pSourceCxt);
 }
 
 //=================================================================================================
-//
+bool InputUpdateData(void)
 //=================================================================================================
-bool InputUpdateData()
 {
 	Client::ClientInfo& client	= *gpClientInfo;
 	CmdInput* pCmdInput			= client.mPendingInputIn.Release();

@@ -13,6 +13,7 @@ namespace SampleClient
 {
 
 static int			gConnectPort		= NetImgui::kDefaultServerPort;
+static int			gListenPort			= NetImgui::kDefaultClientPort;
 static char			gConnectIP[64]		= "127.0.0.1";
 static ImDrawData*	gpLastRemoteDraw	= nullptr;
 static bool			gEnableRemoteMirror	= false;
@@ -211,30 +212,49 @@ void Client_DrawRemote(ImVec4& clearColorOut)
 	}
 }
 
+//=================================================================================================
+//
+//=================================================================================================
 void Imgui_DrawMainMenu()
 {
 	ImGui::BeginMainMenuBar();
-	if( NetImgui::IsConnected() )
+	if( NetImgui::IsConnected() || NetImgui::IsConnectionPending() )
 	{
 		if( ImGui::Button("Disconnect") )
 			NetImgui::Disconnect();
 
-		ImGui::Checkbox("Mirror remote", &gEnableRemoteMirror);
-		if( gEnableRemoteMirror )
-			ImGui::TextUnformatted("(Can't control Imgui locally)");
+		if( NetImgui::IsConnected() )
+		{
+			ImGui::Checkbox("Mirror remote", &gEnableRemoteMirror);
+			if( gEnableRemoteMirror )
+				ImGui::TextUnformatted("(Can't control Imgui locally)");
+		}
+		else if( NetImgui::IsConnectionPending())
+		{
+			ImGui::Text("Waiting for netImgui Application connection on port [%i]", gListenPort);
+		}
 	}
 	else
-	{		
-		ImGui::Text("IP:");ImGui::SameLine();
-		ImGui::PushItemWidth(100); ImGui::InputText("HostIP", gConnectIP, sizeof(gConnectIP)); ImGui::PopItemWidth(); ImGui::SameLine();
-		ImGui::Text("Port:"); ImGui::SameLine();
-		ImGui::PushItemWidth(100); ImGui::InputInt("##PORT", &gConnectPort); ImGui::PopItemWidth(); ImGui::SameLine();
-		if( ImGui::Button("Connect") )
-			NetImgui::Connect(CustomCommunicationThread, "SampleClientPC", gConnectIP, static_cast<uint32_t>(gConnectPort));
+	{	
+		if (ImGui::Button("Connect To"))
+			NetImgui::ConnectToApp(CustomCommunicationThread, "SampleClientPC", gConnectIP, static_cast<uint32_t>(gConnectPort));
+		ImGui::Text(" Host:");
+		ImGui::PushItemWidth(100); ImGui::InputText("##HostIP", gConnectIP, sizeof(gConnectIP)); ImGui::PopItemWidth(); 
+		ImGui::Text(":"); ImGui::PushItemWidth(100); ImGui::InputInt("##PORT", &gConnectPort); ImGui::PopItemWidth();
+		
+		ImGui::Text("  Or  ");
+		if (ImGui::Button("Connect Wait"))
+			NetImgui::ConnectFromApp(CustomCommunicationThread, "SampleClientPC", static_cast<uint32_t>(gListenPort));
+		ImGui::Text(" Port:");
+		ImGui::PushItemWidth(100); ImGui::InputInt("##ListenPort", &gListenPort); ImGui::PopItemWidth(); ImGui::SameLine();
+		
 	}
 	ImGui::EndMainMenuBar();
 }
 
+//=================================================================================================
+//
+//=================================================================================================
 void Imgui_DrawContent(ImVec4& clear_col)
 {
 	// Straight from DearImgui sample
@@ -282,6 +302,9 @@ void Imgui_DrawContent(ImVec4& clear_col)
 	}
 }
 
+//=================================================================================================
+//
+//=================================================================================================
 void Imgui_DrawContentSecondary()
 {
 	ImGui::Begin("Notice", nullptr, ImGuiWindowFlags_NoTitleBar);

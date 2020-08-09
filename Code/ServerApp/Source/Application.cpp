@@ -11,13 +11,13 @@
 #include "../DirectX/DirectX11.h"
 #include "ServerNetworking.h"
 #include "ServerInfoTab.h"
-#include "RemoteClient.h"
+#include "ClientRemote.h"
+#include "ClientConfig.h"
 
-constexpr uint32_t	kLoadStringMax		= 100;
-constexpr uint32_t	kClientCountMax		= 8;
-constexpr uint32_t	kUIClientIFirstID	= 1000;
-constexpr uint32_t	kUIClientILastID	= (kUIClientIFirstID + kClientCountMax - 1);
-constexpr uint32_t	kInvalidClient		= static_cast<uint32_t>(-1);
+constexpr uint32_t kLoadStringMax		= 100;
+constexpr uint32_t kClientCountMax		= 8;
+constexpr uint32_t kUIClientIFirstID	= 1000;
+constexpr uint32_t kUIClientILastID		= (kUIClientIFirstID + kClientCountMax - 1);
 
 // Global Variables:
 static HINSTANCE									ghApplication;							// Current instance
@@ -25,10 +25,9 @@ static HWND											ghMainWindow;							// Main Windows
 static WCHAR										szTitle[kLoadStringMax];				// The title bar text
 static WCHAR										szWindowClass[kLoadStringMax];			// the main window class name
 static InputUpdate									gAppInput;								// Input capture in Window message loop and waiting to be sent to remote client
-static uint32_t										gActiveClient		= kInvalidClient;	// Currently selected remote Client for input & display
+static uint32_t										gActiveClient		= ClientRemote::kInvalidClient;	// Currently selected remote Client for input & display
 static LPTSTR										gMouseCursor		= nullptr;			// Last mouse cursor assigned by received drawing command
 static bool											gMouseCursorOwner	= false;			// Keep track if cursor is over Client drawing region, and thus should have its cursor updated
-static std::array<ClientRemote, kClientCountMax>*	gpClients			= nullptr;			// Table of all potentially connected clients to this server
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 
@@ -36,19 +35,19 @@ void UpdateActiveClient(uint32_t NewClientId)
 {
 	if( NewClientId != gActiveClient )
 	{
-		char zName[96];
-		if( gActiveClient != kInvalidClient)
+		char zName[256];
+		if( gActiveClient != ClientRemote::kInvalidClient)
 		{
-			ClientRemote& client = (*gpClients)[gActiveClient];
+			ClientRemote& client = ClientRemote::Get(gActiveClient);
 			sprintf_s(zName, "    %s    ", client.mName);
 			ModifyMenuA(GetMenu(ghMainWindow), static_cast<UINT>(client.mMenuId), MF_BYCOMMAND|MF_ENABLED, client.mMenuId, zName);
 			client.mbIsActive = false;
 		}
 		
 		gActiveClient = NewClientId;
-		if( gActiveClient != kInvalidClient)
+		if( gActiveClient != ClientRemote::kInvalidClient)
 		{
-			ClientRemote& client = (*gpClients)[gActiveClient];
+			ClientRemote& client = ClientRemote::Get(gActiveClient);
 			sprintf_s(zName, "--[ %s ]--", client.mName);
 			ModifyMenuA(GetMenu(ghMainWindow), static_cast<UINT>(client.mMenuId), MF_BYCOMMAND|MF_GRAYED, client.mMenuId, zName);
 			client.mbIsActive = true;
@@ -59,17 +58,19 @@ void UpdateActiveClient(uint32_t NewClientId)
 
 void AddRemoteClient(uint32_t NewClientIndex)
 {	
-	(*gpClients)[NewClientIndex].mMenuId = static_cast<uint64_t>(kUIClientIFirstID) + static_cast<uint64_t>(NewClientIndex);
-	AppendMenuA(GetMenu(ghMainWindow), MF_STRING, (*gpClients)[NewClientIndex].mMenuId, "");
+	ClientRemote& client = ClientRemote::Get(NewClientIndex);
+	client.mMenuId = static_cast<uint64_t>(kUIClientIFirstID) + static_cast<uint64_t>(NewClientIndex);
+	AppendMenuA(GetMenu(ghMainWindow), MF_STRING, client.mMenuId, "");
 	UpdateActiveClient(NewClientIndex);
 }
 
 void RemoveRemoteClient(uint32_t OldClientIndex)
 {
-	if((*gpClients)[OldClientIndex].mMenuId != 0 ) // Client 0 is the ServerTab and cannot be removed
+	ClientRemote& client = ClientRemote::Get(OldClientIndex);
+	if( client.mMenuId != 0 ) // Client 0 is the ServerTab and cannot be removed
 	{
-		RemoveMenu(GetMenu(ghMainWindow), static_cast<UINT>((*gpClients)[OldClientIndex].mMenuId), MF_BYCOMMAND);
-		(*gpClients)[OldClientIndex].Reset();
+		RemoveMenu(GetMenu(ghMainWindow), static_cast<UINT>(client.mMenuId), MF_BYCOMMAND);
+		client.Reset();
 		if( OldClientIndex == gActiveClient )
 			UpdateActiveClient(0);
 	}
@@ -98,9 +99,11 @@ BOOL Startup(HINSTANCE hInstance, int nCmdShow)
 	
 	ghApplication		= hInstance;
 	ghMainWindow		= CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, ghApplication, nullptr);
-	gpClients			= new std::array<ClientRemote, kClientCountMax>();
-		
+			
 	if (!ghMainWindow)
+		return false;
+
+	if( !ClientRemote::Startup(kClientCountMax) )
 		return false;
 
 	if( !dx::Startup(ghMainWindow) )
@@ -110,26 +113,6 @@ BOOL Startup(HINSTANCE hInstance, int nCmdShow)
 	ShowWindow(ghMainWindow, nCmdShow);
 	UpdateWindow(ghMainWindow);
 	return true;
-}
-
-// Message handler for about box.
-INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
-{
-    UNREFERENCED_PARAMETER(lParam);
-    switch (message)
-    {
-    case WM_INITDIALOG:
-        return static_cast<INT_PTR>(TRUE);
-
-    case WM_COMMAND:
-        if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL)
-        {
-            EndDialog(hDlg, LOWORD(wParam));
-            return static_cast<INT_PTR>(TRUE);
-        }
-        break;
-    }
-    return static_cast<INT_PTR>(FALSE);
 }
 
 //=================================================================================================
@@ -155,15 +138,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		if( wmId >= kUIClientIFirstID && wmId <= kUIClientILastID )
 		{
 			UpdateActiveClient(wmId - kUIClientIFirstID);
+			return true;
 		}
-		else
+		else if(wmId == IDM_EXIT)
 		{
-			switch (wmId)
-			{
-			case IDM_ABOUT:	DialogBox(ghApplication, MAKEINTRESOURCE(IDD_ABOUTBOX), ghMainWindow, About);	break;
-			case IDM_EXIT:	DestroyWindow(ghMainWindow); break;
-			default: return DefWindowProc(ghMainWindow, message, wParam, lParam);
-			}
+			DestroyWindow(ghMainWindow);
+			return true;
 		}
     }
     break;
@@ -200,11 +180,13 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
     // Perform application initialization:
 	//-------------------------------------------------------------------------
     if (	!Startup (hInstance, nCmdShow) || 
-			!NetworkServer::Startup(&(*gpClients)[0], static_cast<uint32_t>(gpClients->size()), NetImgui::kDefaultServerPort ) ||
+			!NetworkServer::Startup(NetImgui::kDefaultServerPort) ||
 			!ServerInfoTab_Startup(NetImgui::kDefaultServerPort) )
     {
 		return FALSE;
     }
+
+	ClientConfig::LoadAll();
 
 	//-------------------------------------------------------------------------
     // Main message loop:
@@ -224,20 +206,21 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 		
 		// Update UI for new connected or disconnected Clients
 		uint32_t clientConnectedCount(0);
-		for(uint32_t ClientIdx(0); ClientIdx<static_cast<uint32_t>((*gpClients).size()); ClientIdx++)
+		for(uint32_t ClientIdx(0); ClientIdx<ClientRemote::GetCountMax(); ClientIdx++)
 		{
-			auto& client = (*gpClients)[ClientIdx];
-			if(client.mbConnected == true && client.mMenuId == 0 && client.mName[0] != 0 )
+			auto& client = ClientRemote::Get(ClientIdx);
+			if(client.mbIsConnected && client.mMenuId == 0 && client.mName[0] != 0 )
 				AddRemoteClient(ClientIdx);
-			if(client.mbConnected == false && client.mMenuId != 0 )
+			if(client.mbIsFree && client.mMenuId != 0 )
 				RemoveRemoteClient(ClientIdx);
-			clientConnectedCount += client.mbConnected ? 1 : 0;
+			clientConnectedCount += client.mbIsConnected ? 1 : 0;
 		}
 
 		// Render the Imgui client currently active
 		auto currentTime = std::chrono::high_resolution_clock::now();
-		if( std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lastTime).count() > 4 )
+		if( std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lastTime).count() > 4 && gActiveClient != ClientRemote::kInvalidClient)
 		{			
+			auto& activeClient = ClientRemote::Get(gActiveClient);
 			// Redraw the ImGui Server tab with infos.
 			// This tab works exactly like a remote client connected to this server, 
 			// to allow debuging of communications
@@ -246,11 +229,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 			// Gather keyboard/mouse status and collected infos from window message loop, 
 			// and send theses Input to active Client (selected tab).
 			// Note: Client will only emit DrawData when they receive this input command first
-			(*gpClients)[gActiveClient].UpdateInputToSend(ghMainWindow, gAppInput);
+			activeClient.UpdateInputToSend(ghMainWindow, gAppInput);
 
 			// Render the last received ImGui DrawData from active client
-			auto pDrawCmd = (*gpClients)[gActiveClient].GetDrawFrame();
-			dx::Render((*gpClients)[gActiveClient].mvTextures, pDrawCmd);
+			auto pDrawCmd = activeClient.GetDrawFrame();
+			dx::Render(activeClient.mvTextures, pDrawCmd);
 			
 			// Update the mouse cursor to reflect the one ImGui expect			
 			if( pDrawCmd )
@@ -288,7 +271,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 	ServerInfoTab_Shutdown();
 	NetworkServer::Shutdown();
 	dx::Shutdown();
-	delete gpClients;
+	ClientRemote::Shutdown();
+	ClientConfig::Clear();
 
     return static_cast<int>(msg.wParam);
 }
