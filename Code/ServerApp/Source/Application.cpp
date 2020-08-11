@@ -7,6 +7,8 @@
 #include "stdafx.h"
 #include <array>
 #include <chrono>
+#include <iostream>
+
 #include "../resource.h"
 #include "../DirectX/DirectX11.h"
 #include "ServerNetworking.h"
@@ -19,15 +21,17 @@ constexpr uint32_t kClientCountMax		= 8;
 constexpr uint32_t kUIClientIFirstID	= 1000;
 constexpr uint32_t kUIClientILastID		= (kUIClientIFirstID + kClientCountMax - 1);
 
+constexpr char kServerNamedPipe[]		= "\\\\.\\pipe\\netImgui";	// Communication piped to receive connection request
+
 // Global Variables:
-static HINSTANCE									ghApplication;							// Current instance
-static HWND											ghMainWindow;							// Main Windows
-static WCHAR										szTitle[kLoadStringMax];				// The title bar text
-static WCHAR										szWindowClass[kLoadStringMax];			// the main window class name
-static InputUpdate									gAppInput;								// Input capture in Window message loop and waiting to be sent to remote client
-static uint32_t										gActiveClient		= ClientRemote::kInvalidClient;	// Currently selected remote Client for input & display
-static LPTSTR										gMouseCursor		= nullptr;			// Last mouse cursor assigned by received drawing command
-static bool											gMouseCursorOwner	= false;			// Keep track if cursor is over Client drawing region, and thus should have its cursor updated
+static HINSTANCE		ghApplication;							// Current instance
+static HWND				ghMainWindow;							// Main Windows
+static WCHAR			szTitle[kLoadStringMax];				// The title bar text
+static WCHAR			szWindowClass[kLoadStringMax];			// the main window class name
+static InputUpdate		gAppInput;								// Input capture in Window message loop and waiting to be sent to remote client
+static uint32_t			gActiveClient		= ClientRemote::kInvalidClient;	// Currently selected remote Client for input & display
+static LPTSTR			gMouseCursor		= nullptr;			// Last mouse cursor assigned by received drawing command
+static bool				gMouseCursorOwner	= false;			// Keep track if cursor is over Client drawing region, and thus should have its cursor updated
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 
@@ -167,6 +171,109 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 }
 
 //=================================================================================================
+// INIT CLIENT CONFIG FROM STRING
+// Take a commandline string, and create a ClientConfig from it.
+// Simple format of (Hostname);(HostPort)
+//=================================================================================================
+bool InitClientConfigFromString(const char* string, ClientConfig& cmdlineClientOut)
+{
+	const char* zEntryStart		= string;
+	const char* zEntryCur		= string;
+	int paramIndex				= 0;
+	cmdlineClientOut			= ClientConfig();
+	cmdlineClientOut.Transient	= true;
+	strcpy_s(cmdlineClientOut.ClientName, "Commandline");
+
+	while( *zEntryCur != 0 )
+	{
+		zEntryCur++;
+		if( (*zEntryCur == ';' || *zEntryCur == 0) )
+		{
+			if (paramIndex == 0)
+				strncpy_s(cmdlineClientOut.HostName, zEntryStart, zEntryCur-zEntryStart);
+			else if (paramIndex == 1)
+				cmdlineClientOut.HostPort = static_cast<uint32_t>(atoi(zEntryStart));
+
+			cmdlineClientOut.ConnectAuto	= paramIndex >= 1;	//Mark valid for connexion as soon as we have a HostAddress
+			zEntryStart						= zEntryCur + 1;
+			paramIndex++;
+		}
+	}
+	return cmdlineClientOut.ConnectAuto == true;
+}
+
+//=================================================================================================
+// NETIMGUI NAMEDPIPE SEND MESSAGE
+// Open an inter-process communication channel, detecting another instance of netImgui server
+// already running and forwarding any commandline option to it.
+//
+// return true if there's already an instance running
+//------------------------------------------------------------------------------------------------
+//
+// Note 1:
+//	This is unrelated to communications with NetImgui Clients for Imgui Content. This allows
+//	other Windows tools, to request a connection between this netImgui server and a netImgui client
+//------------------------------------------------------------------------------------------------
+//
+// Note 2:
+//	This is a good example on how to add code in your own Windows tool, for a establishing a
+//	connection between this netImguiServer and a netImgui client.
+//=================================================================================================
+bool NetImguiNamedPipeMsgSend( const char* cmdline )
+{
+	HANDLE hNamedPipe = CreateFileA(kServerNamedPipe, GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
+	if (hNamedPipe != INVALID_HANDLE_VALUE)
+	{
+		// Connected to named pipe, meaning there's already a running copy of netImgui Server
+		// Forward commandline options.
+		if( cmdline && cmdline[0] != 0 )
+			WriteFile(hNamedPipe, cmdline, static_cast<DWORD>(strlen(cmdline) + 1), nullptr, nullptr);		
+		CloseHandle(hNamedPipe);
+		return true;
+	}
+	return false;
+}
+
+//=================================================================================================
+// NETIMGUI NAMEDPIPE RECEIVE MESSAGE
+// Receive Client connection information from another running application and 
+// keep the config to attempt connexion to it later
+//=================================================================================================
+void NetImguiNamedPipeMsgReceive( HANDLE& hNamedPipe )
+{
+	char ComPipeBuffer[256];
+	DWORD cbBytesRead(0);
+	
+	// Interprocess NamedPipe not opened for communications yet, create it
+	if (hNamedPipe == INVALID_HANDLE_VALUE)
+	{
+		hNamedPipe = CreateNamedPipeA(kServerNamedPipe,
+			PIPE_ACCESS_INBOUND | FILE_FLAG_FIRST_PIPE_INSTANCE,
+			PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_NOWAIT,
+			1, 0, sizeof(ComPipeBuffer), 0, nullptr);
+	}
+
+	// See if there's new data waiting for us
+	if( ReadFile(hNamedPipe, ComPipeBuffer, sizeof(ComPipeBuffer) - 1, &cbBytesRead, nullptr) )
+	{
+		DWORD cbBytesReadTotal(cbBytesRead);
+		// Someone sent something, read entire data stream
+		while(	cbBytesReadTotal < sizeof(ComPipeBuffer)-1 && 
+				ReadFile(hNamedPipe, &ComPipeBuffer[cbBytesReadTotal], sizeof(ComPipeBuffer) - cbBytesReadTotal - 1, &cbBytesRead, nullptr) )
+			cbBytesReadTotal += cbBytesRead;
+
+		
+		ComPipeBuffer[cbBytesReadTotal] = 0;
+		ClientConfig cmdlineClient;
+		if (InitClientConfigFromString(ComPipeBuffer, cmdlineClient))
+			ClientConfig::SetConfig(cmdlineClient);
+
+		CloseHandle(hNamedPipe); // Will recreate the pipe, since it seems only 1 per remote application can exist
+		hNamedPipe = INVALID_HANDLE_VALUE;
+	}
+}
+
+//=================================================================================================
 // wWINMAIN
 // Main program loop
 // Startup, run Main Loop (while active) then Shutdown
@@ -176,9 +283,19 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 	UNREFERENCED_PARAMETER(hPrevInstance);
 	UNREFERENCED_PARAMETER(lpCmdLine);
 
-	//-------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	// Detect if there's another instance of the netImgui application running
+	// (We only want 1 running instance, thus we forward the commandline options and close this one)
+	//------------------------------------------------------------------------------------------------
+	char commandline[256];
+	HANDLE hInterProcessPipe(INVALID_HANDLE_VALUE);
+	wcstombs_s(nullptr, commandline, sizeof(commandline), lpCmdLine, sizeof(commandline));
+	if( NetImguiNamedPipeMsgSend(commandline) )
+		return -1;
+
+	//------------------------------------------------------------------------------------------------
     // Perform application initialization:
-	//-------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
     if (	!Startup (hInstance, nCmdShow) || 
 			!NetworkServer::Startup(NetImgui::kDefaultServerPort) ||
 			!ServerInfoTab_Startup(NetImgui::kDefaultServerPort) )
@@ -186,7 +303,13 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 		return FALSE;
     }
 
+	//------------------------------------------------------------------------------------------------
+	// Parse for auto connect commandline option
+	//------------------------------------------------------------------------------------------------	
 	ClientConfig::LoadAll();
+	ClientConfig cmdlineClient;
+	if( InitClientConfigFromString(commandline, cmdlineClient) )
+		ClientConfig::SetConfig(cmdlineClient);
 
 	//-------------------------------------------------------------------------
     // Main message loop:
@@ -205,7 +328,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
         }
 		
 		// Update UI for new connected or disconnected Clients
-		uint32_t clientConnectedCount(0);
 		for(uint32_t ClientIdx(0); ClientIdx<ClientRemote::GetCountMax(); ClientIdx++)
 		{
 			auto& client = ClientRemote::Get(ClientIdx);
@@ -213,7 +335,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 				AddRemoteClient(ClientIdx);
 			if(client.mbIsFree && client.mMenuId != 0 )
 				RemoveRemoteClient(ClientIdx);
-			clientConnectedCount += client.mbIsConnected ? 1 : 0;
 		}
 
 		// Render the Imgui client currently active
@@ -224,7 +345,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 			// Redraw the ImGui Server tab with infos.
 			// This tab works exactly like a remote client connected to this server, 
 			// to allow debuging of communications
-			ServerInfoTab_Draw(clientConnectedCount);
+			ServerInfoTab_Draw();
 
 			// Gather keyboard/mouse status and collected infos from window message loop, 
 			// and send theses Input to active Client (selected tab).
@@ -259,10 +380,13 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 					::SetCursor(::LoadCursor(nullptr, gMouseCursor));
 				}
 			}						
+			
 			lastTime = currentTime;
-			Sleep(4);
+			std::this_thread::sleep_for(std::chrono::milliseconds(8));
 		}
-		
+
+		// Receive request from other application, for new client config
+		NetImguiNamedPipeMsgReceive(hInterProcessPipe);
     }
 
 	//-------------------------------------------------------------------------
@@ -273,6 +397,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 	dx::Shutdown();
 	ClientRemote::Shutdown();
 	ClientConfig::Clear();
-
+	CloseHandle(hInterProcessPipe);
     return static_cast<int>(msg.wParam);
 }

@@ -33,8 +33,8 @@ enum class eTexFormat : uint8_t {
 //=================================================================================================
 // Port used by connect the Server and Client together
 //=================================================================================================
-constexpr uint32_t kDefaultServerPort = 8888;
-constexpr uint32_t kDefaultClientPort = 8889;
+constexpr uint32_t kDefaultServerPort	= 8888;
+constexpr uint32_t kDefaultClientPort	= 8889;
 
 //=================================================================================================
 // Initialize the Network Library

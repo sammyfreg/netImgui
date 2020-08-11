@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <chrono>
 #include <Private/NetImgui_CmdPackets.h>
 #include "../DirectX/DirectX11.h"
 
@@ -19,40 +20,41 @@ struct ClientRemote
 	using ExchPtrFrame	= NetImgui::Internal::ExchangePtr<NetImgui::Internal::CmdDrawFrame>;
 	using ExchPtrInput	= NetImgui::Internal::ExchangePtr<NetImgui::Internal::CmdInput>;
 	using PendingKeys	= NetImgui::Internal::Ringbuffer<uint16_t, 1024>;
-										ClientRemote();
-										~ClientRemote();
-										ClientRemote(const ClientRemote&)	= delete;
-										ClientRemote(const ClientRemote&&)	= delete;
-	void								operator=(const ClientRemote&) = delete;
+											ClientRemote();
+											~ClientRemote();
+											ClientRemote(const ClientRemote&)	= delete;
+											ClientRemote(const ClientRemote&&)	= delete;
+	void									operator=(const ClientRemote&) = delete;
 
-	void								Reset();
+	void									Reset();
 
-	void								ReceiveTexture(NetImgui::Internal::CmdTexture*);	
-	void								ReceiveDrawFrame(NetImgui::Internal::CmdDrawFrame*);
-	NetImgui::Internal::CmdDrawFrame*	GetDrawFrame();
+	void									ReceiveTexture(NetImgui::Internal::CmdTexture*);	
+	void									ReceiveDrawFrame(NetImgui::Internal::CmdDrawFrame*);
+	NetImgui::Internal::CmdDrawFrame*		GetDrawFrame();
 	
-	void								UpdateInputToSend(HWND hWindows, InputUpdate& Input);
-	NetImgui::Internal::CmdInput*		CreateInputCommand();
+	void									UpdateInputToSend(HWND hWindows, InputUpdate& Input);
+	NetImgui::Internal::CmdInput*			CreateInputCommand();
 
-	char								mName[128]		= {0};
-	char								mConnectHost[64]= {0};	//!< Connected Hostname of this remote client
-	unsigned int						mConnectPort;			//!< Connected Port of this remote client
-	UINT_PTR							mMenuId;				//!< Application assigned 'MenuId' of menubar entry
-	NetImgui::Internal::CmdDrawFrame*	mpFrameDraw;			//!< Current valid DrawFrame
-	std::vector<dx::TextureHandle>		mvTextures;				//!< List of textures received and used by the client	
-	ExchPtrFrame						mPendingFrame;			//!< Frame received and waiting to be displayed
-	ExchPtrInput						mPendingInput;			//!< Input command waiting to be sent out to client
-	PendingKeys							mPendingKeys;			//!< Character input waiting to be sent out to client
-	bool								mbIsActive;				//!< If currently selected client for display
-	std::atomic_bool					mbIsFree;				//!< If available to use for a new connected client
-	std::atomic_bool					mbIsConnected;			//!< If connected to a remote client
-	std::atomic_bool					mbPendingDisconnect;	//!< Server requested a disconnect on this item
-	uint32_t							mClientConfigID;		//!< ID of ClientConfig that connected (if connection came from our list of ClientConfigs)
-	uint8_t								PADDING[4];
+	char									mName[128]		= {0};
+	char									mConnectHost[64]= {0};	//!< Connected Hostname of this remote client
+	unsigned int							mConnectPort;			//!< Connected Port of this remote client
+	UINT_PTR								mMenuId;				//!< Application assigned 'MenuId' of menubar entry
+	NetImgui::Internal::CmdDrawFrame*		mpFrameDraw;			//!< Current valid DrawFrame
+	std::vector<dx::TextureHandle>			mvTextures;				//!< List of textures received and used by the client	
+	ExchPtrFrame							mPendingFrame;			//!< Frame received and waiting to be displayed
+	ExchPtrInput							mPendingInput;			//!< Input command waiting to be sent out to client
+	PendingKeys								mPendingKeys;			//!< Character input waiting to be sent out to client
+	bool									mbIsActive;				//!< If currently selected client for display
+	std::atomic_bool						mbIsFree;				//!< If available to use for a new connected client
+	std::atomic_bool						mbIsConnected;			//!< If connected to a remote client
+	std::atomic_bool						mbPendingDisconnect;	//!< Server requested a disconnect on this item
+	std::chrono::steady_clock::time_point	mConnectedTime;			//!< When the connection was established with this remote client
+	uint32_t								mClientConfigID;		//!< ID of ClientConfig that connected (if connection came from our list of ClientConfigs)
+	uint8_t									PADDING[4];
 
-	static bool							Startup(uint32_t clientCountMax);
-	static void							Shutdown();
-	static uint32_t						GetCountMax();
-	static uint32_t						GetFreeIndex();
-	static ClientRemote&				Get(uint32_t index);	
+	static bool								Startup(uint32_t clientCountMax);
+	static void								Shutdown();
+	static uint32_t							GetCountMax();
+	static uint32_t							GetFreeIndex();
+	static ClientRemote&					Get(uint32_t index);	
 };

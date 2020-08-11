@@ -194,7 +194,8 @@ void NetworkConnectionNew(SOCKET ClientSocket, ClientRemote* pNewClient)
 
 	if (zErrorMsg == nullptr)
 	{
-		pNewClient->mbIsConnected = true;
+		pNewClient->mbIsConnected	= true;
+		pNewClient->mConnectedTime	= std::chrono::steady_clock::now();
 		std::thread(Communications_ClientExchangeLoop, ClientSocket, pNewClient).detach();
 	}
 	else
@@ -211,7 +212,7 @@ void NetworkConnectionNew(SOCKET ClientSocket, ClientRemote* pNewClient)
 }
 
 //=================================================================================================
-// Thread waiting on Client Connection request
+// Thread waiting on new Client Connection request
 //=================================================================================================
 void NetworkConnectRequest_Receive(SOCKET ListenSocket)
 {	
@@ -225,9 +226,11 @@ void NetworkConnectRequest_Receive(SOCKET ListenSocket)
 			uint32_t freeIndex = ClientRemote::GetFreeIndex();
 			if( freeIndex != ClientRemote::kInvalidClient )
 			{
-				ClientRemote& newClient = ClientRemote::Get(freeIndex);
-				newClient.mClientConfigID = ClientConfig::kInvalidRuntimeID;
-				getnameinfo(&ClientAddress, sizeof(ClientAddress), newClient.mConnectHost, sizeof(newClient.mConnectHost), nullptr, 0, 0);
+				char zPortBuffer[32];
+				ClientRemote& newClient		= ClientRemote::Get(freeIndex);
+				getnameinfo(&ClientAddress, sizeof(ClientAddress), newClient.mConnectHost, sizeof(newClient.mConnectHost), zPortBuffer, sizeof(zPortBuffer), NI_NUMERICSERV);
+				newClient.mConnectPort		= atoi(zPortBuffer);
+				newClient.mClientConfigID	= ClientConfig::kInvalidRuntimeID;
 				NetworkConnectionNew(ClientSocket, &newClient);
 			}
 			else
@@ -238,7 +241,7 @@ void NetworkConnectRequest_Receive(SOCKET ListenSocket)
 }
 
 //=================================================================================================
-// Thread trying to reach out Client
+// Thread trying to reach out new Clients with a connection
 //=================================================================================================
 void NetworkConnectRequest_Send()
 {		

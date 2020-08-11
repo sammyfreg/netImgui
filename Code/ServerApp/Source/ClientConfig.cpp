@@ -43,6 +43,7 @@ ClientConfig::ClientConfig()
 , ConnectAuto(false)
 , ConnectRequest(false)
 , Connected(false)
+, Transient(false)
 {
 	strcpy_s(ClientName, "New Client");
 	strcpy_s(HostName, "localhost");
@@ -60,9 +61,19 @@ ClientConfig& ClientConfig::operator=(const ClientConfig& Copy)
 void ClientConfig::SetConfig(const ClientConfig& config)
 //=================================================================================================
 {
-	std::lock_guard<std::mutex> guard(gConfigLock);
-	int index = FindClientIndex(config.RuntimeID);
+	std::lock_guard<std::mutex> guard(gConfigLock);	
 	
+	// Only allow 1 transient connection to keep things clean	
+	for(int i=0; config.Transient && i<gConfigList.size(); ++i)
+	{
+		if( gConfigList[i] && gConfigList[i]->Transient )
+		{
+			delete gConfigList[i];
+			gConfigList.erase(&gConfigList[i]);
+		}	
+	}
+
+	int index = FindClientIndex(config.RuntimeID);
 	// Config not found, add it to our list
 	if( index == -1 )
 	{
@@ -165,7 +176,7 @@ void ClientConfig::SaveAll()
 	for (int i(0); i<gConfigList.size(); ++i)
 	{		
 		ClientConfig* pConfig					= gConfigList[i];
-		if( pConfig )
+		if( pConfig && !pConfig->Transient )
 		{
 			auto& config						= configRoot[kConfigField_Configs][i] = nullptr;
 			config[kConfigField_Name]			= pConfig->ClientName;

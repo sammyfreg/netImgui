@@ -25,8 +25,8 @@ public:
 	bool			ConnectAuto;				//!< Try automatically connecting to client
 	bool			ConnectRequest;				//!< Attempt connecting to Client, after user request
 	bool			Connected;					//!< Associated client is connected to this server
-	uint8_t			Padding[1] = { 0 };
-
+	bool			Transient;					//!< Temporary client that should not be saved (comes from cmdline)
+	
 	// Add/Edit/Remove config
 	static void		SetConfig(const ClientConfig& config);						//!< Add or replace a client configuration info
 	static void		DelConfig(uint32_t configID);								//!< Remove a client configuration
