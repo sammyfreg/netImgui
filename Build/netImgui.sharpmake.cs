@@ -242,11 +242,12 @@ namespace NetImgui
 	[Sharpmake.Generate]
     public class ProjectSample : ProjectBase
     {
-        public ProjectSample()
+        public ProjectSample(string inName)
 		: base(true)
 		{
-            Name			= "netImguiClientSample";
-            SourceRootPath	= @"[project.SharpmakeCsPath]\..\Code\Sample";
+            Name			= inName;
+            SourceRootPath	= @"[project.SharpmakeCsPath]\..\Code\Sample\" + inName;
+			AdditionalSourceRootPaths.Add(@"[project.SharpmakeCsPath]\..\Code\Sample\Common");
         }
 
 		[Configure()]
@@ -259,6 +260,11 @@ namespace NetImgui
 			conf.IncludePaths.Add(@"[project.SharpmakeCsPath]\..\Code\Client");
 		}
     }
+	
+	[Sharpmake.Generate] public class ProjectSample_Basic 		: ProjectSample { public ProjectSample_Basic() : base("SampleBasic"){} }	
+	[Sharpmake.Generate] public class ProjectSample_Connection 	: ProjectSample { public ProjectSample_Connection() : base("SampleConnection"){} }	
+	[Sharpmake.Generate] public class ProjectSample_DualUI 		: ProjectSample { public ProjectSample_DualUI() : base("SampleDualUI"){} }	
+	[Sharpmake.Generate] public class ProjectSample_Textures	: ProjectSample { public ProjectSample_Textures() : base("SampleTextures"){} }	
 	
 	//=============================================================================================
 	// SOLUTIONS
@@ -291,7 +297,15 @@ namespace NetImgui
 		public new void ConfigureAll(Configuration conf, NetImguiTarget target)
         {			
 			base.ConfigureAll(conf, target);
-            conf.AddProject<ProjectSample>(target);
+			SolutionSample.AddProjects(conf, target);
+		}
+		
+		public static void AddProjects(Configuration conf, NetImguiTarget target)
+		{
+			conf.AddProject<ProjectSample_Basic>(target);
+			conf.AddProject<ProjectSample_Connection>(target);
+			conf.AddProject<ProjectSample_DualUI>(target);
+			conf.AddProject<ProjectSample_Textures>(target);			
 		}
 	}
 
@@ -318,7 +332,8 @@ namespace NetImgui
         {
 			base.ConfigureAll(conf, target);
 			conf.AddProject<ProjectNetImguiServer>(target);
-            conf.AddProject<ProjectSample>(target);
+			SolutionSample.AddProjects(conf, target);
+            //conf.AddProject<ProjectSample_Basic>(target);
 			
 			string SolutionFolder = @"Compatibility Tests";
 			conf.AddProject<ProjectNetImgui_17500>(target, false, SolutionFolder);

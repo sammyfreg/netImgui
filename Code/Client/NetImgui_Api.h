@@ -16,8 +16,8 @@ struct ImDrawData;
 
 #include <stdint.h>
 
-#include "NetImgui_Config.h"
 #include "Private/NetImgui_WarningDisable.h"
+#include "NetImgui_Config.h"
 
 //=================================================================================================
 // List of texture format supported
@@ -30,11 +30,7 @@ enum class eTexFormat : uint8_t {
 	kTexFmt_Count,
 	kTexFmt_Invalid=kTexFmt_Count };
 
-//=================================================================================================
-// Port used by connect the Server and Client together
-//=================================================================================================
-constexpr uint32_t kDefaultServerPort	= 8888;
-constexpr uint32_t kDefaultClientPort	= 8889;
+typedef void		ThreadFunctPtr(void threadedFunction(void* pClientInfo), void* pClientInfo) ;
 
 //=================================================================================================
 // Initialize the Network Library
@@ -50,19 +46,28 @@ void				Shutdown(void);
 // Try to establish a connection to netImguiApp server. 
 // Will create a new ImGui Context by copying the current settings
 //
-// Can establish connection with netImgui server application, by either trying to reach it 
-// directly with 'ConnectToApp' or wait for the application to connect to us (when added to client list) 
-// with 'ConnectWait'
+// Can establish connection with netImgui Server application by either reaching it directly
+// using 'ConnectToApp' or waiting for Server to reach us after Client called 'ConnectFromApp'.
 //
 // Note:	Start a new communication thread using std::Thread by default, but can receive custom 
-//			thread start function instead. Look at ClientExample 'CustomCommunicationThread' 
+//			thread start function instead (Look at ClientExample 'CustomCommunicationThread').
+//-------------------------------------------------------------------------------------------------
+// clientName		: Named that will be displayed on the Server, for this Client
+// serverHost		: Address of the netImgui Server application (Ex1: 127.0.0.2, Ex2: localhost)
+// serverPort		: PortID of the netImgui Server application to connect to
+// clientPort		: PortID this Client should wait for connection from Server application
+// bReuseLocalTime	: ImGui Time tracking comes from the original ImGui Context when true. 
+//					  Otherwise use its own time. 
+//					 (Helps solves issue if your program uses ImGui::GetTime() and 
+//					  expect it to be continuous between local and remote Context).
+//	threadFunction	: User provided function to launch a new thread runningthe function
+//					  received as a parameter. Use 'DefaultStartCommunicationThread'
+//					  by default, which relies on 'std::thread'.
 //=================================================================================================
-typedef void StartThreadFunctPtr(void CommunicationLoop(void* pClientInfo), void* pClientInfo) ;
-
-bool				ConnectToApp(const char* clientName, const char* ServerHost, uint32_t serverPort=kDefaultServerPort, bool bReuseLocalTime=true);
-bool				ConnectToApp(StartThreadFunctPtr startThreadFunction, const char* clientName, const char* ServerHost, uint32_t serverPort = kDefaultServerPort, bool bReuseLocalTime=true);
-bool				ConnectFromApp(const char* clientName, uint32_t serverPort=kDefaultServerPort, bool bReuseLocalTime=true);
-bool				ConnectFromApp(StartThreadFunctPtr startThreadFunction, const char* clientName, uint32_t serverPort=kDefaultServerPort, bool bReuseLocalTime=true);
+bool				ConnectToApp(const char* clientName, const char* serverHost, uint32_t serverPort=kDefaultServerPort, bool bReuseLocalTime=true);
+bool				ConnectToApp(ThreadFunctPtr threadFunction, const char* clientName, const char* ServerHost, uint32_t serverPort = kDefaultServerPort, bool bReuseLocalTime=true);
+bool				ConnectFromApp(const char* clientName, uint32_t clientPort=kDefaultClientPort, bool bReuseLocalTime=true);
+bool				ConnectFromApp(ThreadFunctPtr threadFunction, const char* clientName, uint32_t serverPort=kDefaultClientPort, bool bReuseLocalTime=true);
 
 //=================================================================================================
 // Request a disconnect from the netImguiApp server
@@ -75,7 +80,8 @@ void				Disconnect(void);
 bool				IsConnected(void);
 
 //=================================================================================================
-// True if connection request is waiting to be completed
+// True if connection request is waiting to be completed. Waiting for Server to connect to us 
+// after having called 'ConnectFromApp()' for example
 //=================================================================================================
 bool				IsConnectionPending(void);
 

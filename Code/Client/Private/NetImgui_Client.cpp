@@ -200,7 +200,7 @@ void CommunicationsClient(void* pClientVoid)
 	Network::Disconnect(pClient->mpSocket);
 	pClient->mpSocket				= nullptr;
 	pClient->mbDisconnectRequest	= false;
-	pClient->mbConnected			= false;	
+	pClient->mbConnected			= false;		
 }
 
 //=================================================================================================

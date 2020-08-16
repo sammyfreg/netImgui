@@ -30,7 +30,7 @@ bool ConnectToApp(const char* clientName, const char* ServerHost, uint32_t serve
 }
 
 //=================================================================================================
-bool ConnectToApp(StartThreadFunctPtr startThreadFunction, const char* clientName, const char* ServerHost, uint32_t serverPort, bool bReuseLocalTime)
+bool ConnectToApp(ThreadFunctPtr startThreadFunction, const char* clientName, const char* ServerHost, uint32_t serverPort, bool bReuseLocalTime)
 //=================================================================================================
 {
 	Client::ClientInfo& client	= *gpClientInfo;	
@@ -43,8 +43,7 @@ bool ConnectToApp(StartThreadFunctPtr startThreadFunction, const char* clientNam
  	client.mName[sizeof(client.mName)-1]= 0;
 	client.mbReuseLocalTime				= bReuseLocalTime;
 	client.mpSocket						= Network::Connect(ServerHost, serverPort);	
-	client.mbConnectRequest				= client.mpSocket != nullptr;
-
+	client.mbConnectRequest				= client.mpSocket != nullptr;	
 	if( client.mpSocket )
 	{
 		CreateImguiContext();		
@@ -62,7 +61,7 @@ bool ConnectFromApp(const char* clientName, uint32_t serverPort, bool bReuseLoca
 }
 
 //=================================================================================================
-bool ConnectFromApp(StartThreadFunctPtr startThreadFunction, const char* clientName, uint32_t serverPort, bool bReuseLocalTime)
+bool ConnectFromApp(ThreadFunctPtr startThreadFunction, const char* clientName, uint32_t serverPort, bool bReuseLocalTime)
 //=================================================================================================
 {
 	Client::ClientInfo& client = *gpClientInfo;
@@ -100,7 +99,7 @@ bool IsConnected(void)
 	if( gpClientInfo )
 	{
 		Client::ClientInfo& client = *gpClientInfo;
-		return !client.mbDisconnectRequest && client.mbConnected;
+		return (client.mbConnected && !client.mbDisconnectRequest) || IsRemoteDraw();
 	}
 	return false;
 }
@@ -153,12 +152,7 @@ bool NewFrame(void)
 			return true;
 		}
 		ImGui::SetCurrentContext(client.mpContextRestore);
-	}
-	else if( !client.mbConnectRequest && client.mpContext )
-	{
-		ImGui::DestroyContext(client.mpContext);
-		client.mpContext = nullptr;
-	}
+	}	
 	return false;
 }
 
@@ -179,6 +173,14 @@ const ImDrawData* EndFrame(void)
 		client.mPendingFrameOut.Assign(pNewDrawFrame);
 		ImGui::SetCurrentContext(client.mpContextRestore);
 		client.mpContextRestore		= nullptr;
+
+		// Client Disconnected
+		if( !client.mbConnected )
+		{
+			ImGui::DestroyContext(client.mpContext);
+			client.mpContext			= nullptr;
+			pDraw						= nullptr;
+		}
 	}
 	return pDraw;
 }
@@ -454,7 +456,7 @@ namespace NetImgui {
 bool				Startup(void)													{ return false; }
 void				Shutdown(void)													{ }
 bool				Connect(const char*, const char*, uint32_t)						{ return false; }
-bool				Connect(StartThreadFunctPtr, const char*, const char*, uint32_t){ return false; }
+bool				Connect(ThreadFunctPtr, const char*, const char*, uint32_t)		{ return false; }
 void				Disconnect(void)												{ }
 bool				IsConnected(void)												{ return false; }
 bool				IsRemoteDraw(void)												{ return false; }

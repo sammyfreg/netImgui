@@ -202,6 +202,7 @@ void ServerInfoTab_DrawClients_SectionConnected()
 			}
 			if( connectedCount == 0 )
 			{
+				ImGui::Columns(1);
 				ImGui::TextUnformatted("No netImgui Client connected for the moment.");
 			}
 		}

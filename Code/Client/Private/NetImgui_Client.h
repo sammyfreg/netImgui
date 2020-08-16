@@ -45,9 +45,9 @@ struct ClientInfo
 	std::atomic_int32_t			mTexturesPendingCount;
 	float						mMouseWheelVertPrev		= 0.f;
 	float						mMouseWheelHorizPrev	= 0.f;
-	bool						mbConnected				= false;	// Sucessfully Connected
+	bool						mbConnected				= false;	// Successfully Connected
 	bool						mbDisconnectRequest		= false;	// Waiting to Disconnect
-	bool						mbConnectRequest		= false;	// Waiting to Connect
+	bool						mbConnectRequest		= false;	// Waiting to Connect	
 	bool						mbHasTextureUpdate		= false;
 	bool						mbReuseLocalTime		= true;		// True if the netImgui client use the original Imgui Context Time, else we will track it automatically
 	char						PADDING[7];

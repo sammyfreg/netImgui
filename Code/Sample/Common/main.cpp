@@ -5,7 +5,7 @@
 #include "imgui_impl_win32.h"
 #include <d3d11.h>
 #include <d3dcompiler.h>
-#include "SampleClient.h"
+#include "Sample.h"
 
 // Data
 static ID3D11Device* g_pd3dDevice = NULL;
@@ -240,10 +240,11 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
             //=============================================================================
             // EDIT TO ORIGINAL IMGUI main.cpp
             // Draw the Local Imgui UI and remote imgui UI
-            ImDrawData* pDraw = SampleClient::Client_Draw(clear_col);
+            ImDrawData* pDraw = SampleClient::Client_Draw();
             //=============================================================================
-			g_pd3dDeviceContext->ClearRenderTargetView(g_mainRenderTargetView, (float*)&clear_col);			
-			ImGui_ImplDX11_RenderDrawData(pDraw);
+			g_pd3dDeviceContext->ClearRenderTargetView(g_mainRenderTargetView, (float*)&clear_col);
+            if( pDraw )
+			    ImGui_ImplDX11_RenderDrawData(pDraw);
 			g_pSwapChain->Present(0, 0);
 		}
 	}

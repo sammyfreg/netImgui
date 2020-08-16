@@ -35,7 +35,7 @@
 #pragma comment(lib, "d3dcompiler") // Automatically link with d3dcompiler.lib as we are using D3DCompile() below.
 #endif
 
-#include "SampleClient.h"
+#include "Sample.h"
 
 // DirectX data
 extern ID3D11Device* g_pd3dDevice;

@@ -9,6 +9,15 @@
 #include "Private/NetImgui_WarningReenable.h"
 
 //=================================================================================================
+// Port used by connect the Server and Client together
+//=================================================================================================
+namespace NetImgui
+{
+constexpr uint32_t kDefaultServerPort = 8888;	//!< Default port Server waits for a connection
+constexpr uint32_t kDefaultClientPort = 8889;	//!< Default port Client waits for a connection
+}
+
+//=================================================================================================
 // Enable code compilation for this library
 // Note: Useful to disable 'netImgui' on unsupported builds while keeping functions declared
 //=================================================================================================
