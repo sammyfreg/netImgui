@@ -121,7 +121,8 @@ constexpr std::size_t ArrayCount(T const (&)[N]) noexcept
 	return N;
 }
 
-inline void StringCopy(char* zDest, size_t destLen, const char* zSource );
+template <size_t charCount>
+inline void StringCopy(char (&output)[charCount], const char* pSrc);
 
 }} //namespace NetImgui::Internal
 

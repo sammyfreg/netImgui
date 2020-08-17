@@ -39,8 +39,7 @@ bool ConnectToApp(ThreadFunctPtr startThreadFunction, const char* clientName, co
 	while( client.mbDisconnectRequest )
 		std::this_thread::sleep_for(std::chrono::milliseconds(8));
 
-	StringCopy(client.mName, sizeof(client.mName), (clientName == nullptr || clientName[0] == 0 ? "Unnamed" : clientName));
- 	client.mName[sizeof(client.mName)-1]= 0;
+	StringCopy(client.mName, (clientName == nullptr || clientName[0] == 0 ? "Unnamed" : clientName));
 	client.mbReuseLocalTime				= bReuseLocalTime;
 	client.mpSocket						= Network::Connect(ServerHost, serverPort);	
 	client.mbConnectRequest				= client.mpSocket != nullptr;	
@@ -70,8 +69,7 @@ bool ConnectFromApp(ThreadFunctPtr startThreadFunction, const char* clientName, 
 	while (client.mbDisconnectRequest)
 		std::this_thread::sleep_for(std::chrono::milliseconds(8));
 
-	StringCopy(client.mName, sizeof(client.mName), (clientName == nullptr || clientName[0] == 0 ? "Unnamed" : clientName));
-	client.mName[sizeof(client.mName)-1]= 0;
+	StringCopy(client.mName, (clientName == nullptr || clientName[0] == 0 ? "Unnamed" : clientName));
 	client.mbReuseLocalTime				= bReuseLocalTime;	
 	client.mpSocket						= Network::ListenStart(serverPort);
 	client.mbConnectRequest				= client.mpSocket != nullptr;
