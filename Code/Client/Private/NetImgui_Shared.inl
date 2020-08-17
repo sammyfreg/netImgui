@@ -177,9 +177,9 @@ const TType& OffsetPointer<TType>::operator[](size_t index)const
 }
 
 //=============================================================================
-//=============================================================================
 template <typename TType, size_t TCount>
 void Ringbuffer<TType,TCount>::AddData(const TType* pData, size_t& count)
+//=============================================================================
 {
 	size_t i(0);
 	for(; i<count && mPosLast-mPosCur < TCount; ++i)
@@ -190,8 +190,10 @@ void Ringbuffer<TType,TCount>::AddData(const TType* pData, size_t& count)
 	count = i;
 }
 
+//=============================================================================
 template <typename TType, size_t TCount>
 void Ringbuffer<TType,TCount>::ReadData(TType* pData, size_t& count)
+//=============================================================================
 {
 	size_t i(0);
 	for(; i<count && mPosLast != mPosCur; ++i)
@@ -204,26 +206,32 @@ void Ringbuffer<TType,TCount>::ReadData(TType* pData, size_t& count)
 
 
 //=============================================================================
-//=============================================================================
 // The _s string functions are a mess. There's really no way to do this right
 // in a cross-platform way. Best solution I've found is to set just use
 // strncpy, infer the buffer length, and null terminate. Still need to suppress
 // the warning on Windows.
 // See https://randomascii.wordpress.com/2013/04/03/stop-using-strncpy-already/
 // and many other discussions online on the topic.
+//=============================================================================
 template <size_t charCount>
 void StringCopy(char (&output)[charCount], const char* pSrc)
 {
-	#if defined(_MSC_VER) 
-	        #pragma warning (push)
-	        #pragma warning (disable: 4996)
-	#endif
-	strncpy(output, pSrc, charCount - 1);
-	#if defined(_MSC_VER) 
-	        #pragma warning (pop)
-	#endif
+#if defined(_MSC_VER) && defined(__clang__)
+	#pragma clang diagnostic push
+	#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+#elif defined(_MSC_VER)
+	#pragma warning (push)
+	#pragma warning (disable: 4996)
+#endif
 
+	strncpy(output, pSrc, charCount - 1);
 	output[charCount - 1] = 0;
+
+#if defined(_MSC_VER) && defined(__clang__)
+	#pragma clang diagnostic pop
+#elif defined(_MSC_VER)
+	#pragma warning (pop)
+#endif
 }
 
 }} //namespace NetImgui::Internal

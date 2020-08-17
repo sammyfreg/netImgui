@@ -52,20 +52,20 @@ SocketInfo* ListenStart(uint32_t ListenPort)
 {
 	addrinfo hints;
 
-        memset(&hints, 0, sizeof hints);
-        hints.ai_family = AF_UNSPEC;
-        hints.ai_socktype = SOCK_STREAM;
-        hints.ai_flags = AI_PASSIVE;
+	memset(&hints, 0, sizeof hints);
+	hints.ai_family		= AF_UNSPEC;
+	hints.ai_socktype	= SOCK_STREAM;
+	hints.ai_flags		= AI_PASSIVE;
 
-	addrinfo *addrInfo;
-        getaddrinfo(nullptr, std::to_string(ListenPort).c_str(), &hints, &addrInfo);
+	addrinfo* addrInfo;
+	getaddrinfo(nullptr, std::to_string(ListenPort).c_str(), &hints, &addrInfo);
 
 	int ListenSocket = socket(addrInfo->ai_family, addrInfo->ai_socktype, addrInfo->ai_protocol);
 	if( ListenSocket != -1 )
 	{
-                if (bind(ListenSocket, addrInfo->ai_addr, addrInfo->ai_addrlen) != -1 &&
-                        listen(ListenSocket, 0) != -1)
-	        {
+		if(	bind(ListenSocket, addrInfo->ai_addr, addrInfo->ai_addrlen) != -1 &&
+			listen(ListenSocket, 0) != -1)
+		{
 			return netImguiNew<SocketInfo>(ListenSocket);
 		}
 		close(ListenSocket);
