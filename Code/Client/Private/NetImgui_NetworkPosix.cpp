@@ -50,39 +50,41 @@ SocketInfo* Connect(const char* ServerHost, uint32_t ServerPort)
 
 SocketInfo* ListenStart(uint32_t ListenPort)
 {
-#if 0 //SF TODO (copy of Winsock at the moment)
-	SOCKET ListenSocket = INVALID_SOCKET;
-	if ((ListenSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) != INVALID_SOCKET)
+	addrinfo hints;
+
+        memset(&hints, 0, sizeof hints);
+        hints.ai_family = AF_UNSPEC;
+        hints.ai_socktype = SOCK_STREAM;
+        hints.ai_flags = AI_PASSIVE;
+
+	addrinfo *addrInfo;
+        getaddrinfo(nullptr, std::to_string(ListenPort).c_str(), &hints, &addrInfo);
+
+	int ListenSocket = socket(addrInfo->ai_family, addrInfo->ai_socktype, addrInfo->ai_protocol);
+	if( ListenSocket != -1 )
 	{
-		sockaddr_in server;
-		server.sin_family = AF_INET;
-		server.sin_addr.s_addr = INADDR_ANY;
-		server.sin_port = htons(static_cast<USHORT>(ListenPort));
-		if (bind(ListenSocket, reinterpret_cast<sockaddr*>(&server), sizeof(server)) != SOCKET_ERROR &&
-			listen(ListenSocket, 0) != SOCKET_ERROR)
-		{
+                if (bind(ListenSocket, addrInfo->ai_addr, addrInfo->ai_addrlen) != -1 &&
+                        listen(ListenSocket, 0) != -1)
+	        {
 			return netImguiNew<SocketInfo>(ListenSocket);
 		}
-		closesocket(ListenSocket);
+		close(ListenSocket);
 	}
-#endif
 	return nullptr;
 }
 
 SocketInfo* ListenConnect(SocketInfo* ListenSocket)
 {
-#if 0 //SF TODO (copy of Winsock at the moment)
-	if (ListenSocket)
+	if( ListenSocket )
 	{
-		sockaddr ClientAddress;
-		int	Size(sizeof(ClientAddress));
-		SOCKET ServerSocket = accept(ListenSocket->mSocket, &ClientAddress, &Size) ;
-		if (ServerSocket != INVALID_SOCKET)
+		sockaddr_storage ClientAddress;
+		socklen_t Size(sizeof(ClientAddress));
+		int ServerSocket = accept(ListenSocket->mSocket, (sockaddr*)&ClientAddress, &Size) ;
+		if (ServerSocket != -1)
 		{
 			return netImguiNew<SocketInfo>(ServerSocket);
 		}
 	}
-#endif
 	return nullptr;
 }
 
