@@ -205,13 +205,25 @@ void Ringbuffer<TType,TCount>::ReadData(TType* pData, size_t& count)
 
 //=============================================================================
 //=============================================================================
-void StringCopy(char* zDest, size_t destLen, const char* zSource )
+// The _s string functions are a mess. There's really no way to do this right
+// in a cross-platform way. Best solution I've found is to set just use
+// strncpy, infer the buffer length, and null terminate. Still need to suppress
+// the warning on Windows.
+// See https://randomascii.wordpress.com/2013/04/03/stop-using-strncpy-already/
+// and many other discussions online on the topic.
+template <size_t charCount>
+void StringCopy(char (&output)[charCount], const char* pSrc)
 {
-#if defined (__clang__) || defined(_MSC_VER) 
-	strncpy_s(zDest, destLen, zSource, destLen - 1);
-#else
-	strncpy(zDest, zSource, destLen - 1);
-#endif
+	#if defined(_MSC_VER) 
+	        #pragma warning (push)
+	        #pragma warning (disable: 4996)
+	#endif
+	strncpy(output, pSrc, charCount - 1);
+	#if defined(_MSC_VER) 
+	        #pragma warning (pop)
+	#endif
+
+	output[charCount - 1] = 0;
 }
 
 }} //namespace NetImgui::Internal
