@@ -60,7 +60,7 @@ struct VERTEX_CONSTANT_BUFFER
     float   mvp[4][4];
 };
 
-static void ImGui_ImplDX11_SetupRenderState(ImDrawData* draw_data, ID3D11DeviceContext* ctx)
+static void ImGui_ImplDX11_SetupRenderState(const ImDrawData* draw_data, ID3D11DeviceContext* ctx)
 {
     // Setup viewport
     D3D11_VIEWPORT vp;
@@ -97,7 +97,7 @@ static void ImGui_ImplDX11_SetupRenderState(ImDrawData* draw_data, ID3D11DeviceC
 
 // Render function
 // (this used to be set in io.RenderDrawListsFn and called by ImGui::Render(), but you can now call this directly from your main loop)
-void ImGui_ImplDX11_RenderDrawData(ImDrawData* draw_data)
+void ImGui_ImplDX11_RenderDrawData(const ImDrawData* draw_data)
 {
     // Avoid rendering when minimized
     if (draw_data->DisplaySize.x <= 0.0f || draw_data->DisplaySize.y <= 0.0f)

@@ -11,6 +11,7 @@ static uint32_t					gRuntimeID(1);
 
 static constexpr uint32_t kConfigValue_Version			= 1;	//!< Configuration saved file version
 static constexpr const char* kConfigFile				= "netImgui.cfg";
+static constexpr const char* kConfigField_ServerPort	= "ServerPort";
 static constexpr const char* kConfigField_Note			= "Note";
 static constexpr const char* kConfigField_Version		= "Version";
 static constexpr const char* kConfigField_Configs		= "Configs";
@@ -34,6 +35,7 @@ static int FindClientIndex(uint32_t configID)
 	return -1;
 }
 
+uint32_t ClientConfig::ServerPort = NetImgui::kDefaultServerPort;
 
 //=================================================================================================
 ClientConfig::ClientConfig()
@@ -185,9 +187,10 @@ void ClientConfig::SaveAll()
 			config[kConfigField_AutoConnect]	= pConfig->ConnectAuto;
 		}
 	}
-	configRoot[kConfigField_Version] = kConfigValue_Version;
-	configRoot[kConfigField_Note] = "netImgui Server's list of Clients (Using JSON format).";
-
+	configRoot[kConfigField_Version]			= kConfigValue_Version;
+	configRoot[kConfigField_Note]				= "netImgui Server's list of Clients (Using JSON format).";
+	configRoot[kConfigField_ServerPort]			= ServerPort;
+	
 	std::ofstream outputFile(kConfigFile);
 	if( outputFile.is_open() )
 	{
@@ -208,8 +211,9 @@ void ClientConfig::LoadAll()
 	if( !inputFile.is_open() )
 		return;
 
-	inputFile >> configRoot;
-	uint32_t configVersion = configRoot.find(kConfigField_Version) != configRoot.end() ? configRoot[kConfigField_Version].get<uint32_t>() : 0u;
+	inputFile >> configRoot;	
+	uint32_t configVersion	= configRoot.find(kConfigField_Version) != configRoot.end() ? configRoot[kConfigField_Version].get<uint32_t>() : 0u;
+	ServerPort				= configRoot.find(kConfigField_ServerPort) != configRoot.end() ? configRoot[kConfigField_ServerPort].get<uint32_t>() : NetImgui::kDefaultServerPort;
 	if( configVersion >= 1 )
 	{	
 		for(const auto& config : configRoot[kConfigField_Configs] )

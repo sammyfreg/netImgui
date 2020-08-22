@@ -95,7 +95,7 @@ private:
 
 //=============================================================================
 //=============================================================================
-//SF re purpose this to a threadsafe consume/append buffer?
+// @Sammyfreg TODO: re purpose this to a threadsafe consume/append buffer?
 template <typename TType, size_t TCount>
 class Ringbuffer
 {

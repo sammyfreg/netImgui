@@ -6,364 +6,24 @@
 //=================================================================================================
 
 #include <NetImgui_Api.h>
-#include "..\Common\Sample.h"
 #include "..\Common\WarningDisable.h"
+#include "..\Common\Sample.h"
 
 namespace SampleClient
 {
-
-	//=================================================================================================
-	//
-	//=================================================================================================
-	bool Client_Startup()
-	{
-		if (!NetImgui::Startup())
-			return false;
-
-		// Can have more ImGui initialization here, like loading extra fonts.
-		// ...
-
-		return true;
-	}
-
-	//=================================================================================================
-	//
-	//=================================================================================================
-	void Client_Shutdown()
-	{
-		NetImgui::Shutdown();
-	}
-
-	//=================================================================================================
-	// Added a call to this function in 'ImGui_ImplDX11_CreateFontsTexture()', allowing us to 
-	// forward the Font Texture information to netImgui.
-	//=================================================================================================
-	void Client_AddFontTexture(uint64_t texId, void* pData, uint16_t width, uint16_t height)
-	{
-		NetImgui::SendDataTexture(texId, pData, width, height, NetImgui::eTexFormat::kTexFmtRGBA8);
-	}
-
-	//=================================================================================================
-	//
-	//=================================================================================================
-	void Client_Draw_LocalContent()
-	{
-		ImGui::TextColored(ImVec4(0.1, 1, 0.1, 1), "Example of local/remote Imgui content");
-		if( NetImgui::IsConnected())
-		{
-			if( ImGui::Button("Disconnect", ImVec2(120,0)) )
-			{
-				NetImgui::Disconnect();
-			}
-			ImGui::NewLine();
-			ImGui::TextWrapped("This text is only displayed locally.");
-			ImGui::NewLine();
-		}
-		else if( NetImgui::IsConnectionPending() )
-		{
-			ImGui::Text("Waiting for connection");
-			if (ImGui::Button("Cancel", ImVec2(120, 0)))
-			{
-				NetImgui::Disconnect();
-			}
-		}
-		else
-		{
-			ImGui::TextWrapped("Connect with netImgui server on the same PC, using default port.");
-			ImGui::NewLine();
-			if( ImGui::Button("Connect To", ImVec2(120,0)) )
-			{
-				NetImgui::ConnectToApp("SampleDualUI", "localhost", NetImgui::kDefaultServerPort);
-
-			}
-			ImGui::SameLine(0.f, 16.f);
-			ImGui::Text("Or");
-			ImGui::SameLine(0.f, 16.f);
-			if (ImGui::Button("Connect Wait", ImVec2(120, 0)))
-			{
-				NetImgui::ConnectFromApp("SampleDualUI", NetImgui::kDefaultClientPort);
-			}
-		}
-		
-	}
-
-	//=================================================================================================
-	//
-	//=================================================================================================
-	void Client_Draw_RemoteContent()
-	{
-		ImGui::TextColored(ImVec4(0.1, 1, 0.1, 1), "Example of local/remote ImGui content");
-		if (ImGui::Button("Disconnect", ImVec2(120, 0)))
-		{
-			NetImgui::Disconnect();
-		}
-		ImGui::NewLine();
-		ImGui::TextWrapped("And here we have some content displayed only remotely.");
-	}
-
-	//=================================================================================================
-	//
-	//=================================================================================================
-	void Client_Draw_SharedContent()
-	{
-		ImGui::NewLine();
-		ImGui::TextColored(ImVec4(0.1, 1, 0.1, 1), "Example of 'IsRemoteDraw()'");
-		ImGui::TextWrapped("Demonstration of using 'NetImgui::IsRemoteDraw()' in ImgGui drawing code, to know the current UI output (local/remote) and modify the content accordingly.");
-		ImGui::NewLine();
-		if( NetImgui::IsRemoteDraw() )
-		{
-			ImGui::Text("We are drawing : Remotely.");
-		}
-		else
-		{
-			ImGui::Text("We are drawing : Locally.");
-		}
-	}
-	
-	//=================================================================================================
-	// Function used by the sample, to draw all ImGui Content
-	//=================================================================================================
-	ImDrawData* Client_Draw()
-	{
-		if( NetImgui::IsConnected() && NetImgui::NewFrame() )
-		{
-			ImGui::SetNextWindowPos(ImVec2(20, 20), ImGuiCond_Once);
-			ImGui::SetNextWindowSize(ImVec2(350, 300), ImGuiCond_Once);
-			if (ImGui::Begin("Sample DualUI (remote)", nullptr))
-			{
-				Client_Draw_RemoteContent();
-				ImGui::Separator();
-				Client_Draw_SharedContent();
-				ImGui::End();
-				ImGui::ShowDemoWindow();
-			}
-			NetImgui::EndFrame();
-		}
-		
-		ImGui::NewFrame();
-		ImGui::SetNextWindowPos(ImVec2(20, 20), ImGuiCond_Once);
-		ImGui::SetNextWindowSize(ImVec2(350, 300), ImGuiCond_Once);
-		if (ImGui::Begin("Sample DualUI (local)", nullptr))
-		{
-			Client_Draw_LocalContent();
-			ImGui::Separator();
-			Client_Draw_SharedContent();
-			ImGui::End();
-			ImGui::ShowDemoWindow();
-		}
-		ImGui::Render();
-		return ImGui::GetDrawData();
-
-#if 0
-		//---------------------------------------------------------------------------------------------
-		// (1) Prepare a new Frame
-		// Note: When remote drawing, it is possible for 'NetImgui::NewFrame()' to return false, 
-		//		 in which case we should just skip refreshing the ImGui content.
-		//---------------------------------------------------------------------------------------------
-		if (NetImguiHelper_NewFrame())
-		{
-			//-----------------------------------------------------------------------------------------
-			// (2) Draw ImGui Content 		
-			//-----------------------------------------------------------------------------------------
-			ImGui::SetNextWindowPos(ImVec2(20, 20), ImGuiCond_Once);
-			ImGui::SetNextWindowSize(ImVec2(600, 250), ImGuiCond_Once);
-			if (ImGui::Begin("Sample Basic", nullptr))
-			{
-				ImGui::TextColored(ImVec4(0.1, 1, 0.1, 1), "Basic demonstration of netImgui code integration.");
-				if (NetImgui::IsConnected())
-				{
-					ImGui::TextWrapped("We are connected!");
-					if (ImGui::Button("Disconnect"))
-					{
-						NetImgui::Disconnect();
-					}
-				}
-				else
-				{
-					ImGui::TextWrapped("This application attempts initiating connection to a netImgui server running on the same PC and port '%i'. Once connection is established, the UI will only be displayed remotely, with no content in this client while connected.", NetImgui::kDefaultServerPort);
-					if (ImGui::Button("Connect", ImVec2(120, 0)))
-					{
-						NetImgui::ConnectToApp("SampleBasic", "localhost");
-					}
-				}
-
-				ImGui::NewLine();
-				ImGui::TextColored(ImVec4(0.1, 1, 0.1, 1), "Filler content unaffected by netImgui.");
-				ImGui::TextWrapped("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.");
-			}
-			ImGui::End();
-
-			//-----------------------------------------------------------------------------------------
-			// (3a) Prepare the data for rendering locally (when not connected), or...
-			// (3b) Send the data to the netImGui server (when connected)
-			//-----------------------------------------------------------------------------------------
-			if (NetImguiHelper_EndFrame())
-			{
-				//-----------------------------------------------------------------------------------------
-				// (4a) Let the local DX11 renderer know about the UI to draw (when not connected)
-				//		Could also rely on '!NetImgui::IsRemoteDraw()' instead of return value of 
-				//		'NetImguiHelper_EndFrame()'
-				//-----------------------------------------------------------------------------------------
-				return ImGui::GetDrawData();
-			}
-		}
-
-		//---------------------------------------------------------------------------------------------
-		// (4b) Render nothing locally (when connected)
-		//---------------------------------------------------------------------------------------------
-		return nullptr;
-	}
-#endif
-} // namespace SampleClient
-
-
-#if 0
-#include <NetImgui_Api.h>
-#include "SampleClient.h"
-
-#include "WarningDisable.h" // EDIT TO ORIGINAL IMGUI main.cpp (Add a few exceptions to compile in -Wall)
-#include <chrono>
-#include <thread>
-
-// Methods declared in main.cpp, to avoid having to include 'd3d11.h' here
-extern void TextureCreate(const uint8_t* pPixelData, uint32_t width, uint32_t height, void*& pTextureViewOut);
-extern void TextureDestroy(void*& pTextureView);
-
-namespace SampleClient
-{
-
-static int			gConnectPort		= NetImgui::kDefaultServerPort;
-static int			gListenPort			= NetImgui::kDefaultClientPort;
-static char			gConnectIP[64]		= "127.0.0.1";
-static ImDrawData*	gpLastRemoteDraw	= nullptr;
-static bool			gEnableRemoteMirror	= false;
-static void*		gCustomTextureView[static_cast<int>(NetImgui::eTexFormat::kTexFmt_Count)];
-
-void				Imgui_DrawMainMenu();
-void				Imgui_DrawContent(ImVec4& clear_col);
-void				Imgui_DrawContentSecondary();
-void				Client_DrawLocal(ImVec4& clearColorOut);
-void				Client_DrawRemote(ImVec4& clearColorOut);
-void				CustomCommunicationThread(void ComFunctPtr(void*), void* pClient);
-void				CustomTextureCreate();
-void				CustomTextureDestroy();
-
-//=================================================================================================
-// Helper function to start a new Imgui frame.
-// Can be used when Imgui Content is only displayed locally or remotely, but not both
-//
-//! @return : True when we started a new ImGui frame and drawing should be done.
-//=================================================================================================
-bool Imgui_NewFrame()
-{
-	if( NetImgui::IsConnected() )
-	{
-		return NetImgui::NewFrame();
-	}
-	ImGui::NewFrame();
-	return true;
-}
-
-//=================================================================================================
-// Helper function to end a new Imgui frame.
-// Can be used when Imgui Content is only displayed locally or remotely, but not both
-//
-//! @return : True when a local ImGui render has completed, and should be displayed onscreen
-//=================================================================================================
-bool Imgui_EndFrame()
-{
-	if( NetImgui::IsRemoteDraw() )
-	{
-		NetImgui::EndFrame();
-		return false;
-	}	
-	ImGui::Render();
-	return true;	
-}
-
-//=================================================================================================
-//! @brief		Custom Connect thread example
-//! @details	This function demonstrate how to provide your own function to start a new thread 
-//!				that will handle communication with remote netImgui application. 
-//!				The default implementation also use std::thread
-//=================================================================================================
-void CustomCommunicationThread( void ComFunctPtr(void*), void* pClient )
-{
-	std::thread(ComFunctPtr, pClient).detach();
-}
-
-//=================================================================================================
-//
-//=================================================================================================
-void CustomTextureCreate(NetImgui::eTexFormat eTexFmt)
-{
-	constexpr uint32_t BytePerPixelMax	= 4;
-	constexpr uint32_t Width			= 8;
-	constexpr uint32_t Height			= 8;
-	uint8_t pixelData[Width * Height * BytePerPixelMax];
-
-	switch( eTexFmt )
-	{
-	case NetImgui::eTexFormat::kTexFmtA8:
-		for (uint8_t y(0); y < Height; ++y) {
-			for (uint8_t x(0); x < Width; ++x) 
-			{
-				pixelData[(y * Width + x)] = 0xFF * x / 8u;
-			}
-		}break;
-	case NetImgui::eTexFormat::kTexFmtRGBA8:
-		for (uint8_t y(0); y < Height; ++y) {
-			for (uint8_t x(0); x < Width; ++x) 
-			{
-				pixelData[(y * Width + x) * 4 + 0] = 0xFF * x / 8u;
-				pixelData[(y * Width + x) * 4 + 1] = 0xFF * y / 8u;
-				pixelData[(y * Width + x) * 4 + 2] = 0xFF;
-				pixelData[(y * Width + x) * 4 + 3] = 0xFF;
-			}
-		}break;
-	case NetImgui::eTexFormat::kTexFmt_Invalid: assert(0); break;	
-	}
-	TextureCreate(pixelData, Width, Height, gCustomTextureView[static_cast<int>(eTexFmt)]);
-	NetImgui::SendDataTexture(reinterpret_cast<uint64_t>(gCustomTextureView[static_cast<int>(eTexFmt)]), pixelData, Width, Height, eTexFmt);
-}
-
-//=================================================================================================
-//
-//=================================================================================================
-void CustomTextureDestroy(NetImgui::eTexFormat eTexFmt)
-{	
-	if( gCustomTextureView[static_cast<int>(eTexFmt)] )
-	{
-		NetImgui::SendDataTexture(reinterpret_cast<uint64_t>(gCustomTextureView[static_cast<int>(eTexFmt)]), nullptr, 0, 0, NetImgui::eTexFormat::kTexFmt_Invalid);
-		TextureDestroy(gCustomTextureView[static_cast<int>(eTexFmt)]);
-	}
-}
+enum class eDisplayMode : int { LocalNone, LocalMirror, LocalIndependent };
+static eDisplayMode skDisplayMode = eDisplayMode::LocalNone;
 
 //=================================================================================================
 //
 //=================================================================================================
 bool Client_Startup()
 {
-	if( !NetImgui::Startup() )
+	if (!NetImgui::Startup())
 		return false;
 
-    // Load Fonts
-    // (see extra_fonts/README.txt for more details)
-    //ImGuiIO& io = ImGui::GetIO();
-    //io.Fonts->AddFontDefault();
-    //io.Fonts->AddFontFromFileTTF("../../extra_fonts/Cousine-Regular.ttf", 15.0f);
-    //io.Fonts->AddFontFromFileTTF("../../extra_fonts/DroidSans.ttf", 16.0f);
-    //io.Fonts->AddFontFromFileTTF("../../extra_fonts/ProggyClean.ttf", 13.0f);
-    //io.Fonts->AddFontFromFileTTF("../../extra_fonts/ProggyTiny.ttf", 10.0f);
-    //io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, NULL, io.Fonts->GetGlyphRangesJapanese());
-
-    // Merge glyphs from multiple fonts into one (e.g. combine default font with another with Chinese glyphs, or add icons)
-    //ImWchar icons_ranges[] = { 0xf000, 0xf3ff, 0 };
-    //ImFontConfig icons_config; icons_config.MergeMode = true; icons_config.PixelSnapH = true;
-    //io.Fonts->AddFontFromFileTTF("../../extra_fonts/DroidSans.ttf", 18.0f);
-    //io.Fonts->AddFontFromFileTTF("../../extra_fonts/fontawesome-webfont.ttf", 18.0f, &icons_config, icons_ranges);
-
-	memset(gCustomTextureView, 0, sizeof(gCustomTextureView));
+	// Can have more ImGui initialization here, like loading extra fonts.
+	// ...
 	return true;
 }
 
@@ -372,167 +32,145 @@ bool Client_Startup()
 //=================================================================================================
 void Client_Shutdown()
 {	
-	for(int i=0; i<static_cast<int>(NetImgui::eTexFormat::kTexFmt_Count); ++i)
-		CustomTextureDestroy(static_cast<NetImgui::eTexFormat>(i));
 	NetImgui::Shutdown();
 }
 
 //=================================================================================================
-//
+// Added a call to this function in 'ImGui_ImplDX11_CreateFontsTexture()', allowing us to 
+// forward the Font Texture information to netImgui.
 //=================================================================================================
 void Client_AddFontTexture(uint64_t texId, void* pData, uint16_t width, uint16_t height)
 {
-	NetImgui::SendDataTexture(texId, pData, width, height, NetImgui::eTexFormat::kTexFmtRGBA8 );
+	NetImgui::SendDataTexture(texId, pData, width, height, NetImgui::eTexFormat::kTexFmtRGBA8);
 }
-
-//=================================================================================================
-// 
-//=================================================================================================
-ImDrawData* Client_Draw(ImVec4& clearColorOut)
-{
-	Client_DrawLocal(clearColorOut);
-	Client_DrawRemote(clearColorOut);
-	return NetImgui::IsConnected() && gEnableRemoteMirror && gpLastRemoteDraw ? gpLastRemoteDraw : ImGui::GetDrawData();
-}
-
 
 //=================================================================================================
 //
 //=================================================================================================
-void Client_DrawLocal(ImVec4& clearColorOut)
+void Client_Draw_LocalContent()
+{	
+	if( !NetImgui::IsDrawingRemote())
+	{
+		ImGui::NewLine();
+		ImGui::TextWrapped("This text is only displayed locally.");
+		ImGui::NewLine();
+	}		
+}
+
+//=================================================================================================
+//
+//=================================================================================================
+void Client_Draw_RemoteContent()
 {
-	if( (NetImgui::IsConnected() && gEnableRemoteMirror) == false )
+	if( NetImgui::IsDrawingRemote() )
+	{
+		ImGui::NewLine();
+		ImGui::TextWrapped("This text is only displayed remotely (unless mirroring the output locally).");
+	}
+}
+
+//=================================================================================================
+//
+//=================================================================================================
+void Client_Draw_MainContent()
+{
+	ImGui::TextColored(ImVec4(0.1, 1, 0.1, 1), "Example of local/remote Imgui content");
+	ImGui::TextWrapped("Demonstrate the ability of simultaneously displaying distinct content locally and remotely.");
+	ImGui::NewLine();
+	if (NetImgui::IsConnected())
+	{
+		ImGui::TextColored(ImVec4(0.1, 1, 0.1, 1), "Dual Display Mode:");
+		ImGui::RadioButton("None", reinterpret_cast<int*>(&skDisplayMode), static_cast<int>(eDisplayMode::LocalNone)); ImGui::SameLine();
+		ImGui::RadioButton("Mirror", reinterpret_cast<int*>(&skDisplayMode), static_cast<int>(eDisplayMode::LocalMirror)); ImGui::SameLine();
+		ImGui::RadioButton("Independent", reinterpret_cast<int*>(&skDisplayMode), static_cast<int>(eDisplayMode::LocalIndependent));
+		if (skDisplayMode == eDisplayMode::LocalMirror)
+		{
+			ImGui::TextWrapped("(Note: While the content is duplicated on local screen, it can only be interacted with on the netImgui remote server.)");
+		}
+	}
+}
+
+void Client_Draw_SharedContent()
+{
+	ImGui::NewLine();
+	ImGui::Text("Elapsed time : %02i:%02i", static_cast<int>(ImGui::GetTime())/60, static_cast<int>(ImGui::GetTime())%60);
+	ImGui::Text("Delta time   : %07.04fs", ImGui::GetIO().DeltaTime );
+	ImGui::Text("Drawing      : %s", NetImgui::IsDrawingRemote() ? "Remotely" : "Locally" );
+}
+
+//=================================================================================================
+// Function used by the sample, to draw all ImGui Content
+//=================================================================================================
+const ImDrawData* Client_Draw()
+{
+	//---------------------------------------------------------------------------------------------
+	// (1) Start a new Frame
+	//---------------------------------------------------------------------------------------------
+	if( NetImgui::NewFrame(true) )
+	{
+		//-----------------------------------------------------------------------------------------
+		// (2) Draw ImGui Content 		
+		//-----------------------------------------------------------------------------------------
+		// IMPORTANT NOTE: We are telling the connection that we want the original Context 'Cloned'.
+		// Meaning a duplicate context will be created for remote drawing. This leaves the original 
+		// Context untouched and free to continue using for a separate ImGui output in the 
+		// 'Local Independent' UI drawing section. 'Cloning' the context is not needed if you are 
+		// not planning to keep drawing in local windows while connected, or you can manage this 
+		// yourself using your own new context.
+		ClientUtil_ImGuiContent_Common("SampleDualUI", true);
+
+		if (ImGui::Begin("SampleDualUI", nullptr))
+		{	
+			Client_Draw_MainContent();
+			Client_Draw_SharedContent();			
+			Client_Draw_LocalContent();
+			Client_Draw_RemoteContent();
+			ImGui::End();
+		}
+
+		//---------------------------------------------------------------------------------------------
+		// (3) Finish the frame, preparing the drawing data and...
+		// (3a) Send the data to the netImGui server when connected
+		//---------------------------------------------------------------------------------------------
+		NetImgui::EndFrame();
+	}
+	
+	//---------------------------------------------------------------------------------------------
+	// (4) Draw a second UI for local display, when connected and display mode is 'Independent'
+	//---------------------------------------------------------------------------------------------
+	if( NetImgui::IsConnected() && skDisplayMode == eDisplayMode::LocalIndependent )
 	{
 		ImGui::NewFrame();
-		if( !NetImgui::IsConnected() )
-		{		
-			SampleClient::Imgui_DrawMainMenu();
-			SampleClient::Imgui_DrawContent(clearColorOut);
-		}
-		else
+		ImGui::SetNextWindowSize(ImVec2(300, 220), ImGuiCond_Once);
+		if( ImGui::Begin("Extra Local Window") )
 		{
-			SampleClient::Imgui_DrawMainMenu();
-			SampleClient::Imgui_DrawContentSecondary();
+			ImGui::TextColored(ImVec4(0.1, 1, 0.1, 1), "Local Window");
+			ImGui::TextWrapped("Demonstrate a window content displayed locally while we have some distinct content displayed remotely.");
+			Client_Draw_SharedContent();
+			Client_Draw_LocalContent();
+			// Demonstration: Even though we are calling this, we are testing where the output is meant to be,
+			// inside the function, and will never end up be drawn here
+			Client_Draw_RemoteContent();	
 		}
+		ImGui::End();
 		ImGui::Render();
 	}
-}
 
-//=================================================================================================
-// Normal DebugUI rendering
-// Can either be displayed locally or sent to remote netImguiApp server if connected
-//=================================================================================================
-void Client_DrawRemote(ImVec4& clearColorOut)
-{		
-	if( NetImgui::NewFrame() )
-	{		
-		SampleClient::Imgui_DrawMainMenu();
-		SampleClient::Imgui_DrawContent(clearColorOut);
-		gpLastRemoteDraw = const_cast<ImDrawData*>(NetImgui::EndFrame()); //!< Note: the example function 'ImGui_ImplDX11_RenderDrawData' provided by imgui does not take a const object
-	}
-}
-
-//=================================================================================================
-//
-//=================================================================================================
-void Imgui_DrawMainMenu()
-{
-	ImGui::BeginMainMenuBar();
-	if( NetImgui::IsConnected() || NetImgui::IsConnectionPending() )
-	{
-		if( ImGui::Button("Disconnect") )
-			NetImgui::Disconnect();
-
-		if( NetImgui::IsConnected() )
+	//---------------------------------------------------------------------------------------------
+	// (5) Decide what to render locally
+	//---------------------------------------------------------------------------------------------
+	if( NetImgui::IsConnected() )
+	{ 
+		switch( skDisplayMode)
 		{
-			ImGui::Checkbox("Mirror remote", &gEnableRemoteMirror);
-			if( gEnableRemoteMirror )
-				ImGui::TextUnformatted("(Can't control Imgui locally)");
-		}
-		else if( NetImgui::IsConnectionPending())
-		{
-			ImGui::Text("Waiting for netImgui Application connection on port [%i]", gListenPort);
-		}
-	}
-	else
-	{	
-		if (ImGui::Button("Connect To"))
-			NetImgui::ConnectToApp(CustomCommunicationThread, "SampleClientPC", gConnectIP, static_cast<uint32_t>(gConnectPort));
-		ImGui::Text(" Host:");
-		ImGui::PushItemWidth(100); ImGui::InputText("##HostIP", gConnectIP, sizeof(gConnectIP)); ImGui::PopItemWidth(); 
-		ImGui::Text(":"); ImGui::PushItemWidth(100); ImGui::InputInt("##PORT", &gConnectPort); ImGui::PopItemWidth();
-		
-		ImGui::Text("  Or  ");
-		if (ImGui::Button("Connect Wait"))
-			NetImgui::ConnectFromApp(CustomCommunicationThread, "SampleClientPC", static_cast<uint32_t>(gListenPort));
-		ImGui::Text(" Port:");
-		ImGui::PushItemWidth(100); ImGui::InputInt("##ListenPort", &gListenPort); ImGui::PopItemWidth(); ImGui::SameLine();
-		
-	}
-	ImGui::EndMainMenuBar();
-}
-
-//=================================================================================================
-//
-//=================================================================================================
-void Imgui_DrawContent(ImVec4& clear_col)
-{
-	// Straight from DearImgui sample
-	static bool show_test_window	= true;
-
-	// 1. Show a simple window
-	// Tip: if we don't call ImGui::Begin()/ImGui::End() the widgets appears in a window automatically called "Debug"
-	{
-		static float f = 0.0f;
-		ImGui::Text("Hello, world!");
-		ImGui::SliderFloat("float", &f, 0.0f, 1.0f);
-		ImGui::ColorEdit3("clear color", reinterpret_cast<float*>(&clear_col));
-		if (ImGui::Button("Test Window")) show_test_window ^= 1;
-		//SF TODO ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-		const char* zFormatName[]={"R8", "RGBA8", ""};
-		ImGui::TextUnformatted("Note: Textures displayed properly on remote server only");
-		for(int i=0; i<static_cast<int>(NetImgui::eTexFormat::kTexFmt_Count); ++i)
-		{
-			// Only display this on remote connection (associated texture note created locally)
-			ImGui::PushID(i);
-			if(!gCustomTextureView[i] && ImGui::Button("Texture Send") )
-				CustomTextureCreate(static_cast<NetImgui::eTexFormat>(i));
-			else if(gCustomTextureView[i] && ImGui::Button("Texture Rem ") )
-				CustomTextureDestroy(static_cast<NetImgui::eTexFormat>(i));
-			
-			// Note: Test drawing with invalid texture (making sure netImgui App handles it) 
-			// Avoid drawing with invalid texture if will be displayed locally (not handled by 'ImGui_ImplDX11_RenderDrawData' example code)			
-			if( gCustomTextureView[i] || (NetImgui::IsRemoteDraw() && !gEnableRemoteMirror) )
-			{				
-				ImVec4 tint_col = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
-				ImVec4 border_col = ImVec4(1.0f, 1.0f, 1.0f, 0.5f);
-				ImGui::SameLine();
-				ImGui::Image(reinterpret_cast<ImTextureID>(gCustomTextureView[i]), ImVec2(128,32), ImVec2(0, 0), ImVec2(1, 1), tint_col, border_col);
-			}
-			ImGui::SameLine(); ImGui::TextUnformatted(zFormatName[i]);
-			ImGui::PopID();
+		case eDisplayMode::LocalNone:			return nullptr;
+		case eDisplayMode::LocalMirror:			return NetImgui::GetDrawData();
+		case eDisplayMode::LocalIndependent:	return ImGui::GetDrawData();
 		}
 	}
 
-	// 2. Show the ImGui test window. Most of the sample code is in ImGui::ShowTestWindow()
-	if (show_test_window)
-	{
-		ImGui::SetNextWindowPos(ImVec2(650, 20), ImGuiCond_FirstUseEver);     // Normally user code doesn't need/want to call it because positions are saved in .ini file anyway. Here we just want to make the demo initial state a bit more friendly!
-		ImGui::ShowDemoWindow(&show_test_window);
-	}
-}
+	// When disconnected, NetImgui::GetDrawData() and ImGui::GetDrawData() are the same
+	return NetImgui::GetDrawData();
+} 
 
-//=================================================================================================
-//
-//=================================================================================================
-void Imgui_DrawContentSecondary()
-{
-	ImGui::Begin("Notice", nullptr, ImGuiWindowFlags_NoTitleBar);
-	ImGui::Text("Client connected to remote netImguiApp");
-	ImGui::NewLine();
-	ImGui::TextWrapped("Can still use Imgui locally, with content different than displayed on netImgui App");
-	ImGui::End();	
-}
-#endif
-
-}
+} // namespace SampleClient

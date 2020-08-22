@@ -15,8 +15,9 @@
 namespace NetworkServer
 {
 
-static constexpr DWORD			kComsTimeoutMs	= 2000;
-static bool						gbShutdown		= false;
+static constexpr DWORD			kComsTimeoutMs				= 2000;
+static bool						gbShutdown					= false;
+static bool						gbValidListenSocket			= false;
 static std::atomic_uint32_t		gActiveClientThreadCount;
 
 //=================================================================================================
@@ -186,9 +187,12 @@ void NetworkConnectionNew(SOCKET ClientSocket, ClientRemote* pNewClient)
 	const char* zErrorMsg(nullptr);
 	if (pNewClient == nullptr)
 		zErrorMsg = "Too many connection on server already";
-
+	
+	(void)kComsTimeoutMs;
+#if 0 // @Sammyfreg : No timeout useful when debugging, to keep connection alive while code breakpoint
 	setsockopt(ClientSocket, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<const char*>(&kComsTimeoutMs), sizeof(kComsTimeoutMs));
 	setsockopt(ClientSocket, SOL_SOCKET, SO_SNDTIMEO, reinterpret_cast<const char*>(&kComsTimeoutMs), sizeof(kComsTimeoutMs));
+#endif
 	if (zErrorMsg == nullptr && Communications_InitializeClient(ClientSocket, pNewClient) == false)
 		zErrorMsg = "Initialization failed. Wrong communication version?";
 
@@ -212,32 +216,90 @@ void NetworkConnectionNew(SOCKET ClientSocket, ClientRemote* pNewClient)
 }
 
 //=================================================================================================
-// Thread waiting on new Client Connection request
+// Open a listening port for netImgui Client trying to connect with us
 //=================================================================================================
-void NetworkConnectRequest_Receive(SOCKET ListenSocket)
+void NetworkConnectRequest_Receive_UpdateListenSocket(SOCKET* pListenSocket)
 {	
+	uint32_t serverPort = 0;
 	while( !gbShutdown )
 	{
-		sockaddr	ClientAddress;
-		int			Size(sizeof(ClientAddress));
-		SOCKET		ClientSocket = accept(ListenSocket , &ClientAddress, &Size) ;
-		if( ClientSocket != INVALID_SOCKET )
+		if( serverPort != ClientConfig::ServerPort || *pListenSocket == INVALID_SOCKET )
 		{
-			uint32_t freeIndex = ClientRemote::GetFreeIndex();
-			if( freeIndex != ClientRemote::kInvalidClient )
+			SOCKET updateSocket	= *pListenSocket;
+			*pListenSocket		= INVALID_SOCKET;
+			gbValidListenSocket = false;
+			serverPort			= ClientConfig::ServerPort;			
+			closesocket(updateSocket);
+
+			if ((updateSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) != INVALID_SOCKET)
 			{
-				char zPortBuffer[32];
-				ClientRemote& newClient		= ClientRemote::Get(freeIndex);
-				getnameinfo(&ClientAddress, sizeof(ClientAddress), newClient.mConnectHost, sizeof(newClient.mConnectHost), zPortBuffer, sizeof(zPortBuffer), NI_NUMERICSERV);
-				newClient.mConnectPort		= atoi(zPortBuffer);
-				newClient.mClientConfigID	= ClientConfig::kInvalidRuntimeID;
-				NetworkConnectionNew(ClientSocket, &newClient);
+				sockaddr_in server;
+				server.sin_family		= AF_INET;
+				server.sin_addr.s_addr	= INADDR_ANY;
+				server.sin_port			= htons(static_cast<USHORT>(serverPort));
+				if (bind(updateSocket, reinterpret_cast<sockaddr*>(&server), sizeof(server)) != SOCKET_ERROR)
+				{
+					if (listen(updateSocket, 3) != SOCKET_ERROR)
+					{
+						// Success!
+						*pListenSocket		= updateSocket;
+						gbValidListenSocket	= true;
+					}
+					else
+					{
+						printf("Listen failed with error code : %d\n", WSAGetLastError());
+						closesocket(updateSocket);
+					}
+				}
+				else
+				{
+					printf("Bind failed with error code : %d\n", WSAGetLastError());
+					closesocket(updateSocket);
+				}
 			}
-			else
-				closesocket(ClientSocket);
 		}
+		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 	}
-	closesocket(ListenSocket);
+
+	SOCKET updateSocket	= *pListenSocket;
+	*pListenSocket		= INVALID_SOCKET;
+	closesocket(updateSocket);	
+}
+
+//=================================================================================================
+// Thread waiting on new Client Connection request
+//=================================================================================================
+void NetworkConnectRequest_Receive()
+{	
+	SOCKET ListenSocket = INVALID_SOCKET;
+	std::thread(NetworkConnectRequest_Receive_UpdateListenSocket, &ListenSocket).detach();
+
+	while( !gbShutdown )
+	{
+		// Detect connection request from Clients
+		if( ListenSocket != INVALID_SOCKET )
+		{
+			sockaddr	ClientAddress;
+			int			Size(sizeof(ClientAddress));
+			SOCKET		ClientSocket = accept(ListenSocket , &ClientAddress, &Size) ;
+			if( ClientSocket != INVALID_SOCKET )
+			{
+				uint32_t freeIndex = ClientRemote::GetFreeIndex();
+				if( freeIndex != ClientRemote::kInvalidClient )
+				{
+					char zPortBuffer[32];
+					ClientRemote& newClient		= ClientRemote::Get(freeIndex);
+					getnameinfo(&ClientAddress, sizeof(ClientAddress), newClient.mConnectHost, sizeof(newClient.mConnectHost), zPortBuffer, sizeof(zPortBuffer), NI_NUMERICSERV);
+					newClient.mConnectPort		= atoi(zPortBuffer);
+					newClient.mClientConfigID	= ClientConfig::kInvalidRuntimeID;
+					NetworkConnectionNew(ClientSocket, &newClient);
+				}
+				else
+					closesocket(ClientSocket);
+			}
+		}
+		std::this_thread::yield();
+	}	
 }
 
 //=================================================================================================
@@ -307,7 +369,7 @@ void NetworkConnectRequest_Send()
 //=================================================================================================
 // Initialize Networking and start listening thread
 //=================================================================================================
-bool Startup( uint32_t ListenPort )
+bool Startup( )
 {	
 	// Relying on shared network implementation for Winsock Init
 	if( !NetImgui::Internal::Network::Startup() )
@@ -316,34 +378,8 @@ bool Startup( uint32_t ListenPort )
 		return false;
 	}
 	
-	SOCKET ListenSocket;
-	if((ListenSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) == INVALID_SOCKET)
-	{
-		printf("Could not create socket : %d\n" , WSAGetLastError());		
-		NetImgui::Internal::Network::Shutdown(); 
-		return false;
-	}
-
-	sockaddr_in server;
-	server.sin_family		= AF_INET;
-	server.sin_addr.s_addr	= INADDR_ANY;
-	server.sin_port			= htons(static_cast<USHORT>(ListenPort) );
-	if( bind(ListenSocket, reinterpret_cast<sockaddr*>(&server), sizeof(server)) == SOCKET_ERROR)
-	{
-		printf("Bind failed with error code : %d\n", WSAGetLastError());
-		closesocket(ListenSocket);
-		return false;
-	}
-	
-	if( listen(ListenSocket , 3) == SOCKET_ERROR)
-	{
-		printf("Listen failed with error code : %d\n", WSAGetLastError());
-		closesocket(ListenSocket);
-		return false;
-	}
-
-	gActiveClientThreadCount = 0;
-	std::thread(NetworkConnectRequest_Receive, ListenSocket).detach();
+	gActiveClientThreadCount = 0;	
+	std::thread(NetworkConnectRequest_Receive).detach();
 	std::thread(NetworkConnectRequest_Send).detach();
 	return true;
 }
@@ -355,5 +391,9 @@ void Shutdown()
 		std::this_thread::yield();
 }
 
+bool IsWaitingForConnection()
+{
+	return gbValidListenSocket;
+}
 
 }

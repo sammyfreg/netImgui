@@ -43,7 +43,7 @@ NetImgui::Internal::CmdDrawFrame* ClientRemote::GetDrawFrame()
 
 void ClientRemote::ReceiveTexture(NetImgui::Internal::CmdTexture* pTextureCmd)
 {
-	//SF TODO texture vector not threadsafe, fix this (used in com and main thread)
+	// @Sammyfreg TODO: texture vector not threadsafe, fix this (used in com and main thread)
 	size_t foundIdx	= static_cast<size_t>(-1);
 	bool isRemoval	= pTextureCmd->mFormat == NetImgui::eTexFormat::kTexFmt_Invalid;
 	for(size_t i=0; foundIdx == static_cast<size_t>(-1) && i<mvTextures.size(); i++)
@@ -101,7 +101,7 @@ void ClientRemote::UpdateInputToSend(HWND hWindows, InputUpdate& Input)
 	pInputNew->mMouseWheelVert	= Input.mMouseWheelVertPos;
 	pInputNew->mMouseWheelHoriz	= Input.mMouseWheelHorizPos;
 
-	//SF TODO Add Clipboard support
+	// @Sammyfreg TODO: Add Clipboard support
 
 	// Avoid reading keyboard/mouse input if we are not the active window	
 	uint8_t KeyStates[256];

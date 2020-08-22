@@ -69,9 +69,6 @@ void TextureDestroy(void*& pTextureView)
     }
 }
 
-
-
-
 void CreateRenderTarget()
 {
     DXGI_SWAP_CHAIN_DESC sd;
@@ -240,7 +237,7 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
             //=============================================================================
             // EDIT TO ORIGINAL IMGUI main.cpp
             // Draw the Local Imgui UI and remote imgui UI
-            ImDrawData* pDraw = SampleClient::Client_Draw();
+            const ImDrawData* pDraw = SampleClient::Client_Draw();
             //=============================================================================
 			g_pd3dDeviceContext->ClearRenderTargetView(g_mainRenderTargetView, (float*)&clear_col);
             if( pDraw )

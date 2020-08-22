@@ -6,7 +6,8 @@ struct ClientRemote;
 namespace NetworkServer
 {
 
-bool Startup(uint32_t ListenPort);
+bool Startup();
 void Shutdown();
+bool IsWaitingForConnection();
 
 }

@@ -294,22 +294,22 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 		return -1;
 
 	//------------------------------------------------------------------------------------------------
-    // Perform application initialization:
-	//------------------------------------------------------------------------------------------------
-    if (	!Startup (hInstance, nCmdShow) || 
-			!NetworkServer::Startup(NetImgui::kDefaultServerPort) ||
-			!ServerInfoTab_Startup(NetImgui::kDefaultServerPort) )
-    {
-		return FALSE;
-    }
-
-	//------------------------------------------------------------------------------------------------
-	// Parse for auto connect commandline option
+	// Load Settings savefile and parse for auto connect commandline option
 	//------------------------------------------------------------------------------------------------	
 	ClientConfig::LoadAll();
 	ClientConfig cmdlineClient;
-	if( InitClientConfigFromString(commandline, cmdlineClient) )
+	if (InitClientConfigFromString(commandline, cmdlineClient))
 		ClientConfig::SetConfig(cmdlineClient);
+
+	//------------------------------------------------------------------------------------------------
+    // Perform application initialization:
+	//------------------------------------------------------------------------------------------------
+    if (	!Startup (hInstance, nCmdShow) || 
+			!NetworkServer::Startup() ||
+			!ServerInfoTab_Startup() )
+    {
+		return FALSE;
+    }
 
 	//-------------------------------------------------------------------------
     // Main message loop:

@@ -27,6 +27,8 @@ public:
 	bool			Connected;					//!< Associated client is connected to this server
 	bool			Transient;					//!< Temporary client that should not be saved (comes from cmdline)
 	
+	static uint32_t	ServerPort;					//!< Port that Server should use for connection. (Note: not really a 'Client' setting, but easier to just bundle the value here for the moment)
+
 	// Add/Edit/Remove config
 	static void		SetConfig(const ClientConfig& config);						//!< Add or replace a client configuration info
 	static void		DelConfig(uint32_t configID);								//!< Remove a client configuration

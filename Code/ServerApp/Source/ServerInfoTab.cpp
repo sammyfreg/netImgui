@@ -7,9 +7,10 @@
 #include "ServerInfoTab.h"
 #include "ClientRemote.h"
 #include "ClientConfig.h"
+#include "ServerNetworking.h"
 
 bool			gShowAbout				= false;
-
+bool			gbShowServerConfig		= false;
 constexpr char	kNetImguiURL[]			= "https://github.com/sammyfreg/netImgui";
 
 // Client Config Layout
@@ -37,6 +38,53 @@ void SetupColumns(const char* columnName, bool useBorder, std::initializer_list<
 	for(int i(0); i<static_cast<int>(columnWidths.size()); ++i)
 		ImGui::SetColumnWidth(i, columnWidths.begin()[i]);
 }
+
+//=================================================================================================
+// Edit the Server configuration
+void ServerInfoTab_ServerConfig()
+//=================================================================================================
+{
+	static int sEditPort = -1;
+	if( gbShowServerConfig )
+	{		
+		if( sEditPort == -1 )
+			sEditPort = static_cast<int>(ClientConfig::ServerPort);
+
+		ImGui::OpenPopup("Server Configuration");
+		if (ImGui::BeginPopupModal("Server Configuration", &gbShowServerConfig, ImGuiWindowFlags_AlwaysAutoResize))
+		{
+			ImGui::NewLine();
+
+			// --- Port ---						
+			ImGui::TextUnformatted("Port waiting for connection requests");
+			if (ImGui::InputInt("Port", &sEditPort, 1, 100, ImGuiInputTextFlags_EnterReturnsTrue)) {
+				sEditPort = std::min<int>(0xFFFF, std::max<int>(1, sEditPort));
+			}
+			ImGui::SameLine();
+			if (ImGui::Button("Default")) {
+				sEditPort = NetImgui::kDefaultServerPort;
+			}
+
+			// --- Save/Cancel ---
+			ImGui::NewLine();
+			ImGui::Separator();
+			gbShowServerConfig &= !ImGui::Button("Cancel", ImVec2(ImGui::GetContentRegionAvailWidth() / 2.f, 0));
+			ImGui::SetItemDefaultFocus();
+			ImGui::SameLine();
+			if (ImGui::Button("Save", ImVec2(ImGui::GetContentRegionAvailWidth(), 0))) {
+				ClientConfig::ServerPort = static_cast<uint32_t>(sEditPort);
+				ClientConfig::SaveAll();
+				gbShowServerConfig = false;
+			}
+			ImGui::EndPopup();
+		}
+	}
+	else 
+	{
+		sEditPort = -1;
+	}
+}
+
 
 //=================================================================================================
 // Edit an existing or new Client Config entry
@@ -180,11 +228,10 @@ void ServerInfoTab_DrawClients_SectionConnected()
 					auto elapsedTime	= std::chrono::steady_clock::now() - client.mConnectedTime;
 					int tmSec			= static_cast<int>(std::chrono::duration_cast<std::chrono::seconds>(elapsedTime).count() % 60);
 					int tmMin			= static_cast<int>(std::chrono::duration_cast<std::chrono::minutes>(elapsedTime).count() % 60);
-					int tmHour			= static_cast<int>(std::chrono::duration_cast<std::chrono::hours>(elapsedTime).count());
-					
+					int tmHour			= static_cast<int>(std::chrono::duration_cast<std::chrono::hours>(elapsedTime).count());					
 					{
 						if (client.mClientConfigID == ClientConfig::kInvalidRuntimeID) {
-							ImGui::TextUnformatted("(*)"); ImGui::SameLine();
+							ImGui::TextUnformatted("(No Config)"); ImGui::SameLine();
 						}
 						ImGui::TextUnformatted(client.mName); 
 					}ImGui::NextColumn();
@@ -368,13 +415,33 @@ void ServerInfoTab_AboutDialog()
 // Draw
 //=================================================================================================
 void ServerInfoTab_Draw()
-{
-	if (NetImgui::NewFrame())
+{	
+	if (NetImgui::NewFrame(true))
 	{
-		ImGui::BeginMainMenuBar();
-		if( ImGui::Button("About") ) gShowAbout = true;
-		ImGui::Text(" Waiting for Connections on port : %i", NetImgui::kDefaultServerPort);
-		ImGui::EndMainMenuBar();
+		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(3,3+6) );		
+		if( ImGui::BeginMainMenuBar() )
+		{
+			ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.8, 0.8, 0.8, 0.9));
+			ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(3,3) );
+			ImGui::SetCursorPosY(6);
+			ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, gShowAbout ? 1.f : 0.f);
+			gShowAbout			^= ImGui::Button(" About ");
+			
+			ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, gbShowServerConfig ? 1.f : 0.f);
+			gbShowServerConfig	^= ImGui::Button("  ...  ");
+
+			ImGui::SetCursorPosY(0);
+			if( NetworkServer::IsWaitingForConnection() )
+				ImGui::Text("Waiting Connections on port: %i", static_cast<int>(ClientConfig::ServerPort));
+			else
+				ImGui::Text("Unable to wait Connections on port: %i", static_cast<int>(ClientConfig::ServerPort));
+			ImGui::PopStyleColor();
+			ImGui::PopStyleVar(3);
+			ImGui::EndMainMenuBar();			
+		}
+		ImGui::PopStyleVar(1);
+
+		ServerInfoTab_ServerConfig();
 		ServerInfoTab_DrawClients();
 		ServerInfoTab_AboutDialog();
 		NetImgui::EndFrame();
@@ -384,7 +451,7 @@ void ServerInfoTab_Draw()
 //=================================================================================================
 // Startup
 //=================================================================================================
-bool ServerInfoTab_Startup(unsigned int ServerPort)
+bool ServerInfoTab_Startup()
 {	
 	if( !NetImgui::Startup() )
 		return false;
@@ -407,7 +474,7 @@ bool ServerInfoTab_Startup(unsigned int ServerPort)
 	io.Fonts->ClearInputData();
 	io.Fonts->ClearTexData();
 
-	if( NetImgui::ConnectToApp("netImgui", "localhost", ServerPort, false) )
+	if( NetImgui::ConnectToApp("netImgui", "localhost", ClientConfig::ServerPort, false) )
 	{
 		// Wait for 'ServerInfoTab' client to connect first in slot 0
 		while( !ClientRemote::Get(0).mbIsConnected )

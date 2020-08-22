@@ -33,24 +33,33 @@ struct ClientInfo
 	using Time			= std::chrono::time_point<std::chrono::high_resolution_clock>;
 
 								ClientInfo();
-	Network::SocketInfo*		mpSocket				= nullptr;
-	char						mName[16]				={0};
+	Network::SocketInfo*		mpSocket					= nullptr;
+	char						mName[16]					={0};
 	VecTexture					mTextures;
 	CmdTexture*					mTexturesPending[16];
 	ExchangePtr<CmdDrawFrame>	mPendingFrameOut;
 	ExchangePtr<CmdInput>		mPendingInputIn;
 	BufferKeys					mPendingKeyIn;
-	ImGuiContext*				mpContext				= nullptr;
-	ImGuiContext*				mpContextRestore		= nullptr;	// Context to restore to Imgui once drawing is done
+	ImGuiContext*				mpContextClone				= nullptr;	// Default ImGui drawing context copy, used to do our internal remote drawing
+	ImGuiContext*				mpContextEmpty				= nullptr;	// Placeholder ImGui drawing context, when we are not waiting for a new drawing frame but still want a valid context in place
+	ImGuiContext*				mpContextRestore			= nullptr;	// Context to restore to Imgui once drawing is done
+	Time						mTimeTracking;
 	std::atomic_int32_t			mTexturesPendingCount;
-	float						mMouseWheelVertPrev		= 0.f;
-	float						mMouseWheelHorizPrev	= 0.f;
-	bool						mbConnected				= false;	// Successfully Connected
-	bool						mbDisconnectRequest		= false;	// Waiting to Disconnect
-	bool						mbConnectRequest		= false;	// Waiting to Connect	
-	bool						mbHasTextureUpdate		= false;
-	bool						mbReuseLocalTime		= true;		// True if the netImgui client use the original Imgui Context Time, else we will track it automatically
-	char						PADDING[7];
+	float						mMouseWheelVertPrev			= 0.f;
+	float						mMouseWheelHorizPrev		= 0.f;
+	int							mRestoreKeyMap[ImGuiKey_COUNT];
+	ImGuiConfigFlags			mRestoreConfigFlags			= 0;
+	const char*					mRestoreBackendPlatformName	= nullptr;
+	const char*					mRestoreBackendRendererName	= nullptr;	
+	ImGuiBackendFlags			mRestoreBackendFlags		= 0;
+	bool						mbConnected					= false;	// Successfully Connected
+	bool						mbDisconnectRequest			= false;	// Waiting to Disconnect
+	bool						mbConnectRequest			= false;	// Waiting to Connect	
+	bool						mbHasTextureUpdate			= false;
+	bool						mbIsDrawing					= false;	// True if we are inside a NetImgui::NewFrame() / NetImgui::EndFrame() call
+	bool						mbIsRemoteDrawing			= false;	// True if the rendering it meant for the remote netImgui server
+	bool						mbRestorePending			= false;	// Original context has had some settings overridden, original values stored in mRestoreXXX
+	char						PADDING[5];
 	void						TextureProcessPending();
 	void						TextureProcessRemoval();
 

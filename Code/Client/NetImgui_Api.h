@@ -56,18 +56,19 @@ void				Shutdown(void);
 // serverHost		: Address of the netImgui Server application (Ex1: 127.0.0.2, Ex2: localhost)
 // serverPort		: PortID of the netImgui Server application to connect to
 // clientPort		: PortID this Client should wait for connection from Server application
-// bReuseLocalTime	: ImGui Time tracking comes from the original ImGui Context when true. 
-//					  Otherwise use its own time. 
-//					 (Helps solves issue if your program uses ImGui::GetTime() and 
-//					  expect it to be continuous between local and remote Context).
-//	threadFunction	: User provided function to launch a new thread runningthe function
+// bCloneContext	: When false, BeginFrame will rely on current dear ImGui DrawContext, so 
+//					  transition between local and remote is seamless. 
+//					  When true, creates a duplicate of the current context, so netImgui can do 
+//					  its own drawing without affecting the original content. Useful when you want
+//					  to display some content locally and remotely simultaneously.
+// threadFunction	: User provided function to launch a new thread running the function
 //					  received as a parameter. Use 'DefaultStartCommunicationThread'
 //					  by default, which relies on 'std::thread'.
 //=================================================================================================
-bool				ConnectToApp(const char* clientName, const char* serverHost, uint32_t serverPort=kDefaultServerPort, bool bReuseLocalTime=true);
-bool				ConnectToApp(ThreadFunctPtr threadFunction, const char* clientName, const char* ServerHost, uint32_t serverPort = kDefaultServerPort, bool bReuseLocalTime=true);
-bool				ConnectFromApp(const char* clientName, uint32_t clientPort=kDefaultClientPort, bool bReuseLocalTime=true);
-bool				ConnectFromApp(ThreadFunctPtr threadFunction, const char* clientName, uint32_t serverPort=kDefaultClientPort, bool bReuseLocalTime=true);
+bool				ConnectToApp(const char* clientName, const char* serverHost, uint32_t serverPort=kDefaultServerPort, bool bCloneContext=false);
+bool				ConnectToApp(ThreadFunctPtr threadFunction, const char* clientName, const char* ServerHost, uint32_t serverPort = kDefaultServerPort, bool bCloneContext=false);
+bool				ConnectFromApp(const char* clientName, uint32_t clientPort=kDefaultClientPort, bool bCloneContext=false);
+bool				ConnectFromApp(ThreadFunctPtr threadFunction, const char* clientName, uint32_t serverPort=kDefaultClientPort, bool bCloneContext=false);
 
 //=================================================================================================
 // Request a disconnect from the netImguiApp server
@@ -86,10 +87,16 @@ bool				IsConnected(void);
 bool				IsConnectionPending(void);
 
 //=================================================================================================
-// True Dear ImGui is currently expecting draw commands sent to remote netImgui app.
+// True when Dear ImGui is currently expecting draw commands 
 // This means that we are between NewFrame() and EndFrame() of drawing for remote application
 //=================================================================================================
-bool				IsRemoteDraw(void);
+bool				IsDrawing(void);
+
+//=================================================================================================
+// True when Dear ImGui is currently expecting draw commands *sent to remote netImgui app*.
+// This means that we are between NewFrame() and EndFrame() of drawing for remote application
+//=================================================================================================
+bool				IsDrawingRemote(void);
 
 //=================================================================================================
 // Send an updated texture used by imgui, to netImguiApp server
@@ -98,20 +105,30 @@ bool				IsRemoteDraw(void);
 void				SendDataTexture(uint64_t textureId, void* pData, uint16_t width, uint16_t height, eTexFormat format);
 
 //=================================================================================================
-// Start a new Imgui Frame and wait for Draws commands. Sets a new current ImGui Context
+// Start a new Imgui Frame and wait for Draws commands, using a ImGui created internally
+// for remote drawing. Returns true if we are awaiting a new ImGui frame. 
+//
+// All ImGui drawing can be skip when false.
+//
+// Note: This code can be used instead, to know if you should be drawing or not :
+//			'if( !NetImgui::IsDrawing() )'
+//
+// Note: If your code cannot handle skipping a ImGui frame, set 'bSupportFrameSkip' to false,
+//		 and an empty ImGui context will be assigned when no drawing is needed
 //=================================================================================================
-bool				NewFrame(void);
+bool				NewFrame(bool bSupportFrameSkip=false);
 
 //=================================================================================================
 // Process all receives draws, send them to remote connection and restore the ImGui Context
 //=================================================================================================
-const ImDrawData*	EndFrame(void);
+void				EndFrame(void);
 
 //=================================================================================================
-// Get Imgui drawing context used for remote Connection. 
-// Usefull to tweak some style / io values
+// Regular ImGui draw data, from the last valid draw.
+// Note: Be careful with the returned value, the pointer remain valid only as long as
+//		 a new dear ImGui frame hasn't been started for the netImgui remote app
 //=================================================================================================
-ImGuiContext*		GetRemoteContext();
+const ImDrawData*	GetDrawData(void);
 
 uint8_t				GetTexture_BitsPerPixel	(eTexFormat eFormat);
 uint32_t			GetTexture_BytePerLine	(eTexFormat eFormat, uint32_t pixelWidth);

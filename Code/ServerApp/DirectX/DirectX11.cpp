@@ -346,7 +346,7 @@ bool Startup(HWND hWindow)
 		stbi_uc* pBGPixels = stbi_load("Background.png", &Width, &Height, &Channel, 0);
 		if( pBGPixels )
 		{		
-			//SF TODO CreateTexture(gpGfxRes->mBackgroundTex, Channel==1 ? NetImgui::kTexFmtR8 : Channel==2 ? NetImgui::kTexFmtRG8 : Channel==3 ? NetImgui::kTexFmtRGB8 : NetImgui::kTexFmtRGBA8, uint16_t(Width), uint16_t(Height), pBGPixels);
+			// @Sammyfreg TODO : Support multiple format for Background
 			CreateTexture(gpGfxRes->mBackgroundTex, NetImgui::eTexFormat::kTexFmtRGBA8, uint16_t(Width), uint16_t(Height), pBGPixels);
 			delete[] pBGPixels;
 		}
@@ -574,7 +574,7 @@ TextureHandle TextureCreate( NetImgui::Internal::CmdTexture* pCmdTexture )
 	texHandle.mTextureFormat			= pCmdTexture->mFormat;
 
 	// Add this texture to be added in main thread
-	//SF create a threadsafe consume/append buffer
+	// @Sammyfreg TODO: create a threadsafe consume/append buffer
 	while( gTexturesPendingCount == NetImgui::Internal::ArrayCount(gTexturesPending) )
 		Sleep(0);
 	auto idx							= gTexturesPendingCount.fetch_add(1);
