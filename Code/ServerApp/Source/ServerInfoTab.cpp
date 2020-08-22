@@ -15,19 +15,23 @@ constexpr char	kNetImguiURL[]			= "https://github.com/sammyfreg/netImgui";
 
 // Client Config Layout
 constexpr char	kColName_Name[]			= "Name";
-constexpr char	kColName_HostName[]		= "HostName (Ip)";
+constexpr char	kColName_HostName[]		= "HostName (IP)";
 constexpr char	kColName_HostPort[]		= "Port";
 constexpr char	kColName_AutoConnect[]	= "Auto";
 constexpr float kColWidth_Port			= 50;
 constexpr float kColWidth_AutoConnect	= 50;
 constexpr float kColWidth_Edit			= 70;
 constexpr float kColWidth_Connect		= 100;
-constexpr float kColWidth_FixedTotal	= kColWidth_Port + kColWidth_AutoConnect + kColWidth_Edit + kColWidth_Connect;
+constexpr float kColWidth_FixedConfig	= kColWidth_Port + kColWidth_AutoConnect + kColWidth_Edit + kColWidth_Connect;
 
 // Client Connected Layout
 constexpr char	kColName_Duration[]		= "Time";
+constexpr char	kColName_ImguiVer[]		= "ImGui";
+constexpr char	kColName_NetImguiVer[]	= "netImgui";
+constexpr float kColWidth_ImGui			= 70;
 constexpr float kColWidth_Duration		= kColWidth_AutoConnect + kColWidth_Edit;
 constexpr float kColWidth_Disconnect	= kColWidth_Connect;
+constexpr float kColWidth_FixedConnect	= kColWidth_Port + kColWidth_Duration + 2*kColWidth_ImGui + kColWidth_Disconnect;
 
 //=================================================================================================
 // Helper function that assign all columns width at once, from an initializer list
@@ -196,7 +200,7 @@ void ServerInfoTab_DrawClients_SectionConnected()
 
 	if( ImGui::CollapsingHeader("Connected", ImGuiTreeNodeFlags_DefaultOpen) )
 	{		
-		float widthAdjust = std::max<float>(50.f, ImGui::GetContentRegionAvailWidth() - kColWidth_FixedTotal) / 2.f;
+		float widthAdjust = std::max<float>(50.f, ImGui::GetContentRegionAvailWidth() - kColWidth_FixedConnect);
 		ImVec2 neededSize = ImVec2(0, ImGui::GetFrameHeightWithSpacing() * (std::max<int>(1,connectedCount) + 2));
 		ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(1.0f, 1.0f, 1.0f, 0.1f));
 		ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1);
@@ -208,17 +212,19 @@ void ServerInfoTab_DrawClients_SectionConnected()
 			// List Header		
 			ImGui::BeginChildFrame(ImGui::GetID("ListConnectHeader"), ImVec2(0, ImGui::GetFrameHeightWithSpacing()), ImGuiWindowFlags_NoScrollbar);
 			{
-				SetupColumns("ListConnectHeader", false, { widthAdjust, widthAdjust, kColWidth_Port, kColWidth_Duration, kColWidth_Duration, kColWidth_Disconnect });
-				ImGui::TextUnformatted(kColName_Name); 		ImGui::NextColumn();
-				ImGui::TextUnformatted(kColName_HostName);	ImGui::NextColumn();
-				ImGui::TextUnformatted(kColName_HostPort);	ImGui::NextColumn();
-				ImGui::TextUnformatted(kColName_Duration);	ImGui::NextColumn();
+				SetupColumns("ListConnectHeader", false, { widthAdjust*2.f/3.f, widthAdjust*1.f/3.f, kColWidth_ImGui, kColWidth_ImGui, kColWidth_Port, kColWidth_Duration, kColWidth_Disconnect });
+				ImGui::TextUnformatted(kColName_Name); 			ImGui::NextColumn();
+				ImGui::TextUnformatted(kColName_HostName);		ImGui::NextColumn();
+				ImGui::TextUnformatted(kColName_ImguiVer);		ImGui::NextColumn();
+				ImGui::TextUnformatted(kColName_NetImguiVer);	ImGui::NextColumn();
+				ImGui::TextUnformatted(kColName_HostPort);		ImGui::NextColumn();				
+				ImGui::TextUnformatted(kColName_Duration);		ImGui::NextColumn();
 				ImGui::EndChildFrame();
 			}
 
 			//---------------------------------------------------------------------
 			// List Content (skipping 1st element, because it's the ServerTab)
-			SetupColumns("ListConnectContent", false, { widthAdjust, widthAdjust, kColWidth_Port, kColWidth_Duration, kColWidth_Duration, kColWidth_Disconnect });
+			SetupColumns("ListConnectContent", false, { widthAdjust*2.f/3.f, widthAdjust*1.f/3.f, kColWidth_ImGui, kColWidth_ImGui, kColWidth_Port, kColWidth_Duration, kColWidth_Disconnect });
 			for (uint32_t i(1); i < ClientRemote::GetCountMax(); ++i)
 			{
 				ClientRemote& client = ClientRemote::Get(i);
@@ -233,12 +239,14 @@ void ServerInfoTab_DrawClients_SectionConnected()
 						if (client.mClientConfigID == ClientConfig::kInvalidRuntimeID) {
 							ImGui::TextUnformatted("(No Config)"); ImGui::SameLine();
 						}
-						ImGui::TextUnformatted(client.mName); 
+						ImGui::TextUnformatted(client.mInfoName); 
 					}ImGui::NextColumn();
 
-					ImGui::TextUnformatted(client.mConnectHost);		ImGui::NextColumn();
-					ImGui::Text("%5i", client.mConnectPort);			ImGui::NextColumn();
-					ImGui::Text("%03ih%02i:%02i", tmHour,tmMin,tmSec);	ImGui::NextColumn();
+					ImGui::TextUnformatted(client.mConnectHost);			ImGui::NextColumn();					
+					ImGui::TextUnformatted(client.mInfoImguiVerName);		ImGui::NextColumn();
+					ImGui::TextUnformatted(client.mInfoNetImguiVerName);	ImGui::NextColumn();
+					ImGui::Text("%5i", client.mConnectPort);				ImGui::NextColumn();
+					ImGui::Text("%03ih%02i:%02i", tmHour,tmMin,tmSec);		ImGui::NextColumn();
 			
 					if( !client.mbPendingDisconnect && ImGui::Button("Disconnect", ImVec2(80, 0)) ){
 						client.mbPendingDisconnect = true;
@@ -282,7 +290,7 @@ void ServerInfoTab_DrawClients_SectionConfig()
 	if( ImGui::CollapsingHeader("Configurations", ImGuiTreeNodeFlags_DefaultOpen) )
 	{		
 		ClientConfig clientConfig;
-		float widthAdjust = std::max<float>(50.f, ImGui::GetContentRegionAvailWidth() - kColWidth_FixedTotal) / 2.f;
+		float widthAdjust = std::max<float>(50.f, ImGui::GetContentRegionAvailWidth() - kColWidth_FixedConfig) / 2.f;
 		ImVec2 neededSize = ImVec2(0, ImGui::GetFrameHeightWithSpacing() * (ClientConfig::GetConfigCount() + 2));
 		ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(1.0f, 1.0f, 1.0f, 0.1f));		
 		ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1);

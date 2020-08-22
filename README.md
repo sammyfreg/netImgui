@@ -50,8 +50,14 @@ For programs running on hardware without easy access to a keyboard and mouse, **
 
 - `NetImgui::IsConnected()` and `NetImgui::IsDrawingRemote()` can be used during Dear ImGui drawing, helping to make selective decisions on the content to draw based on where it will be displayed.
 
+#### Dear Imgui versions
+Tested against these **Dear ImGui** versions: **1.75**, **1.76**, **1.76**(Docking), **1.77**, **1.78**
+
+Should be able to support other versions without too much difficulty. Mostly involve making sure the function `ContextClone()` compiles properly against the `imgui.h` file.
+
 # Release notes
 ### To do
+- Bugfix : netImgui Server application unable to start when post configured for listening can't be opened. Need to manually edit `netImgui.cfg` with a valid port.
 - Support of additional texture formats
 - Commands to assign custom backgrounds
 - Handle Linear/sRGB vertex color format

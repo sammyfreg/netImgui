@@ -43,7 +43,7 @@ void UpdateActiveClient(uint32_t NewClientId)
 		if( gActiveClient != ClientRemote::kInvalidClient)
 		{
 			ClientRemote& client = ClientRemote::Get(gActiveClient);
-			sprintf_s(zName, "    %s    ", client.mName);
+			sprintf_s(zName, "    %s    ", client.mInfoName);
 			ModifyMenuA(GetMenu(ghMainWindow), static_cast<UINT>(client.mMenuId), MF_BYCOMMAND|MF_ENABLED, client.mMenuId, zName);
 			client.mbIsActive = false;
 		}
@@ -52,7 +52,7 @@ void UpdateActiveClient(uint32_t NewClientId)
 		if( gActiveClient != ClientRemote::kInvalidClient)
 		{
 			ClientRemote& client = ClientRemote::Get(gActiveClient);
-			sprintf_s(zName, "--[ %s ]--", client.mName);
+			sprintf_s(zName, "--[ %s ]--", client.mInfoName);
 			ModifyMenuA(GetMenu(ghMainWindow), static_cast<UINT>(client.mMenuId), MF_BYCOMMAND|MF_GRAYED, client.mMenuId, zName);
 			client.mbIsActive = true;
 		}		
@@ -331,7 +331,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 		for(uint32_t ClientIdx(0); ClientIdx<ClientRemote::GetCountMax(); ClientIdx++)
 		{
 			auto& client = ClientRemote::Get(ClientIdx);
-			if(client.mbIsConnected && client.mMenuId == 0 && client.mName[0] != 0 )
+			if(client.mbIsConnected && client.mMenuId == 0 && client.mInfoName[0] != 0 )
 				AddRemoteClient(ClientIdx);
 			if(client.mbIsFree && client.mMenuId != 0 )
 				RemoveRemoteClient(ClientIdx);

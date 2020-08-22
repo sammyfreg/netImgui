@@ -34,6 +34,7 @@ struct alignas(8) CmdVersion
 	{
 		Initial				= 1,
 		NewTextureFormat	= 2,
+		ImguiVersionInfo	= 3,
 		// Insert new version here
 
 		//--------------------------------
@@ -41,10 +42,14 @@ struct alignas(8) CmdVersion
 		_Current			= _Count -1
 	};
 
-	CmdHeader	mHeader			= CmdHeader(CmdHeader::eCommands::Version, sizeof(CmdVersion));
-	eVersion	mVersion		= eVersion::_Current;
-	char		mClientName[16]	= {0};
-	char		mPad[4]			= {0};
+	CmdHeader	mHeader					= CmdHeader(CmdHeader::eCommands::Version, sizeof(CmdVersion));
+	eVersion	mVersion				= eVersion::_Current;
+	char		mClientName[16]			= {0};
+	char		mImguiVerName[16]		= {IMGUI_VERSION};
+	char		mNetImguiVerName[16]	= {NETIMGUI_VERSION};
+	uint32_t	mImguiVerID				= IMGUI_VERSION_NUM;
+	uint32_t	mNetImguiVerID			= NETIMGUI_VERSION_NUM;
+	char		PADDING[4];
 };
 
 struct alignas(8) CmdInput

@@ -149,10 +149,14 @@ void Communications_ClientExchangeLoop(SOCKET Socket, ClientRemote* pClient)
 	ClientConfig::SetProperty_Connected(pClient->mClientConfigID, false);
 	closesocket(Socket);
 	
-	pClient->mName[0]				= 0;
-	pClient->mbPendingDisconnect	= false;
-	pClient->mbIsConnected			= false;
-	pClient->mbIsFree				= true;
+	pClient->mInfoName[0]				= 0;
+	pClient->mInfoImguiVerName[0]		= 0;
+	pClient->mInfoNetImguiVerName[0]	= 0;
+	pClient->mInfoImguiVerID			= 0;
+	pClient->mInfoNetImguiVerID			= 0;
+	pClient->mbPendingDisconnect		= false;
+	pClient->mbIsConnected				= false;
+	pClient->mbIsFree					= true;
 	gActiveClientThreadCount--;
 }
 
@@ -174,9 +178,14 @@ bool Communications_InitializeClient(SOCKET Socket, ClientRemote* pClient)
 	{		
 		ClientConfig clientConfig;
 		if( ClientConfig::GetConfigByID(pClient->mClientConfigID, clientConfig) )
-			sprintf_s(pClient->mName, "%s (%s)", clientConfig.ClientName, cmdVersionRcv.mClientName);
+			sprintf_s(pClient->mInfoName, "%s (%s)", clientConfig.ClientName, cmdVersionRcv.mClientName);
 		else
-			sprintf_s(pClient->mName, "%s", cmdVersionRcv.mClientName);
+			sprintf_s(pClient->mInfoName, "%s", cmdVersionRcv.mClientName);
+
+		strcpy_s(pClient->mInfoImguiVerName,	cmdVersionRcv.mImguiVerName);
+		strcpy_s(pClient->mInfoNetImguiVerName, cmdVersionRcv.mNetImguiVerName);
+		pClient->mInfoImguiVerID	= cmdVersionRcv.mImguiVerID;
+		pClient->mInfoNetImguiVerID = cmdVersionRcv.mNetImguiVerID;
 		return true;
 	}
 	return false;
@@ -351,7 +360,7 @@ void NetworkConnectRequest_Send()
 				ClientRemote& newClient = ClientRemote::Get(freeIndex);
 				if( ClientConfig::GetConfigByID(clientConfigID, clientConfig) )
 				{
-					strcpy_s(newClient.mName, clientConfig.ClientName);
+					strcpy_s(newClient.mInfoName, clientConfig.ClientName);
 					newClient.mConnectPort		= clientConfig.HostPort;
 					newClient.mClientConfigID	= clientConfigID;					
 				}

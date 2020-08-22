@@ -76,7 +76,7 @@ void ClientRemote::Reset()
 	mPendingInput.Free();
 	netImguiDeleteSafe(mpFrameDraw);
 
-	mName[0]			= 0;
+	mInfoName[0]		= 0;
 	mMenuId				= 0;	
 	mClientConfigID		= ClientConfig::kInvalidRuntimeID;
 	mbPendingDisconnect	= false;

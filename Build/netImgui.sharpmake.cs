@@ -205,10 +205,11 @@ namespace NetImgui
 	}
 	
 	// Try compiling netImgui against various version of Imgui releases
-	[Sharpmake.Generate] public class ProjectNetImgui_17500 : ProjectNetImgui { public ProjectNetImgui_17500() : base("Imgui_17500"){} }	
-	[Sharpmake.Generate] public class ProjectNetImgui_17600 : ProjectNetImgui { public ProjectNetImgui_17600() : base("Imgui_17600"){} }
-	[Sharpmake.Generate] public class ProjectNetImgui_17700 : ProjectNetImgui { public ProjectNetImgui_17700() : base("Imgui_17700"){} }
-	[Sharpmake.Generate] public class ProjectNetImgui_Dock17601 : ProjectNetImgui { public ProjectNetImgui_Dock17601() : base("Imgui_Dock17601") {} }
+	[Sharpmake.Generate] public class ProjectNetImgui_17500 	: ProjectNetImgui { public ProjectNetImgui_17500() 		: base("Imgui_17500"){} }	
+	[Sharpmake.Generate] public class ProjectNetImgui_17600 	: ProjectNetImgui { public ProjectNetImgui_17600() 		: base("Imgui_17600"){} }
+	[Sharpmake.Generate] public class ProjectNetImgui_17700 	: ProjectNetImgui { public ProjectNetImgui_17700() 		: base("Imgui_17700"){} }
+	[Sharpmake.Generate] public class ProjectNetImgui_17800 	: ProjectNetImgui { public ProjectNetImgui_17800()		: base("Imgui_17800"){} }
+	[Sharpmake.Generate] public class ProjectNetImgui_Dock17601 : ProjectNetImgui { public ProjectNetImgui_Dock17601()	: base("Imgui_Dock17601") {} }
 	
 	[Sharpmake.Generate]
     public class ProjectNetImguiServer : ProjectBase
@@ -339,6 +340,7 @@ namespace NetImgui
 			conf.AddProject<ProjectNetImgui_17500>(target, false, SolutionFolder);
 			conf.AddProject<ProjectNetImgui_17600>(target, false, SolutionFolder);
 			conf.AddProject<ProjectNetImgui_17700>(target, false, SolutionFolder);
+			conf.AddProject<ProjectNetImgui_17800>(target, false, SolutionFolder);
 			conf.AddProject<ProjectNetImgui_Dock17601>(target, false, SolutionFolder);
 			conf.AddProject<ProjectNetImgui_Disabled>(target, false, SolutionFolder);			
 		}
@@ -351,6 +353,6 @@ namespace NetImgui
 			arguments.Generate<SolutionSample>();
         }
 		
-		static public string sDefaultImguiVersion	= @"Imgui_17700";
+		static public string sDefaultImguiVersion	= @"Imgui_17800";
 	}
 }
