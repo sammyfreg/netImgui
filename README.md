@@ -39,11 +39,11 @@ For programs running on hardware without easy access to a keyboard and mouse, **
 #### Note
 - Connection between **netImgui Server** and a **netImGui Client** can be achieved in 4 different ways.
  - **Server waits for connection and** :
-   (A) Client calls `ConnectToApp()` with the Server address.
+   - (A) Client calls `ConnectToApp()` with the Server address.
  - **Client calls `ConnectFromApp()` then waits for connection and** :
-   (B) Server configure the Client's address and connect to it.
-   (C) Server is launched with the Client's address in commandline.
-   (D) Server receives a Client's address from another application, through [Windows named pipe](https://docs.microsoft.com/en-us/windows/win32/ipc/named-pipes "Windows named pipe") : \\.\pipe\netImgui'.
+   - (B) Server configure the Client's address and connect to it.
+   - (C) Server is launched with the Client's address in commandline.
+   - (D) Server receives a Client's address from another application, through [Windows named pipe](https://docs.microsoft.com/en-us/windows/win32/ipc/named-pipes "Windows named pipe") : \\.\pipe\netImgui'.
  
  
 - **Advanced:** Different **Dear ImGui** content can be displayed locally and remotely at the same time. Look at *SampleDualUI* for more information.
