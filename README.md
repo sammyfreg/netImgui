@@ -1,12 +1,12 @@
  <p align="center"><img src="https://github.com/sammyfreg/netImgui/blob/master/Web/img/netImguiLogo.png" width=128 height=128></p>
 
 # Summary
-**NetImgui** is a library to remotely display and control **[Dear ImGui](https://github.com/ocornut/imgui)** menus with an associated **netImgui server** application. Designed to painlessly integrate into existing codebase with few changes required to the existing logic.
+**NetImgui** is a library to remotely display and control **[Dear ImGui](https://github.com/ocornut/imgui)** menus with an associated **netImgui server** application. Designed to painlessly integrate into existing codebase with few changes required to the existing logic. It forwards the rendering information needed to draw the UI on another PC (vertices, indices, draw commands).
 
 ![NetImgui](https://github.com/sammyfreg/netImgui/blob/master/Web/img/netImgui.png)
 
 # Purpose
-Initially created to assist game developers in debugging their game from a PC while it runs on console. However, its use can easily be extended to other fields.
+Initially created to assist game developers in debugging their game from a PC while running on console or cellphone. However, its use can easily be extended to other fields. For example, help with VR developement, or easily add a UI to some devices without display but TCP/IP communications available.
 
 #### 1. Input ease of use
 For programs running on hardware without easy access to a keyboard and mouse, **netImgui** provides the  comfort of your computer's inputs while controlling it remotely.
@@ -14,31 +14,41 @@ For programs running on hardware without easy access to a keyboard and mouse, **
 ![NetImgui](https://github.com/sammyfreg/netImgui/blob/master/Web/img/InputWithNetImgui.gif)
 
 #### 2. Declutter display
-**Dear ImGui** is often used to display relevant debug information during development, but its UI elements can obscure the regular window content. **NetImgui** sends the debug menus to a separate window, leaving the original display clutter-free and with freedom to use the entire screen for more elaborate debug content.
+**Dear ImGui** is often used to display relevant debug information during development, but its UI elements can obscure the regular content. **NetImgui** sends the UI content to a remote window, leaving the original display clutter-free and with the freedom to use the entire screen for more elaborate content. The hardware running **Dear ImGui** might not even have a display, sending the UI content to the **NetImgui** server application allows to have one.
 
 ###### Before
 ![DearImGui](https://github.com/sammyfreg/netImgui/blob/master/Web/img/AppWithoutNetImgui.png)
 
 ###### With netImgui
-![netImGui](https://github.com/sammyfreg/netImgui/blob/master/Web/img/AppWithNetImguiGif.gif)
+![netImgui](https://github.com/sammyfreg/netImgui/blob/master/Web/img/AppWithNetImguiGif.gif)
 
 # Integration
-- Download the latest version of netImgui.
-- Generate solutions and compile the **netImguiServer** application.
+- Download the latest version of **netImgui**.
 - Add the content of ***Code\Client*** to your codebase.
 - In your codebase :
-  - [once] Call ***NetImgui::Connect(...)*** (starts connection to **netImguiServer**).
-  - [once] Call ***NetImgui::SendDataTexture(...)*** (upload your font texture to **netImguiServer**).
+  - [once] Call `NetImgui::ConnectToApp()` or `NetImgui::ConnectFromApp()`.
+  - [once] Call `NetImgui::SendDataTexture()` *(uploads your font texture to netImguiServer)*.
   - [Every Redraw]
-    - Replace ***ImGui::NewFrame()*** call, with ***NetImgui::NewFrame()***.
+    - Replace `ImGui::NewFrame()` with call to `NetImgui::NewFrame()`.
     - Draw your ImGui menu as usual.
-    - Replace ***ImGui::Render()*** call, with ***NetImgui::EndFrame()***.
+    - Replace `ImGui::Render()` and `ImGui::EndFrame()` with call to `NetImgui::EndFrame()`.
+- Start the **netImgui** server application and connect your application to it
 
-(More integration details can be found on the [Wiki](https://github.com/sammyfreg/netImgui/wiki "Wiki") and *netImgui_Sample* project can provides insights)
+(More integration details can be found on the [Wiki](https://github.com/sammyfreg/netImgui/wiki "Wiki") and multiple included Sample projects can provide insights)
 
 #### Note
-- Different **Dear ImGui** content can be displayed locally and remotely at the same time.
-- *NetImgui::IsConnected* and *NetImgui::IsRemoteDraw* can be used during menu udpate, to make decisions on what content to draw.
+- Connection between **netImgui Server** and a **netImGui Client** can be achieved in 4 different ways.
+ - **Server waits for connection and** :
+   (A) Client calls `ConnectToApp()` with the Server address.
+ - **Client calls `ConnectFromApp()` then waits for connection and** :
+   (B) Server configure the Client's address and connect to it.
+   (C) Server is launched with the Client's address in commandline.
+   (D) Server receives a Client's address from another application, through [Windows named pipe](https://docs.microsoft.com/en-us/windows/win32/ipc/named-pipes "Windows named pipe") : \\.\pipe\netImgui'.
+ 
+ 
+- **Advanced:** Different **Dear ImGui** content can be displayed locally and remotely at the same time. Look at *SampleDualUI* for more information.
+
+- `NetImgui::IsConnected()` and `NetImgui::IsDrawingRemote()` can be used during Dear ImGui drawing, helping to make selective decisions on the content to draw based on where it will be displayed.
 
 # Release notes
 ### To do
@@ -49,24 +59,29 @@ For programs running on hardware without easy access to a keyboard and mouse, **
 - Profile and optimize performances
 - Add copy/paste support
 - Add new **Dear ImGui** multi windows support (docking branch)
-- Networking: Add support of client accepting connection from netImgui App
+- ~~Networking: Add support of client accepting connection from netImgui App~~
 
-### Version 1.1.001
-(2020/07/02)
-- Added ImGui 1.77 support
-
-### Version 1.1
-(2020/06/23)
-- Few fixes
-- Added support to Posix sockets (Unix/Mac/Android support)
-- Added texture format A8
- 
-### Version 1.0
-(2020/06/13)
-- Initial Release
-- netImgui server application
-- netImgui client code (for integration into external codebase)
- 
+### Version 1.2
+(2020/08/22)
+ - **API Changes**
+  - `NetImGui::NewFrame()` / `NetImGui::EndFrame()` should always be used, even when disconnected
+  - `NetImGui::NewFrame()` takes a new parameter, telling **netImgui** to continue using the same context or use a duplicate
+  - `NetImgui::Connect()` replaced by `NetImgui::ConnectToApp()` / `NetImGui::ConnectFromApp()`
+  - `NetImgui::IsRemoteDraw()` renamed to `NetImgui::IsDrawingRemote()`
+  - `NetImgui::IsDrawing()` added
+  - `NetImgui::IsConnectionPending()` added
+  - `NetImgui::GetDrawData()` added
+  - `NetImgui::GetRemoteContext()` removed
+ - **New** 
+  - Support for connection initiated from **netImgui server** application
+  - GUI and save file support for Client configurations
+  - Improved samples
+  - Optional commandline parameter to specify Client's address for connection on **netImgui Server** launch
+  - Launching a second **netImgui Server** forward commandline option to already running instance
+  - **netImgui Server** application accepts Client's address request from a Windows 'named pipe' 
+ - **Bugfix**
+  - Issue of text edition not recognizing special key strokes (navigation, delete, ...)
+  
 ### Older
 [Release Notes](https://github.com/sammyfreg/netImgui/blob/master/Web/ReleaseNotes.md)
 
@@ -80,4 +95,6 @@ Support of image formats via [**stb_image.h**](https://github.com/nothings/stb/b
 
 Support of Solutions generation via [**Sharpmake**](https://github.com/ubisoft/Sharpmake) by Ubisoft (public domain).
 
-support of Posix sockets thanks to [Aaron Lieberman](https://github.com/AaronLieberman).
+Support of Posix sockets thanks to [Aaron Lieberman](https://github.com/AaronLieberman).
+
+Support of json save file via [**nlohmann json**](https://github.com/nlohmann/json)
