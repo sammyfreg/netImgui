@@ -247,7 +247,7 @@ namespace NetImgui
 		: base(true)
 		{
             Name			= inName;
-            SourceRootPath	= @"[project.SharpmakeCsPath]\..\Code\Sample\" + inName;
+            SourceRootPath	= @"[project.SharpmakeCsPath]\..\Code\Sample\" + Name;
 			AdditionalSourceRootPaths.Add(@"[project.SharpmakeCsPath]\..\Code\Sample\Common");
         }
 
@@ -262,10 +262,33 @@ namespace NetImgui
 		}
     }
 	
+	[Sharpmake.Generate]
+    public class ProjectSample_Disabled : ProjectBase
+    {
+        public ProjectSample_Disabled()
+		: base(true)
+		{
+            Name			= "SampleDisabled";
+            SourceRootPath	= @"[project.SharpmakeCsPath]\..\Code\Sample\" + Name;
+			AdditionalSourceRootPaths.Add(@"[project.SharpmakeCsPath]\..\Code\Sample\Common");
+        }
+
+		[Configure()]
+		public new void ConfigureAll(Configuration conf, NetImguiTarget target)
+        {
+			base.ConfigureAll(conf, target);			
+			conf.AddPublicDependency<ProjectImgui_Default>(target);
+			conf.AddPublicDependency<ProjectNetImgui_Disabled>(target);
+			conf.IncludePaths.Add(@"[project.SharpmakeCsPath]\..\Code\ThirdParty\" + SolutionAll.sDefaultImguiVersion);
+			conf.IncludePaths.Add(@"[project.SharpmakeCsPath]\..\Code\Client");
+			conf.Defines.Add("NETIMGUI_ENABLED=0");
+		}
+    }
+	
 	[Sharpmake.Generate] public class ProjectSample_Basic 	: ProjectSample { public ProjectSample_Basic() 		: base("SampleBasic"){} }	
 	[Sharpmake.Generate] public class ProjectSample_DualUI 	: ProjectSample { public ProjectSample_DualUI()		: base("SampleDualUI"){} }	
 	[Sharpmake.Generate] public class ProjectSample_Textures: ProjectSample { public ProjectSample_Textures() 	: base("SampleTextures"){} }	
-	[Sharpmake.Generate] public class ProjectSample_NewFrame: ProjectSample { public ProjectSample_NewFrame()	: base("SampleNewFrame"){} }	
+	[Sharpmake.Generate] public class ProjectSample_NewFrame: ProjectSample { public ProjectSample_NewFrame()	: base("SampleNewFrame"){} }		
 	
 	//=============================================================================================
 	// SOLUTIONS
@@ -308,6 +331,7 @@ namespace NetImgui
 			conf.AddProject<ProjectSample_NewFrame>(target, false, SolutionFolder);
 			conf.AddProject<ProjectSample_DualUI>(target, false, SolutionFolder);
 			conf.AddProject<ProjectSample_Textures>(target, false, SolutionFolder);
+			conf.AddProject<ProjectSample_Disabled>(target, false, SolutionFolder);
 		}
 	}
 

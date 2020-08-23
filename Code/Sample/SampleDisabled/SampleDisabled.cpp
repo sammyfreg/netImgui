@@ -1,8 +1,8 @@
 //=================================================================================================
-// SAMPLE BASIC
+// SAMPLE DISABLED
 //-------------------------------------------------------------------------------------------------
-// Barebone example of adding NetImgui to a code base. This demonstrate how little changes
-// are needed to be up and running.
+// This sample demonstrate compiling your code with netImgui disabled but ImGui still active.
+// It relies on the Define 'NETIMGUI_ENABLED' assigned in the project properties.
 //=================================================================================================
 
 #include <NetImgui_Api.h>
@@ -54,14 +54,16 @@ const ImDrawData* Client_Draw()
 	
 	//-----------------------------------------------------------------------------------------
 	// (2) Draw ImGui Content 		
-	//-----------------------------------------------------------------------------------------
-	ClientUtil_ImGuiContent_Common("SampleBasic", false);
+	//-----------------------------------------------------------------------------------------	
+	ClientUtil_ImGuiContent_Common("SampleDisabled", false);
 	ImGui::SetNextWindowPos(ImVec2(32,48), ImGuiCond_Once);
 	ImGui::SetNextWindowSize(ImVec2(400,400), ImGuiCond_Once);
 	if( ImGui::Begin("Sample Basic", nullptr) )
 	{
-		ImGui::TextColored(ImVec4(0.1, 1, 0.1, 1), "Basic demonstration of netImgui code integration.");		
-		ImGui::TextWrapped("Create a basic Window with some text.");
+		ImGui::TextColored(ImVec4(0.1, 1, 0.1, 1), "Compiling with netImgui Disabled.");		
+		ImGui::TextWrapped(	"This shows being able to continue using ImGui normally, while netImgui code has been disabled. "
+							"No connection with the remote netImgui will be possible since the client code is entirely ifdef out "
+							"and the netImgui client API left with shell content calling Dear Imgui directly.");
 		ImGui::NewLine();
 		ImGui::TextColored(ImVec4(0.1, 1, 0.1, 1), "Where are we drawing: ");
 		ImGui::SameLine();

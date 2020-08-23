@@ -1,8 +1,9 @@
 //=================================================================================================
-// SAMPLE DUAL UI
+// SAMPLE NEW FRAME
 //-------------------------------------------------------------------------------------------------
-// Example of supporting 2 differents ImGui display at the same time. One on the remote server
-// and the second in the local client.
+// Example of handling frame skipping. When connected with remote netImgui Server, we don't need
+// to refresh the ImGui content every frame. If you program can handle skipping drawing, this 
+// allow to save CPU cycles when no refresh is expected.
 //=================================================================================================
 
 #include <NetImgui_Api.h>
@@ -58,7 +59,8 @@ void Client_Draw_Content()
 	bool bModeChanged(false);
 
 	ClientUtil_ImGuiContent_Common("SampleNewFrame", false);
-
+	ImGui::SetNextWindowPos(ImVec2(32,48), ImGuiCond_Once);
+	ImGui::SetNextWindowSize(ImVec2(400,400), ImGuiCond_Once);
 	if (ImGui::Begin("Sample NewFrame", nullptr))
 	{
 		ImGui::TextColored(ImVec4(0.1, 1, 0.1, 1), "Demonstration of frame skip handling.");
@@ -130,9 +132,9 @@ const ImDrawData* Client_Draw_ModeOnDemand()
 	//---------------------------------------------------------------------------------------------
 	// (1) Start a new Frame
 	// When 'NewFrame' returns false, we should skip drawing this frame
-	// Note 1 : Key point is using 'true' in 'NewFrame()', letting system know to skip empty frames
-	// Note 2 : Frame skipping only happens when remote drawing
-	// Note 3 : Instead of relying on 'NewFrame()' return value of 'NewFrame', can use 'IsDrawing()'
+	// Note 1 : Key point is using the 'NewFrame()' return value to decide when to skip drawing
+	// Note 2 : Instead of relying on 'NewFrame()' return value, 'IsDrawing()' can be queried 
+	// Note 3 : Frame skipping only happens when remote drawing	
 	//---------------------------------------------------------------------------------------------
 	if (NetImgui::NewFrame(true))
 	{		

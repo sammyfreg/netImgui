@@ -1,8 +1,9 @@
 //=================================================================================================
-// SAMPLE DUAL UI
+// SAMPLE TEXTURES
 //-------------------------------------------------------------------------------------------------
-// Example of supporting 2 differents ImGui display at the same time. One on the remote server
-// and the second in the local client.
+// Example of using various textures in the ImGui context, after making netImgui aware of them.
+// We need to always provide the Font texture (this sample calls Client_AddFontTexture to do that)
+// but it also apply to any other textures we might want to display.
 //=================================================================================================
 
 #include <NetImgui_Api.h>
@@ -122,6 +123,8 @@ const ImDrawData* Client_Draw()
 		// (2) Draw ImGui Content 		
 		//-----------------------------------------------------------------------------------------
 		ClientUtil_ImGuiContent_Common("SampleTextures", false);
+		ImGui::SetNextWindowPos(ImVec2(32, 48), ImGuiCond_Once);
+		ImGui::SetNextWindowSize(ImVec2(400, 400), ImGuiCond_Once);
 		if (ImGui::Begin("Sample Textures", nullptr))
 		{
 			const ImVec4 tint_col = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);

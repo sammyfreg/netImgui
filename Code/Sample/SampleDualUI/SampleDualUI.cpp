@@ -118,7 +118,8 @@ const ImDrawData* Client_Draw()
 		// not planning to keep drawing in local windows while connected, or you can manage this 
 		// yourself using your own new context.
 		ClientUtil_ImGuiContent_Common("SampleDualUI", true);
-
+		ImGui::SetNextWindowPos(ImVec2(32,48), ImGuiCond_Once);
+		ImGui::SetNextWindowSize(ImVec2(400,400), ImGuiCond_Once);
 		if (ImGui::Begin("SampleDualUI", nullptr))
 		{	
 			Client_Draw_MainContent();

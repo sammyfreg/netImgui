@@ -558,24 +558,29 @@ bool InputUpdateData(void)
 
 namespace NetImgui {
 
+#ifdef IMGUI_VERSION
 static bool 		sIsDrawing = false;
+#endif
 
-bool				Startup(void)													{ return false; }
-void				Shutdown(void)													{ }
-bool				Connect(const char*, const char*, uint32_t)						{ return false; }
-bool				Connect(ThreadFunctPtr, const char*, const char*, uint32_t)		{ return false; }
-void				Disconnect(void)												{ }
-bool				IsConnected(void)												{ return false; }
-bool				IsDrawingRemote(void)											{ return false; }
-void				SendDataTexture(uint64_t, void*, uint16_t, uint16_t, eTexFormat){ }
-uint8_t				GetTexture_BitsPerPixel(eTexFormat) { return 0; }
-uint32_t			GetTexture_BytePerLine(eTexFormat, uint32_t) { return 0; }
-uint32_t			GetTexture_BytePerImage(eTexFormat, uint32_t, uint32_t) { return 0; }
+bool				Startup(void)															{ return true; }
+void				Shutdown(void)															{ }
+bool				ConnectToApp(const char*, const char*, uint32_t, bool)					{ return false; }
+bool				ConnectToApp(ThreadFunctPtr, const char*, const char*, uint32_t, bool)	{ return false; }
+bool				ConnectFromApp(const char*, uint32_t, bool)								{ return false; }
+bool				ConnectFromApp(ThreadFunctPtr, const char*, uint32_t, bool)				{ return false; }
+void				Disconnect(void)														{ }
+bool				IsConnected(void)														{ return false; }
+bool				IsDrawingRemote(void)													{ return false; }
+bool				IsConnectionPending(void)												{ return false; }
+void				SendDataTexture(uint64_t, void*, uint16_t, uint16_t, eTexFormat)		{ }
+uint8_t				GetTexture_BitsPerPixel(eTexFormat)										{ return 0; }
+uint32_t			GetTexture_BytePerLine(eTexFormat, uint32_t)							{ return 0; }
+uint32_t			GetTexture_BytePerImage(eTexFormat, uint32_t, uint32_t)					{ return 0; }
 
 //=================================================================================================
 // If ImGui is enabled but not NetImgui, handle the BeginFrame/EndFrame normally
 //=================================================================================================
-bool NewFrame(void)													
+bool NewFrame(bool)													
 { 
 #ifdef IMGUI_VERSION
 	if( !sIsDrawing )
@@ -593,7 +598,7 @@ void EndFrame(void)
 #ifdef IMGUI_VERSION
 	if( sIsDrawing )
 	{		
-		ImGui::EndFrame();
+		ImGui::Render();
 		sIsDrawing = false;
 	}
 #endif
@@ -610,7 +615,11 @@ const ImDrawData* GetDrawData(void)
 
 bool IsDrawing(void)
 { 
+#ifdef IMGUI_VERSION
 	return sIsDrawing; 
+#else
+	return false;
+#endif
 }
 
 } // namespace NetImgui
