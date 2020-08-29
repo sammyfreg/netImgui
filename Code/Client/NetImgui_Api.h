@@ -4,12 +4,12 @@
 //! @Name		: netImgui
 //=================================================================================================
 //! @author		: Sammy Fatnassi
-//! @date		: 2020/08/23...
-//!	@version	: v1.2.1
+//! @date		: 2020/08/29
+//!	@version	: v1.2.2
 //! @Details	: For integration info : https://github.com/sammyfreg/netImgui/wiki
 //=================================================================================================
-#define NETIMGUI_VERSION		"1.2.1"
-#define NETIMGUI_VERSION_NUM	10201
+#define NETIMGUI_VERSION		"1.2.2"
+#define NETIMGUI_VERSION_NUM	10202
 
 struct ImGuiContext;
 struct ImDrawData;
@@ -18,6 +18,16 @@ struct ImDrawData;
 
 #include "Private/NetImgui_WarningDisable.h"
 #include "NetImgui_Config.h"
+
+//=================================================================================================
+// NetImgui needs to detect Dear ImGui to be active
+//=================================================================================================
+#ifndef NETIMGUI_ENABLED
+	#define NETIMGUI_ENABLED 0
+#elif !defined(IMGUI_VERSION)
+	#undef	NETIMGUI_ENABLED
+	#define	NETIMGUI_ENABLED 0
+#endif
 
 //=================================================================================================
 // List of texture format supported

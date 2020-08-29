@@ -104,8 +104,9 @@ namespace NetImgui
 		public ProjectBase(bool isExe)
 		: base(typeof(NetImguiTarget))
 		{
-			//AddTargets(new NetImguiTarget{}, new NetImguiTarget{DevEnv=DevEnv.vs2017, Compiler = Compiler.VS});			
 			AddTargets(new NetImguiTarget{});
+			AddTargets(new NetImguiTarget{DevEnv = DevEnv.vs2017, Compiler = Compiler.VS});
+			
 			CustomBuildFileHLSL.AddFilesExt(this);
 			IsFileNameToLower		= false;
 			IsTargetFileNameToLower = false;
@@ -125,8 +126,8 @@ namespace NetImgui
 			conf.ProjectFileName	= @"[project.Name]";
 			conf.TargetFileSuffix	= @"_[target.Optimization]";
 			conf.ProjectPath		= @"[project.SharpmakeCsPath]\_Projects\[target.DevEnv]";
-			conf.TargetPath			= mIsExe ? @"[project.SharpmakeCsPath]\_Bin\[target.Compiler]_[target.Platform]" : @"[project.SharpmakeCsPath]\_Lib\[target.Compiler]_[target.Platform]";
-			conf.IntermediatePath	= @"[project.SharpmakeCsPath]\_Intermediate\[target.Compiler]_[target.Platform]_[target.Optimization]\[project.Name]";
+			conf.TargetPath			= mIsExe ? @"[project.SharpmakeCsPath]\_Bin\[target.DevEnv]_[target.Compiler]_[target.Platform]" : @"[project.SharpmakeCsPath]\_Lib\[target.DevEnv]_[target.Compiler]_[target.Platform]";
+			conf.IntermediatePath	= @"[project.SharpmakeCsPath]\_Intermediate\[target.DevEnv]_[target.Compiler]_[target.Platform]_[target.Optimization]\[project.Name]";
 			conf.Output				= mIsExe ? Project.Configuration.OutputType.Exe : Project.Configuration.OutputType.Lib;
 
 			if ( target.Compiler == Compiler.Clang )
@@ -144,6 +145,8 @@ namespace NetImgui
 			conf.Options.Add(Options.Vc.General.TreatWarningsAsErrors.Enable);
 			conf.Options.Add(Options.Vc.General.CharacterSet.Unicode);			
 			conf.Options.Add(Options.Vc.Linker.TreatLinkerWarningAsErrors.Enable);
+			conf.Defines.Add("_HAS_EXCEPTIONS=0"); // Prevents error in VisualStudio c++ library with NoExcept, like xlocale
+			
 			//conf.Options.Add(new Options.Vc.Compiler.DisableSpecificWarnings(""));
 			//conf.Options.Add(Options.Vc.Librarian.TreatLibWarningAsErrors.Enable);	//Note: VisualStudio 2019 doesn't support this option properly
 		}
@@ -231,7 +234,6 @@ namespace NetImgui
 			base.ConfigureAll(conf, target);
 			conf.AddPublicDependency<ProjectImgui_Default>(target);
 			conf.AddPublicDependency<ProjectNetImgui_Default>(target);
-			conf.Options.Add(Options.Vc.Compiler.Exceptions.EnableWithExternC); // Because of std::Vector
 
 			conf.IncludePaths.Add(SourceRootPath + @"\Source");
 			conf.IncludePaths.Add(@"[project.SharpmakeCsPath]\..\Code\ThirdParty\" + SolutionAll.sDefaultImguiVersion);
@@ -298,7 +300,8 @@ namespace NetImgui
 		public SolutionBase(string inName)
 		: base(typeof(NetImguiTarget))
         {
-			AddTargets(new NetImguiTarget { });
+			AddTargets(new NetImguiTarget{ });
+			AddTargets(new NetImguiTarget{DevEnv = DevEnv.vs2017, Compiler = Compiler.VS});
 			Name					= inName;
 			IsFileNameToLower		= false;
 		}

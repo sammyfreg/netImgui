@@ -3,6 +3,7 @@
 
 #if NETIMGUI_ENABLED
 #include <algorithm>
+#include <thread>
 #include "NetImgui_Client.h"
 #include "NetImgui_Network.h"
 #include "NetImgui_CmdPackets.h"
@@ -21,7 +22,18 @@ bool InputUpdateData();
 void DefaultStartCommunicationThread(void ComFunctPtr(void*), void* pClient)
 //=================================================================================================
 {
+// Visual Studio 2017 generate this warning on std::thread, avoid the warning preventing build
+#if defined(_MSC_VER) && (_MSC_VER < 1920)
+	#pragma warning	(push)		
+	#pragma warning (disable: 4625)		// 'std::_LaunchPad<_Target>' : copy constructor was implicitly defined as deleted
+	#pragma warning (disable: 4626)		// 'std::_LaunchPad<_Target>' : assignment operator was implicitly defined as deleted
+#endif
+
 	std::thread(ComFunctPtr, pClient).detach();
+
+#if defined(_MSC_VER) && (_MSC_VER < 1920)
+	#pragma warning	(pop)
+#endif	
 }
 
 //=================================================================================================
@@ -308,21 +320,24 @@ bool Startup(void)
 void Shutdown(void)
 //=================================================================================================
 {
-	Disconnect();
-	while( gpClientInfo->mbConnected )
-		std::this_thread::yield();
-	Network::Shutdown();
+	if( !gpClientInfo )
+	{
+		Disconnect();
+		while( gpClientInfo->mbConnected )
+			std::this_thread::yield();
+		Network::Shutdown();
 	
-	for( auto& texture : gpClientInfo->mTextures )
-		texture.Set(nullptr);
+		for( auto& texture : gpClientInfo->mTextures )
+			texture.Set(nullptr);
 
-	if( gpClientInfo->mpContextClone )
-		ImGui::DestroyContext(gpClientInfo->mpContextClone);
+		if( gpClientInfo->mpContextClone )
+			ImGui::DestroyContext(gpClientInfo->mpContextClone);
 
-	if( gpClientInfo->mpContextEmpty )
-		ImGui::DestroyContext(gpClientInfo->mpContextEmpty);
+		if( gpClientInfo->mpContextEmpty )
+			ImGui::DestroyContext(gpClientInfo->mpContextEmpty);
 
-	netImguiDeleteSafe(gpClientInfo);		
+		netImguiDeleteSafe(gpClientInfo);		
+	}
 }
 
 //=================================================================================================
@@ -415,7 +430,9 @@ void ContextInitialize(bool bCloneOriginalContext)
 	newIO.KeyMap[ImGuiKey_Space]		= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardSpace);
 	newIO.KeyMap[ImGuiKey_Enter]		= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardEnter);
 	newIO.KeyMap[ImGuiKey_Escape]		= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardEscape);
+#if IMGUI_VERSION_NUM >= 17102
 	newIO.KeyMap[ImGuiKey_KeyPadEnter]	= 0;//static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardKeypadEnter);
+#endif
 	newIO.KeyMap[ImGuiKey_A]			= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardA);
 	newIO.KeyMap[ImGuiKey_C]			= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardA) - 'A' + 'C';
 	newIO.KeyMap[ImGuiKey_V]			= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardA) - 'A' + 'V';
