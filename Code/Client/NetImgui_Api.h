@@ -4,12 +4,12 @@
 //! @Name		: netImgui
 //=================================================================================================
 //! @author		: Sammy Fatnassi
-//! @date		: 2020/08/29
-//!	@version	: v1.2.2
+//! @date		: 2020/08/31
+//!	@version	: v1.2.3
 //! @Details	: For integration info : https://github.com/sammyfreg/netImgui/wiki
 //=================================================================================================
-#define NETIMGUI_VERSION		"1.2.2"
-#define NETIMGUI_VERSION_NUM	10202
+#define NETIMGUI_VERSION		"1.2.3"
+#define NETIMGUI_VERSION_NUM	10203
 
 struct ImGuiContext;
 struct ImDrawData;

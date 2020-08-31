@@ -208,6 +208,7 @@ namespace NetImgui
 	}
 	
 	// Try compiling netImgui against various version of Imgui releases
+	[Sharpmake.Generate] public class ProjectNetImgui_17400 	: ProjectNetImgui { public ProjectNetImgui_17400() 		: base("Imgui_17400"){} }	
 	[Sharpmake.Generate] public class ProjectNetImgui_17500 	: ProjectNetImgui { public ProjectNetImgui_17500() 		: base("Imgui_17500"){} }	
 	[Sharpmake.Generate] public class ProjectNetImgui_17600 	: ProjectNetImgui { public ProjectNetImgui_17600() 		: base("Imgui_17600"){} }
 	[Sharpmake.Generate] public class ProjectNetImgui_17700 	: ProjectNetImgui { public ProjectNetImgui_17700() 		: base("Imgui_17700"){} }
@@ -364,6 +365,7 @@ namespace NetImgui
 			SolutionSample.AddProjects(conf, target);
 			
 			string SolutionFolder = @"Compatibility Tests";
+			conf.AddProject<ProjectNetImgui_17400>(target, false, SolutionFolder);
 			conf.AddProject<ProjectNetImgui_17500>(target, false, SolutionFolder);
 			conf.AddProject<ProjectNetImgui_17600>(target, false, SolutionFolder);
 			conf.AddProject<ProjectNetImgui_17700>(target, false, SolutionFolder);
