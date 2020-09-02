@@ -142,9 +142,11 @@ namespace NetImgui
 				conf.IncludePaths.Add(@"[project.SharpmakeCsPath]\..\Code");
 			}
 
+			conf.Options.Add(Options.Vc.General.WindowsTargetPlatformVersion.Latest);
 			conf.Options.Add(Options.Vc.General.TreatWarningsAsErrors.Enable);
 			conf.Options.Add(Options.Vc.General.CharacterSet.Unicode);			
 			conf.Options.Add(Options.Vc.Linker.TreatLinkerWarningAsErrors.Enable);
+			
 			conf.Defines.Add("_HAS_EXCEPTIONS=0"); // Prevents error in VisualStudio c++ library with NoExcept, like xlocale
 			
 			//conf.Options.Add(new Options.Vc.Compiler.DisableSpecificWarnings(""));
