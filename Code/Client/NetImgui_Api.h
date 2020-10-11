@@ -4,12 +4,12 @@
 //! @Name		: netImgui
 //=================================================================================================
 //! @author		: Sammy Fatnassi
-//! @date		: 2020/08/31
-//!	@version	: v1.2.3
+//! @date		: 2020/10/11
+//!	@version	: v1.2.4
 //! @Details	: For integration info : https://github.com/sammyfreg/netImgui/wiki
 //=================================================================================================
-#define NETIMGUI_VERSION		"1.2.3"
-#define NETIMGUI_VERSION_NUM	10203
+#define NETIMGUI_VERSION		"1.2.4"
+#define NETIMGUI_VERSION_NUM	10204
 
 struct ImGuiContext;
 struct ImDrawData;
@@ -49,12 +49,13 @@ bool				Startup(void);
 
 //=================================================================================================
 // Free Resources
+//-------------------------------------------------------------------------------------------------
+// bWait			: Wait until all communication threads have terminated before returning
 //=================================================================================================
-void				Shutdown(void);
+void				Shutdown(bool bWait);
 
 //=================================================================================================
 // Try to establish a connection to netImguiApp server. 
-// Will create a new ImGui Context by copying the current settings
 //
 // Can establish connection with netImgui Server application by either reaching it directly
 // using 'ConnectToApp' or waiting for Server to reach us after Client called 'ConnectFromApp'.
@@ -134,11 +135,16 @@ bool				NewFrame(bool bSupportFrameSkip=false);
 void				EndFrame(void);
 
 //=================================================================================================
+// 
+//=================================================================================================
+ImGuiContext*		GetDrawingContext();
+
+//=================================================================================================
 // Regular ImGui draw data, from the last valid draw.
 // Note: Be careful with the returned value, the pointer remain valid only as long as
 //		 a new dear ImGui frame hasn't been started for the netImgui remote app
 //=================================================================================================
-const ImDrawData*	GetDrawData(void);
+ImDrawData*			GetDrawData(void);
 
 uint8_t				GetTexture_BitsPerPixel	(eTexFormat eFormat);
 uint32_t			GetTexture_BytePerLine	(eTexFormat eFormat, uint32_t pixelWidth);
