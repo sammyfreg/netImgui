@@ -43,15 +43,6 @@ void Client_Shutdown()
 }
 
 //=================================================================================================
-// Added a call to this function in 'ImGui_ImplDX11_CreateFontsTexture()', allowing us to 
-// forward the Font Texture information to netImgui.
-//=================================================================================================
-void Client_AddFontTexture(uint64_t texId, void* pData, uint16_t width, uint16_t height)
-{
-	NetImgui::SendDataTexture(texId, pData, width, height, NetImgui::eTexFormat::kTexFmtRGBA8);
-}
-
-//=================================================================================================
 // Imgui content 
 //=================================================================================================
 void Client_Draw_Content()
@@ -94,7 +85,7 @@ void Client_Draw_Content()
 // Without Frame skip support. User redraw content every frame, even when netImgui doesn't
 // require a new drawframe
 //=================================================================================================
-const ImDrawData* Client_Draw_ModeAlways()
+ImDrawData* Client_Draw_ModeAlways()
 {
 	//---------------------------------------------------------------------------------------------
 	// (1) Start a new Frame
@@ -127,7 +118,7 @@ const ImDrawData* Client_Draw_ModeAlways()
 // This code path handle not rendering a frame when not needed. netImgui doesn't require 
 // redrawing every frame.
 //=============================================================================================
-const ImDrawData* Client_Draw_ModeOnDemand()
+ImDrawData* Client_Draw_ModeOnDemand()
 {
 	//---------------------------------------------------------------------------------------------
 	// (1) Start a new Frame
@@ -165,7 +156,7 @@ const ImDrawData* Client_Draw_ModeOnDemand()
 //=================================================================================================
 // Function used by the sample, to draw all ImGui Content
 //=================================================================================================
-const ImDrawData* Client_Draw()
+ImDrawData* Client_Draw()
 {	
 	switch( sDrawUpdateMode )
 	{

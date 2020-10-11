@@ -237,7 +237,7 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
             //=============================================================================
             // EDIT TO ORIGINAL IMGUI main.cpp
             // Draw the Local Imgui UI and remote imgui UI
-            const ImDrawData* pDraw = SampleClient::Client_Draw();
+            ImDrawData* pDraw = SampleClient::Client_Draw();
             //=============================================================================
 			g_pd3dDeviceContext->ClearRenderTargetView(g_mainRenderTargetView, (float*)&clear_col);
             if( pDraw )

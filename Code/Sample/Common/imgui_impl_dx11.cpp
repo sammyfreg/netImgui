@@ -60,7 +60,7 @@ struct VERTEX_CONSTANT_BUFFER
     float   mvp[4][4];
 };
 
-static void ImGui_ImplDX11_SetupRenderState(const ImDrawData* draw_data, ID3D11DeviceContext* ctx)
+static void ImGui_ImplDX11_SetupRenderState(ImDrawData* draw_data, ID3D11DeviceContext* ctx)
 {
     // Setup viewport
     D3D11_VIEWPORT vp;
@@ -97,7 +97,7 @@ static void ImGui_ImplDX11_SetupRenderState(const ImDrawData* draw_data, ID3D11D
 
 // Render function
 // (this used to be set in io.RenderDrawListsFn and called by ImGui::Render(), but you can now call this directly from your main loop)
-void ImGui_ImplDX11_RenderDrawData(const ImDrawData* draw_data)
+void ImGui_ImplDX11_RenderDrawData(ImDrawData* draw_data)
 {
     // Avoid rendering when minimized
     if (draw_data->DisplaySize.x <= 0.0f || draw_data->DisplaySize.y <= 0.0f)
@@ -286,7 +286,7 @@ static void ImGui_ImplDX11_CreateFontsTexture()
     unsigned char* pixels;
     int width, height;
     io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
-	
+
     // Upload texture to graphics system
     {
         D3D11_TEXTURE2D_DESC desc;
@@ -301,7 +301,7 @@ static void ImGui_ImplDX11_CreateFontsTexture()
         desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
         desc.CPUAccessFlags = 0;
 
-        ID3D11Texture2D *pTexture = NULL;
+        ID3D11Texture2D* pTexture = NULL;
         D3D11_SUBRESOURCE_DATA subResource;
         subResource.pSysMem = pixels;
         subResource.SysMemPitch = desc.Width * 4;
@@ -321,7 +321,6 @@ static void ImGui_ImplDX11_CreateFontsTexture()
 
     // Store our identifier
     io.Fonts->TexID = (ImTextureID)g_pFontTextureView;
-	SampleClient::Client_AddFontTexture((uint64_t)g_pFontTextureView, pixels, (uint16_t)width, (uint16_t)height);
 
     // Create texture sampler
     {

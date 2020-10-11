@@ -42,10 +42,12 @@ struct ClientInfo
 	ExchangePtr<CmdDrawFrame>			mPendingFrameOut;
 	ExchangePtr<CmdInput>				mPendingInputIn;
 	BufferKeys							mPendingKeyIn;
-	ImGuiContext*						mpContextClone				= nullptr;	// Default ImGui drawing context copy, used to do our internal remote drawing
-	ImGuiContext*						mpContextEmpty				= nullptr;	// Placeholder ImGui drawing context, when we are not waiting for a new drawing frame but still want a valid context in place
+	ImGuiContext*						mpContextClone				= nullptr;	// Default ImGui drawing context copy, used to do our internal remote drawing (client obj has ownership)
+	ImGuiContext*						mpContextEmpty				= nullptr;	// Placeholder ImGui drawing context, when we are not waiting for a new drawing frame but still want a valid context in place (client obj has ownership)
 	ImGuiContext*						mpContextRestore			= nullptr;	// Context to restore to Imgui once drawing is done
 	ImGuiContext*						mpContextDrawing			= nullptr;	// Current context used for drawing (between a BeginFrame/EndFrame)
+	ImGuiContext*						mpContext					= nullptr;	// Context that the remote drawing should use (either the one active when connection request happened, or a clone)
+	const void*							mpFontTextureData			= nullptr;	// Last font texture data send to server (used to detect if font was changed)
 	Time								mTimeTracking;
 	std::atomic_int32_t					mTexturesPendingCount;	
 	float								mMouseWheelVertPrev			= 0.f;
@@ -59,7 +61,8 @@ struct ClientInfo
 	bool								mbHasTextureUpdate			= false;
 	bool								mbIsRemoteDrawing			= false;	// True if the rendering it meant for the remote netImgui server
 	bool								mbRestorePending			= false;	// Original context has had some settings overridden, original values stored in mRestoreXXX	
-	//char								PADDING[5];
+	bool								mbFontUploaded				= false;	// Auto detect if font was sent to server
+	char								PADDING[7];
 	void								TextureProcessPending();
 	void								TextureProcessRemoval();
 	inline bool							IsConnected()const;
