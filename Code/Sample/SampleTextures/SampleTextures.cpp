@@ -95,7 +95,7 @@ void Client_Shutdown()
 {
 	NetImgui::SendDataTexture(reinterpret_cast<uint64_t>(gDefaultEmptyTexture), nullptr, 0, 0, NetImgui::eTexFormat::kTexFmt_Invalid);
 	TextureDestroy(gDefaultEmptyTexture);
-	NetImgui::Shutdown();
+	NetImgui::Shutdown(true);
 }
 
 //=================================================================================================
