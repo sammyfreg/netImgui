@@ -47,22 +47,23 @@ bool ConnectToApp(const char* clientName, const char* ServerHost, uint32_t serve
 bool ConnectToApp(ThreadFunctPtr startThreadFunction, const char* clientName, const char* ServerHost, uint32_t serverPort, bool bCloneContext)
 //=================================================================================================
 {
+	if (!gpClientInfo) return false;
+
 	Client::ClientInfo& client	= *gpClientInfo;	
 	Disconnect();
 	
-	while( client.mbDisconnectRequest )
-		std::this_thread::sleep_for(std::chrono::milliseconds(8));
+	while (client.IsActive())
+		std::this_thread::yield();
 
 	StringCopy(client.mName, (clientName == nullptr || clientName[0] == 0 ? "Unnamed" : clientName));
-	client.mpSocket						= Network::Connect(ServerHost, serverPort);	
-	client.mbConnectRequest				= client.mpSocket != nullptr;	
-	if( client.mpSocket )
+	client.mpSocketPending	= Network::Connect(ServerHost, serverPort);	
+	if (client.mpSocketPending)
 	{
 		ContextInitialize( bCloneContext );
 		startThreadFunction(Client::CommunicationsClient, &client);		
 	}
 	
-	return client.mpSocket != nullptr;
+	return client.IsActive();
 }
 
 //=================================================================================================
@@ -76,78 +77,87 @@ bool ConnectFromApp(const char* clientName, uint32_t serverPort, bool bCloneCont
 bool ConnectFromApp(ThreadFunctPtr startThreadFunction, const char* clientName, uint32_t serverPort, bool bCloneContext)
 //=================================================================================================
 {
+	if (!gpClientInfo) return false;
+
 	Client::ClientInfo& client = *gpClientInfo;
 	Disconnect();
 
-	while (client.mbDisconnectRequest)
-		std::this_thread::sleep_for(std::chrono::milliseconds(8));
+	while (client.IsActive())
+		std::this_thread::yield();
 
 	StringCopy(client.mName, (clientName == nullptr || clientName[0] == 0 ? "Unnamed" : clientName));
-	client.mpSocket						= Network::ListenStart(serverPort);
-	client.mbConnectRequest				= client.mpSocket != nullptr;
-	if( client.mpSocket )
+	client.mpSocketPending = Network::ListenStart(serverPort);
+	if (client.mpSocketPending)
 	{
 		ContextInitialize( bCloneContext );
 		startThreadFunction(Client::CommunicationsHost, &client);
 	}
-	return client.mpSocket != nullptr;
+
+	return client.IsActive();
 }
 
 //=================================================================================================
 void Disconnect(void)
 //=================================================================================================
 {
+	if (!gpClientInfo) return;
+	
 	Client::ClientInfo& client	= *gpClientInfo;
-	client.mbDisconnectRequest	= client.mbConnected;
-	client.mbConnectRequest		= false;
+	client.mbDisconnectRequest	= client.IsActive();
+	client.KillSocketListen(); // Forcefully disconnect Listening socket, since it is blocking
 }
 
 //=================================================================================================
 bool IsConnected(void)
 //=================================================================================================
 {
-	if( gpClientInfo )
-	{
-		Client::ClientInfo& client = *gpClientInfo;
-		return (client.mbConnected && !client.mbDisconnectRequest) || IsDrawingRemote();
-	}
-	return false;
+	if (!gpClientInfo) return false;
+	
+	Client::ClientInfo& client = *gpClientInfo;
+
+	// If disconnected in middle of a remote frame drawing,  
+	// want to behave like it is still connected to finish frame properly
+	return client.IsConnected() || IsDrawingRemote(); 
 }
 
 //=================================================================================================
 bool IsConnectionPending(void)
 //=================================================================================================
 {
-	if( gpClientInfo )
-	{
-		Client::ClientInfo& client = *gpClientInfo;
-		return !client.mbDisconnectRequest && client.mbConnectRequest;
-	}
-	return false;
+	if (!gpClientInfo) return false;
+	
+	Client::ClientInfo& client = *gpClientInfo;
+	return client.IsConnectPending();
 }
 
 //=================================================================================================
 bool IsDrawing(void)
 //=================================================================================================
 {
+	if (!gpClientInfo) return false;
+
 	Client::ClientInfo& client = *gpClientInfo;
-	return client.mbIsDrawing;
+	return client.mpContextDrawing == ImGui::GetCurrentContext();
 }
 
 //=================================================================================================
 bool IsDrawingRemote(void)
 //=================================================================================================
 {
+	if (!gpClientInfo) return false;
+
 	Client::ClientInfo& client = *gpClientInfo;
-	return client.mbIsRemoteDrawing;
+	return IsDrawing() && client.mbIsRemoteDrawing;
 }
 
 //=================================================================================================
 bool NewFrame(bool bSupportFrameSkip)
 //=================================================================================================
 {	
-	Client::ClientInfo& client					= *gpClientInfo;
-	assert(!client.mbIsDrawing);
+	if (!gpClientInfo) return false;
+
+	Client::ClientInfo& client = *gpClientInfo;
+	assert(client.mpContextDrawing == nullptr);
 
 	// Update current active content with our time (even if it is not the one used for drawing remotely), so they are in sync
 	std::chrono::duration<double> elapsedSec	= std::chrono::high_resolution_clock::now() - client.mTimeTracking;	
@@ -156,7 +166,7 @@ bool NewFrame(bool bSupportFrameSkip)
 	// ImGui Newframe handled by remote connection settings	
 	if( NetImgui::IsConnected() )
 	{
-		client.mpContextRestore		= ImGui::GetCurrentContext();
+		client.mpContextRestore = ImGui::GetCurrentContext();
 		if( client.mpContextClone )
 		{
 			ImGui::SetCurrentContext(client.mpContextClone);
@@ -176,9 +186,7 @@ bool NewFrame(bool bSupportFrameSkip)
 			// If caller doesn't handle skipping a ImGui frame rendering, assign a placeholder 
 			// that will receive the ImGui draw commands and discard them
 			ImGui::SetCurrentContext(client.mpContextEmpty);
-		}		
-		client.mbIsDrawing			= true;
-		client.mbIsRemoteDrawing	= true;
+		}				
 	}
 	// Regular Imgui NewFrame
 	else
@@ -193,13 +201,13 @@ bool NewFrame(bool bSupportFrameSkip)
 			contextIO.BackendRendererName	= client.mRestoreBackendRendererName;
 			client.mbRestorePending			= false;
 			memcpy(contextIO.KeyMap, client.mRestoreKeyMap, sizeof(contextIO.KeyMap));
-		}
-		client.mbIsDrawing			= true;		
-		client.mbIsRemoteDrawing	= false;
+		}		
 	}
 
 	// A new frame is expected, update the current time of the drawing context, and let Imgui know to prepare a new drawing frame	
-	ImGui::GetIO().DeltaTime		= std::max<float>(1.f / 1000.f, static_cast<float>(elapsedSec.count() - ImGui::GetTime()));
+	client.mbIsRemoteDrawing	= NetImgui::IsConnected();
+	client.mpContextDrawing		= ImGui::GetCurrentContext();
+	ImGui::GetIO().DeltaTime	= std::max<float>(1.f / 1000.f, static_cast<float>(elapsedSec.count() - ImGui::GetTime()));
 	ImGui::NewFrame();
 	return true;
 }
@@ -208,40 +216,54 @@ bool NewFrame(bool bSupportFrameSkip)
 void EndFrame(void)
 //=================================================================================================
 {
+	if (!gpClientInfo) return;
+
 	Client::ClientInfo& client		= *gpClientInfo;	
 
-	if( client.mbIsDrawing )
+	if (client.mpContextDrawing)
 	{
-		const bool bDiscardDraw		= ImGui::GetCurrentContext() == client.mpContextEmpty;
+		const bool bDiscardDraw		= client.mpContextDrawing == client.mpContextEmpty;
+		client.mpContextRestore		= client.mpContextRestore ? client.mpContextRestore : ImGui::GetCurrentContext();
+		ImGui::SetCurrentContext(client.mpContextDrawing);		// In case it was changed and not restored after BeginFrame call
 		ImGuiMouseCursor Cursor		= ImGui::GetMouseCursor();	// Must be fetched before 'Render'
 		ImGui::Render();
 		
 		// We were drawing frame for our remote connection, send the data
-		if (IsConnected() && !bDiscardDraw )
+		if (IsConnected() && !bDiscardDraw)
 		{
 			CmdDrawFrame* pNewDrawFrame = CreateCmdDrawDrame(ImGui::GetDrawData(), Cursor);
 			client.mPendingFrameOut.Assign(pNewDrawFrame);
 		}
-		// We were drawing in a separate context, restore it
-		if (client.mpContextRestore)
-		{
-			if( ImGui::GetCurrentContext() == client.mpContextClone )
-				ImGui::GetIO().DeltaTime= 0.f; // Reset the time passed from 0. Gets incremented in NewFrame
+				
+		if (ImGui::GetCurrentContext() == client.mpContextClone)
+			ImGui::GetIO().DeltaTime= 0.f; // Reset the time passed. Gets incremented in NewFrame
 
-			ImGui::SetCurrentContext(client.mpContextRestore);
-			client.mpContextRestore	= nullptr;
-		}
+		ImGui::SetCurrentContext(client.mpContextRestore);		
 	}
-	client.mbIsDrawing				= false;
+	client.mpContextRestore			= nullptr;
+	client.mpContextDrawing			= nullptr;
 	client.mbIsRemoteDrawing		= false;
 }
 
 //=================================================================================================
-const ImDrawData* GetDrawData(void)
+ImGuiContext* GetDrawingContext()
 //=================================================================================================
 {
+	if (!gpClientInfo) return nullptr;
+
+	Client::ClientInfo& client = *gpClientInfo;
+	return client.mpContextDrawing;
+}
+
+
+//=================================================================================================
+ImDrawData* GetDrawData(void)
+//=================================================================================================
+{
+	if (!gpClientInfo) return nullptr;
+
 	Client::ClientInfo& client	= *gpClientInfo;	
-	const ImDrawData* pLastFrameDrawn = ImGui::GetDrawData();
+	ImDrawData* pLastFrameDrawn = ImGui::GetDrawData();
 	if (IsConnected() && client.mpContextClone)
 	{
 		ImGuiContext* pSaved	= ImGui::GetCurrentContext();
@@ -256,6 +278,8 @@ const ImDrawData* GetDrawData(void)
 void SendDataTexture(uint64_t textureId, void* pData, uint16_t width, uint16_t height, eTexFormat format)
 //=================================================================================================
 {
+	if (!gpClientInfo) return;
+
 	Client::ClientInfo& client				= *gpClientInfo;
 	CmdTexture* pCmdTexture					= nullptr;
 	
@@ -292,7 +316,7 @@ void SendDataTexture(uint64_t textureId, void* pData, uint16_t width, uint16_t h
 	while( client.mTexturesPendingCount >= static_cast<int32_t>(ArrayCount(client.mTexturesPending)) )
 	{
 		if( IsConnected() )
-			std::this_thread::sleep_for (std::chrono::nanoseconds(1));
+			std::this_thread::yield();
 		else
 			client.TextureProcessPending();
 	}
@@ -317,27 +341,26 @@ bool Startup(void)
 }
 
 //=================================================================================================
-void Shutdown(void)
+void Shutdown(bool bWait)
 //=================================================================================================
 {
-	if( !gpClientInfo )
-	{
-		Disconnect();
-		while( gpClientInfo->mbConnected )
-			std::this_thread::yield();
-		Network::Shutdown();
+	if (!gpClientInfo) return;
 	
-		for( auto& texture : gpClientInfo->mTextures )
-			texture.Set(nullptr);
+	Disconnect();
+	while(bWait && gpClientInfo->IsActive() )
+		std::this_thread::yield();
+	Network::Shutdown();
+	
+	for( auto& texture : gpClientInfo->mTextures )
+		texture.Set(nullptr);
 
-		if( gpClientInfo->mpContextClone )
-			ImGui::DestroyContext(gpClientInfo->mpContextClone);
+	if( gpClientInfo->mpContextClone )
+		ImGui::DestroyContext(gpClientInfo->mpContextClone);
 
-		if( gpClientInfo->mpContextEmpty )
-			ImGui::DestroyContext(gpClientInfo->mpContextEmpty);
+	if( gpClientInfo->mpContextEmpty )
+		ImGui::DestroyContext(gpClientInfo->mpContextEmpty);
 
-		netImguiDeleteSafe(gpClientInfo);		
-	}
+	netImguiDeleteSafe(gpClientInfo);		
 }
 
 //=================================================================================================
@@ -374,6 +397,8 @@ uint32_t GetTexture_BytePerImage(eTexFormat eFormat, uint32_t pixelWidth, uint32
 void ContextInitialize(bool bCloneOriginalContext)
 //=================================================================================================
 {
+	if (!gpClientInfo) return;
+
 	Client::ClientInfo& client = *gpClientInfo;
 	if (client.mpContextClone)
 	{
@@ -454,6 +479,8 @@ void ContextInitialize(bool bCloneOriginalContext)
 void ContextClone(void)
 //=================================================================================================
 {
+	if (!gpClientInfo) return;
+
 	Client::ClientInfo& client				= *gpClientInfo;	
 	client.mpContextClone					= ImGui::CreateContext(ImGui::GetIO().Fonts);
 	ImGuiContext* pSourceCxt				= ImGui::GetCurrentContext();
@@ -526,6 +553,8 @@ void ContextClone(void)
 bool InputUpdateData(void)
 //=================================================================================================
 {
+	if (!gpClientInfo) return false;
+
 	Client::ClientInfo& client	= *gpClientInfo;
 	CmdInput* pCmdInput			= client.mPendingInputIn.Release();
 	ImGuiIO& io					= ImGui::GetIO();
@@ -580,7 +609,7 @@ static bool 		sIsDrawing = false;
 #endif
 
 bool				Startup(void)															{ return true; }
-void				Shutdown(void)															{ }
+void				Shutdown(bool)															{ }
 bool				ConnectToApp(const char*, const char*, uint32_t, bool)					{ return false; }
 bool				ConnectToApp(ThreadFunctPtr, const char*, const char*, uint32_t, bool)	{ return false; }
 bool				ConnectFromApp(const char*, uint32_t, bool)								{ return false; }
@@ -621,7 +650,7 @@ void EndFrame(void)
 #endif
 }
 
-const ImDrawData* GetDrawData(void)												
+ImDrawData* GetDrawData(void)												
 { 
 #ifdef IMGUI_VERSION	
 	return ImGui::GetDrawData();
