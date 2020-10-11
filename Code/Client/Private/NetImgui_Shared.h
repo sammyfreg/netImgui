@@ -37,6 +37,16 @@ template <typename TType> TType*					netImguiSizedNew(size_t placementSize);
 template <typename TType> void						netImguiDelete(TType* pData);
 template <typename TType> void						netImguiDeleteSafe(TType*& pData);
 
+class ScopedImguiContext
+{
+public:
+	ScopedImguiContext(ImGuiContext* pNewContext) : mpSavedContext(ImGui::GetCurrentContext()){ ImGui::SetCurrentContext(pNewContext); }
+	~ScopedImguiContext() { ImGui::SetCurrentContext(mpSavedContext); }
+
+protected:
+	ImGuiContext* mpSavedContext;
+};
+
 //=============================================================================
 // Class to exchange a pointer between two threads, safely
 //=============================================================================

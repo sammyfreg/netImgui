@@ -167,10 +167,7 @@ bool NewFrame(bool bSupportFrameSkip)
 	if( NetImgui::IsConnected() )
 	{
 		client.mpContextRestore = ImGui::GetCurrentContext();
-		if( client.mpContextClone )
-		{
-			ImGui::SetCurrentContext(client.mpContextClone);
-		}
+		ImGui::SetCurrentContext(client.mpContext);		
 		
 		// Update input and see if remote netImgui expect a new frame
 		if( !InputUpdateData() )
@@ -186,7 +183,22 @@ bool NewFrame(bool bSupportFrameSkip)
 			// If caller doesn't handle skipping a ImGui frame rendering, assign a placeholder 
 			// that will receive the ImGui draw commands and discard them
 			ImGui::SetCurrentContext(client.mpContextEmpty);
-		}				
+		}
+		// We are about to start drawing for remote context, check for font data update
+		else
+		{
+			if( ImGui::GetIO().Fonts->TexPixelsAlpha8 && ImGui::GetIO().Fonts->TexPixelsAlpha8 != client.mpFontTextureData )
+			{
+				uint8_t* pPixelData(nullptr); int width(0), height(0);
+				ImGui::GetIO().Fonts->GetTexDataAsAlpha8(&pPixelData, &width, &height);
+				SendDataTexture( ImGui::GetIO().Fonts->TexID, pPixelData, static_cast<uint16_t>(width), static_cast<uint16_t>(height), eTexFormat::kTexFmtA8 );
+			}
+
+			// No font texture has been sent to the netImgui server, you can either 
+			// 1. Leave font data available in ImGui (not call ImGui::ClearTexData) for netImgui to auto send it
+			// 2. Manually call 'NetImgui::SendDataTexture' with font texture data
+			assert(client.mbFontUploaded);
+		}
 	}
 	// Regular Imgui NewFrame
 	else
@@ -266,23 +278,26 @@ ImDrawData* GetDrawData(void)
 	ImDrawData* pLastFrameDrawn = ImGui::GetDrawData();
 	if (IsConnected() && client.mpContextClone)
 	{
-		ImGuiContext* pSaved	= ImGui::GetCurrentContext();
-		ImGui::SetCurrentContext(client.mpContextClone);
+		ScopedImguiContext scopedCtx(client.mpContextClone);
 		pLastFrameDrawn			= ImGui::GetDrawData();
-		ImGui::SetCurrentContext(pSaved);
 	}
 	return pLastFrameDrawn;
 }
 
 //=================================================================================================
-void SendDataTexture(uint64_t textureId, void* pData, uint16_t width, uint16_t height, eTexFormat format)
+void SendDataTexture(ImTextureID textureId, void* pData, uint16_t width, uint16_t height, eTexFormat format)
 //=================================================================================================
 {
 	if (!gpClientInfo) return;
 
 	Client::ClientInfo& client				= *gpClientInfo;
 	CmdTexture* pCmdTexture					= nullptr;
-	
+
+	// Makes sure even 32bits ImTextureID value are received properly as 64bits
+	uint64_t texId64(0);
+	static_assert(sizeof(uint64_t) <= sizeof(textureId), "ImTextureID is bigger than 64bits, CmdTexture::mTextureId needs to be updated to support it");
+	reinterpret_cast<ImTextureID*>(&texId64)[0] = textureId;
+
 	// Add/Update a texture
 	if( pData != nullptr )
 	{		
@@ -296,15 +311,26 @@ void SendDataTexture(uint64_t textureId, void* pData, uint16_t width, uint16_t h
 		pCmdTexture->mHeader.mSize			= SizeNeeded;
 		pCmdTexture->mWidth					= width;
 		pCmdTexture->mHeight				= height;
-		pCmdTexture->mTextureId				= textureId;
+		pCmdTexture->mTextureId				= texId64;
 		pCmdTexture->mFormat				= format;
 		pCmdTexture->mpTextureData.ToOffset();
+
+		// Detects when user is sending the font texture
+		if( client.mpContext )
+		{
+			ScopedImguiContext scopedCtx(client.mpContext);
+			if( ImGui::GetIO().Fonts && ImGui::GetIO().Fonts->TexID == textureId )
+			{
+				client.mbFontUploaded		|= true;
+				client.mpFontTextureData	= ImGui::GetIO().Fonts->TexPixelsAlpha8;
+			}
+		}
 	}
 	// Texture to remove
 	else
 	{
 		pCmdTexture							= netImguiNew<CmdTexture>();
-		pCmdTexture->mTextureId				= textureId;		
+		pCmdTexture->mTextureId				= texId64;		
 		pCmdTexture->mWidth					= 0;
 		pCmdTexture->mHeight				= 0;
 		pCmdTexture->mFormat				= eTexFormat::kTexFmt_Invalid;
@@ -411,20 +437,18 @@ void ContextInitialize(bool bCloneOriginalContext)
 	// doesn't expect any new drawing for this frame
 	if (client.mpContextEmpty == nullptr)
 	{
-		ImGuiContext* pCurrentContext = ImGui::GetCurrentContext();
 		client.mpContextEmpty = ImGui::CreateContext(ImGui::GetIO().Fonts);
-		ImGui::SetCurrentContext(client.mpContextEmpty);
+		ScopedImguiContext scopedCtx(client.mpContextEmpty);
 		ImGui::GetIO().DeltaTime = 1.f / 30.f;
 		ImGui::GetIO().DisplaySize = ImVec2(1, 1);
-		ImGui::SetCurrentContext(pCurrentContext);
 	}
-
+	
 	if( bCloneOriginalContext )
 	{
 		ContextClone();
 	}
 
-	// Override some settings
+	// Override some settings	
 	ImGuiContext* pSourceCxt			= ImGui::GetCurrentContext();
 	ImGuiIO& sourceIO					= ImGui::GetIO();
 	memcpy(client.mRestoreKeyMap, sourceIO.KeyMap, sizeof(client.mRestoreKeyMap));
@@ -433,46 +457,42 @@ void ContextInitialize(bool bCloneOriginalContext)
 	client.mRestoreBackendPlatformName	= sourceIO.BackendPlatformName;
 	client.mRestoreBackendRendererName	= sourceIO.BackendRendererName;
 	client.mbRestorePending				= client.mpContextClone == nullptr;
-
-	if( client.mpContextClone )
+	client.mpContext					= client.mpContextClone ? client.mpContextClone : pSourceCxt;
 	{
-		ImGui::SetCurrentContext(client.mpContextClone);
+		ScopedImguiContext scopedCtx(client.mpContext);
+		ImGuiIO& newIO						= ImGui::GetIO();	
+		newIO.KeyMap[ImGuiKey_Tab]			= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardTab);
+		newIO.KeyMap[ImGuiKey_LeftArrow]	= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardLeft);
+		newIO.KeyMap[ImGuiKey_RightArrow]	= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardRight);
+		newIO.KeyMap[ImGuiKey_UpArrow]		= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardUp);
+		newIO.KeyMap[ImGuiKey_DownArrow]	= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardDown);
+		newIO.KeyMap[ImGuiKey_PageUp]		= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardPageUp);
+		newIO.KeyMap[ImGuiKey_PageDown]		= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardPageDown);
+		newIO.KeyMap[ImGuiKey_Home]			= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardHome);
+		newIO.KeyMap[ImGuiKey_End]			= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardEnd);
+		newIO.KeyMap[ImGuiKey_Insert]		= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardInsert);
+		newIO.KeyMap[ImGuiKey_Delete]		= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardDelete);
+		newIO.KeyMap[ImGuiKey_Backspace]	= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardBackspace);
+		newIO.KeyMap[ImGuiKey_Space]		= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardSpace);
+		newIO.KeyMap[ImGuiKey_Enter]		= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardEnter);
+		newIO.KeyMap[ImGuiKey_Escape]		= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardEscape);
+	#if IMGUI_VERSION_NUM >= 17102
+		newIO.KeyMap[ImGuiKey_KeyPadEnter]	= 0;//static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardKeypadEnter);
+	#endif
+		newIO.KeyMap[ImGuiKey_A]			= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardA);
+		newIO.KeyMap[ImGuiKey_C]			= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardA) - 'A' + 'C';
+		newIO.KeyMap[ImGuiKey_V]			= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardA) - 'A' + 'V';
+		newIO.KeyMap[ImGuiKey_X]			= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardA) - 'A' + 'X';
+		newIO.KeyMap[ImGuiKey_Y]			= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardA) - 'A' + 'Y';
+		newIO.KeyMap[ImGuiKey_Z]			= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardA) - 'A' + 'Z';
+
+		newIO.BackendPlatformName			= "netImgui";
+		newIO.BackendRendererName			= "DirectX11";
+	#if defined(IMGUI_HAS_VIEWPORT) && IMGUI_HAS_VIEWPORT
+		// Viewport options (when ImGuiConfigFlags_ViewportsEnable is set)
+		newIO.ConfigFlags					&= ~(ImGuiConfigFlags_ViewportsEnable); // Viewport unsupported at the moment
+	#endif
 	}
-
-	ImGuiIO& newIO						= ImGui::GetIO();	
-	newIO.KeyMap[ImGuiKey_Tab]			= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardTab);
-	newIO.KeyMap[ImGuiKey_LeftArrow]	= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardLeft);
-	newIO.KeyMap[ImGuiKey_RightArrow]	= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardRight);
-	newIO.KeyMap[ImGuiKey_UpArrow]		= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardUp);
-	newIO.KeyMap[ImGuiKey_DownArrow]	= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardDown);
-	newIO.KeyMap[ImGuiKey_PageUp]		= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardPageUp);
-	newIO.KeyMap[ImGuiKey_PageDown]		= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardPageDown);
-	newIO.KeyMap[ImGuiKey_Home]			= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardHome);
-	newIO.KeyMap[ImGuiKey_End]			= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardEnd);
-	newIO.KeyMap[ImGuiKey_Insert]		= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardInsert);
-	newIO.KeyMap[ImGuiKey_Delete]		= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardDelete);
-	newIO.KeyMap[ImGuiKey_Backspace]	= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardBackspace);
-	newIO.KeyMap[ImGuiKey_Space]		= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardSpace);
-	newIO.KeyMap[ImGuiKey_Enter]		= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardEnter);
-	newIO.KeyMap[ImGuiKey_Escape]		= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardEscape);
-#if IMGUI_VERSION_NUM >= 17102
-	newIO.KeyMap[ImGuiKey_KeyPadEnter]	= 0;//static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardKeypadEnter);
-#endif
-	newIO.KeyMap[ImGuiKey_A]			= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardA);
-	newIO.KeyMap[ImGuiKey_C]			= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardA) - 'A' + 'C';
-	newIO.KeyMap[ImGuiKey_V]			= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardA) - 'A' + 'V';
-	newIO.KeyMap[ImGuiKey_X]			= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardA) - 'A' + 'X';
-	newIO.KeyMap[ImGuiKey_Y]			= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardA) - 'A' + 'Y';
-	newIO.KeyMap[ImGuiKey_Z]			= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardA) - 'A' + 'Z';
-
-	newIO.BackendPlatformName			= "netImgui";
-	newIO.BackendRendererName			= "DirectX11";
-#if defined(IMGUI_HAS_VIEWPORT) && IMGUI_HAS_VIEWPORT
-	// Viewport options (when ImGuiConfigFlags_ViewportsEnable is set)
-	newIO.ConfigFlags					&= ~(ImGuiConfigFlags_ViewportsEnable); // Viewport unsupported at the moment
-#endif
-	
-	ImGui::SetCurrentContext(pSourceCxt);	
 }
 
 //=================================================================================================
@@ -483,70 +503,69 @@ void ContextClone(void)
 
 	Client::ClientInfo& client				= *gpClientInfo;	
 	client.mpContextClone					= ImGui::CreateContext(ImGui::GetIO().Fonts);
-	ImGuiContext* pSourceCxt				= ImGui::GetCurrentContext();
 	ImGuiIO& sourceIO						= ImGui::GetIO();
 	ImGuiStyle& sourceStyle					= ImGui::GetStyle();
-	ImGui::SetCurrentContext(client.mpContextClone);
-	ImGuiIO& newIO							= ImGui::GetIO();
-	ImGuiStyle& newStyle					= ImGui::GetStyle();
+	{
+		ScopedImguiContext scopedCtx(client.mpContextClone);
+		ImGuiIO& newIO							= ImGui::GetIO();
+		ImGuiStyle& newStyle					= ImGui::GetStyle();
 
-	// Import the style/options settings of current context, into this one	
-	memcpy(&newStyle, &sourceStyle, sizeof(newStyle));
-	memcpy(newIO.KeyMap, sourceIO.KeyMap, sizeof(newIO.KeyMap));
-	newIO.ConfigFlags						= sourceIO.ConfigFlags;
-	newIO.BackendFlags						= sourceIO.BackendFlags;
-	//DisplaySize
-	//DeltaTime
-	newIO.IniSavingRate						= sourceIO.IniSavingRate;
-	newIO.IniFilename						= sourceIO.IniFilename;
-	newIO.LogFilename						= sourceIO.LogFilename;	
-	newIO.MouseDoubleClickTime				= sourceIO.MouseDoubleClickTime;
-	newIO.MouseDoubleClickMaxDist			= sourceIO.MouseDoubleClickMaxDist;
-	newIO.MouseDragThreshold				= sourceIO.MouseDragThreshold;
-	// KeyMap
-	newIO.KeyRepeatDelay					= sourceIO.KeyRepeatDelay;
-	newIO.KeyRepeatRate						= sourceIO.KeyRepeatRate;
-	newIO.UserData							= sourceIO.UserData;
+		// Import the style/options settings of current context, into this one	
+		memcpy(&newStyle, &sourceStyle, sizeof(newStyle));
+		memcpy(newIO.KeyMap, sourceIO.KeyMap, sizeof(newIO.KeyMap));
+		newIO.ConfigFlags						= sourceIO.ConfigFlags;
+		newIO.BackendFlags						= sourceIO.BackendFlags;
+		//DisplaySize
+		//DeltaTime
+		newIO.IniSavingRate						= sourceIO.IniSavingRate;
+		newIO.IniFilename						= sourceIO.IniFilename;
+		newIO.LogFilename						= sourceIO.LogFilename;	
+		newIO.MouseDoubleClickTime				= sourceIO.MouseDoubleClickTime;
+		newIO.MouseDoubleClickMaxDist			= sourceIO.MouseDoubleClickMaxDist;
+		newIO.MouseDragThreshold				= sourceIO.MouseDragThreshold;
+		// KeyMap
+		newIO.KeyRepeatDelay					= sourceIO.KeyRepeatDelay;
+		newIO.KeyRepeatRate						= sourceIO.KeyRepeatRate;
+		newIO.UserData							= sourceIO.UserData;
 
-    newIO.FontGlobalScale					= sourceIO.FontGlobalScale;
-    newIO.FontAllowUserScaling				= sourceIO.FontAllowUserScaling;
-    newIO.FontDefault						= sourceIO.FontDefault; // Use same FontAtlas, so pointer is valid for new context too
-    newIO.DisplayFramebufferScale			= ImVec2(1, 1);
+		newIO.FontGlobalScale					= sourceIO.FontGlobalScale;
+		newIO.FontAllowUserScaling				= sourceIO.FontAllowUserScaling;
+		newIO.FontDefault						= sourceIO.FontDefault; // Use same FontAtlas, so pointer is valid for new context too
+		newIO.DisplayFramebufferScale			= ImVec2(1, 1);
 
-	// Miscellaneous options
-	newIO.MouseDrawCursor					= false;
-	newIO.ConfigMacOSXBehaviors				= sourceIO.ConfigMacOSXBehaviors;
-	newIO.ConfigInputTextCursorBlink		= sourceIO.ConfigInputTextCursorBlink;
-	newIO.ConfigWindowsResizeFromEdges		= sourceIO.ConfigWindowsResizeFromEdges;
-	newIO.ConfigWindowsMoveFromTitleBarOnly	= sourceIO.ConfigWindowsMoveFromTitleBarOnly;
-#if IMGUI_VERSION_NUM >= 17500
-	newIO.ConfigWindowsMemoryCompactTimer	= sourceIO.ConfigWindowsMemoryCompactTimer;
-#endif	
+		// Miscellaneous options
+		newIO.MouseDrawCursor					= false;
+		newIO.ConfigMacOSXBehaviors				= sourceIO.ConfigMacOSXBehaviors;
+		newIO.ConfigInputTextCursorBlink		= sourceIO.ConfigInputTextCursorBlink;
+		newIO.ConfigWindowsResizeFromEdges		= sourceIO.ConfigWindowsResizeFromEdges;
+		newIO.ConfigWindowsMoveFromTitleBarOnly	= sourceIO.ConfigWindowsMoveFromTitleBarOnly;
+	#if IMGUI_VERSION_NUM >= 17500
+		newIO.ConfigWindowsMemoryCompactTimer	= sourceIO.ConfigWindowsMemoryCompactTimer;
+	#endif	
 	
-	// Platform Functions
-	newIO.BackendPlatformUserData			= sourceIO.BackendPlatformUserData;
-	newIO.BackendRendererUserData			= sourceIO.BackendRendererUserData;
-	newIO.BackendLanguageUserData			= sourceIO.BackendLanguageUserData;
-	newIO.BackendPlatformName				= "netImgui";
-	newIO.BackendRendererName				= "DirectX11";
+		// Platform Functions
+		newIO.BackendPlatformUserData			= sourceIO.BackendPlatformUserData;
+		newIO.BackendRendererUserData			= sourceIO.BackendRendererUserData;
+		newIO.BackendLanguageUserData			= sourceIO.BackendLanguageUserData;
+		newIO.BackendPlatformName				= "netImgui";
+		newIO.BackendRendererName				= "DirectX11";
 
-#if defined(IMGUI_HAS_DOCK) && IMGUI_HAS_DOCK
-	// Docking options (when ImGuiConfigFlags_DockingEnable is set)
-	newIO.ConfigDockingNoSplit				= sourceIO.ConfigDockingNoSplit;
-	newIO.ConfigDockingWithShift			= sourceIO.ConfigDockingWithShift;
-	newIO.ConfigDockingAlwaysTabBar			= sourceIO.ConfigDockingAlwaysTabBar;
-	newIO.ConfigDockingTransparentPayload	= sourceIO.ConfigDockingTransparentPayload;
-#endif
+	#if defined(IMGUI_HAS_DOCK) && IMGUI_HAS_DOCK
+		// Docking options (when ImGuiConfigFlags_DockingEnable is set)
+		newIO.ConfigDockingNoSplit				= sourceIO.ConfigDockingNoSplit;
+		newIO.ConfigDockingWithShift			= sourceIO.ConfigDockingWithShift;
+		newIO.ConfigDockingAlwaysTabBar			= sourceIO.ConfigDockingAlwaysTabBar;
+		newIO.ConfigDockingTransparentPayload	= sourceIO.ConfigDockingTransparentPayload;
+	#endif
 
-#if defined(IMGUI_HAS_VIEWPORT) && IMGUI_HAS_VIEWPORT
-	// Viewport options (when ImGuiConfigFlags_ViewportsEnable is set)
-	newIO.ConfigViewportsNoAutoMerge		= sourceIO.ConfigViewportsNoAutoMerge;
-	newIO.ConfigViewportsNoTaskBarIcon		= sourceIO.ConfigViewportsNoTaskBarIcon;
-	newIO.ConfigViewportsNoDecoration		= sourceIO.ConfigViewportsNoDecoration;
-	newIO.ConfigViewportsNoDefaultParent	= sourceIO.ConfigViewportsNoDefaultParent;
-#endif
-
-	ImGui::SetCurrentContext(pSourceCxt);
+	#if defined(IMGUI_HAS_VIEWPORT) && IMGUI_HAS_VIEWPORT
+		// Viewport options (when ImGuiConfigFlags_ViewportsEnable is set)
+		newIO.ConfigViewportsNoAutoMerge		= sourceIO.ConfigViewportsNoAutoMerge;
+		newIO.ConfigViewportsNoTaskBarIcon		= sourceIO.ConfigViewportsNoTaskBarIcon;
+		newIO.ConfigViewportsNoDecoration		= sourceIO.ConfigViewportsNoDecoration;
+		newIO.ConfigViewportsNoDefaultParent	= sourceIO.ConfigViewportsNoDefaultParent;
+	#endif
+	}
 }
 
 //=================================================================================================

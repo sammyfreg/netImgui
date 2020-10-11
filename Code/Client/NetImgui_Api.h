@@ -5,14 +5,11 @@
 //=================================================================================================
 //! @author		: Sammy Fatnassi
 //! @date		: 2020/10/11
-//!	@version	: v1.2.4
+//!	@version	: v1.2.5
 //! @Details	: For integration info : https://github.com/sammyfreg/netImgui/wiki
 //=================================================================================================
-#define NETIMGUI_VERSION		"1.2.4"
-#define NETIMGUI_VERSION_NUM	10204
-
-struct ImGuiContext;
-struct ImDrawData;
+#define NETIMGUI_VERSION		"1.2.5"
+#define NETIMGUI_VERSION_NUM	10205
 
 #include <stdint.h>
 
@@ -113,7 +110,7 @@ bool				IsDrawingRemote(void);
 // Send an updated texture used by imgui, to netImguiApp server
 // Note: To remove a texture, set pData to nullptr
 //=================================================================================================
-void				SendDataTexture(uint64_t textureId, void* pData, uint16_t width, uint16_t height, eTexFormat format);
+void				SendDataTexture(ImTextureID textureId, void* pData, uint16_t width, uint16_t height, eTexFormat format);
 
 //=================================================================================================
 // Start a new Imgui Frame and wait for Draws commands, using a ImGui created internally

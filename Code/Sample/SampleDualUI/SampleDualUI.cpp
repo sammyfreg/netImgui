@@ -36,15 +36,6 @@ void Client_Shutdown()
 }
 
 //=================================================================================================
-// Added a call to this function in 'ImGui_ImplDX11_CreateFontsTexture()', allowing us to 
-// forward the Font Texture information to netImgui.
-//=================================================================================================
-void Client_AddFontTexture(uint64_t texId, void* pData, uint16_t width, uint16_t height)
-{
-	NetImgui::SendDataTexture(texId, pData, width, height, NetImgui::eTexFormat::kTexFmtRGBA8);
-}
-
-//=================================================================================================
 //
 //=================================================================================================
 void Client_Draw_LocalContent()
@@ -101,7 +92,7 @@ void Client_Draw_SharedContent()
 //=================================================================================================
 // Function used by the sample, to draw all ImGui Content
 //=================================================================================================
-const ImDrawData* Client_Draw()
+ImDrawData* Client_Draw()
 {
 	//---------------------------------------------------------------------------------------------
 	// (1) Start a new Frame

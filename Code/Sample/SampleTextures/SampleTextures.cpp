@@ -2,8 +2,6 @@
 // SAMPLE TEXTURES
 //-------------------------------------------------------------------------------------------------
 // Example of using various textures in the ImGui context, after making netImgui aware of them.
-// We need to always provide the Font texture (this sample calls Client_AddFontTexture to do that)
-// but it also apply to any other textures we might want to display.
 //=================================================================================================
 
 #include <NetImgui_Api.h>
@@ -53,7 +51,7 @@ void CustomTextureCreate(NetImgui::eTexFormat eTexFmt)
 	case NetImgui::eTexFormat::kTexFmt_Invalid: assert(0); break;
 	}
 	TextureCreate(pixelData, Width, Height, gCustomTextureView[static_cast<int>(eTexFmt)]);
-	NetImgui::SendDataTexture(reinterpret_cast<uint64_t>(gCustomTextureView[static_cast<int>(eTexFmt)]), pixelData, Width, Height, eTexFmt);
+	NetImgui::SendDataTexture(static_cast<ImTextureID>(gCustomTextureView[static_cast<int>(eTexFmt)]), pixelData, Width, Height, eTexFmt);
 }
 
 //=================================================================================================
@@ -63,7 +61,7 @@ void CustomTextureDestroy(NetImgui::eTexFormat eTexFmt)
 {
 	if (gCustomTextureView[static_cast<int>(eTexFmt)])
 	{
-		NetImgui::SendDataTexture(reinterpret_cast<uint64_t>(gCustomTextureView[static_cast<int>(eTexFmt)]), nullptr, 0, 0, NetImgui::eTexFormat::kTexFmt_Invalid);
+		NetImgui::SendDataTexture(static_cast<ImTextureID>(gCustomTextureView[static_cast<int>(eTexFmt)]), nullptr, 0, 0, NetImgui::eTexFormat::kTexFmt_Invalid);
 		TextureDestroy(gCustomTextureView[static_cast<int>(eTexFmt)]);
 	}
 }
@@ -80,7 +78,7 @@ bool Client_Startup()
 	pixelData.fill(0);
 
 	TextureCreate(pixelData.data(), 8, 8, gDefaultEmptyTexture);
-	NetImgui::SendDataTexture(reinterpret_cast<uint64_t>(gDefaultEmptyTexture), pixelData.data(), 8, 8, NetImgui::eTexFormat::kTexFmtRGBA8);
+	NetImgui::SendDataTexture(static_cast<ImTextureID>(gDefaultEmptyTexture), pixelData.data(), 8, 8, NetImgui::eTexFormat::kTexFmtRGBA8);
 
 	// Can have more ImGui initialization here, like loading extra fonts.
 	// ...
@@ -93,24 +91,15 @@ bool Client_Startup()
 //=================================================================================================
 void Client_Shutdown()
 {
-	NetImgui::SendDataTexture(reinterpret_cast<uint64_t>(gDefaultEmptyTexture), nullptr, 0, 0, NetImgui::eTexFormat::kTexFmt_Invalid);
+	NetImgui::SendDataTexture(static_cast<ImTextureID>(gDefaultEmptyTexture), nullptr, 0, 0, NetImgui::eTexFormat::kTexFmt_Invalid);
 	TextureDestroy(gDefaultEmptyTexture);
 	NetImgui::Shutdown(true);
 }
 
 //=================================================================================================
-// Added a call to this function in 'ImGui_ImplDX11_CreateFontsTexture()', allowing us to 
-// forward the Font Texture information to netImgui.
-//=================================================================================================
-void Client_AddFontTexture(uint64_t texId, void* pData, uint16_t width, uint16_t height)
-{
-	NetImgui::SendDataTexture(texId, pData, width, height, NetImgui::eTexFormat::kTexFmtRGBA8);
-}
-
-//=================================================================================================
 // Function used by the sample, to draw all ImGui Content
 //=================================================================================================
-const ImDrawData* Client_Draw()
+ImDrawData* Client_Draw()
 {
 	bool bCanDisplayLocally(false);
 
