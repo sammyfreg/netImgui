@@ -1,9 +1,9 @@
- <p align="center"><img src="https://github.com/sammyfreg/netImgui/blob/master/Web/img/netImguiLogo.png" width=128 height=128></p>
+ <p align="center"><img src="https://raw.githubusercontent.com/wiki/sammyfreg/netImgui/Web/img/netImguiLogo.png" width=128 height=128></p>
 
 # Summary
 **NetImgui** is a library to remotely display and control **[Dear ImGui](https://github.com/ocornut/imgui)** menus with an associated **netImgui server** application. Designed to painlessly integrate into existing codebase with few changes required to the existing logic. It forwards the rendering information needed to draw the UI on another PC (vertices, indices, draw commands).
 
-![NetImgui](https://github.com/sammyfreg/netImgui/blob/master/Web/img/netImgui.png)
+![NetImgui](https://raw.githubusercontent.com/wiki/sammyfreg/netImgui/Web/img/netImgui.png)
 
 # Purpose
 Initially created to assist game developers in debugging their game from a PC while running on console or cellphone. However, its use can easily be extended to other fields. For example, help with VR developement, or easily add a UI to some devices without display but TCP/IP communications available.
@@ -11,16 +11,16 @@ Initially created to assist game developers in debugging their game from a PC wh
 #### 1. Input ease of use
 For programs running on hardware without easy access to a keyboard and mouse, **netImgui** provides the  comfort of your computer's inputs while controlling it remotely.
 
-![NetImgui](https://github.com/sammyfreg/netImgui/blob/master/Web/img/InputWithNetImgui.gif)
+![NetImgui](https://raw.githubusercontent.com/wiki/sammyfreg/netImgui/Web/img/InputWithNetImgui.gif)
 
 #### 2. Declutter display
 **Dear ImGui** is often used to display relevant debug information during development, but its UI elements can obscure the regular content. **NetImgui** sends the UI content to a remote window, leaving the original display clutter-free and with the freedom to use the entire screen for more elaborate content. The hardware running **Dear ImGui** might not even have a display, sending the UI content to the **NetImgui** server application allows to have one.
 
 ###### Before
-![DearImGui](https://github.com/sammyfreg/netImgui/blob/master/Web/img/AppWithoutNetImgui.png)
+![DearImGui](https://raw.githubusercontent.com/wiki/sammyfreg/netImgui/Web/img/AppWithoutNetImgui.png)
 
 ###### With netImgui
-![netImgui](https://github.com/sammyfreg/netImgui/blob/master/Web/img/AppWithNetImguiGif.gif)
+![netImgui](https://raw.githubusercontent.com/wiki/sammyfreg/netImgui/Web/img/AppWithNetImguiGif.gif)
 
 # Integration
 - Download the latest version of **netImgui**.
@@ -89,7 +89,7 @@ Should be able to support other versions without too much difficulty. Mostly inv
   - Issue of text edition not recognizing special key strokes (navigation, delete, ...)
   
 ### Older
-[Release Notes](https://github.com/sammyfreg/netImgui/blob/master/Web/ReleaseNotes.md)
+[Release Notes](https://github.com/sammyfreg/netImgui/blob/master/ReleaseNotes.md)
 
 # Contact
 Author can be reached for feedbacks / comments at: sammyfreg (at) gmail . com
