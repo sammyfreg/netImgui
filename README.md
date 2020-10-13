@@ -89,7 +89,7 @@ Should be able to support other versions without too much difficulty. Mostly inv
   - Issue of text edition not recognizing special key strokes (navigation, delete, ...)
   
 ### Older
-[Release Notes](https://github.com/sammyfreg/netImgui/blob/master/ReleaseNotes.md)
+[Release Notes](RELEASENOTES.md)
 
 # Contact
 Author can be reached for feedbacks / comments at: sammyfreg (at) gmail . com
