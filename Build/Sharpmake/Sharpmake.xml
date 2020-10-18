@@ -886,6 +886,14 @@
             Exclude from SonarQube C# static analysis
             </summary>
         </member>
+        <!-- Badly formed XML comment ignored for member "M:Sharpmake.Options.Clang.GetTargetTriple(System.String,System.String,System.String,System.String,System.String)" -->
+        <member name="T:Sharpmake.Options.Clang.Compiler.LLVMVcPlatformToolset">
+            <summary>
+            Foce a platform toolset different from the devenv when using LLVM platform toolset
+            </summary>
+            The platform toolset option used to enable the LLVM toolchain doesn't allow choosing
+            the version of the toolset we want to mimic. By
+        </member>
         <member name="T:Sharpmake.Options.Vc.Linker.GenerateDebugInformation">
             <summary>
             Enable will write /DEBUG, and let MS linker decide to use FastLink or Full PDBs
@@ -913,6 +921,11 @@
         <member name="T:Sharpmake.Options.PathOption">
             <summary>
             Used to hold an option that's a path, either to a file or directory, that's gonna be resolved
+            </summary>
+        </member>
+        <member name="T:Sharpmake.Options.WithArgOption`1">
+            <summary>
+            Used to hold an option that has an untyped argument, could be another option
             </summary>
         </member>
         <member name="M:Sharpmake.Options.GetConfOption``1(System.Collections.Generic.IEnumerable{Sharpmake.Project.Configuration},System.String,System.String)">
@@ -2267,11 +2280,13 @@
         </member>
         <member name="F:Sharpmake.Project.Configuration.ObjectFileName">
             <summary>
-            If specified, every obj will be output to intermediate directories corresponding to the source hierarchy.
+            Specifies a function with a relative source file path as input and an object file path as output.
             </summary>
             <remarks>
             <note type="warning">
-            This will slow down your project's compile time!
+            This will slow down your project's compile time! Overwrite the object file output path
+            only for the files that absolutely require it. Let the function return null or empty string
+            to skip the overwrite for the given source file.
             <externalLink>
             <linkText>See a discussion of this in StackOverflow</linkText>
             <linkUri>http://stackoverflow.com/a/1999344</linkUri>
@@ -2612,6 +2627,12 @@
             Gets or sets whether FASTBuild will be used to build the project.
             </summary>
         </member>
+        <member name="P:Sharpmake.Project.Configuration.FastBuildMasterBffList">
+            <summary>
+            List of the MasterBff files this project appears in.
+            This is populated from the solution generator
+            </summary>
+        </member>
         <member name="F:Sharpmake.Project.Configuration.FastBuildBlobbed">
             <summary>
             Gets or sets whether FASTBuild blobs (unities) will be used in the build.
@@ -2794,6 +2815,17 @@
                 conf.AddReference(MyEnum.Lib3, target, project);
             </summary>
         </member>
+        <member name="M:Sharpmake.RegexMatchCache.#ctor(System.Int32)">
+            <param name="capacity">Initial cache capacity. Should not be divisible by a small prime number. Justification here: https://docs.microsoft.com/en-us/dotnet/api/system.collections.concurrent.concurrentdictionary-2.-ctor?view=netcore-3.1. /// </param>
+        </member>
+        <member name="M:Sharpmake.GlobalRegexMatchCache.Init(System.Int32)">
+            <param name="capacity">Initial cache capacity. Should not be divisible by a small prime number. Justification here: https://docs.microsoft.com/en-us/dotnet/api/system.collections.concurrent.concurrentdictionary-2.-ctor?view=netcore-3.1. /// </param>
+        </member>
+        <member name="P:Sharpmake.GlobalRegexMatchCache.Count">
+            <summary>
+            Returns size of cache ( i.e. the number of elements in the cache ).
+            </summary>
+        </member>
         <!-- Badly formed XML comment ignored for member "T:Sharpmake.Resolver" -->
         <member name="T:Sharpmake.SharpmakeExtensionAttribute">
             <summary>
@@ -2866,6 +2898,12 @@
         <member name="P:Sharpmake.Solution.Configuration.ProjectReferencesByPath">
             <summary>
             Holds the path references to projects that should be added in the solution
+            </summary>
+        </member>
+        <member name="F:Sharpmake.Solution.GenerateFastBuildAllProject">
+            <summary>
+            Allow to multi-thread the build of the executables when doing a Build Solution (Ctrl+Shift+B).
+            However, it will not be possible to build each executable individually.
             </summary>
         </member>
         <member name="F:Sharpmake.Solution.GenerateFastBuildAllOnlyForConfThatNeedIt">
