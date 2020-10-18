@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include <mutex>
+#include <algorithm>
 #include <vector>
 #include <cstddef>
 #include <d3d11.h>
@@ -82,10 +83,17 @@ struct ResShaderRes
 	TDXResource<ID3D11PixelShader>	mShaderPS;
 };
 
+struct ResTexture2D	: public TDXBufferViewRes<ID3D11Texture2D, ID3D11ShaderResourceView>
+{
+	DXGI_FORMAT	mFormat;
+	uint16_t	mWidth;
+	uint16_t	mHeight;
+};
+
 using ResCBuffer	= TDXResource<ID3D11Buffer>;
 using ResVtxBuffer	= TDXResource<ID3D11Buffer>;
 using ResIdxBuffer	= TDXResource<ID3D11Buffer>;
-using ResTexture2D	= TDXBufferViewRes<ID3D11Texture2D, ID3D11ShaderResourceView>;
+
 
 struct GfxResources
 {	
@@ -169,6 +177,9 @@ bool CreateTexture(ResTexture2D& OutTexture, NetImgui::eTexFormat format, uint16
 		srvDesc.Texture2D.MipLevels			= texDesc.MipLevels;
 		srvDesc.Texture2D.MostDetailedMip	= 0;
 		gpGfxRes->mDevice->CreateShaderResourceView(OutTexture.mBuffer.Get(), &srvDesc, OutTexture.mView.GetForInit());
+		OutTexture.mWidth					= width;
+		OutTexture.mHeight					= height;
+		OutTexture.mFormat					= texFmt;
 	}   
 	return Result == S_OK;
 }
@@ -399,19 +410,29 @@ void Render_UpdateWindowSize()
 
 void Render_Clear()
 {
-	CD3D11_VIEWPORT vp(0.f, 0.f, static_cast<float>(gpGfxRes->mScreenWidth), static_cast<float>(gpGfxRes->mScreenHeight));
+	float fScreenWidth			= static_cast<float>(gpGfxRes->mScreenWidth);
+	float fScreenHeight			= static_cast<float>(gpGfxRes->mScreenHeight);
+	CD3D11_VIEWPORT vp(0.f, 0.f, fScreenWidth, fScreenHeight);
 	const D3D11_RECT r = { 0, 0, static_cast<long>(gpGfxRes->mScreenWidth), static_cast<long>(gpGfxRes->mScreenHeight)};
-	const float BlendFactor[4] = { 1.f, 1.f, 1.f, 1.f };
+	const float BlendFactor[4]	= { 1.f, 1.f, 1.f, 1.f };
+	float ratioH				= static_cast<float>(gpGfxRes->mBackgroundTex.mWidth) / std::max<float>(1.f, fScreenWidth);
+	float ratioV				= static_cast<float>(gpGfxRes->mBackgroundTex.mHeight) / std::max<float>(1.f, fScreenHeight);
+	float uvScaleX				= ratioH > ratioV ? 1.f : ratioV/ratioH;
+	float uvScaleY				= ratioH < ratioV ? 1.f : ratioH/ratioV;
+	float uvOffsetX				= ratioH > ratioV ? 0.f : (1.f-uvScaleX) / 2.f;
+	float uvOffsetY				= ratioH < ratioV ? 0.f : (1.f-uvScaleY) / 2.f;
 
 	ResCBuffer ClearCB;
 	struct ClearParam
 	{
 		ImVec4 mClearColor;
-		ImVec4 mTextureTint; 
+		ImVec4 mTextureTint;
+		ImVec4 mUVScaleAndOffset;
 	} clearParam;
-	clearParam.mClearColor	= ImVec4(0.0f, 0.0f, 0.0f, 1.0f);
-	clearParam.mTextureTint = ImVec4(1.0f, 1.0f, 1.0f, 0.5f);
-		
+	clearParam.mClearColor			= ImVec4(0.0f, 0.0f, 0.0f, 1.0f);
+	clearParam.mTextureTint			= ImVec4(1.0f, 1.0f, 1.0f, 0.5f);
+	clearParam.mUVScaleAndOffset	= ImVec4(uvScaleX, uvScaleY, uvOffsetX, uvOffsetY);
+
 	CreateCBuffer(ClearCB, &clearParam, sizeof(clearParam));
 	gpGfxRes->mContext->OMSetRenderTargets(1, gpGfxRes->mBackbufferView.GetArray(), nullptr );
 	gpGfxRes->mContext->OMSetBlendState(gpGfxRes->mClearBlendState.Get(), BlendFactor, 0xFFFFFFFF);
