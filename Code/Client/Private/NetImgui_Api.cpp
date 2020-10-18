@@ -316,15 +316,12 @@ void SendDataTexture(ImTextureID textureId, void* pData, uint16_t width, uint16_
 		pCmdTexture->mpTextureData.ToOffset();
 
 		// Detects when user is sending the font texture
-		if( client.mpContext )
+		ScopedImguiContext scopedCtx(client.mpContext ? client.mpContext : ImGui::GetCurrentContext());
+		if( ImGui::GetIO().Fonts && ImGui::GetIO().Fonts->TexID == textureId )
 		{
-			ScopedImguiContext scopedCtx(client.mpContext);
-			if( ImGui::GetIO().Fonts && ImGui::GetIO().Fonts->TexID == textureId )
-			{
-				client.mbFontUploaded		|= true;
-				client.mpFontTextureData	= ImGui::GetIO().Fonts->TexPixelsAlpha8;
-			}
-		}
+			client.mbFontUploaded		|= true;
+			client.mpFontTextureData	= ImGui::GetIO().Fonts->TexPixelsAlpha8;
+		}		
 	}
 	// Texture to remove
 	else

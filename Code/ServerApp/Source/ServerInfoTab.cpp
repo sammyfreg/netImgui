@@ -466,21 +466,11 @@ bool ServerInfoTab_Startup()
 
 	ImGui::SetCurrentContext(ImGui::CreateContext());
 	ImGuiIO& io = ImGui::GetIO();	
-	
-	// Build
-	unsigned char* pixels;
-	int width, height;
+
+	// Build Font
 	io.Fonts->AddFontDefault();
 	io.Fonts->Build();
-	io.Fonts->GetTexDataAsAlpha8(&pixels, &width, &height);
-	NetImgui::SendDataTexture(0, pixels, static_cast<uint16_t>(width), static_cast<uint16_t>(height), NetImgui::eTexFormat::kTexFmtA8);	   
-
-	// Store our identifier
-	io.Fonts->TexID = reinterpret_cast<ImTextureID*>(0);
-
-	// Cleanup (don't clear the input data if you want to append new fonts later)
-	io.Fonts->ClearInputData();
-	io.Fonts->ClearTexData();
+	io.Fonts->TexID = reinterpret_cast<ImTextureID*>(0); // Store our identifier
 
 	if( NetImgui::ConnectToApp("netImgui", "localhost", ClientConfig::ServerPort, false) )
 	{
