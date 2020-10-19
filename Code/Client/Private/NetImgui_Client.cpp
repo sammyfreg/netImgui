@@ -10,6 +10,50 @@ namespace NetImgui { namespace Internal { namespace Client
 {
 
 //=================================================================================================
+// SAVED IMGUI CONTEXT
+// Because we overwrite some Imgui context IO values, we save them before makign any change
+// and restore them after detecting a disconnection
+//=================================================================================================
+void SavedImguiContext::Save(ImGuiContext* copyFrom)
+{
+	ScopedImguiContext scopedContext(copyFrom);
+	ImGuiIO& sourceIO		= ImGui::GetIO();
+
+	memcpy(mKeyMap, sourceIO.KeyMap, sizeof(mKeyMap));
+	mpCopiedContext			= copyFrom;
+	mConfigFlags			= sourceIO.ConfigFlags;
+	mBackendFlags			= sourceIO.BackendFlags;
+	mBackendPlatformName	= sourceIO.BackendPlatformName;
+	mBackendRendererName	= sourceIO.BackendRendererName;
+	mDrawMouse				= sourceIO.MouseDrawCursor;	
+	mClipboardUserData		= sourceIO.ClipboardUserData;
+#if IMGUI_VERSION_NUM >= 17700
+    mImeWindowHandle		= sourceIO.ImeWindowHandle;
+#endif
+}
+
+void SavedImguiContext::Restore(ImGuiContext* copyTo)
+{
+	if( copyTo == mpCopiedContext )
+	{
+		ScopedImguiContext scopedContext(copyTo);
+		ImGuiIO& destIO				= ImGui::GetIO();
+
+		memcpy(destIO.KeyMap, mKeyMap, sizeof(destIO.KeyMap));
+		destIO.ConfigFlags			= mConfigFlags;
+		destIO.BackendFlags			= mBackendFlags;
+		destIO.BackendPlatformName	= mBackendPlatformName;
+		destIO.BackendRendererName	= mBackendRendererName;
+		destIO.MouseDrawCursor		= mDrawMouse;
+		destIO.ClipboardUserData	= mClipboardUserData;
+	#if IMGUI_VERSION_NUM >= 17700
+		destIO.ImeWindowHandle		= mImeWindowHandle;
+	#endif
+		mpCopiedContext				= nullptr;
+	}
+}
+
+//=================================================================================================
 // CLIENT INFO Constructor
 //=================================================================================================
 ClientInfo::ClientInfo() 

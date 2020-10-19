@@ -24,6 +24,25 @@ struct ClientTexture
 };
 
 //=============================================================================
+// Keeps a list of ImGui context values NetImgui overrides (to restore)
+//=============================================================================
+struct SavedImguiContext
+{
+	void					Save(ImGuiContext* copyFrom);
+	void					Restore(ImGuiContext* copyTo);	
+	const char*				mBackendPlatformName	= nullptr;
+	const char*				mBackendRendererName	= nullptr;	
+	void*					mClipboardUserData		= nullptr;
+    void*					mImeWindowHandle		= nullptr;
+	ImGuiContext*			mpCopiedContext			= nullptr;
+	int						mKeyMap[ImGuiKey_COUNT];
+	ImGuiBackendFlags		mBackendFlags			= 0;
+	ImGuiConfigFlags		mConfigFlags			= 0;	
+	bool					mDrawMouse				= false;
+	char					PADDING[7];	
+};
+
+//=============================================================================
 // Keep all Client infos needed for communication with server
 //=============================================================================
 struct ClientInfo
@@ -48,15 +67,11 @@ struct ClientInfo
 	ImGuiContext*						mpContextDrawing			= nullptr;	// Current context used for drawing (between a BeginFrame/EndFrame)
 	ImGuiContext*						mpContext					= nullptr;	// Context that the remote drawing should use (either the one active when connection request happened, or a clone)
 	const void*							mpFontTextureData			= nullptr;	// Last font texture data send to server (used to detect if font was changed)
+	SavedImguiContext					mSavedContextValues;
 	Time								mTimeTracking;
 	std::atomic_int32_t					mTexturesPendingCount;	
 	float								mMouseWheelVertPrev			= 0.f;
-	float								mMouseWheelHorizPrev		= 0.f;
-	int									mRestoreKeyMap[ImGuiKey_COUNT];
-	ImGuiConfigFlags					mRestoreConfigFlags			= 0;
-	const char*							mRestoreBackendPlatformName	= nullptr;
-	const char*							mRestoreBackendRendererName	= nullptr;	
-	ImGuiBackendFlags					mRestoreBackendFlags		= 0;
+	float								mMouseWheelHorizPrev		= 0.f;	
 	bool								mbDisconnectRequest			= false;	// Waiting to Disconnect
 	bool								mbHasTextureUpdate			= false;
 	bool								mbIsRemoteDrawing			= false;	// True if the rendering it meant for the remote netImgui server
