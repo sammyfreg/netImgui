@@ -202,18 +202,8 @@ bool NewFrame(bool bSupportFrameSkip)
 	}
 	// Regular Imgui NewFrame
 	else
-	{
-		// Restore some settings, after disconnect
-		if( client.mbRestorePending )
-		{
-			ImGuiIO& contextIO				= ImGui::GetIO();
-			contextIO.ConfigFlags			= client.mRestoreConfigFlags;
-			contextIO.BackendFlags			= client.mRestoreBackendFlags;
-			contextIO.BackendPlatformName	= client.mRestoreBackendPlatformName;
-			contextIO.BackendRendererName	= client.mRestoreBackendRendererName;
-			client.mbRestorePending			= false;
-			memcpy(contextIO.KeyMap, client.mRestoreKeyMap, sizeof(contextIO.KeyMap));
-		}		
+	{		
+		client.mSavedContextValues.Restore(ImGui::GetCurrentContext());	// Restore context setting override, after a disconnect (if applicable)
 	}
 
 	// A new frame is expected, update the current time of the drawing context, and let Imgui know to prepare a new drawing frame	
@@ -443,18 +433,16 @@ void ContextInitialize(bool bCloneOriginalContext)
 	if( bCloneOriginalContext )
 	{
 		ContextClone();
+		client.mpContext = client.mpContextClone;
+	}
+	else
+	{	
+		client.mpContext = ImGui::GetCurrentContext();
+		client.mSavedContextValues.Save(client.mpContext); 
 	}
 
-	// Override some settings	
-	ImGuiContext* pSourceCxt			= ImGui::GetCurrentContext();
-	ImGuiIO& sourceIO					= ImGui::GetIO();
-	memcpy(client.mRestoreKeyMap, sourceIO.KeyMap, sizeof(client.mRestoreKeyMap));
-	client.mRestoreConfigFlags			= sourceIO.ConfigFlags;
-	client.mRestoreBackendFlags			= sourceIO.BackendFlags;
-	client.mRestoreBackendPlatformName	= sourceIO.BackendPlatformName;
-	client.mRestoreBackendRendererName	= sourceIO.BackendRendererName;
-	client.mbRestorePending				= client.mpContextClone == nullptr;
-	client.mpContext					= client.mpContextClone ? client.mpContextClone : pSourceCxt;
+	// Override some settings
+	// Note: Make sure every setting overwritten here, are handled in 'SavedImguiContext::Save(...)'
 	{
 		ScopedImguiContext scopedCtx(client.mpContext);
 		ImGuiIO& newIO						= ImGui::GetIO();	
@@ -483,8 +471,13 @@ void ContextInitialize(bool bCloneOriginalContext)
 		newIO.KeyMap[ImGuiKey_Y]			= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardA) - 'A' + 'Y';
 		newIO.KeyMap[ImGuiKey_Z]			= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardA) - 'A' + 'Z';
 
-		newIO.BackendPlatformName			= "netImgui";
+		newIO.ClipboardUserData				= nullptr;
+	
+		newIO.BackendPlatformName			= "NetImgui";
 		newIO.BackendRendererName			= "DirectX11";
+	#if IMGUI_VERSION_NUM >= 17700
+		newIO.ImeWindowHandle				= nullptr;
+	#endif
 	#if defined(IMGUI_HAS_VIEWPORT) && IMGUI_HAS_VIEWPORT
 		// Viewport options (when ImGuiConfigFlags_ViewportsEnable is set)
 		newIO.ConfigFlags					&= ~(ImGuiConfigFlags_ViewportsEnable); // Viewport unsupported at the moment
@@ -509,59 +502,11 @@ void ContextClone(void)
 
 		// Import the style/options settings of current context, into this one	
 		memcpy(&newStyle, &sourceStyle, sizeof(newStyle));
-		memcpy(newIO.KeyMap, sourceIO.KeyMap, sizeof(newIO.KeyMap));
-		newIO.ConfigFlags						= sourceIO.ConfigFlags;
-		newIO.BackendFlags						= sourceIO.BackendFlags;
-		//DisplaySize
-		//DeltaTime
-		newIO.IniSavingRate						= sourceIO.IniSavingRate;
-		newIO.IniFilename						= sourceIO.IniFilename;
-		newIO.LogFilename						= sourceIO.LogFilename;	
-		newIO.MouseDoubleClickTime				= sourceIO.MouseDoubleClickTime;
-		newIO.MouseDoubleClickMaxDist			= sourceIO.MouseDoubleClickMaxDist;
-		newIO.MouseDragThreshold				= sourceIO.MouseDragThreshold;
-		// KeyMap
-		newIO.KeyRepeatDelay					= sourceIO.KeyRepeatDelay;
-		newIO.KeyRepeatRate						= sourceIO.KeyRepeatRate;
-		newIO.UserData							= sourceIO.UserData;
-
-		newIO.FontGlobalScale					= sourceIO.FontGlobalScale;
-		newIO.FontAllowUserScaling				= sourceIO.FontAllowUserScaling;
-		newIO.FontDefault						= sourceIO.FontDefault; // Use same FontAtlas, so pointer is valid for new context too
-		newIO.DisplayFramebufferScale			= ImVec2(1, 1);
-
-		// Miscellaneous options
-		newIO.MouseDrawCursor					= false;
-		newIO.ConfigMacOSXBehaviors				= sourceIO.ConfigMacOSXBehaviors;
-		newIO.ConfigInputTextCursorBlink		= sourceIO.ConfigInputTextCursorBlink;
-		newIO.ConfigWindowsResizeFromEdges		= sourceIO.ConfigWindowsResizeFromEdges;
-		newIO.ConfigWindowsMoveFromTitleBarOnly	= sourceIO.ConfigWindowsMoveFromTitleBarOnly;
-	#if IMGUI_VERSION_NUM >= 17500
-		newIO.ConfigWindowsMemoryCompactTimer	= sourceIO.ConfigWindowsMemoryCompactTimer;
-	#endif	
-	
-		// Platform Functions
-		newIO.BackendPlatformUserData			= sourceIO.BackendPlatformUserData;
-		newIO.BackendRendererUserData			= sourceIO.BackendRendererUserData;
-		newIO.BackendLanguageUserData			= sourceIO.BackendLanguageUserData;
-		newIO.BackendPlatformName				= "netImgui";
-		newIO.BackendRendererName				= "DirectX11";
-
-	#if defined(IMGUI_HAS_DOCK) && IMGUI_HAS_DOCK
-		// Docking options (when ImGuiConfigFlags_DockingEnable is set)
-		newIO.ConfigDockingNoSplit				= sourceIO.ConfigDockingNoSplit;
-		newIO.ConfigDockingWithShift			= sourceIO.ConfigDockingWithShift;
-		newIO.ConfigDockingAlwaysTabBar			= sourceIO.ConfigDockingAlwaysTabBar;
-		newIO.ConfigDockingTransparentPayload	= sourceIO.ConfigDockingTransparentPayload;
-	#endif
-
-	#if defined(IMGUI_HAS_VIEWPORT) && IMGUI_HAS_VIEWPORT
-		// Viewport options (when ImGuiConfigFlags_ViewportsEnable is set)
-		newIO.ConfigViewportsNoAutoMerge		= sourceIO.ConfigViewportsNoAutoMerge;
-		newIO.ConfigViewportsNoTaskBarIcon		= sourceIO.ConfigViewportsNoTaskBarIcon;
-		newIO.ConfigViewportsNoDecoration		= sourceIO.ConfigViewportsNoDecoration;
-		newIO.ConfigViewportsNoDefaultParent	= sourceIO.ConfigViewportsNoDefaultParent;
-	#endif
+		//memcpy(newIO.KeyMap, sourceIO.KeyMap, sizeof(newIO.KeyMap));
+		memcpy(&newIO, &sourceIO, sizeof(newIO));		
+		newIO.InputQueueCharacters.Data		= 0;
+		newIO.InputQueueCharacters.Size		= 0;
+		newIO.InputQueueCharacters.Capacity = 0;
 	}
 }
 
