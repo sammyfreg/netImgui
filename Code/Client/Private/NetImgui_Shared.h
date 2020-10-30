@@ -20,6 +20,8 @@
 #include "NetImgui_WarningReenable.h"
 //=================================================================================================
 
+#define IMGUI_HAS_CALLBACK (IMGUI_VERSION_NUM >= 17905)
+
 //=================================================================================================
 #include "NetImgui_WarningDisable.h"
 namespace NetImgui { namespace Internal

@@ -6,6 +6,7 @@
 //=================================================================================================
 #include "Private/NetImgui_WarningDisableImgui.h" 
 #include <imgui.h>
+#include <imgui_internal.h> //SF Temp include
 #include "Private/NetImgui_WarningReenable.h"
 
 //=================================================================================================

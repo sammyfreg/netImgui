@@ -34,12 +34,13 @@ struct SavedImguiContext
 	const char*				mBackendRendererName	= nullptr;	
 	void*					mClipboardUserData		= nullptr;
     void*					mImeWindowHandle		= nullptr;
-	ImGuiContext*			mpCopiedContext			= nullptr;
-	int						mKeyMap[ImGuiKey_COUNT];
+	ImGuiContext*			mpCopiedContext			= nullptr;	
 	ImGuiBackendFlags		mBackendFlags			= 0;
 	ImGuiConfigFlags		mConfigFlags			= 0;	
 	bool					mDrawMouse				= false;
-	char					PADDING[7];	
+	char					mPadding1[7];
+	int						mKeyMap[ImGuiKey_COUNT];
+	char					mPadding2[8 - (sizeof(mKeyMap) % 8)];	
 };
 
 //=============================================================================
@@ -66,6 +67,12 @@ struct ClientInfo
 	ImGuiContext*						mpContextRestore			= nullptr;	// Context to restore to Imgui once drawing is done
 	ImGuiContext*						mpContextDrawing			= nullptr;	// Current context used for drawing (between a BeginFrame/EndFrame)
 	ImGuiContext*						mpContext					= nullptr;	// Context that the remote drawing should use (either the one active when connection request happened, or a clone)
+
+#if IMGUI_HAS_CALLBACK	
+	ImGuiContextHook					mImguiHookNewframe;
+	ImGuiContextHook					mImguiHookEndframe;
+#endif
+
 	const void*							mpFontTextureData			= nullptr;	// Last font texture data send to server (used to detect if font was changed)
 	SavedImguiContext					mSavedContextValues;
 	Time								mTimeTracking;
@@ -77,6 +84,7 @@ struct ClientInfo
 	bool								mbIsRemoteDrawing			= false;	// True if the rendering it meant for the remote netImgui server
 	bool								mbRestorePending			= false;	// Original context has had some settings overridden, original values stored in mRestoreXXX	
 	bool								mbFontUploaded				= false;	// Auto detect if font was sent to server
+	
 	char								PADDING[7];
 	void								TextureProcessPending();
 	void								TextureProcessRemoval();
