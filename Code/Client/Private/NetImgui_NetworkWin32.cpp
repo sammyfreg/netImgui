@@ -109,4 +109,9 @@ bool DataSend(SocketInfo* pClientSocket, void* pDataOut, size_t Size)
 }}} // namespace NetImgui::Internal::Network
 
 #include "NetImgui_WarningReenable.h"
+#else
+
+// Prevents Linker warning LNK4221 in Visual Studio (This object file does not define any previously undefined public symbols, so it will not be used by any link operation that consumes this library)
+int sSuppresstLNK4221_NetImgui_NetworkWin23(0);
+
 #endif // #if NETIMGUI_ENABLED && NETIMGUI_WINSOCKET_ENABLED

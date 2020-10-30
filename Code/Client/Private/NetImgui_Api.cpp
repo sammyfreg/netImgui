@@ -406,6 +406,23 @@ uint32_t GetTexture_BytePerImage(eTexFormat eFormat, uint32_t pixelWidth, uint32
 	//Note: If adding support to BC compression format, have to take into account 4x4 size alignement
 }
 
+// Support of the callback hooks
+#if IMGUI_HAS_CALLBACK
+void HookBeginFrame(ImGuiContext* ctx, ImGuiContextHook* hook)
+{
+	Client::ClientInfo& client = *reinterpret_cast<Client::ClientInfo*>(hook->UserData);
+	(void)ctx;
+	(void)client;
+}
+
+void HookEndFrame(ImGuiContext* ctx, ImGuiContextHook* hook)
+{
+	Client::ClientInfo& client = *reinterpret_cast<Client::ClientInfo*>(hook->UserData);
+	(void)ctx;
+	(void)client;
+}
+#endif 	// IMGUI_HAS_CALLBACK
+
 //=================================================================================================
 void ContextInitialize(bool bCloneOriginalContext)
 //=================================================================================================
@@ -483,6 +500,18 @@ void ContextInitialize(bool bCloneOriginalContext)
 		newIO.ConfigFlags					&= ~(ImGuiConfigFlags_ViewportsEnable); // Viewport unsupported at the moment
 	#endif
 	}
+
+	// Support of the callback hooks
+#if IMGUI_HAS_CALLBACK
+	client.mImguiHookNewframe.Type		= ImGuiContextHookType_NewFramePre;
+	client.mImguiHookNewframe.Callback	= HookBeginFrame;
+	client.mImguiHookNewframe.UserData	= &client;			//SF TODO: Save previous hook, to chain them
+	client.mImguiHookEndframe.Type		= ImGuiContextHookType_EndFramePost;
+	client.mImguiHookEndframe.Callback	= HookEndFrame;
+	client.mImguiHookEndframe.UserData	= &client;			//SF TODO: Save previous hook, to chain them
+	ImGui::AddContextHook(ImGui::GetCurrentContext(), &client.mImguiHookNewframe);
+	ImGui::AddContextHook(ImGui::GetCurrentContext(), &client.mImguiHookEndframe);
+#endif
 }
 
 //=================================================================================================
