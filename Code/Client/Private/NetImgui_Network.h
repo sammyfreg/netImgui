@@ -12,6 +12,7 @@ SocketInfo* Connect			(const char* ServerHost, uint32_t ServerPort);
 SocketInfo* ListenStart		(uint32_t ListenPort);
 SocketInfo* ListenConnect	(SocketInfo* ListenSocket);
 void		Disconnect		(SocketInfo* pClientSocket);
+bool		GetClientInfo	(SocketInfo* pClientSocket, char* pOutHostname, size_t HostNameLen, int& outPort);
 
 bool		DataReceive		(SocketInfo* pClientSocket, void* pDataIn, size_t Size);
 bool		DataSend		(SocketInfo* pClientSocket, void* pDataOut, size_t Size);

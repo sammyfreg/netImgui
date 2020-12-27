@@ -1,8 +1,6 @@
 #include "stdafx.h"
 #include "Private/NetImgui_WarningDisableStd.h"
 
-#include <WinSock2.h>
-#include <WS2tcpip.h>
 #include <thread>
 
 #include "ServerNetworking.h"
@@ -14,8 +12,6 @@
 
 namespace NetworkServer
 {
-
-static constexpr DWORD			kComsTimeoutMs				= 2000;
 static bool						gbShutdown					= false;
 static bool						gbValidListenSocket			= false;
 static std::atomic_uint32_t		gActiveClientThreadCount;
@@ -52,7 +48,7 @@ void Communications_Incoming_CmdDrawFrame(ClientRemote* pClient, uint8_t*& pCmdD
 // Receive every commands sent by remote client and process them
 // We keep receiving until we detect a ping command (signal end of commands)
 //=================================================================================================
-bool Communications_Incoming(SOCKET Socket, ClientRemote* pClient)
+bool Communications_Incoming(NetImgui::Internal::Network::SocketInfo* pClientSocket, ClientRemote* pClient)
 {
 	bool bOk(true);
 	bool bPingReceived(false);
@@ -65,15 +61,14 @@ bool Communications_Incoming(SOCKET Socket, ClientRemote* pClient)
 		// and allocate memory to receive it if needed
 		//---------------------------------------------------------------------
 		uint8_t* pCmdData	= nullptr;
-		int sizeRead	= recv(Socket, reinterpret_cast<char*>(&cmdHeader), sizeof(cmdHeader), MSG_WAITALL);
-		bOk				= sizeRead == sizeof(cmdHeader);
+		bOk					= NetImgui::Internal::Network::DataReceive(pClientSocket, &cmdHeader, sizeof(cmdHeader));
 		if( bOk && cmdHeader.mSize > sizeof(cmdHeader) )
 		{
 			pCmdData													= NetImgui::Internal::netImguiSizedNew<uint8_t>(cmdHeader.mSize);
 			*reinterpret_cast<NetImgui::Internal::CmdHeader*>(pCmdData) = cmdHeader;
-			const int sizeToRead										= static_cast<int>(cmdHeader.mSize - sizeof(cmdHeader));
-			sizeRead													= recv(Socket, reinterpret_cast<char*>(&pCmdData[sizeof(cmdHeader)]), sizeToRead, MSG_WAITALL);
-			bOk															= sizeRead == sizeToRead;
+			char* pDataRemaining										= reinterpret_cast<char*>(&pCmdData[sizeof(cmdHeader)]);
+			const size_t sizeToRead										= cmdHeader.mSize - sizeof(cmdHeader);
+			bOk															= NetImgui::Internal::Network::DataReceive(pClientSocket, pDataRemaining, sizeToRead);
 		}
 			
 		//---------------------------------------------------------------------
@@ -104,29 +99,26 @@ bool Communications_Incoming(SOCKET Socket, ClientRemote* pClient)
 // Send the updates to RemoteClient
 // Ends with a Ping Command (signal a end of commands)
 //=================================================================================================
-bool Communications_Outgoing(SOCKET Socket, ClientRemote* pClient)
+bool Communications_Outgoing(NetImgui::Internal::Network::SocketInfo* pClientSocket, ClientRemote* pClient)
 {
 	bool bSuccess(true);
 	NetImgui::Internal::CmdInput* pInputCmd = pClient->CreateInputCommand();
 	if( pInputCmd )
 	{
-		int result	= send(Socket, reinterpret_cast<const char*>(pInputCmd), static_cast<int>(pInputCmd->mHeader.mSize), 0);
-		bSuccess	= (result == static_cast<int>(pInputCmd->mHeader.mSize));
+		bSuccess = NetImgui::Internal::Network::DataSend(pClientSocket, reinterpret_cast<void*>(pInputCmd), pInputCmd->mHeader.mSize);
 		NetImgui::Internal::netImguiDeleteSafe(pInputCmd);
 	}
 	
 	if( pClient->mbPendingDisconnect )
 	{
 		NetImgui::Internal::CmdDisconnect cmdDisconnect;
-		int result	= send(Socket, reinterpret_cast<const char*>(&cmdDisconnect), static_cast<int>(cmdDisconnect.mHeader.mSize), 0);
-		bSuccess	&= (result == static_cast<int>(cmdDisconnect.mHeader.mSize));
+		bSuccess &= NetImgui::Internal::Network::DataSend(pClientSocket, reinterpret_cast<void*>(&cmdDisconnect), cmdDisconnect.mHeader.mSize);
 	}
 
 	// Always finish with a ping
 	{
 		NetImgui::Internal::CmdPing cmdPing;
-		int result	= send(Socket, reinterpret_cast<const char*>(&cmdPing), static_cast<int>(cmdPing.mHeader.mSize), 0);
-		bSuccess	&= (result == static_cast<int>(cmdPing.mHeader.mSize));
+		bSuccess &= NetImgui::Internal::Network::DataSend(pClientSocket, reinterpret_cast<void*>(&cmdPing), cmdPing.mHeader.mSize);
 	}
 	return bSuccess;
 }
@@ -134,7 +126,7 @@ bool Communications_Outgoing(SOCKET Socket, ClientRemote* pClient)
 //=================================================================================================
 // Keep sending/receiving commands to Remote Client, until disconnection occurs
 //=================================================================================================
-void Communications_ClientExchangeLoop(SOCKET Socket, ClientRemote* pClient)
+void Communications_ClientExchangeLoop(NetImgui::Internal::Network::SocketInfo* pClientSocket, ClientRemote* pClient)
 {	
 	bool bConnected(true);
 	gActiveClientThreadCount++;
@@ -142,12 +134,12 @@ void Communications_ClientExchangeLoop(SOCKET Socket, ClientRemote* pClient)
 	ClientConfig::SetProperty_Connected(pClient->mClientConfigID, true);
 	while (bConnected && pClient->mbIsConnected && !pClient->mbPendingDisconnect && !gbShutdown)
 	{		
-		bConnected =	Communications_Outgoing(Socket, pClient) && 
-						Communications_Incoming(Socket, pClient);
+		bConnected =	Communications_Outgoing(pClientSocket, pClient) && 
+						Communications_Incoming(pClientSocket, pClient);
 		std::this_thread::sleep_for(std::chrono::milliseconds(8));
 	}
 	ClientConfig::SetProperty_Connected(pClient->mClientConfigID, false);
-	closesocket(Socket);
+	NetImgui::Internal::Network::Disconnect(pClientSocket);
 	
 	pClient->mInfoName[0]				= 0;
 	pClient->mInfoImguiVerName[0]		= 0;
@@ -164,15 +156,14 @@ void Communications_ClientExchangeLoop(SOCKET Socket, ClientRemote* pClient)
 // Establish connection with Remote Client
 // Makes sure that Server/Client are compatible
 //=================================================================================================
-bool Communications_InitializeClient(SOCKET Socket, ClientRemote* pClient)
+bool Communications_InitializeClient(NetImgui::Internal::Network::SocketInfo* pClientSocket, ClientRemote* pClient)
 {
 	NetImgui::Internal::CmdVersion cmdVersionSend;
 	NetImgui::Internal::CmdVersion cmdVersionRcv;
 	strcpy_s(cmdVersionSend.mClientName,"Server");
-	int resultSend	= send(Socket, reinterpret_cast<const char*>(&cmdVersionSend), static_cast<int>(cmdVersionSend.mHeader.mSize), 0);
-	int resultRcv	= recv(Socket, reinterpret_cast<char*>(&cmdVersionRcv), sizeof(cmdVersionRcv), MSG_WAITALL);
-	
-	if(	resultSend > 0 && resultRcv > 0 && 
+		
+	if(	NetImgui::Internal::Network::DataSend(pClientSocket, reinterpret_cast<void*>(&cmdVersionSend), cmdVersionSend.mHeader.mSize) && 
+		NetImgui::Internal::Network::DataReceive(pClientSocket, reinterpret_cast<void*>(&cmdVersionRcv), cmdVersionRcv.mHeader.mSize) &&
 		cmdVersionRcv.mHeader.mType == NetImgui::Internal::CmdHeader::eCommands::Version && 
 		cmdVersionRcv.mVersion == NetImgui::Internal::CmdVersion::eVersion::_Current )
 	{		
@@ -191,88 +182,57 @@ bool Communications_InitializeClient(SOCKET Socket, ClientRemote* pClient)
 	return false;
 }
 
-void NetworkConnectionNew(SOCKET ClientSocket, ClientRemote* pNewClient)
+void NetworkConnectionNew(NetImgui::Internal::Network::SocketInfo* pClientSocket, ClientRemote* pNewClient)
 {
 	const char* zErrorMsg(nullptr);
 	if (pNewClient == nullptr)
 		zErrorMsg = "Too many connection on server already";
-	
-	(void)kComsTimeoutMs;
-#if 0 // @Sammyfreg : No timeout useful when debugging, to keep connection alive while code breakpoint
-	setsockopt(ClientSocket, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<const char*>(&kComsTimeoutMs), sizeof(kComsTimeoutMs));
-	setsockopt(ClientSocket, SOL_SOCKET, SO_SNDTIMEO, reinterpret_cast<const char*>(&kComsTimeoutMs), sizeof(kComsTimeoutMs));
-#endif
-	if (zErrorMsg == nullptr && Communications_InitializeClient(ClientSocket, pNewClient) == false)
+		
+	if (zErrorMsg == nullptr && Communications_InitializeClient(pClientSocket, pNewClient) == false)
 		zErrorMsg = "Initialization failed. Wrong communication version?";
 
 	if (zErrorMsg == nullptr)
 	{
 		pNewClient->mbIsConnected	= true;
 		pNewClient->mConnectedTime	= std::chrono::steady_clock::now();
-		std::thread(Communications_ClientExchangeLoop, ClientSocket, pNewClient).detach();
+		std::thread(Communications_ClientExchangeLoop, pClientSocket, pNewClient).detach();
 	}
 	else
 	{
+		NetImgui::Internal::Network::Disconnect(pClientSocket);
 		if (pNewClient)
 		{
 			pNewClient->mbIsFree = true;
 			printf("Error connecting to client '%s:%i' (%s)\n", pNewClient->mConnectHost, pNewClient->mConnectPort, zErrorMsg);
 		}
 		else
-			printf("Error connecting to client (%s)\n", zErrorMsg);
-		closesocket(ClientSocket);
+			printf("Error connecting to client (%s)\n", zErrorMsg);		
 	}
 }
 
 //=================================================================================================
 // Open a listening port for netImgui Client trying to connect with us
 //=================================================================================================
-void NetworkConnectRequest_Receive_UpdateListenSocket(SOCKET* pListenSocket)
+void NetworkConnectRequest_Receive_UpdateListenSocket(NetImgui::Internal::Network::SocketInfo** ppListenSocket)
 {	
 	uint32_t serverPort = 0;
 	while( !gbShutdown )
-	{
-		if( serverPort != ClientConfig::ServerPort || *pListenSocket == INVALID_SOCKET )
+	{		
+		if( serverPort != ClientConfig::ServerPort || *ppListenSocket == nullptr )
 		{
-			SOCKET updateSocket	= *pListenSocket;
-			*pListenSocket		= INVALID_SOCKET;
-			gbValidListenSocket = false;
-			serverPort			= ClientConfig::ServerPort;			
-			closesocket(updateSocket);
-
-			if ((updateSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) != INVALID_SOCKET)
+			serverPort = ClientConfig::ServerPort;
+			NetImgui::Internal::Network::Disconnect(*ppListenSocket);
+			*ppListenSocket		= NetImgui::Internal::Network::ListenStart(serverPort);
+			gbValidListenSocket	= *ppListenSocket != nullptr;
+			if( !gbValidListenSocket )
 			{
-				sockaddr_in server;
-				server.sin_family		= AF_INET;
-				server.sin_addr.s_addr	= INADDR_ANY;
-				server.sin_port			= htons(static_cast<USHORT>(serverPort));
-				if (bind(updateSocket, reinterpret_cast<sockaddr*>(&server), sizeof(server)) != SOCKET_ERROR)
-				{
-					if (listen(updateSocket, 3) != SOCKET_ERROR)
-					{
-						// Success!
-						*pListenSocket		= updateSocket;
-						gbValidListenSocket	= true;
-					}
-					else
-					{
-						printf("Listen failed with error code : %d\n", WSAGetLastError());
-						closesocket(updateSocket);
-					}
-				}
-				else
-				{
-					printf("Bind failed with error code : %d\n", WSAGetLastError());
-					closesocket(updateSocket);
-				}
+				printf("Failed to start connection listen on port : %i", serverPort);
 			}
 		}
 		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 	}
 
-	SOCKET updateSocket	= *pListenSocket;
-	*pListenSocket		= INVALID_SOCKET;
-	closesocket(updateSocket);	
+	NetImgui::Internal::Network::Disconnect(*ppListenSocket);
 }
 
 //=================================================================================================
@@ -280,31 +240,27 @@ void NetworkConnectRequest_Receive_UpdateListenSocket(SOCKET* pListenSocket)
 //=================================================================================================
 void NetworkConnectRequest_Receive()
 {	
-	SOCKET ListenSocket = INVALID_SOCKET;
-	std::thread(NetworkConnectRequest_Receive_UpdateListenSocket, &ListenSocket).detach();
+	NetImgui::Internal::Network::SocketInfo* pListenSocket = nullptr;
+	std::thread(NetworkConnectRequest_Receive_UpdateListenSocket, &pListenSocket).detach();
 
 	while( !gbShutdown )
 	{
 		// Detect connection request from Clients
-		if( ListenSocket != INVALID_SOCKET )
+		if( pListenSocket != nullptr )
 		{
-			sockaddr	ClientAddress;
-			int			Size(sizeof(ClientAddress));
-			SOCKET		ClientSocket = accept(ListenSocket , &ClientAddress, &Size) ;
-			if( ClientSocket != INVALID_SOCKET )
+			NetImgui::Internal::Network::SocketInfo* pClientSocket = NetImgui::Internal::Network::ListenConnect(pListenSocket);
+			if( pClientSocket )
 			{
 				uint32_t freeIndex = ClientRemote::GetFreeIndex();
 				if( freeIndex != ClientRemote::kInvalidClient )
 				{
-					char zPortBuffer[32];
 					ClientRemote& newClient		= ClientRemote::Get(freeIndex);
-					getnameinfo(&ClientAddress, sizeof(ClientAddress), newClient.mConnectHost, sizeof(newClient.mConnectHost), zPortBuffer, sizeof(zPortBuffer), NI_NUMERICSERV);
-					newClient.mConnectPort		= atoi(zPortBuffer);
 					newClient.mClientConfigID	= ClientConfig::kInvalidRuntimeID;
-					NetworkConnectionNew(ClientSocket, &newClient);
+					NetImgui::Internal::Network::GetClientInfo(pClientSocket, newClient.mConnectHost, sizeof(newClient.mConnectHost), newClient.mConnectPort);
+					NetworkConnectionNew(pClientSocket, &newClient);
 				}
 				else
-					closesocket(ClientSocket);
+					NetImgui::Internal::Network::Disconnect(pClientSocket);
 			}
 		}
 		std::this_thread::yield();
@@ -318,14 +274,11 @@ void NetworkConnectRequest_Send()
 {		
 	uint64_t loopIndex(0);
 	ClientConfig clientConfig;
-	SOCKET ConnectSocket(INVALID_SOCKET);
+
 	while( !gbShutdown )
 	{						
-		addrinfo* pAdrResults(nullptr);
 		uint32_t clientConfigID(ClientConfig::kInvalidRuntimeID);
-		
-		if( ConnectSocket == INVALID_SOCKET ) 	
-			ConnectSocket = socket(AF_INET, SOCK_STREAM, 0);
+		NetImgui::Internal::Network::SocketInfo* pClientSocket = nullptr;
 
 		// Find next client configuration to attempt connection to
 		uint64_t configCount	= static_cast<uint64_t>(ClientConfig::GetConfigCount());
@@ -334,25 +287,14 @@ void NetworkConnectRequest_Send()
 		{
 			if( (clientConfig.ConnectAuto || clientConfig.ConnectRequest) && !clientConfig.Connected )
 			{
-				char zPortName[10];
-				sprintf_s(zPortName, "%i", clientConfig.HostPort);
-				getaddrinfo(clientConfig.HostName, zPortName, nullptr, &pAdrResults);
 				ClientConfig::SetProperty_ConnectRequest(clientConfig.RuntimeID, false);	// Reset the Connection request, we are processing it
-				clientConfigID = clientConfig.RuntimeID;									// Keep track of ClientConfig we are attempting to connect to				
+				clientConfigID = clientConfig.RuntimeID;									// Keep track of ClientConfig we are attempting to connect to
+				pClientSocket = NetImgui::Internal::Network::Connect(clientConfig.HostName, clientConfig.HostPort);
 			}
 		}			
 	
-		// Attempt to reach the Client, over all resolved addresses
-		bool bConnected(false);
-		addrinfo* pAdrResultCur(pAdrResults);
-		while( ConnectSocket != INVALID_SOCKET && pAdrResultCur && !bConnected )
-		{
-			bConnected		= connect(ConnectSocket, pAdrResultCur->ai_addr, static_cast<int>(pAdrResultCur->ai_addrlen)) == 0;
-			pAdrResultCur	= bConnected ? pAdrResultCur : pAdrResultCur->ai_next;
-		}
-
 		// Connection successful, find an available client slot
-		if( bConnected )
+		if( pClientSocket )
 		{			
 			uint32_t freeIndex = ClientRemote::GetFreeIndex();
 			if( freeIndex != ClientRemote::kInvalidClient )
@@ -364,15 +306,12 @@ void NetworkConnectRequest_Send()
 					newClient.mConnectPort		= clientConfig.HostPort;
 					newClient.mClientConfigID	= clientConfigID;					
 				}
-				getnameinfo(pAdrResultCur->ai_addr, static_cast<socklen_t>(pAdrResultCur->ai_addrlen), newClient.mConnectHost, sizeof(newClient.mConnectHost), nullptr, 0, 0);
-				NetworkConnectionNew(ConnectSocket, &newClient);
-				ConnectSocket = INVALID_SOCKET;
+				NetImgui::Internal::Network::GetClientInfo(pClientSocket, newClient.mConnectHost, sizeof(newClient.mConnectHost), newClient.mConnectPort);
+				NetworkConnectionNew(pClientSocket, &newClient);
 			}
 		}
-		freeaddrinfo(pAdrResults);
 		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 	}	
-	closesocket( ConnectSocket );
 }
 
 //=================================================================================================
@@ -383,7 +322,6 @@ bool Startup( )
 	// Relying on shared network implementation for Winsock Init
 	if( !NetImgui::Internal::Network::Startup() )
 	{
-		printf("Could not initialize network library : %d\n" , WSAGetLastError());		
 		return false;
 	}
 	

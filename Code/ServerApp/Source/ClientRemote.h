@@ -41,7 +41,7 @@ struct ClientRemote
 	uint32_t								mInfoImguiVerID			= 0;
 	uint32_t								mInfoNetImguiVerID		= 0;
 	char									mConnectHost[64]		= {0};	//!< Connected Hostname of this remote client
-	unsigned int							mConnectPort;					//!< Connected Port of this remote client
+	int										mConnectPort;					//!< Connected Port of this remote client
 	UINT_PTR								mMenuId;						//!< Application assigned 'MenuId' of menubar entry
 	NetImgui::Internal::CmdDrawFrame*		mpFrameDraw;					//!< Current valid DrawFrame
 	std::vector<dx::TextureHandle>			mvTextures;						//!< List of textures received and used by the client	
