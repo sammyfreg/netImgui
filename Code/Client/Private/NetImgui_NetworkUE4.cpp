@@ -104,18 +104,24 @@ void Disconnect(SocketInfo* pClientSocket)
 	netImguiDelete(pClientSocket);	
 }
 
+bool GetClientInfo(SocketInfo* pClientSocket, char* pOutHostname, size_t HostNameLen, int& outPort)
+{
+	// TODO
+	return false;
+}
+
 bool DataReceive(SocketInfo* pClientSocket, void* pDataIn, size_t Size)
 {
-	int32 sizeRcv(0) ;
+	int32 sizeRcv(0);
 	bool bResult = pClientSocket->mpSocket->Recv(reinterpret_cast<uint8*>(pDataIn), Size, sizeRcv, ESocketReceiveFlags::WaitAll);
-	return bResult && sizeRcv > 0;
+	return bResult && static_cast<int32>(Size) == sizeRcv;
 }
 
 bool DataSend(SocketInfo* pClientSocket, void* pDataOut, size_t Size)
 {
 	int32 sizeSent(0);
 	bool bResult = pClientSocket->mpSocket->Send(reinterpret_cast<uint8*>(pDataOut), Size, sizeSent);
-	return bResult && Size == sizeSent;
+	return bResult && static_cast<int32>(Size) == sizeSent;
 }
 
 }}} // namespace NetImgui::Internal::Network
@@ -123,6 +129,8 @@ bool DataSend(SocketInfo* pClientSocket, void* pDataOut, size_t Size)
 #else
 
 // Prevents Linker warning LNK4221 in Visual Studio (This object file does not define any previously undefined public symbols, so it will not be used by any link operation that consumes this library)
+extern int sSuppresstLNK4221_NetImgui_NetworkUE4; 
 int sSuppresstLNK4221_NetImgui_NetworkUE4(0);
+
 
 #endif // #if NETIMGUI_ENABLED && defined(__UNREAL__)
