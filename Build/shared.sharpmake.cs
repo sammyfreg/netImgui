@@ -138,7 +138,7 @@ namespace NetImgui
 			conf.Output				= mIsExe ? Project.Configuration.OutputType.Exe : Project.Configuration.OutputType.Lib;
 
 			if ( target.Compiler == Compiler.Clang )
-				conf.Options.Add(Options.Vc.General.PlatformToolset.LLVM);
+				conf.Options.Add(Options.Vc.General.PlatformToolset.ClangCL);
 
 			if (mIsExe)
 			{
