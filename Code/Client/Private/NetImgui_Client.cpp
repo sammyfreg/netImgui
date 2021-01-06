@@ -27,7 +27,7 @@ void SavedImguiContext::Save(ImGuiContext* copyFrom)
 	mBackendRendererName	= sourceIO.BackendRendererName;
 	mDrawMouse				= sourceIO.MouseDrawCursor;	
 	mClipboardUserData		= sourceIO.ClipboardUserData;
-#if IMGUI_VERSION_NUM >= 17700
+#if IMGUI_VERSION_NUM >= 17700 && IMGUI_VERSION_NUM < 17900
     mImeWindowHandle		= sourceIO.ImeWindowHandle;
 #endif
 }
@@ -46,7 +46,7 @@ void SavedImguiContext::Restore(ImGuiContext* copyTo)
 		destIO.BackendRendererName	= mBackendRendererName;
 		destIO.MouseDrawCursor		= mDrawMouse;
 		destIO.ClipboardUserData	= mClipboardUserData;
-	#if IMGUI_VERSION_NUM >= 17700
+	#if IMGUI_VERSION_NUM >= 17700 && IMGUI_VERSION_NUM < 17900
 		destIO.ImeWindowHandle		= mImeWindowHandle;
 	#endif
 		mpCopiedContext				= nullptr;
@@ -71,14 +71,14 @@ ClientInfo::ClientInfo()
 //=================================================================================================
 bool Communications_Initialize(ClientInfo& client)
 {
-	CmdVersion cmdVersionSend;
-	CmdVersion cmdVersionRcv;	
+	CmdVersion cmdVersionSend, cmdVersionRcv;
 	StringCopy(cmdVersionSend.mClientName, client.mName);
 	bool bResultSend	= Network::DataSend(client.mpSocketPending, &cmdVersionSend, cmdVersionSend.mHeader.mSize);
 	bool bResultRcv		= Network::DataReceive(client.mpSocketPending, &cmdVersionRcv, sizeof(cmdVersionRcv));
 	bool mbConnected	= bResultRcv && bResultSend && 
-						  cmdVersionRcv.mHeader.mType == CmdHeader::eCommands::Version && 
-						  cmdVersionRcv.mVersion == CmdVersion::eVersion::_Current;	
+						  cmdVersionRcv.mHeader.mType	== cmdVersionSend.mHeader.mType && 
+						  cmdVersionRcv.mVersion		== cmdVersionSend.mVersion &&
+						  cmdVersionRcv.mWCharSize		== cmdVersionSend.mWCharSize;	
 	if(mbConnected)
 	{				
 		for(auto& texture : client.mTextures)

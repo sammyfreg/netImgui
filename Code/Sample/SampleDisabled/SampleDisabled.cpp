@@ -7,7 +7,6 @@
 
 #include <NetImgui_Api.h>
 #include "..\Common\Sample.h"
-#include "..\Common\WarningDisable.h"
 
 namespace SampleClient
 {

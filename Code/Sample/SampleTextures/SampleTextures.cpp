@@ -7,7 +7,6 @@
 #include <NetImgui_Api.h>
 #include <array>
 #include "..\Common\Sample.h"
-#include "..\Common\WarningDisable.h"
 
 // Methods declared in main.cpp, extern declare to avoid having to include 'd3d11.h' here
 extern void TextureCreate(const uint8_t* pPixelData, uint32_t width, uint32_t height, void*& pTextureViewOut);

@@ -79,7 +79,7 @@ SocketInfo* ListenConnect(SocketInfo* ListenSocket)
 		SOCKET ClientSocket = accept(ListenSocket->mSocket, &ClientAddress, &Size) ;
 		if (ClientSocket != INVALID_SOCKET)
 		{
-		#if 0 // @Sammyfreg : No timeout useful when debugging, to keep connection alive while code breakpoint
+		#if 0 // @sammyfreg : No timeout useful when debugging, to keep connection alive while code breakpoint
 			static constexpr DWORD	kComsTimeoutMs	= 2000;
 			setsockopt(ClientSocket, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<const char*>(&kComsTimeoutMs), sizeof(kComsTimeoutMs));
 			setsockopt(ClientSocket, SOL_SOCKET, SO_SNDTIMEO, reinterpret_cast<const char*>(&kComsTimeoutMs), sizeof(kComsTimeoutMs));

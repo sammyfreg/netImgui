@@ -137,6 +137,8 @@ namespace NetImgui
 			conf.IntermediatePath	= NetImguiTarget.GetPath(@"\_intermediate\[target.DevEnv]_[target.Compiler]_[target.Platform]_[target.Optimization]\[project.Name]");
 			conf.Output				= mIsExe ? Project.Configuration.OutputType.Exe : Project.Configuration.OutputType.Lib;
 
+			conf.IncludePaths.Add(NetImguiTarget.GetPath(ProjectImgui.sDefaultPath) + @"\backends");
+			
 			if ( target.Compiler == Compiler.Clang )
 				conf.Options.Add(Options.Vc.General.PlatformToolset.ClangCL);
 
@@ -170,6 +172,7 @@ namespace NetImgui
 		{
 			Name = "DearImgui";
 			SourceRootPath = NetImguiTarget.GetPath(sDefaultPath);
+			SourceFilesExcludeRegex.Add(@"backends\.*");
 		}
 		public static string sDefaultPath = @"\Code\ThirdParty\DearImgui";
 	}
@@ -208,6 +211,11 @@ namespace NetImgui
             Name			= inName;
             SourceRootPath	= NetImguiTarget.GetPath(@"\Code\Sample\") + Name;
 			AdditionalSourceRootPaths.Add(NetImguiTarget.GetPath(@"\Code\Sample\Common"));
+			
+			SourceFiles.Add(NetImguiTarget.GetPath(ProjectImgui.sDefaultPath) + @"\backends\imgui_impl_dx11.h");
+			SourceFiles.Add(NetImguiTarget.GetPath(ProjectImgui.sDefaultPath) + @"\backends\imgui_impl_dx11.cpp");
+			SourceFiles.Add(NetImguiTarget.GetPath(ProjectImgui.sDefaultPath) + @"\backends\imgui_impl_win32.h");
+			SourceFiles.Add(NetImguiTarget.GetPath(ProjectImgui.sDefaultPath) + @"\backends\imgui_impl_win32.cpp");
         }
 
 		[Configure()]
