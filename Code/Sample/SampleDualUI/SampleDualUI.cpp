@@ -6,7 +6,6 @@
 //=================================================================================================
 
 #include <NetImgui_Api.h>
-#include "..\Common\WarningDisable.h"
 #include "..\Common\Sample.h"
 
 namespace SampleClient
@@ -153,7 +152,7 @@ ImDrawData* Client_Draw()
 	//---------------------------------------------------------------------------------------------
 	if( NetImgui::IsConnected() )
 	{ 
-		switch( skDisplayMode)
+		switch(skDisplayMode)
 		{
 		case eDisplayMode::LocalNone:			return nullptr;
 		case eDisplayMode::LocalMirror:			return NetImgui::GetDrawData();

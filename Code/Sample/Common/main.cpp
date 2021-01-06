@@ -1,11 +1,10 @@
 // File content from the ImGui standalone example application for DirectX 11
 
-#include "WarningDisable.h" // EDIT TO ORIGINAL IMGUI main.cpp (Add a few exceptions to compile in -Wall)
+#include "Sample.h" // EDIT TO ORIGINAL IMGUI main.cpp
 #include "imgui_impl_dx11.h"
 #include "imgui_impl_win32.h"
 #include <d3d11.h>
 #include <d3dcompiler.h>
-#include "Sample.h"
 
 // Data
 static ID3D11Device* g_pd3dDevice = NULL;

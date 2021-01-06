@@ -18,3 +18,5 @@ ImDrawData*		Client_Draw();
 void ClientUtil_ImGuiContent_Common(const char* zAppName, bool bCreateNewContext=false);
 
 }
+
+#include <Client/Private/NetImgui_WarningDisable.h> 

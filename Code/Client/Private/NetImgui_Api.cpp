@@ -166,7 +166,8 @@ bool NewFrame(bool bSupportFrameSkip)
 	// ImGui Newframe handled by remote connection settings	
 	if( NetImgui::IsConnected() )
 	{
-		client.mpContextRestore = ImGui::GetCurrentContext();
+		client.mpContextRestore		= ImGui::GetCurrentContext();
+		client.mSavedDisplaySize	= ImGui::GetIO().DisplaySize;
 		ImGui::SetCurrentContext(client.mpContext);		
 		
 		// Update input and see if remote netImgui expect a new frame
@@ -237,10 +238,12 @@ void EndFrame(void)
 			client.mPendingFrameOut.Assign(pNewDrawFrame);
 		}
 				
-		if (ImGui::GetCurrentContext() == client.mpContextClone)
-			ImGui::GetIO().DeltaTime= 0.f; // Reset the time passed. Gets incremented in NewFrame
+		if (ImGui::GetCurrentContext() == client.mpContextClone){
+			ImGui::GetIO().DeltaTime = 0.f; // Reset the time passed. Gets incremented in NewFrame
+		}
 
-		ImGui::SetCurrentContext(client.mpContextRestore);		
+		ImGui::SetCurrentContext(client.mpContextRestore);
+		ImGui::GetIO().DisplaySize = client.mSavedDisplaySize;
 	}
 	client.mpContextRestore			= nullptr;
 	client.mpContextDrawing			= nullptr;
@@ -492,10 +495,10 @@ void ContextInitialize(bool bCloneOriginalContext)
 	
 		newIO.BackendPlatformName			= "NetImgui";
 		newIO.BackendRendererName			= "DirectX11";
-	#if IMGUI_VERSION_NUM >= 17700
+	#if IMGUI_VERSION_NUM >= 17700 && IMGUI_VERSION_NUM < 17900 //SF
 		newIO.ImeWindowHandle				= nullptr;
 	#endif
-	#if defined(IMGUI_HAS_VIEWPORT) && IMGUI_HAS_VIEWPORT
+	#if defined(IMGUI_HAS_VIEWPORT)
 		// Viewport options (when ImGuiConfigFlags_ViewportsEnable is set)
 		newIO.ConfigFlags					&= ~(ImGuiConfigFlags_ViewportsEnable); // Viewport unsupported at the moment
 	#endif
@@ -533,7 +536,7 @@ void ContextClone(void)
 		memcpy(&newStyle, &sourceStyle, sizeof(newStyle));
 		//memcpy(newIO.KeyMap, sourceIO.KeyMap, sizeof(newIO.KeyMap));
 		memcpy(&newIO, &sourceIO, sizeof(newIO));		
-		newIO.InputQueueCharacters.Data		= 0;
+		newIO.InputQueueCharacters.Data		= nullptr;
 		newIO.InputQueueCharacters.Size		= 0;
 		newIO.InputQueueCharacters.Capacity = 0;
 	}
@@ -563,13 +566,13 @@ bool InputUpdateData(void)
 		io.KeyCtrl		= pCmdInput->IsKeyDown(CmdInput::eVirtualKeys::vkKeyboardCtrl);
 		io.KeyAlt		= pCmdInput->IsKeyDown(CmdInput::eVirtualKeys::vkKeyboardAlt);
 		io.KeySuper		= pCmdInput->IsKeyDown(CmdInput::eVirtualKeys::vkKeyboardSuper1) || pCmdInput->IsKeyDown(CmdInput::eVirtualKeys::vkKeyboardSuper2);
-		//io.NavInputs // @Sammyfreg TODO: Handle Gamepad
+		//io.NavInputs // @sammyfreg TODO: Handle Gamepad
 
 		memset(io.KeysDown, 0, sizeof(io.KeysDown));
 		for (uint32_t i(0); i < ArrayCount(pCmdInput->mKeysDownMask) * 64; ++i)
 			io.KeysDown[i] = (pCmdInput->mKeysDownMask[i / 64] & (uint64_t(1) << (i % 64))) != 0;
 
-		// @Sammyfreg TODO: Optimize this
+		// @sammyfreg TODO: Optimize this
 		io.ClearInputCharacters();
 		size_t keyCount(1);
 		uint16_t character;

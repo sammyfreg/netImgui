@@ -67,7 +67,7 @@ struct ClientInfo
 	ImGuiContext*						mpContextRestore			= nullptr;	// Context to restore to Imgui once drawing is done
 	ImGuiContext*						mpContextDrawing			= nullptr;	// Current context used for drawing (between a BeginFrame/EndFrame)
 	ImGuiContext*						mpContext					= nullptr;	// Context that the remote drawing should use (either the one active when connection request happened, or a clone)
-
+	ImVec2								mSavedDisplaySize			= {0, 0};	// Save original display size on 'NewFrame' and restore it on 'EndFrame' (making sure size is still valid after a disconnect)
 #if IMGUI_HAS_CALLBACK	
 	ImGuiContextHook					mImguiHookNewframe;
 	ImGuiContextHook					mImguiHookEndframe;
