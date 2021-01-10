@@ -44,6 +44,7 @@ namespace NetImgui
 			ResourceFiles.Add(NetImguiTarget.GetPath(@"\Code\ServerApp\netImguiApp.ico"));
 			ResourceFiles.Add(NetImguiTarget.GetPath(@"\Code\ServerApp\netImguiApp.rc"));
 			ResourceFiles.Add(NetImguiTarget.GetPath(@"\Code\ServerApp\Background.png"));
+			ResourceFiles.Add(NetImguiTarget.GetPath(@"\Code\ServerApp\Roboto-Medium.ttf"));
 		}
 
 		[Configure()]
@@ -57,6 +58,7 @@ namespace NetImgui
 			conf.IncludePaths.Add(NetImguiTarget.GetPath(ProjectImgui.sDefaultPath));
 			conf.IncludePaths.Add(NetImguiTarget.GetPath(@"\Code\Client"));
 			conf.EventPostBuild.Add(@"xcopy " + NetImguiTarget.GetPath(@"\Code\ServerApp\Background.png") + " " + conf.TargetPath + " /D /Y");
+			conf.EventPostBuild.Add(@"xcopy " + NetImguiTarget.GetPath(@"\Code\ServerApp\Roboto-Medium.ttf") + " " + conf.TargetPath + " /D /Y");
 		}
     }
 	

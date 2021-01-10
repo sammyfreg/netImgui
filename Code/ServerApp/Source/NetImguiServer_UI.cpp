@@ -18,18 +18,33 @@ namespace NetImguiServer { namespace UI
 
 constexpr uint32_t	kClientRemoteInvalid				= 0xFFFFFFFF;
 constexpr char		kNetImguiURL[]						= "https://github.com/sammyfreg/netImgui";
-
+const char*			kDataSizeUnits[]					= {"B", "KB", "MB", "GB"};
+static const ImVec4	kColorTitle							= ImVec4(0.7f,1.0f,0.7f,1.f);
+static const ImVec4	kColorContent						= ImVec4(0.7f,0.75f,0.7f,1.f);
 static ImGuiID		gMainDockID							= 0;
 static void*		gpHAL_BackgroundTexture				= nullptr;
 static ImVec2		gvBackgroundTextureSize				= ImVec2(0,0);
 static ImVec4		gBackgroundColor					= ImVec4(0,0,0,0);
 
 static uint32_t		gPopup_ConfirmDisconnect_ClientIdx	= kClientRemoteInvalid;
-static uint32_t		gPopup_ConfirmDelete_ConfigIdx		= ClientConfig::kInvalidRuntimeID;
+static uint32_t		gPopup_ConfirmDelete_ConfigIdx		= NetImguiServer::Config::Client::kInvalidRuntimeID;
 static bool			gPopup_AboutNetImgui_Show			= false;
 static bool			gPopup_ServerConfig_Show			= false;
-ClientConfig*		gPopup_ClientConfig_pConfig			= nullptr;
+static NetImguiServer::Config::Client*	gPopup_ClientConfig_pConfig	= nullptr;
 
+//=================================================================================================
+// Convert a memory size to a displayable value
+//=================================================================================================
+uint8_t ConvertDataAmount(uint64_t& dataSize)
+{
+	uint8_t outUnitIdx	= 0;
+	for(size_t i(0); i<IM_ARRAYSIZE(kDataSizeUnits); ++i)
+	{
+		outUnitIdx	+= dataSize >= 1024 * 100 ? 1 : 0;
+		dataSize	/= outUnitIdx > i ? 1024 : 1;
+	}
+	return outUnitIdx;
+}
 
 //=================================================================================================
 // Fill current window with our main background picture
@@ -54,23 +69,33 @@ void DrawBackground( ImVec4 Tint=ImVec4(1.f,1.f,1.f,1.f) )
 //=================================================================================================
 void ClientInfoTooltip(const RemoteClient::Client& Client)
 {
-	// Tooltip info on remove client
 	if (ImGui::IsItemHovered())
-	{
-		ClientConfig config;
+	{		
+		NetImguiServer::Config::Client config;
+		constexpr float width(60.f);
+		
 		auto elapsedTime	= std::chrono::steady_clock::now() - Client.mConnectedTime;
 		int tmSec			= static_cast<int>(std::chrono::duration_cast<std::chrono::seconds>(elapsedTime).count() % 60);
 		int tmMin			= static_cast<int>(std::chrono::duration_cast<std::chrono::minutes>(elapsedTime).count() % 60);
 		int tmHour			= static_cast<int>(std::chrono::duration_cast<std::chrono::hours>(elapsedTime).count());
-		bool validConfig	= ClientConfig::GetConfigByID(Client.mClientConfigID, config);
+		bool validConfig	= NetImguiServer::Config::Client::GetConfigByID(Client.mClientConfigID, config);
+		
+		uint64_t rxData(Client.mStatsDataRcvd[0]);
+		uint64_t txData(Client.mStatsDataSent[0]);
+		uint8_t txUnitIdx = ConvertDataAmount(txData);
+		uint8_t rxUnitIdx = ConvertDataAmount(rxData);
 
-		ImGui::SetTooltip("Name  : %s\nConfig: %s\nHost  : %s\nPort  : %i\nImGui : %s\nTime  : %03ih%02i:%02i", 
-			Client.mInfoName, 
-			validConfig ? config.mClientName : "None",
-			Client.mConnectHost, 
-			Client.mConnectPort, 
-			Client.mInfoImguiVerName, 
-			tmHour,tmMin,tmSec);
+		ImGui::BeginTooltip();
+		ImGui::TextUnformatted("Name");		ImGui::SameLine(width); ImGui::TextColored(kColorContent, ": %s", Client.mInfoName);
+		ImGui::TextUnformatted("Config");	ImGui::SameLine(width); ImGui::TextColored(kColorContent, ": %s", validConfig ? config.mClientName : "None");
+		ImGui::TextUnformatted("Host");		ImGui::SameLine(width); ImGui::TextColored(kColorContent, ": %s", Client.mConnectHost);
+		ImGui::TextUnformatted("Port");		ImGui::SameLine(width); ImGui::TextColored(kColorContent, ": %i", Client.mConnectPort);
+		ImGui::TextUnformatted("ImGui");	ImGui::SameLine(width); ImGui::TextColored(kColorContent, ": %s", Client.mInfoImguiVerName);
+		ImGui::TextUnformatted("Time");		ImGui::SameLine(width); ImGui::TextColored(kColorContent, ": %03ih%02i:%02i", tmHour,tmMin,tmSec );
+		ImGui::TextUnformatted("Fps");		ImGui::SameLine(width); ImGui::TextColored(kColorContent, ": %04.1f", Client.mStatsFPS );
+		ImGui::TextUnformatted("Data");		ImGui::SameLine(width); ImGui::TextColored(kColorContent, ": (Rx) %i KB/s   (Tx) %i KB/s", (Client.mStatsRcvdKBs/10)*10, (Client.mStatsSentKBs/10)*10);
+		ImGui::NewLine();					ImGui::SameLine(width); ImGui::TextColored(kColorContent, ": (Rx) %i %s   (Tx) %i %s", static_cast<int>(rxData), kDataSizeUnits[rxUnitIdx], static_cast<int>(txData), kDataSizeUnits[txUnitIdx]);
+		ImGui::EndTooltip();
 	}
 }
 
@@ -152,8 +177,8 @@ void Popup_AboutNetImgui()
 
 			ImGui::NewLine();
 			ImGui::TextUnformatted("Note: Commandline can be used to connect to a Client."); 
-			ImGui::TextColored(ImColor(0.6f,0.65f,0.6f,1.f), "Syntax : (HostName);(HostPort)");	
-			ImGui::TextColored(ImColor(0.6f,0.65f,0.6f,1.f), "Example: netImgui_Server.exe 127.0.0.1;8889");
+			ImGui::TextColored(kColorContent, "Syntax : (HostName);(HostPort)");	
+			ImGui::TextColored(kColorContent, "Example: netImgui_Server.exe 127.0.0.1;8889");
 			ImGui::NewLine();
 			ImGui::Separator();
 
@@ -171,12 +196,15 @@ void Popup_AboutNetImgui()
 //=================================================================================================
 void Popup_ServerConfig()
 {
-	static int sEditPort = -1;
+	static int sEditPort			= -1;
+	static float sEditRefreshRate	= 0;
+
 	if( gPopup_ServerConfig_Show )
 	{		
-		if( sEditPort == -1 )
-			sEditPort = static_cast<int>(ClientConfig::sServerPort);
-
+		if( sEditPort == -1 ){
+			sEditPort			= static_cast<int>(NetImguiServer::Config::Server::sPort);
+			sEditRefreshRate	= NetImguiServer::Config::Server::sRefreshRateDefault;
+		}
 		ImGuiWindowClass windowClass;
 		windowClass.ViewportFlagsOverrideSet = ImGuiViewportFlags_TopMost;
 		ImGui::SetNextWindowClass(&windowClass);
@@ -195,6 +223,12 @@ void Popup_ServerConfig()
 				sEditPort = NetImgui::kDefaultServerPort;
 			}
 
+			// --- Refresh ---	
+			ImGui::SliderFloat("Default Refresh", &sEditRefreshRate, 0.f, 1.f );
+			if( ImGui::IsItemHovered() ){
+				ImGui::SetTooltip("How often we refresh content of *visible* and *unfocused* clients.\nThis apply for client without a Config\nNote: Active clients are refreshed as soon as possible.\nNote: Lowering this will reduce network traffic.");
+			}
+
 			// --- Save/Cancel ---
 			ImGui::NewLine();
 			ImGui::Separator();
@@ -203,8 +237,9 @@ void Popup_ServerConfig()
 			ImGui::SetItemDefaultFocus();
 			ImGui::SameLine();
 			if (ImGui::Button("Save", ImVec2(ImGui::GetContentRegionAvailWidth(), 0))) {
-				ClientConfig::sServerPort = static_cast<uint32_t>(sEditPort);
-				ClientConfig::SaveAll();
+				NetImguiServer::Config::Server::sPort					= static_cast<uint32_t>(sEditPort);
+				NetImguiServer::Config::Server::sRefreshRateDefault	= sEditRefreshRate;
+				NetImguiServer::Config::Client::SaveAll();
 				gPopup_ServerConfig_Show = false;
 			}
 			ImGui::EndPopup();
@@ -253,9 +288,15 @@ void Popup_ClientConfigEdit()
 				gPopup_ClientConfig_pConfig->mHostPort = NetImgui::kDefaultClientPort;
 			}
 
+			// --- Refresh ---	
+			ImGui::SliderFloat("Refresh", &gPopup_ClientConfig_pConfig->mRefreshRate, 0.f, 1.f );
+			if( ImGui::IsItemHovered() ){
+				ImGui::SetTooltip("How often we refresh content of *visible* and *unfocused* clients.\nNote: Active clients are refreshed as soon as possible.\nNote: Lowering this will reduce network traffic.");
+			}
+
 			// --- Auto ---
 			ImGui::Checkbox("Auto Connect", &gPopup_ClientConfig_pConfig->mConnectAuto);
-			
+
 			// --- Save/Cancel ---
 			ImGui::NewLine();
 			ImGui::Separator();
@@ -263,8 +304,8 @@ void Popup_ClientConfigEdit()
 			ImGui::SetItemDefaultFocus();
 			ImGui::SameLine();
 			if (ImGui::Button("Save", ImVec2(ImGui::GetContentRegionAvailWidth(), 0))){
-				ClientConfig::SetConfig(*gPopup_ClientConfig_pConfig);
-				ClientConfig::SaveAll();
+				NetImguiServer::Config::Client::SetConfig(*gPopup_ClientConfig_pConfig);
+				NetImguiServer::Config::Client::SaveAll();
 				bOpenEdit = false;
 			}
 			ImGui::EndPopup();
@@ -285,8 +326,8 @@ void Popup_ClientConfigEdit()
 //=================================================================================================
 void Popup_ClientConfigDelete()
 {
-	ClientConfig config;
-	bool bOpenDelConfirm(ClientConfig::GetConfigByID(gPopup_ConfirmDelete_ConfigIdx, config));
+	NetImguiServer::Config::Client config;
+	bool bOpenDelConfirm(NetImguiServer::Config::Client::GetConfigByID(gPopup_ConfirmDelete_ConfigIdx, config));
 	if( bOpenDelConfirm )
 	{
 		ImGuiWindowClass windowClass;
@@ -311,8 +352,8 @@ void Popup_ClientConfigDelete()
 
 			ImGui::SameLine();
 			if (ImGui::Button("Yes", ImVec2(ImGui::GetContentRegionAvailWidth(), 0))){
-				ClientConfig::DelConfig(gPopup_ConfirmDelete_ConfigIdx);
-				ClientConfig::SaveAll();
+				NetImguiServer::Config::Client::DelConfig(gPopup_ConfirmDelete_ConfigIdx);
+				NetImguiServer::Config::Client::SaveAll();
 				bOpenDelConfirm = false;
 			}
 			ImGui::EndPopup();
@@ -321,7 +362,7 @@ void Popup_ClientConfigDelete()
 		bool wantExit	= ImGui::IsKeyPressed(static_cast<int>(NetImgui::Internal::CmdInput::eVirtualKeys::vkKeyboardEscape), false);
 		bOpenDelConfirm &= !wantExit;
 		if( !bOpenDelConfirm ){
-			gPopup_ConfirmDelete_ConfigIdx = ClientConfig::kInvalidRuntimeID;
+			gPopup_ConfirmDelete_ConfigIdx = NetImguiServer::Config::Client::kInvalidRuntimeID;
 		}
 	}
 }
@@ -372,33 +413,34 @@ void DrawImguiContent_Clients()
 	ImGui::PushStyleColor(ImGuiCol_WindowBg, gBackgroundColor);	// When remote client window is floating
 	ImGui::PushStyleColor(ImGuiCol_ChildBg, gBackgroundColor);	// When Remote client window is docked
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 4.0f);
-
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);	
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.f, 0.f));
+	
 	//---------------------------------------------------------------------------------------------	
 	// Display each connected client window
 	//---------------------------------------------------------------------------------------------
+	bool hasConnection(false);
 	for(uint32_t i(0); i<RemoteClient::Client::GetCountMax(); ++i)
 	{
 		RemoteClient::Client& client = RemoteClient::Client::Get(i);
-		client.mbIsActive = false;
 		if( client.mbIsConnected )
 		{			
-			ImGui::PushID(i);
-			bool bOpened(true);
+			ImGui::PushID(i);			
 			ImGui::SetNextWindowBgAlpha(1.0);
-			ImGui::SetNextWindowDockID(gMainDockID, ImGuiCond_FirstUseEver);
-			ImGui::Begin(client.mWindowID, &bOpened, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
-			{				
-				ClientInfoTooltip(client);
-
+			ImGui::SetNextWindowDockID(gMainDockID, ImGuiCond_Once);
+			bool bOpened(true);
+			hasConnection = true;
+			client.mbIsVisible = ImGui::Begin(client.mWindowID, &bOpened, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+			ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.f, 8.f));
+			ClientInfoTooltip(client);
+			ImGui::PopStyleVar(1);
+			if( client.mbIsVisible )
+			{
 				// Capture input to forward to remote client, and update drawing area size
 				ImVec2 areaSize		= ImGui::GetContentRegionAvail();
-				client.mbIsActive	= ImGui::IsWindowFocused();
 				client.mAreaSizeX	= static_cast<uint16_t>(std::max<float>(8.f,areaSize.x)); //Prevents issue with render target of size 0
 				client.mAreaSizeY	= static_cast<uint16_t>(std::max<float>(8.f,areaSize.y));
-				if( client.mbIsActive )
-				{
-					client.CaptureImguiInput();
-				}
+				client.CaptureImguiInput();
 
 				// Display remote client drawing results
 				if (client.mpHAL_AreaTexture && areaSize.x > 0 && areaSize.y > 0) 
@@ -406,8 +448,7 @@ void DrawImguiContent_Clients()
 					// Add fake button to discard mouse input (prevent window moving when draging inside client area)
 					ImVec2 savedPos			= ImGui::GetCursorPos();
 					const ImVec4 tint_col	= ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
-					const ImVec4 border_col = ImVec4(1.0f, 1.0f, 1.0f, 0.5f);
-					
+					const ImVec4 border_col = ImVec4(1.0f, 1.0f, 1.0f, 0.0f);					
 					ImGui::InvisibleButton("canvas", areaSize, ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight | ImGuiButtonFlags_MouseButtonMiddle);
 					ImGui::SetCursorPos(savedPos);
 
@@ -420,7 +461,6 @@ void DrawImguiContent_Clients()
 				}
 			}
 			ImGui::End();
-        
 			if(!bOpened && !client.mbPendingDisconnect )
 			{
 				gPopup_ConfirmDisconnect_ClientIdx = i;
@@ -428,15 +468,48 @@ void DrawImguiContent_Clients()
 			ImGui::PopID();			
 		}
 	}
+	
+	//---------------------------------------------------------------------------------------------
+	// Display some instruction when no connection detected
+	//---------------------------------------------------------------------------------------------
+	if (!hasConnection)
+	{
+		ImGui::SetNextWindowBgAlpha(1.0);
+		ImGui::SetNextWindowDockID(gMainDockID, ImGuiCond_Always);
+		if (ImGui::Begin("Information", nullptr, 0))
+		{
+			DrawBackground(ImVec4(1.f, 1.f, 1.f, 0.15f));
 
-	ImGui::PopStyleVar();
+			ImGui::TextColored(kColorTitle, "%s", "Purpose:");
+			ImGui::PushStyleColor(ImGuiCol_Text, kColorContent);
+			ImGui::TextWrapped("This 'NetImgui Server' application allows connection to clients running with the 'NetImGui Library.");
+			ImGui::PopStyleColor();
+			ImGui::NewLine();
+
+			ImGui::TextColored(kColorTitle, "%s", "Instructions:");
+			ImGui::PushStyleColor(ImGuiCol_Text, kColorContent);
+			ImGui::TextWrapped("There are 2 ways of establishing a connection between this Server and a Client.");
+			ImGui::TextWrapped(" (A) The client can connect directly to this server, using 'NetImgui::ConnectToApp(...)' on port %i", NetImguiServer::Config::Server::sPort);
+			ImGui::TextWrapped(" (B) The client can wait for a Server connection using 'NetImgui::ConnectFrom(...)' and adding the Client configuration on the Server.");
+			ImGui::PopStyleColor();
+			ImGui::NewLine();
+
+			ImGui::TextColored(kColorTitle, "%s", "Note:");
+			ImGui::PushStyleColor(ImGuiCol_Text, kColorContent);
+			ImGui::TextWrapped("'Multiple clients can be connected to this server. Each client window can be undocked and moved around independently.");
+			ImGui::PopStyleColor();			
+		}
+		ImGui::End();
+	}
+
+	ImGui::PopStyleVar(3);
 	ImGui::PopStyleColor(2);
 }
 
 //=================================================================================================
 // Main Menu client table entry detail (1 line in clients table)
 //=================================================================================================
-void DrawImguiContent_MainMenu_Clients_Entry(RemoteClient::Client* pClient, ClientConfig* pClientConfig)
+void DrawImguiContent_MainMenu_Clients_Entry(RemoteClient::Client* pClient, NetImguiServer::Config::Client* pClientConfig)
 {
 	const bool hasValidConfig = pClientConfig && !pClientConfig->mTransient;
 
@@ -469,8 +542,8 @@ void DrawImguiContent_MainMenu_Clients_Entry(RemoteClient::Client* pClient, Clie
 	
 	// Config: AutoConnect
 	if( hasValidConfig && ImGui::Checkbox("##auto", &pClientConfig->mConnectAuto)) {
-		ClientConfig::SetProperty_ConnectAuto(pClientConfig->mRuntimeID, pClientConfig->mConnectAuto);
-		ClientConfig::SaveAll();
+		NetImguiServer::Config::Client::SetProperty_ConnectAuto(pClientConfig->mRuntimeID, pClientConfig->mConnectAuto);
+		NetImguiServer::Config::Client::SaveAll();
 	}
 	if( ImGui::IsItemHovered() ){
 		ImGui::SetTooltip("Toggle auto connection attempt on this client");
@@ -486,7 +559,7 @@ void DrawImguiContent_MainMenu_Clients_Entry(RemoteClient::Client* pClient, Clie
 		ImGui::SameLine(); 
 		if ( ImGui::Button("...") && !gPopup_ClientConfig_pConfig ) // Only 1 config edit at a time, preventing mem leak
 		{
-			gPopup_ClientConfig_pConfig	= NetImgui::Internal::netImguiNew<ClientConfig>(*pClientConfig);
+			gPopup_ClientConfig_pConfig	= NetImgui::Internal::netImguiNew<NetImguiServer::Config::Client>(*pClientConfig);
 		}		
 	}
 	ImGui::TableNextColumn();
@@ -502,7 +575,7 @@ void DrawImguiContent_MainMenu_Clients_Entry(RemoteClient::Client* pClient, Clie
 			ImGui::TextUnformatted("(Request)");
 		}
 		else if (!pClientConfig->mConnected && !pClientConfig->mConnectRequest && ImGui::Button("Connect", ImVec2(80,0 )) ){
-			ClientConfig::SetProperty_ConnectRequest(pClientConfig->mRuntimeID, true);
+			NetImguiServer::Config::Client::SetProperty_ConnectRequest(pClientConfig->mRuntimeID, true);
 		}
 	}
 }
@@ -516,13 +589,14 @@ void DrawImguiContent_MainMenu_Clients()
 	int connectedClient(0);
 	constexpr ImGuiTableFlags flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable | ImGuiTableFlags_Hideable;
 	ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4,4));
+	ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, ImVec2(4.f, 4.f));
 	if (ImGui::BeginTable("##TableClient", 5, flags))
 	{
 		ImGui::TableSetupColumn("Name",				ImGuiTableColumnFlags_WidthStretch);
 		ImGui::TableSetupColumn("HostName (IP)",	ImGuiTableColumnFlags_WidthStretch);
-		ImGui::TableSetupColumn("Auto",				ImGuiTableColumnFlags_WidthAutoResize);
-		ImGui::TableSetupColumn("###Config",		ImGuiTableColumnFlags_WidthAutoResize|ImGuiTableColumnFlags_NoResize|ImGuiTableColumnFlags_NoReorder);
-		ImGui::TableSetupColumn("###Connection",	ImGuiTableColumnFlags_WidthAutoResize|ImGuiTableColumnFlags_NoResize|ImGuiTableColumnFlags_NoReorder);
+		ImGui::TableSetupColumn("Auto",				ImGuiTableColumnFlags_WidthAuto);
+		ImGui::TableSetupColumn("###Config",		ImGuiTableColumnFlags_WidthAuto|ImGuiTableColumnFlags_NoResize|ImGuiTableColumnFlags_NoReorder);
+		ImGui::TableSetupColumn("###Connection",	ImGuiTableColumnFlags_WidthAuto|ImGuiTableColumnFlags_NoResize|ImGuiTableColumnFlags_NoReorder);
 		ImGui::TableHeadersRow();
 
 		// First, display all connected clients without a config
@@ -530,7 +604,7 @@ void DrawImguiContent_MainMenu_Clients()
 		for (uint32_t i(0); i < RemoteClient::Client::GetCountMax(); ++i)
 		{
 			RemoteClient::Client& client = RemoteClient::Client::Get(i);
-			if( client.mbIsConnected && client.mClientConfigID == ClientConfig::kInvalidRuntimeID ){
+			if( client.mbIsConnected && client.mClientConfigID == NetImguiServer::Config::Client::kInvalidRuntimeID ){
 				ImGui::PushID(i);
 				DrawImguiContent_MainMenu_Clients_Entry(&client, nullptr);
 				ImGui::PopID();
@@ -540,12 +614,12 @@ void DrawImguiContent_MainMenu_Clients()
 		ImGui::PopID();
 
 		// Next, display all connected clients with a config
-		ClientConfig clientConfig;
+		NetImguiServer::Config::Client clientConfig;
 		ImGui::PushID("ConfigConnected");
 		for (uint32_t i(0); i < RemoteClient::Client::GetCountMax(); ++i)
 		{
 			RemoteClient::Client& client = RemoteClient::Client::Get(i);
-			if( client.mbIsConnected && ClientConfig::GetConfigByID(client.mClientConfigID, clientConfig) ){
+			if( client.mbIsConnected && NetImguiServer::Config::Client::GetConfigByID(client.mClientConfigID, clientConfig) ){
 				ImGui::PushID(i);
 				DrawImguiContent_MainMenu_Clients_Entry(&client, &clientConfig);
 				ImGui::PopID();
@@ -556,7 +630,7 @@ void DrawImguiContent_MainMenu_Clients()
 
 		// Finally, display unconnected client configs
 		ImGui::PushID("ConfigUnconnected");
-		for (int i = 0; ClientConfig::GetConfigByIndex(i, clientConfig); ++i)
+		for (int i = 0; NetImguiServer::Config::Client::GetConfigByIndex(i, clientConfig); ++i)
 		{
 			if( !clientConfig.mConnected ){
 				ImGui::PushID(i);
@@ -575,26 +649,26 @@ void DrawImguiContent_MainMenu_Clients()
 			ImGui::PopStyleColor();	
 			ImGui::SameLine();
 			if( NetImguiServer::Network::IsWaitingForConnection() ){
-				ImGui::Text("Waiting for clients on port: %i", static_cast<int>(ClientConfig::sServerPort));
+				ImGui::Text("Waiting for clients on port: %i", static_cast<int>(NetImguiServer::Config::Server::sPort));
 			}
 			else{
-				ImGui::Text("Unable to accept clients on port: %i", static_cast<int>(ClientConfig::sServerPort));
+				ImGui::Text("Unable to accept clients on port: %i", static_cast<int>(NetImguiServer::Config::Server::sPort));
 			}
 		}
 		ImGui::EndTable();
 	}
-	ImGui::PopStyleVar(1);
+	ImGui::PopStyleVar(2);
 
 	// Button to create new client configs
 	{
 		ImGui::NewLine();
 		if( ImGui::Button("Add Client Config") && !gPopup_ClientConfig_pConfig ) 
 		{ 
-			gPopup_ClientConfig_pConfig = NetImgui::Internal::netImguiNew<ClientConfig>(); 
+			gPopup_ClientConfig_pConfig = NetImgui::Internal::netImguiNew<NetImguiServer::Config::Client>(); 
 		}
 		if( ImGui::IsItemHovered() ){
 			ImGui::SetTooltip(	"Clients configurations let this 'NetImgui Server' attempt connection to waiting clients (Server -> Client).\n"\
-								"Clients without configuration can also connect directly to this server on port : %i (Server <- Client).", static_cast<int>(ClientConfig::sServerPort));
+								"Clients without configuration can also connect directly to this server on port : %i (Server <- Client).", static_cast<int>(NetImguiServer::Config::Server::sPort));
 		}
 
 				
@@ -604,8 +678,41 @@ void DrawImguiContent_MainMenu_Clients()
 		{
 			ImGui::SetTooltip(	"Make sure your remote client either:"\
 								"\n -Attempts connection to this server on port (%i)"\
-								"\n -Waits connection from the server (after being added to client configs list)", ClientConfig::sServerPort);
+								"\n -Waits connection from the server (after being added to client configs list)", NetImguiServer::Config::Server::sPort);
 		}		
+	}
+}
+
+//=================================================================================================
+// Display some relevenant stats in the MainMenu bar
+//=================================================================================================
+void DrawImguiContent_MainMenu_Stats()
+{	
+	constexpr float width(100.f);
+	uint32_t txKBs(0), rxKBs(0), connected(0);	
+	for(uint32_t i(0); i<RemoteClient::Client::GetCountMax(); ++i)
+	{
+		RemoteClient::Client& client = RemoteClient::Client::Get(i);
+		txKBs		+= client.mbIsConnected ? client.mStatsSentKBs : 0;
+		rxKBs		+= client.mbIsConnected ? client.mStatsRcvdKBs : 0;
+		connected	+= client.mbIsConnected ? 1 : 0;
+	}
+
+	ImGui::SameLine(0.f, ImGui::GetContentRegionAvailWidth()-200.f);
+	ImGui::TextColored(kColorContent, "(Rx) %iKB/s   (Tx) %iKB/s", (rxKBs/10)*10, (txKBs/10)*10); // Round down number to 10s, reducing variation
+	if (ImGui::IsItemHovered())
+	{
+		uint64_t txData(NetImguiServer::Network::GetStatsDataSent());
+		uint64_t rxData(NetImguiServer::Network::GetStatsDataRcvd());		
+		uint8_t txUnitIdx = ConvertDataAmount(txData);
+		uint8_t rxUnitIdx = ConvertDataAmount(rxData);	
+		ImGui::BeginTooltip();
+		{
+			ImGui::TextUnformatted("Connections");		ImGui::SameLine(width); ImGui::TextColored(kColorContent, ": %i", connected);
+			ImGui::TextUnformatted("Data Received");	ImGui::SameLine(width); ImGui::TextColored(kColorContent, ": %i %s", static_cast<int>(rxData), kDataSizeUnits[rxUnitIdx]);
+			ImGui::TextUnformatted("Data Sent");		ImGui::SameLine(width); ImGui::TextColored(kColorContent, ": %i %s", static_cast<int>(txData), kDataSizeUnits[txUnitIdx]);			
+		}
+		ImGui::EndTooltip();
 	}
 }
 
@@ -613,17 +720,19 @@ void DrawImguiContent_MainMenu_Clients()
 // Generate the entries for the main menubar
 //=================================================================================================
 void DrawImguiContent_MainMenu()
-{
+{	
 	if( ImGui::BeginMainMenuBar() )
-	{
+	{		
 		ImGui::SetNextWindowSize(ImVec2(ImGui::GetContentRegionAvailWidth(),0)); // Will let Menu popup content fill the screen width
 		if (ImGui::BeginMenu("Clients"))
 		{
 			DrawImguiContent_MainMenu_Clients();
 			ImGui::EndMenu();
 		}
+		
 		gPopup_ServerConfig_Show	^= ImGui::MenuItem("Settings");
 		gPopup_AboutNetImgui_Show	^= ImGui::MenuItem("About");
+		DrawImguiContent_MainMenu_Stats();
 		ImGui::EndMainMenuBar();
 	}
 }
@@ -644,7 +753,8 @@ ImVec4 DrawImguiContent()
 	DrawImguiContent_MainMenu();
 	DrawImguiContent_SetupDocking(viewportTint);
 	DrawImguiContent_Clients();	
-	
+	//ImGui::ShowDemoWindow();
+
 	return ImVec4(gBackgroundColor.x*viewportTint.x, gBackgroundColor.y*viewportTint.y, gBackgroundColor.z*viewportTint.z, 1.f);
 }
 
@@ -666,8 +776,11 @@ bool Startup()
 		gBackgroundColor.y	= static_cast<float>(pBGPixels[1]) / 255.f;
 		gBackgroundColor.z	= static_cast<float>(pBGPixels[2]) / 255.f;
 		gBackgroundColor.w	= 1.f;
-		delete[] pBGPixels;
+		stbi_image_free(pBGPixels);
 	}
+
+	ImGui::GetStyle().WindowMenuButtonPosition = ImGuiDir_Right;
+	ImGui::GetStyle().TabBorderSize = 1.f;
 	return true;
 }
 
