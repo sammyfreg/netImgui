@@ -2,22 +2,28 @@
 #include <mutex>
 #include <fstream>
 #include "NetImguiServer_Config.h"
+#include "NetImguiServer_RemoteClient.h"
 #include <ThirdParty/nlohmann_json/json.hpp>
 
-static ImVector<ClientConfig*>	gConfigList;
-static std::mutex				gConfigLock;
-static ClientConfig::RuntimeID	gRuntimeID = static_cast<ClientConfig::RuntimeID>(1);
+namespace NetImguiServer { namespace Config
+{
 
-static constexpr uint32_t kConfigValue_Version			= 1;	//!< Configuration saved file version
-static constexpr const char* kConfigFile				= "netImgui.cfg";
-static constexpr const char* kConfigField_ServerPort	= "ServerPort";
-static constexpr const char* kConfigField_Note			= "Note";
-static constexpr const char* kConfigField_Version		= "Version";
-static constexpr const char* kConfigField_Configs		= "Configs";
-static constexpr const char* kConfigField_Name			= "Name";
-static constexpr const char* kConfigField_Hostname		= "Hostname";
-static constexpr const char* kConfigField_Hostport		= "HostPort";
-static constexpr const char* kConfigField_AutoConnect	= "Auto";
+static ImVector<Client*>	gConfigList;
+static std::mutex			gConfigLock;
+static Client::RuntimeID	gRuntimeID = static_cast<Client::RuntimeID>(1);
+
+static constexpr char kConfigFile[]						= "netImgui.cfg";
+static constexpr char kConfigField_ServerPort[]			= "ServerPort";
+static constexpr char kConfigField_ServerRefreshRate[]	= "ServerRefreshRateDefault";
+
+static constexpr char kConfigField_Note[]				= "Note";
+static constexpr char kConfigField_Version[]			= "Version";
+static constexpr char kConfigField_Configs[]			= "Configs";
+static constexpr char kConfigField_Name[]				= "Name";
+static constexpr char kConfigField_Hostname[]			= "Hostname";
+static constexpr char kConfigField_Hostport[]			= "HostPort";
+static constexpr char kConfigField_AutoConnect[]		= "Auto";
+static constexpr char kConfigField_RefreshRate[]		= "RefreshRate";
 
 //=================================================================================================
 // Find entry index with same configId. (-1 if not found)
@@ -26,7 +32,7 @@ static constexpr const char* kConfigField_AutoConnect	= "Auto";
 static int FindClientIndex(uint32_t configID)
 //=================================================================================================
 {
-	if (configID != ClientConfig::kInvalidRuntimeID)
+	if (configID != Client::kInvalidRuntimeID)
 	{
 		for (int i(0); i < gConfigList.size(); ++i)
 		{
@@ -37,16 +43,18 @@ static int FindClientIndex(uint32_t configID)
 	return -1;
 }
 
-uint32_t ClientConfig::sServerPort = NetImgui::kDefaultServerPort;
+uint32_t Server::sPort				= NetImgui::kDefaultServerPort;
+float Server::sRefreshRateDefault	= 0.5f;
 
 //=================================================================================================
-ClientConfig::ClientConfig()
+Client::Client()
 //=================================================================================================
 : mHostPort(NetImgui::kDefaultClientPort)
 , mRuntimeID(kInvalidRuntimeID)
 , mConnectAuto(false)
 , mConnectRequest(false)
 , mConnected(false)
+, mRefreshRate(Server::sRefreshRateDefault)
 , mTransient(false)
 {
 	strcpy_s(mClientName, "New Client");
@@ -54,14 +62,14 @@ ClientConfig::ClientConfig()
 }
 
 //=================================================================================================
- ClientConfig::ClientConfig(const ClientConfig& Copy)
+ Client::Client(const Client& Copy)
 //=================================================================================================
 {
 	memcpy(this, &Copy, sizeof(*this));
 }
 
 //=================================================================================================
-void ClientConfig::SetConfig(const ClientConfig& config)
+void Client::SetConfig(const Client& config)
 //=================================================================================================
 {
 	std::lock_guard<std::mutex> guard(gConfigLock);	
@@ -71,7 +79,7 @@ void ClientConfig::SetConfig(const ClientConfig& config)
 	{
 		if( gConfigList[i] && gConfigList[i]->mTransient )
 		{
-			delete gConfigList[i];
+			NetImgui::Internal::netImguiDelete(gConfigList[i]);
 			gConfigList.erase(&gConfigList[i]);
 		}	
 	}
@@ -81,29 +89,29 @@ void ClientConfig::SetConfig(const ClientConfig& config)
 	if( index == -1 )
 	{
 		index = gConfigList.size();
-		gConfigList.push_back(new ClientConfig());
+		gConfigList.push_back( NetImgui::Internal::netImguiNew<NetImguiServer::Config::Client>());
 	}
 
 	// Update the entry	
 	*gConfigList[index] = config;
-	gConfigList.back()->mRuntimeID = (config.mRuntimeID == kInvalidRuntimeID ? gRuntimeID++ : config.mRuntimeID);
+	gConfigList[index]->mRuntimeID = (config.mRuntimeID == kInvalidRuntimeID ? gRuntimeID++ : config.mRuntimeID);
 }
 
 //=================================================================================================
-void ClientConfig::DelConfig(uint32_t configID)
+void Client::DelConfig(uint32_t configID)
 //=================================================================================================
 {
 	std::lock_guard<std::mutex> guard(gConfigLock);
 	int index = FindClientIndex(configID);
 	if( index != -1 )
 	{
-		delete gConfigList[index];
+		NetImgui::Internal::netImguiDelete(gConfigList[index]);
 		gConfigList.erase(&gConfigList[index]);
 	}
 }
 
 //=================================================================================================
-bool ClientConfig::GetConfigByID(uint32_t configID, ClientConfig& config)
+bool Client::GetConfigByID(uint32_t configID, Client& config)
 //=================================================================================================
 {
 	std::lock_guard<std::mutex> guard(gConfigLock);
@@ -121,7 +129,7 @@ bool ClientConfig::GetConfigByID(uint32_t configID, ClientConfig& config)
 // While no crash will occurs, it is possible for a config  to change position between 2 calls.
 // 
 // Only use if there's no problem iterating over the same item 2x, or miss it entirely
-bool ClientConfig::GetConfigByIndex(uint32_t index, ClientConfig& config)
+bool Client::GetConfigByIndex(uint32_t index, Client& config)
 //=================================================================================================
 {
 	std::lock_guard<std::mutex> guard(gConfigLock);
@@ -134,7 +142,7 @@ bool ClientConfig::GetConfigByIndex(uint32_t index, ClientConfig& config)
 }
 
 //=================================================================================================
-uint32_t ClientConfig::GetConfigCount()
+uint32_t Client::GetConfigCount()
 //=================================================================================================
 {
 	std::lock_guard<std::mutex> guard(gConfigLock);
@@ -142,7 +150,7 @@ uint32_t ClientConfig::GetConfigCount()
 }
 
 //=================================================================================================
-void ClientConfig::SetProperty_Connected(uint32_t configID, bool value)
+void Client::SetProperty_Connected(uint32_t configID, bool value)
 //=================================================================================================
 {
 	std::lock_guard<std::mutex> guard(gConfigLock);
@@ -152,7 +160,7 @@ void ClientConfig::SetProperty_Connected(uint32_t configID, bool value)
 }
 
 //=================================================================================================
-void ClientConfig::SetProperty_ConnectAuto(uint32_t configID, bool value)
+void Client::SetProperty_ConnectAuto(uint32_t configID, bool value)
 //=================================================================================================
 {
 	int index = FindClientIndex(configID);
@@ -161,7 +169,7 @@ void ClientConfig::SetProperty_ConnectAuto(uint32_t configID, bool value)
 }
 
 //=================================================================================================
-void ClientConfig::SetProperty_ConnectRequest(uint32_t configID, bool value)
+void Client::SetProperty_ConnectRequest(uint32_t configID, bool value)
 //=================================================================================================
 {
 	int index = FindClientIndex(configID);
@@ -170,7 +178,7 @@ void ClientConfig::SetProperty_ConnectRequest(uint32_t configID, bool value)
 }
 
 //=================================================================================================
-void ClientConfig::SaveAll()
+void Client::SaveAll()
 //=================================================================================================
 {
 	std::lock_guard<std::mutex> guard(gConfigLock);
@@ -178,7 +186,7 @@ void ClientConfig::SaveAll()
 	
 	for (int i(0); i<gConfigList.size(); ++i)
 	{		
-		ClientConfig* pConfig					= gConfigList[i];
+		Client* pConfig	= gConfigList[i];
 		if( pConfig && !pConfig->mTransient )
 		{
 			auto& config						= configRoot[kConfigField_Configs][i] = nullptr;
@@ -186,11 +194,13 @@ void ClientConfig::SaveAll()
 			config[kConfigField_Hostname]		= pConfig->mHostName;
 			config[kConfigField_Hostport]		= pConfig->mHostPort;
 			config[kConfigField_AutoConnect]	= pConfig->mConnectAuto;
+			config[kConfigField_RefreshRate]	= pConfig->mRefreshRate;
 		}
 	}
-	configRoot[kConfigField_Version]			= kConfigValue_Version;
+	configRoot[kConfigField_Version]			= eVersion::_Latest;
 	configRoot[kConfigField_Note]				= "netImgui Server's list of Clients (Using JSON format).";
-	configRoot[kConfigField_ServerPort]			= sServerPort;
+	configRoot[kConfigField_ServerPort]			= Server::sPort;
+	configRoot[kConfigField_ServerRefreshRate]	= Server::sRefreshRateDefault;
 	
 	std::ofstream outputFile(kConfigFile);
 	if( outputFile.is_open() )
@@ -201,7 +211,16 @@ void ClientConfig::SaveAll()
 }
 
 //=================================================================================================
-void ClientConfig::LoadAll()
+template <typename TType>
+TType GetPropertyValue(const nlohmann::json& config, const char* zPropertyName, const TType& valueDefault)
+//=================================================================================================
+{
+	const auto& valueNode = config.find(zPropertyName);
+	return valueNode != config.end() ? valueNode->get<TType>() : valueDefault;
+}
+
+//=================================================================================================
+void Client::LoadAll()
 //=================================================================================================
 {
 	Clear();
@@ -212,18 +231,20 @@ void ClientConfig::LoadAll()
 	if( !inputFile.is_open() )
 		return;
 
-	inputFile >> configRoot;	
-	uint32_t configVersion	= configRoot.find(kConfigField_Version) != configRoot.end() ? configRoot[kConfigField_Version].get<uint32_t>() : 0u;
-	sServerPort				= configRoot.find(kConfigField_ServerPort) != configRoot.end() ? configRoot[kConfigField_ServerPort].get<uint32_t>() : NetImgui::kDefaultServerPort;
-	if( configVersion >= 1 )
+	inputFile >> configRoot;
+
+	uint32_t configVersion		= GetPropertyValue(configRoot, kConfigField_Version, 0u);
+	Server::sPort				= GetPropertyValue(configRoot, kConfigField_ServerPort, NetImgui::kDefaultServerPort);
+	Server::sRefreshRateDefault	= GetPropertyValue(configRoot, kConfigField_ServerRefreshRate, Server::sRefreshRateDefault);
+	if( configVersion >= static_cast<uint32_t>(eVersion::Initial) )
 	{	
 		for(const auto& config : configRoot[kConfigField_Configs] )
 		{
 			bool isValid(true);
 			if( isValid )
 			{
-				gConfigList.push_back(new ClientConfig());
-				ClientConfig* pConfig = gConfigList.back();
+				gConfigList.push_back(NetImgui::Internal::netImguiNew<NetImguiServer::Config::Client>());
+				Client* pConfig			= gConfigList.back();
 				pConfig->mRuntimeID		= gRuntimeID++;
 
 				if( config.find(kConfigField_Name) != config.end() )
@@ -232,24 +253,24 @@ void ClientConfig::LoadAll()
 				if( config.find(kConfigField_Hostname) != config.end() )
 					strcpy_s(pConfig->mHostName, sizeof(pConfig->mHostName), config[kConfigField_Hostname].get<std::string>().c_str());
 				
-				if( config.find(kConfigField_Hostport) != config.end() )
-					pConfig->mHostPort		= config[kConfigField_Hostport].get<uint32_t>();
-
-				if( config.find(kConfigField_AutoConnect) != config.end() )
-					pConfig->mConnectAuto	= config[kConfigField_AutoConnect].get<bool>();
+				pConfig->mHostPort		= GetPropertyValue(config, kConfigField_Hostport, pConfig->mHostPort);
+				pConfig->mConnectAuto	= GetPropertyValue(config, kConfigField_AutoConnect, pConfig->mConnectAuto);
+				pConfig->mRefreshRate	= GetPropertyValue(config, kConfigField_RefreshRate, pConfig->mRefreshRate);
 			}
 		}
 	}
 }
 
 //=================================================================================================
-void ClientConfig::Clear()
+void Client::Clear()
 //=================================================================================================
 {
 	std::lock_guard<std::mutex> guard(gConfigLock);
 	while( gConfigList.size() )
 	{
-		delete gConfigList.back();
+		NetImgui::Internal::netImguiDelete(gConfigList.back());
 		gConfigList.pop_back();
 	}
 }
+
+}} // namespace NetImguiServer { namespace Config

@@ -16,7 +16,7 @@ bool Startup(const char* CmdLine)
 	//------------------------------------------------------------------------------------------------
 	// Load Settings savefile and parse for auto connect commandline option
 	//------------------------------------------------------------------------------------------------	
-	ClientConfig::LoadAll();
+	NetImguiServer::Config::Client::LoadAll();
 	AddClientConfigFromString(CmdLine, true);
 	
 	//------------------------------------------------------------------------------------------------
@@ -31,13 +31,20 @@ bool Startup(const char* CmdLine)
 		NetImguiServer::App::HAL_CreateTexture(8, 8, NetImgui::eTexFormat::kTexFmtA8, EmptyPixels, gpHAL_EmptyTexture);
 		return true;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	// Using a different default font (provided with Dear ImGui)
+	//------------------------------------------------------------------------------------------------
+	if (ImGui::GetIO().Fonts->AddFontFromFileTTF("Roboto-Medium.ttf", 16.0f) == nullptr) {
+        ImGui::GetIO().Fonts->AddFontDefault();
+    }
 	return false;
 }
 
 void Shutdown()
 {		
 	RemoteClient::Client::Shutdown();
-	ClientConfig::Clear();	
+	NetImguiServer::Config::Client::Clear();	
 	NetImguiServer::Network::Shutdown();
 	NetImguiServer::UI::Shutdown();
 	NetImguiServer::App::HAL_DestroyTexture(gpHAL_EmptyTexture);
@@ -161,7 +168,7 @@ void DestroyDrawData(ImDrawData*& pDrawData)
 bool AddClientConfigFromString(const char* string, bool transient)
 //=================================================================================================
 {
-	ClientConfig cmdlineClient;
+	NetImguiServer::Config::Client cmdlineClient;
 	const char* zEntryStart		= string;
 	const char* zEntryCur		= string;
 	int paramIndex				= 0;
@@ -185,7 +192,7 @@ bool AddClientConfigFromString(const char* string, bool transient)
 	}
 
 	if (cmdlineClient.mConnectAuto) {
-		ClientConfig::SetConfig(cmdlineClient);
+		NetImguiServer::Config::Client::SetConfig(cmdlineClient);
 		return true;
 	}
 
@@ -198,15 +205,16 @@ void UpdateRemoteContent()
 	for (uint32_t i(0); i < RemoteClient::Client::GetCountMax(); ++i)
 	{
 		RemoteClient::Client& client = RemoteClient::Client::Get(i);
-		if( client.mbIsConnected && client.mbIsActive )
+		if( client.mbIsConnected && client.mbIsVisible )
 		{
 			// Update the RenderTarget destination of each client, of size was updated
 			if (client.mAreaRTSizeX != client.mAreaSizeX || client.mAreaRTSizeY != client.mAreaSizeY)
 			{
 				if (HAL_CreateRenderTarget(client.mAreaSizeX, client.mAreaSizeY, client.mpHAL_AreaRT, client.mpHAL_AreaTexture))
 				{
-					client.mAreaRTSizeX = client.mAreaSizeX;
-					client.mAreaRTSizeY	= client.mAreaSizeY;
+					client.mAreaRTSizeX		= client.mAreaSizeX;
+					client.mAreaRTSizeY		= client.mAreaSizeY;
+					client.mLastUpdateTime	= std::chrono::steady_clock::now() - std::chrono::hours(1); // Will redraw the client
 				}
 			}
 

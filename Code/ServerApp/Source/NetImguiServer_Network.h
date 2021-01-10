@@ -13,4 +13,10 @@ void Shutdown();
 // Note: False when unable to open listen socket (probably because port number alreay in use)
 bool IsWaitingForConnection();
 
+// Total amount of data sent to clients since start
+uint64_t GetStatsDataSent();
+
+// Total amount of data received from clients since start
+uint64_t GetStatsDataRcvd();
+
 }}

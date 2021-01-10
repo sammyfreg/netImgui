@@ -9,9 +9,11 @@
 namespace NetImguiServer { namespace Network
 {
 
-static bool						gbShutdown					= false;	// Set to true when NetImguiServer exiting
-static bool						gbValidListenSocket			= false;
-static std::atomic_uint32_t		gActiveClientThreadCount;
+static bool						gbShutdown(false);	// Set to true when NetImguiServer exiting
+static bool						gbValidListenSocket(false);
+static std::atomic_uint32_t		gActiveClientThreadCount(0);
+static std::atomic_uint64_t		gStatsDataSent(0);
+static std::atomic_uint64_t		gStatsDataRcvd(0);
 
 //=================================================================================================
 //
@@ -50,7 +52,7 @@ bool Communications_Incoming(NetImgui::Internal::Network::SocketInfo* pClientSoc
 	bool bOk(true);
 	bool bPingReceived(false);
 	NetImgui::Internal::CmdHeader cmdHeader;
-
+	uint64_t frameDataReceived(0);
 	while( bOk && !bPingReceived )
 	{	
 		//---------------------------------------------------------------------
@@ -59,6 +61,7 @@ bool Communications_Incoming(NetImgui::Internal::Network::SocketInfo* pClientSoc
 		//---------------------------------------------------------------------
 		uint8_t* pCmdData	= nullptr;
 		bOk					= NetImgui::Internal::Network::DataReceive(pClientSocket, &cmdHeader, sizeof(cmdHeader));
+		frameDataReceived	+= sizeof(cmdHeader);
 		if( bOk && cmdHeader.mSize > sizeof(cmdHeader) )
 		{
 			pCmdData													= NetImgui::Internal::netImguiSizedNew<uint8_t>(cmdHeader.mSize);
@@ -66,6 +69,7 @@ bool Communications_Incoming(NetImgui::Internal::Network::SocketInfo* pClientSoc
 			char* pDataRemaining										= reinterpret_cast<char*>(&pCmdData[sizeof(cmdHeader)]);
 			const size_t sizeToRead										= cmdHeader.mSize - sizeof(cmdHeader);
 			bOk															= NetImgui::Internal::Network::DataReceive(pClientSocket, pDataRemaining, sizeToRead);
+			frameDataReceived											+= sizeToRead;
 		}
 			
 		//---------------------------------------------------------------------
@@ -87,8 +91,9 @@ bool Communications_Incoming(NetImgui::Internal::Network::SocketInfo* pClientSoc
 		}
 
 		NetImgui::Internal::netImguiDeleteSafe(pCmdData);
-	}
 
+	}
+	pClient->mStatsDataRcvd[pClient->mStatsIndex] += frameDataReceived;
 	return bOk;
 }
 
@@ -100,24 +105,62 @@ bool Communications_Outgoing(NetImgui::Internal::Network::SocketInfo* pClientSoc
 {
 	bool bSuccess(true);
 	NetImgui::Internal::CmdInput* pInputCmd = pClient->TakePendingInput();
+	uint64_t frameDataSent(0);
 	if( pInputCmd )
-	{
-		bSuccess = NetImgui::Internal::Network::DataSend(pClientSocket, reinterpret_cast<void*>(pInputCmd), pInputCmd->mHeader.mSize);
+	{		
+		bSuccess &= NetImgui::Internal::Network::DataSend(pClientSocket, reinterpret_cast<void*>(pInputCmd), pInputCmd->mHeader.mSize);
+		frameDataSent += pInputCmd->mHeader.mSize;
 		NetImgui::Internal::netImguiDeleteSafe(pInputCmd);
 	}
-	
+
 	if( pClient->mbPendingDisconnect )
 	{
 		NetImgui::Internal::CmdDisconnect cmdDisconnect;
 		bSuccess &= NetImgui::Internal::Network::DataSend(pClientSocket, reinterpret_cast<void*>(&cmdDisconnect), cmdDisconnect.mHeader.mSize);
+		frameDataSent += cmdDisconnect.mHeader.mSize;
 	}
 
 	// Always finish with a ping
 	{
 		NetImgui::Internal::CmdPing cmdPing;
 		bSuccess &= NetImgui::Internal::Network::DataSend(pClientSocket, reinterpret_cast<void*>(&cmdPing), cmdPing.mHeader.mSize);
+		frameDataSent += cmdPing.mHeader.mSize;
 	}
+	pClient->mStatsDataSent[pClient->mStatsIndex] += frameDataSent;
 	return bSuccess;
+}
+
+//=================================================================================================
+// Update communications stats of a client, after a frame
+//=================================================================================================
+void Communications_UpdateClientStats(RemoteClient::Client& Client)
+{
+	// Update data transfer stats
+	constexpr uint64_t kHysteresisFactor= 5; // in %
+	const uint32_t idxOldest			= (Client.mStatsIndex + 1) % IM_ARRAYSIZE(Client.mStatsDataRcvd);
+	const uint32_t idxNewest			= Client.mStatsIndex;
+	Client.mStatsTime[idxNewest]		= std::chrono::steady_clock::now();
+	auto elapsedTime					= Client.mStatsTime[idxNewest] - Client.mStatsTime[idxOldest];
+	uint32_t tmMs						= static_cast<uint32_t>(std::chrono::duration_cast<std::chrono::milliseconds>(elapsedTime).count());
+	uint64_t newDataRcvd				= Client.mStatsDataRcvd[idxNewest] - Client.mStatsDataRcvd[idxOldest];
+	uint64_t newDataSent				= Client.mStatsDataSent[idxNewest] - Client.mStatsDataSent[idxOldest];
+	uint32_t newDataRcvdKBs				= static_cast<uint32_t>(newDataRcvd * 1000u / 1024u / tmMs);
+	uint32_t newDataSentKBs				= static_cast<uint32_t>(newDataSent * 1000u / 1024u / tmMs);
+	Client.mStatsRcvdKBs				= (Client.mStatsRcvdKBs*(100u-kHysteresisFactor) + newDataRcvdKBs*kHysteresisFactor)/100u;
+	Client.mStatsSentKBs				= (Client.mStatsSentKBs*(100u-kHysteresisFactor) + newDataSentKBs*kHysteresisFactor)/100u;
+
+	// Prepate for next frame data info
+	Client.mStatsIndex					= idxOldest;
+	Client.mStatsDataRcvd[idxOldest]	= Client.mStatsDataRcvd[idxNewest];
+	Client.mStatsDataSent[idxOldest]	= Client.mStatsDataSent[idxNewest];
+
+	// Reset FPS to zero, when detected as not visible
+	if( !Client.mbIsVisible ){
+		Client.mStatsFPS				= 0.f;
+	}
+
+	gStatsDataRcvd						+= newDataRcvd;
+	gStatsDataSent						+= newDataSent;
 }
 
 //=================================================================================================
@@ -128,14 +171,16 @@ void Communications_ClientExchangeLoop(NetImgui::Internal::Network::SocketInfo* 
 	bool bConnected(true);
 	gActiveClientThreadCount++;
 
-	ClientConfig::SetProperty_Connected(pClient->mClientConfigID, true);
-	while (bConnected && pClient->mbIsConnected && !pClient->mbPendingDisconnect && !gbShutdown)
-	{		
+	NetImguiServer::Config::Client::SetProperty_Connected(pClient->mClientConfigID, true);
+	while (bConnected && !gbShutdown && pClient->mbIsConnected && !pClient->mbPendingDisconnect )
+	{	
 		bConnected =	Communications_Outgoing(pClientSocket, pClient) && 
 						Communications_Incoming(pClientSocket, pClient);
+
+		Communications_UpdateClientStats(*pClient);
 		std::this_thread::sleep_for(std::chrono::milliseconds(8));
 	}
-	ClientConfig::SetProperty_Connected(pClient->mClientConfigID, false);
+	NetImguiServer::Config::Client::SetProperty_Connected(pClient->mClientConfigID, false);
 	NetImgui::Internal::Network::Disconnect(pClientSocket);
 	
 	pClient->mInfoName[0]				= 0;
@@ -170,9 +215,18 @@ bool Communications_InitializeClient(NetImgui::Internal::Network::SocketInfo* pC
 		strcpy_s(pClient->mInfoNetImguiVerName, cmdVersionRcv.mNetImguiVerName);
 		pClient->mInfoImguiVerID	= cmdVersionRcv.mImguiVerID;
 		pClient->mInfoNetImguiVerID = cmdVersionRcv.mNetImguiVerID;
+		pClient->mConnectedTime		= std::chrono::steady_clock::now();
+		pClient->mLastUpdateTime	= std::chrono::steady_clock::now() - std::chrono::hours(1);
+		pClient->mLastDrawFrame		= std::chrono::steady_clock::now();
+		pClient->mStatsIndex		= 0;
+		pClient->mStatsRcvdKBs		= 0;
+		pClient->mStatsSentKBs		= 0;
+		pClient->mStatsFPS			= 0.f;
+		memset(pClient->mStatsDataRcvd, 0, sizeof(pClient->mStatsDataRcvd));
+		memset(pClient->mStatsDataSent, 0, sizeof(pClient->mStatsDataSent));
 
-		ClientConfig clientConfig;		
-		if( ClientConfig::GetConfigByID(pClient->mClientConfigID, clientConfig) ){			
+		NetImguiServer::Config::Client clientConfig;		
+		if( NetImguiServer::Config::Client::GetConfigByID(pClient->mClientConfigID, clientConfig) ){
 			sprintf_s(pClient->mWindowID, "%s (%s)###%i", pClient->mInfoName, clientConfig.mClientName, clientConfig.mHostPort); // Using HostPort as a window unique ID
 		}
 		else{
@@ -195,8 +249,7 @@ void NetworkConnectionNew(NetImgui::Internal::Network::SocketInfo* pClientSocket
 
 	if (zErrorMsg == nullptr)
 	{
-		pNewClient->mbIsConnected	= true;
-		pNewClient->mConnectedTime	= std::chrono::steady_clock::now();
+		pNewClient->mbIsConnected	= true;		
 		std::thread(Communications_ClientExchangeLoop, pClientSocket, pNewClient).detach();
 	}
 	else
@@ -220,10 +273,10 @@ void NetworkConnectRequest_Receive_UpdateListenSocket(NetImgui::Internal::Networ
 	uint32_t serverPort = 0;
 	while( !gbShutdown )
 	{		
-		if( serverPort != ClientConfig::sServerPort || *ppListenSocket == nullptr )
+		if( serverPort != NetImguiServer::Config::Server::sPort || *ppListenSocket == nullptr )
 		{
 			NetImgui::Internal::Network::Disconnect(*ppListenSocket);
-			serverPort			= ClientConfig::sServerPort;			
+			serverPort			= NetImguiServer::Config::Server::sPort;			
 			*ppListenSocket		= NetImgui::Internal::Network::ListenStart(serverPort);
 			gbValidListenSocket	= *ppListenSocket != nullptr;
 			if( !gbValidListenSocket )
@@ -257,7 +310,7 @@ void NetworkConnectRequest_Receive()
 				if( freeIndex != RemoteClient::Client::kInvalidClient )
 				{
 					RemoteClient::Client& newClient		= RemoteClient::Client::Get(freeIndex);
-					newClient.mClientConfigID	= ClientConfig::kInvalidRuntimeID;
+					newClient.mClientConfigID	= NetImguiServer::Config::Client::kInvalidRuntimeID;
 					newClient.mClientIndex		= freeIndex;
 					NetImgui::Internal::Network::GetClientInfo(pClientSocket, newClient.mConnectHost, sizeof(newClient.mConnectHost), newClient.mConnectPort);
 					NetworkConnectionNew(pClientSocket, &newClient);
@@ -276,21 +329,21 @@ void NetworkConnectRequest_Receive()
 void NetworkConnectRequest_Send()
 {		
 	uint64_t loopIndex(0);
-	ClientConfig clientConfig;
+	NetImguiServer::Config::Client clientConfig;
 
 	while( !gbShutdown )
 	{						
-		uint32_t clientConfigID(ClientConfig::kInvalidRuntimeID);
+		uint32_t clientConfigID(NetImguiServer::Config::Client::kInvalidRuntimeID);
 		NetImgui::Internal::Network::SocketInfo* pClientSocket = nullptr;
 
 		// Find next client configuration to attempt connection to
-		uint64_t configCount	= static_cast<uint64_t>(ClientConfig::GetConfigCount());
+		uint64_t configCount	= static_cast<uint64_t>(NetImguiServer::Config::Client::GetConfigCount());
 		uint32_t configIdx		= configCount ? static_cast<uint32_t>(loopIndex++ % configCount) : 0;
-		if( ClientConfig::GetConfigByIndex(configIdx, clientConfig) )
+		if( NetImguiServer::Config::Client::GetConfigByIndex(configIdx, clientConfig) )
 		{
-			if( (clientConfig.mConnectAuto || clientConfig.mConnectRequest) && !clientConfig.mConnected && clientConfig.mHostPort != ClientConfig::sServerPort)
+			if( (clientConfig.mConnectAuto || clientConfig.mConnectRequest) && !clientConfig.mConnected && clientConfig.mHostPort != NetImguiServer::Config::Server::sPort)
 			{
-				ClientConfig::SetProperty_ConnectRequest(clientConfig.mRuntimeID, false);	// Reset the Connection request, we are processing it
+				NetImguiServer::Config::Client::SetProperty_ConnectRequest(clientConfig.mRuntimeID, false);	// Reset the Connection request, we are processing it
 				clientConfigID	= clientConfig.mRuntimeID;									// Keep track of ClientConfig we are attempting to connect to
 				pClientSocket	= NetImgui::Internal::Network::Connect(clientConfig.mHostName, clientConfig.mHostPort);
 			}
@@ -303,7 +356,7 @@ void NetworkConnectRequest_Send()
 			if( freeIndex != RemoteClient::Client::kInvalidClient )
 			{			
 				RemoteClient::Client& newClient = RemoteClient::Client::Get(freeIndex);
-				if( ClientConfig::GetConfigByID(clientConfigID, clientConfig) )
+				if( NetImguiServer::Config::Client::GetConfigByID(clientConfigID, clientConfig) )
 				{
 					strcpy_s(newClient.mInfoName, clientConfig.mClientName);
 					newClient.mConnectPort		= clientConfig.mHostPort;
@@ -351,6 +404,23 @@ void Shutdown()
 bool IsWaitingForConnection()
 {
 	return gbValidListenSocket;
+}
+
+//=================================================================================================
+// Total amount of data sent to clients since start
+//=================================================================================================
+uint64_t GetStatsDataSent()
+{
+	return gStatsDataSent;
+
+}
+
+//=================================================================================================
+// Total amount of data received from clients since start
+//=================================================================================================
+uint64_t GetStatsDataRcvd()
+{
+	return gStatsDataRcvd;
 }
 
 }} // namespace NetImguiServer { namespace Network

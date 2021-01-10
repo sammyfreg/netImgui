@@ -16,7 +16,7 @@ static Client::ClientInfo* gpClientInfo = nullptr;
 
 void ContextInitialize(bool bCloneOriginalContext);
 void ContextClone();
-bool InputUpdateData();
+bool ProcessInputData(Client::ClientInfo& client);
 
 //=================================================================================================
 void DefaultStartCommunicationThread(void ComFunctPtr(void*), void* pClient)
@@ -170,24 +170,10 @@ bool NewFrame(bool bSupportFrameSkip)
 		client.mSavedDisplaySize	= ImGui::GetIO().DisplaySize;
 		ImGui::SetCurrentContext(client.mpContext);		
 		
-		// Update input and see if remote netImgui expect a new frame
-		if( !InputUpdateData() )
+		// Update input and start drawing for remote context
+		if( ProcessInputData(client) )
 		{
-			// Caller handle skipping drawing frame, return after restoring original context
-			if( bSupportFrameSkip )
-			{
-				ImGui::SetCurrentContext(client.mpContextRestore);
-				client.mpContextRestore = nullptr;
-				return false;
-			} 
-
-			// If caller doesn't handle skipping a ImGui frame rendering, assign a placeholder 
-			// that will receive the ImGui draw commands and discard them
-			ImGui::SetCurrentContext(client.mpContextEmpty);
-		}
-		// We are about to start drawing for remote context, check for font data update
-		else
-		{
+			// check for font data update
 			if( ImGui::GetIO().Fonts->TexPixelsAlpha8 && ImGui::GetIO().Fonts->TexPixelsAlpha8 != client.mpFontTextureData )
 			{
 				uint8_t* pPixelData(nullptr); int width(0), height(0);
@@ -200,6 +186,21 @@ bool NewFrame(bool bSupportFrameSkip)
 			// 2. Manually call 'NetImgui::SendDataTexture' with font texture data
 			assert(client.mbFontUploaded);
 		}
+		// No new frame expected, assign an invalid context to capture content
+		else
+		{
+			// Caller handle skipping drawing frame, return after restoring original context
+			if( bSupportFrameSkip )
+			{
+				ImGui::SetCurrentContext(client.mpContextRestore);
+				client.mpContextRestore = nullptr;
+				return false;
+			} 
+
+			// If caller doesn't handle skipping a ImGui frame rendering, assign a placeholder 
+			// that will receive the ImGui draw commands and discard them
+			ImGui::SetCurrentContext(client.mpContextEmpty);
+		}		
 	}
 	// Regular Imgui NewFrame
 	else
@@ -543,12 +544,9 @@ void ContextClone(void)
 }
 
 //=================================================================================================
-bool InputUpdateData(void)
+bool ProcessInputData(Client::ClientInfo& client)
 //=================================================================================================
 {
-	if (!gpClientInfo) return false;
-
-	Client::ClientInfo& client	= *gpClientInfo;
 	CmdInput* pCmdInput			= client.mPendingInputIn.Release();
 	ImGuiIO& io					= ImGui::GetIO();
 	if (pCmdInput)
@@ -592,6 +590,7 @@ bool InputUpdateData(void)
 }
 
 } // namespace NetImgui
+
 
 #else //NETIMGUI_ENABLED
 

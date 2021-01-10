@@ -94,10 +94,12 @@ int main(int, char**)
     ImGui_ImplWin32_Init(hwnd);
     ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
 
-    // @SAMPLE_EDIT (Start our own initialisation)
-    //SF TODO skip loop instead of returning, to get proper uninit
+    //---------------------------------------------------------------------------------------------
+    // @SAMPLE_EDIT (Start our own initialisation)    
+    //SF TODO skip loop instead of returning, to get proper un-init
     if( !NetImguiServer::App::Startup( GetCommandLineA() ) )
         return -1;
+    //---------------------------------------------------------------------------------------------
 
     // Load Fonts
     // - If no fonts are loaded, dear imgui will use the default font. You can also load multiple fonts and use ImGui::PushFont()/PopFont() to select them.
