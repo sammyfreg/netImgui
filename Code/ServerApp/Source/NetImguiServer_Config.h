@@ -35,7 +35,6 @@ public:
 	bool			mConnectAuto;				//!< Try automatically connecting to client
 	bool			mConnectRequest;			//!< Attempt connecting to Client, after user request
 	bool			mConnected;					//!< Associated client is connected to this server
-	float			mRefreshRate;				//!< [0-1] How often client is redrawn when visible based on maximum refresh rate (always redrawn when focued)
 	bool			mTransient;					//!< Temporary client that should not be saved (comes from cmdline)
 	
 	// Add/Edit/Remove config
@@ -44,8 +43,6 @@ public:
 	static bool		GetConfigByID(uint32_t configID, Client& outConfig);	//!< Find client configuration with this id (return true if found)
 	static bool		GetConfigByIndex(uint32_t index, Client& outConfig);	//!< Find client configuration at the x position 
 	static uint32_t	GetConfigCount();
-	//static float	GetRefreshRateFloat(int entryIdx);
-	//static float	GetRefreshRateInt(float);
 
 	// Set property value directly (without having to copy entire structure)
 	static void		SetProperty_Connected(uint32_t configID, bool value);	
@@ -61,7 +58,8 @@ public:
 struct Server
 {
 	static uint32_t	sPort;					//!< Port that Server should use for connection. (Note: not really a 'Client' setting, but easier to just bundle the value here for the moment)
-	static float	sRefreshRateDefault;	//!< Default client refreh rate assigned to new client config and client connection without config
+	static float	sRefreshFPSActive;		//!< Refresh rate of active Window
+	static float	sRefreshFPSInactive;	//!< Refresh rate of inactive Window
 };
 
 }} // namespace NetImguiServer { namespace Config

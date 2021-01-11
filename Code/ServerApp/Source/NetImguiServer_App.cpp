@@ -13,15 +13,15 @@ static void* gpHAL_EmptyTexture			= nullptr;
 
 bool Startup(const char* CmdLine)
 {
-	//------------------------------------------------------------------------------------------------
+	//---------------------------------------------------------------------------------------------
 	// Load Settings savefile and parse for auto connect commandline option
-	//------------------------------------------------------------------------------------------------	
+	//---------------------------------------------------------------------------------------------	
 	NetImguiServer::Config::Client::LoadAll();
 	AddClientConfigFromString(CmdLine, true);
 	
-	//------------------------------------------------------------------------------------------------
+	//---------------------------------------------------------------------------------------------
     // Perform application initialization:
-	//------------------------------------------------------------------------------------------------
+	//---------------------------------------------------------------------------------------------
 	if (RemoteClient::Client::Startup(kClientCountMax) &&
 		NetImguiServer::Network::Startup() &&
 		NetImguiServer::UI::Startup())
@@ -29,25 +29,26 @@ bool Startup(const char* CmdLine)
 		uint8_t EmptyPixels[8*8];
 		memset(EmptyPixels, 0, sizeof(EmptyPixels));
 		NetImguiServer::App::HAL_CreateTexture(8, 8, NetImgui::eTexFormat::kTexFmtA8, EmptyPixels, gpHAL_EmptyTexture);
+	
+		//-----------------------------------------------------------------------------------------
+		// Using a different default font (provided with Dear ImGui)
+		//-----------------------------------------------------------------------------------------
+		if (ImGui::GetIO().Fonts->AddFontFromFileTTF("Roboto-Medium.ttf", 16.0f) == nullptr) {
+			ImGui::GetIO().Fonts->AddFontDefault();
+		}
 		return true;
 	}
-
-	//------------------------------------------------------------------------------------------------
-	// Using a different default font (provided with Dear ImGui)
-	//------------------------------------------------------------------------------------------------
-	if (ImGui::GetIO().Fonts->AddFontFromFileTTF("Roboto-Medium.ttf", 16.0f) == nullptr) {
-        ImGui::GetIO().Fonts->AddFontDefault();
-    }
+	
 	return false;
 }
 
 void Shutdown()
-{		
-	RemoteClient::Client::Shutdown();
-	NetImguiServer::Config::Client::Clear();	
+{				
 	NetImguiServer::Network::Shutdown();
 	NetImguiServer::UI::Shutdown();
 	NetImguiServer::App::HAL_DestroyTexture(gpHAL_EmptyTexture);
+	NetImguiServer::Config::Client::Clear();
+	RemoteClient::Client::Shutdown();
 }
 
 void SetupRenderState(const ImDrawList*, const ImDrawCmd*)

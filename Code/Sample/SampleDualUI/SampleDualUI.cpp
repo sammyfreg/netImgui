@@ -11,7 +11,8 @@
 namespace SampleClient
 {
 enum class eDisplayMode : int { LocalNone, LocalMirror, LocalIndependent };
-static eDisplayMode skDisplayMode = eDisplayMode::LocalNone;
+static eDisplayMode skDisplayMode	= eDisplayMode::LocalNone;
+// static ImGuiContext* gSecondContext	= nullptr; //SF TODO
 
 //=================================================================================================
 //
@@ -23,6 +24,8 @@ bool Client_Startup()
 
 	// Can have more ImGui initialization here, like loading extra fonts.
 	// ...
+
+	//ImGui::CreateContext(gSecondContext, )
 	return true;
 }
 
@@ -107,7 +110,7 @@ ImDrawData* Client_Draw()
 		// 'Local Independent' UI drawing section. 'Cloning' the context is not needed if you are 
 		// not planning to keep drawing in local windows while connected, or you can manage this 
 		// yourself using your own new context.
-		ClientUtil_ImGuiContent_Common("SampleDualUI", true);
+		ClientUtil_ImGuiContent_Common("SampleDualUI"); //SF handle dual ui
 		ImGui::SetNextWindowPos(ImVec2(32,48), ImGuiCond_Once);
 		ImGui::SetNextWindowSize(ImVec2(400,400), ImGuiCond_Once);
 		if (ImGui::Begin("SampleDualUI", nullptr))
@@ -155,13 +158,13 @@ ImDrawData* Client_Draw()
 		switch(skDisplayMode)
 		{
 		case eDisplayMode::LocalNone:			return nullptr;
-		case eDisplayMode::LocalMirror:			return NetImgui::GetDrawData();
+		case eDisplayMode::LocalMirror:			//SF return NetImgui::GetDrawData();
 		case eDisplayMode::LocalIndependent:	return ImGui::GetDrawData();
 		}
 	}
 
 	// When disconnected, NetImgui::GetDrawData() and ImGui::GetDrawData() are the same
-	return NetImgui::GetDrawData();
+	return ImGui::GetDrawData();
 } 
 
 } // namespace SampleClient

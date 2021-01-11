@@ -15,9 +15,8 @@ static int sServerPort				= NetImgui::kDefaultServerPort;
 static char sServerHostname[128]	= {"localhost"};
 static bool sbShowDemoWindow		= false;
 
-void ClientUtil_ImGuiContent_Common(const char* zAppName, bool bCreateNewContext)
+void ClientUtil_ImGuiContent_Common(const char* zAppName)
 {
-	(void)bCreateNewContext;
 	ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(3,6) );
 	if( ImGui::BeginMainMenuBar() )
 	{				
@@ -70,7 +69,7 @@ void ClientUtil_ImGuiContent_Common(const char* zAppName, bool bCreateNewContext
 				ImGui::Separator();
 				if (ImGui::Button("Connect", ImVec2(ImGui::GetContentRegionAvailWidth(), 0)))
 				{
-					NetImgui::ConnectToApp(zAppName, sServerHostname, sServerPort, bCreateNewContext);
+					NetImgui::ConnectToApp(zAppName, sServerHostname, sServerPort);
 				}
 				ImGui::EndMenu();
 			}
@@ -88,7 +87,7 @@ void ClientUtil_ImGuiContent_Common(const char* zAppName, bool bCreateNewContext
 				ImGui::Separator();
 				if (ImGui::Button("Listen", ImVec2(ImGui::GetContentRegionAvailWidth(), 0)))
 				{
-					NetImgui::ConnectFromApp(zAppName, sClientPort, bCreateNewContext);
+					NetImgui::ConnectFromApp(zAppName, sClientPort);
 				}
 				ImGui::EndMenu();
 			}
