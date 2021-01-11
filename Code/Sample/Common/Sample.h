@@ -15,7 +15,7 @@ ImDrawData*		Client_Draw();
 //-----------------------------------------------------------------------------
 // Utility methods available in Samples
 //-----------------------------------------------------------------------------
-void ClientUtil_ImGuiContent_Common(const char* zAppName, bool bCreateNewContext=false);
+void ClientUtil_ImGuiContent_Common(const char* zAppName);
 
 }
 

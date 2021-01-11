@@ -64,19 +64,11 @@ void				Shutdown(bool bWait);
 // serverHost		: Address of the netImgui Server application (Ex1: 127.0.0.2, Ex2: localhost)
 // serverPort		: PortID of the netImgui Server application to connect to
 // clientPort		: PortID this Client should wait for connection from Server application
-// bCloneContext	: When false, BeginFrame will rely on current dear ImGui DrawContext, so 
-//					  transition between local and remote is seamless. 
-//					  When true, creates a duplicate of the current context, so netImgui can do 
-//					  its own drawing without affecting the original content. Useful when you want
-//					  to display some content locally and remotely simultaneously.
-// threadFunction	: User provided function to launch a new thread running the function
-//					  received as a parameter. Use 'DefaultStartCommunicationThread'
-//					  by default, which relies on 'std::thread'.
+// threadFunction	: User provided function to launch new networking thread.
+//					  Use 'DefaultStartCommunicationThread' by default, relying on 'std::thread'.
 //=================================================================================================
-bool				ConnectToApp(const char* clientName, const char* serverHost, uint32_t serverPort=kDefaultServerPort, bool bCloneContext=false);
-bool				ConnectToApp(ThreadFunctPtr threadFunction, const char* clientName, const char* ServerHost, uint32_t serverPort = kDefaultServerPort, bool bCloneContext=false);
-bool				ConnectFromApp(const char* clientName, uint32_t clientPort=kDefaultClientPort, bool bCloneContext=false);
-bool				ConnectFromApp(ThreadFunctPtr threadFunction, const char* clientName, uint32_t serverPort=kDefaultClientPort, bool bCloneContext=false);
+bool				ConnectToApp(const char* clientName, const char* serverHost, uint32_t serverPort=kDefaultServerPort, ThreadFunctPtr threadFunction=nullptr);
+bool				ConnectFromApp(const char* clientName, uint32_t clientPort=kDefaultClientPort, ThreadFunctPtr threadFunction = nullptr);
 
 //=================================================================================================
 // Request a disconnect from the netImguiApp server
@@ -89,14 +81,14 @@ void				Disconnect(void);
 bool				IsConnected(void);
 
 //=================================================================================================
-// True if connection request is waiting to be completed. Waiting for Server to connect to us 
-// after having called 'ConnectFromApp()' for example
+// True if connection request is waiting to be completed. For example, while waiting for  
+// Server to reach ud after having called 'ConnectFromApp()'
 //=================================================================================================
 bool				IsConnectionPending(void);
 
 //=================================================================================================
 // True when Dear ImGui is currently expecting draw commands 
-// This means that we are between NewFrame() and EndFrame() of drawing for remote application
+// This means that we are between NewFrame() and EndFrame() 
 //=================================================================================================
 bool				IsDrawing(void);
 
@@ -121,8 +113,11 @@ void				SendDataTexture(ImTextureID textureId, void* pData, uint16_t width, uint
 // Note: This code can be used instead, to know if you should be drawing or not :
 //			'if( !NetImgui::IsDrawing() )'
 //
-// Note: If your code cannot handle skipping a ImGui frame, set 'bSupportFrameSkip' to false,
-//		 and an empty ImGui context will be assigned when no drawing is needed
+// Note: If your code cannot handle skipping a ImGui frame, leave 'bSupportFrameSkip==false',
+//		 and an empty ImGui context will be assigned to receive discarded drawing commands
+//
+// Note: With Dear ImGui 1.80+, you can keep using the ImGui::BeginFrame()/Imgui::Render()
+//		 without having to use these 2 functions.
 //=================================================================================================
 bool				NewFrame(bool bSupportFrameSkip=false);
 
@@ -132,16 +127,14 @@ bool				NewFrame(bool bSupportFrameSkip=false);
 void				EndFrame(void);
 
 //=================================================================================================
-// 
+// Return the context *currently* used for drawing. Null when outside BeginFrame()/EndFrame().
 //=================================================================================================
 ImGuiContext*		GetDrawingContext();
 
 //=================================================================================================
-// Regular ImGui draw data, from the last valid draw.
-// Note: Be careful with the returned value, the pointer remain valid only as long as
-//		 a new dear ImGui frame hasn't been started for the netImgui remote app
+// Helper function to quickly create a context duplicate (sames settings/font/styles)
 //=================================================================================================
-ImDrawData*			GetDrawData(void);
+ImGuiContext*		CloneContext(ImGuiContext* pSourceContext);
 
 uint8_t				GetTexture_BitsPerPixel	(eTexFormat eFormat);
 uint32_t			GetTexture_BytePerLine	(eTexFormat eFormat, uint32_t pixelWidth);

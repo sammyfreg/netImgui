@@ -45,7 +45,7 @@ ImDrawData* Client_Draw()
 	//-----------------------------------------------------------------------------------------
 	// (2) Draw ImGui Content 		
 	//-----------------------------------------------------------------------------------------	
-	ClientUtil_ImGuiContent_Common("SampleDisabled", false);
+	ClientUtil_ImGuiContent_Common("SampleDisabled");
 	ImGui::SetNextWindowPos(ImVec2(32,48), ImGuiCond_Once);
 	ImGui::SetNextWindowSize(ImVec2(400,400), ImGuiCond_Once);
 	if( ImGui::Begin("Sample Basic", nullptr) )
@@ -73,7 +73,7 @@ ImDrawData* Client_Draw()
 	//---------------------------------------------------------------------------------------------
 	// (4) Forward to drawing data our local renderer when not remotely drawing
 	//---------------------------------------------------------------------------------------------
-	return !NetImgui::IsConnected() ? NetImgui::GetDrawData() : nullptr;
+	return !NetImgui::IsConnected() ? ImGui::GetDrawData() : nullptr;
 }
 
 } // namespace SampleClient

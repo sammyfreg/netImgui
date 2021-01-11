@@ -165,16 +165,18 @@ void Client::CaptureImguiInput()
 {
 	// Try to re-acquire unsent input command, or create a new one if none pending
 	NetImguiServer::Config::Client configClient;
-	float refreshRate	= NetImguiServer::Config::Client::GetConfigByID(mClientConfigID, configClient) ? configClient.mRefreshRate : NetImguiServer::Config::Server::sRefreshRateDefault;	
+	bool wasActive		= mbIsActive;
+	mbIsActive			= ImGui::IsWindowFocused();
+	float refreshFPS	= mbIsActive ? NetImguiServer::Config::Server::sRefreshFPSActive : NetImguiServer::Config::Server::sRefreshFPSInactive;	
 	float elapsedMs		= static_cast<float>(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - mLastUpdateTime).count());
-	bool bRefresh		= ImGui::IsWindowFocused();
-	bRefresh			|= refreshRate >= 0.01f && elapsedMs >= 1000.f/(refreshRate*kRefreshRateMax);
-	bRefresh			|= elapsedMs > 60000.f;	// Keep 1 refresh per minute minimum
+	bool bRefresh		=	wasActive != mbIsActive ||	// Important to sent input to client losing focus, making sure it receives knows to release the keypress
+							(elapsedMs > 60000.f)	||	// Keep 1 refresh per minute minimum
+							(refreshFPS >= 0.01f && elapsedMs >= 1000.f/refreshFPS);								
 	if( !bRefresh )
 	{ 
 		return;
 	}
-
+	
 	NetImgui::Internal::CmdInput* pNewInput = TakePendingInput();
 	pNewInput								= pNewInput ? pNewInput : NetImgui::Internal::netImguiNew<NetImgui::Internal::CmdInput>();
 

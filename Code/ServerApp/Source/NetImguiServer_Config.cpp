@@ -12,22 +12,26 @@ static ImVector<Client*>	gConfigList;
 static std::mutex			gConfigLock;
 static Client::RuntimeID	gRuntimeID = static_cast<Client::RuntimeID>(1);
 
-static constexpr char kConfigFile[]						= "netImgui.cfg";
-static constexpr char kConfigField_ServerPort[]			= "ServerPort";
-static constexpr char kConfigField_ServerRefreshRate[]	= "ServerRefreshRateDefault";
+static constexpr char kConfigFile[]							= "netImgui.cfg";
+static constexpr char kConfigField_ServerPort[]				= "ServerPort";
+static constexpr char kConfigField_ServerRefreshActive[]	= "RefreshFPSActive";
+static constexpr char kConfigField_ServerRefreshInactive[]	= "RefreshFPSInactive";
 
-static constexpr char kConfigField_Note[]				= "Note";
-static constexpr char kConfigField_Version[]			= "Version";
-static constexpr char kConfigField_Configs[]			= "Configs";
-static constexpr char kConfigField_Name[]				= "Name";
-static constexpr char kConfigField_Hostname[]			= "Hostname";
-static constexpr char kConfigField_Hostport[]			= "HostPort";
-static constexpr char kConfigField_AutoConnect[]		= "Auto";
-static constexpr char kConfigField_RefreshRate[]		= "RefreshRate";
+static constexpr char kConfigField_Note[]					= "Note";
+static constexpr char kConfigField_Version[]				= "Version";
+static constexpr char kConfigField_Configs[]				= "Configs";
+static constexpr char kConfigField_Name[]					= "Name";
+static constexpr char kConfigField_Hostname[]				= "Hostname";
+static constexpr char kConfigField_Hostport[]				= "HostPort";
+static constexpr char kConfigField_AutoConnect[]			= "Auto";
+
+uint32_t Server::sPort				= NetImgui::kDefaultServerPort;
+float Server::sRefreshFPSActive		= 30.f;
+float Server::sRefreshFPSInactive	= 30.f;
+
 
 //=================================================================================================
 // Find entry index with same configId. (-1 if not found)
-//
 // Note: 'gConfigLock' should have already locked before calling this
 static int FindClientIndex(uint32_t configID)
 //=================================================================================================
@@ -43,8 +47,14 @@ static int FindClientIndex(uint32_t configID)
 	return -1;
 }
 
-uint32_t Server::sPort				= NetImgui::kDefaultServerPort;
-float Server::sRefreshRateDefault	= 0.5f;
+//=================================================================================================
+template <typename TType>
+TType GetPropertyValue(const nlohmann::json& config, const char* zPropertyName, const TType& valueDefault)
+//=================================================================================================
+{
+	const auto& valueNode = config.find(zPropertyName);
+	return valueNode != config.end() ? valueNode->get<TType>() : valueDefault;
+}
 
 //=================================================================================================
 Client::Client()
@@ -54,7 +64,6 @@ Client::Client()
 , mConnectAuto(false)
 , mConnectRequest(false)
 , mConnected(false)
-, mRefreshRate(Server::sRefreshRateDefault)
 , mTransient(false)
 {
 	strcpy_s(mClientName, "New Client");
@@ -194,13 +203,13 @@ void Client::SaveAll()
 			config[kConfigField_Hostname]		= pConfig->mHostName;
 			config[kConfigField_Hostport]		= pConfig->mHostPort;
 			config[kConfigField_AutoConnect]	= pConfig->mConnectAuto;
-			config[kConfigField_RefreshRate]	= pConfig->mRefreshRate;
 		}
 	}
-	configRoot[kConfigField_Version]			= eVersion::_Latest;
-	configRoot[kConfigField_Note]				= "netImgui Server's list of Clients (Using JSON format).";
-	configRoot[kConfigField_ServerPort]			= Server::sPort;
-	configRoot[kConfigField_ServerRefreshRate]	= Server::sRefreshRateDefault;
+	configRoot[kConfigField_Version]				= eVersion::_Latest;
+	configRoot[kConfigField_Note]					= "netImgui Server's list of Clients (Using JSON format).";
+	configRoot[kConfigField_ServerPort]				= Server::sPort;
+	configRoot[kConfigField_ServerRefreshActive]	= Server::sRefreshFPSActive;
+	configRoot[kConfigField_ServerRefreshInactive]	= Server::sRefreshFPSInactive;
 	
 	std::ofstream outputFile(kConfigFile);
 	if( outputFile.is_open() )
@@ -208,15 +217,6 @@ void Client::SaveAll()
 		std::string result = configRoot.dump(1);
 		outputFile << result;
 	}
-}
-
-//=================================================================================================
-template <typename TType>
-TType GetPropertyValue(const nlohmann::json& config, const char* zPropertyName, const TType& valueDefault)
-//=================================================================================================
-{
-	const auto& valueNode = config.find(zPropertyName);
-	return valueNode != config.end() ? valueNode->get<TType>() : valueDefault;
 }
 
 //=================================================================================================
@@ -235,7 +235,8 @@ void Client::LoadAll()
 
 	uint32_t configVersion		= GetPropertyValue(configRoot, kConfigField_Version, 0u);
 	Server::sPort				= GetPropertyValue(configRoot, kConfigField_ServerPort, NetImgui::kDefaultServerPort);
-	Server::sRefreshRateDefault	= GetPropertyValue(configRoot, kConfigField_ServerRefreshRate, Server::sRefreshRateDefault);
+	Server::sRefreshFPSActive	= GetPropertyValue(configRoot, kConfigField_ServerRefreshActive, Server::sRefreshFPSActive);
+	Server::sRefreshFPSInactive	= GetPropertyValue(configRoot, kConfigField_ServerRefreshInactive, Server::sRefreshFPSInactive);
 	if( configVersion >= static_cast<uint32_t>(eVersion::Initial) )
 	{	
 		for(const auto& config : configRoot[kConfigField_Configs] )
@@ -255,7 +256,6 @@ void Client::LoadAll()
 				
 				pConfig->mHostPort		= GetPropertyValue(config, kConfigField_Hostport, pConfig->mHostPort);
 				pConfig->mConnectAuto	= GetPropertyValue(config, kConfigField_AutoConnect, pConfig->mConnectAuto);
-				pConfig->mRefreshRate	= GetPropertyValue(config, kConfigField_RefreshRate, pConfig->mRefreshRate);
 			}
 		}
 	}

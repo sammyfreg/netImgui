@@ -6,7 +6,10 @@
 #if defined(_MSC_VER)
 #pragma warning (disable: 4464)		// warning C4464: relative include path contains '..'
 #endif
+
+#define NETIMGUI_INTERNAL_INCLUDE 1
 #include "../NetImgui_Api.h"
+#undef NETIMGUI_INTERNAL_INCLUDE
 
 #if NETIMGUI_ENABLED
 
@@ -20,7 +23,7 @@
 #include "NetImgui_WarningReenable.h"
 //=================================================================================================
 
-#define IMGUI_HAS_CALLBACK (IMGUI_VERSION_NUM >= 17905)
+#define IMGUI_HAS_CALLBACK 0 && (IMGUI_VERSION_NUM >= 17905)
 
 //=================================================================================================
 #include "NetImgui_WarningDisable.h"
@@ -49,8 +52,31 @@ protected:
 	ImGuiContext* mpSavedContext;
 };
 
+template<typename TType>
+class ScopedValue
+{
+public:
+	ScopedValue(TType& ValueRef, TType Value) 
+	: mValueRef(ValueRef)
+	, mValueRestore(ValueRef) 
+	{
+		ValueRef = Value; 
+	}
+protected:
+	TType&	mValueRef;
+	TType	mValueRestore;
+	uint8_t mPadding[sizeof(void*)-(sizeof(TType)%8)];
+	
+	// Prevents warning about implicitly delete functions
+	ScopedValue(const ScopedValue&) = delete;
+	ScopedValue(const ScopedValue&&) = delete;
+	void operator=(const ScopedValue&) = delete;
+};
+
+using ScopedBool = ScopedValue<bool>;
+
 //=============================================================================
-// Class to exchange a pointer between two threads, safely
+// Class to safely exchange a pointer between two threads
 //=============================================================================
 template <typename TType>
 class ExchangePtr

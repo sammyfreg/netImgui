@@ -27,7 +27,7 @@ bool ClientInfo::IsConnectPending()const
 
 bool ClientInfo::IsActive()const
 {
-	return IsConnected() || IsConnectPending();
+	return IsConnected() || IsConnectPending() || mbDisconnectRequest;
 }
 
 void ClientInfo::KillSocketComs()
@@ -58,6 +58,11 @@ void ClientInfo::KillSocketAll()
 {	
 	KillSocketComs();
 	KillSocketListen();	
+}
+
+bool ClientInfo::IsContextOverriden()const
+{
+	return mSavedContextValues.mSavedContext;
 }
 
 }}} // namespace NetImgui::Internal::Client

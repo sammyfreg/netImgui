@@ -20,49 +20,34 @@ void SavedImguiContext::Save(ImGuiContext* copyFrom)
 	ImGuiIO& sourceIO		= ImGui::GetIO();
 
 	memcpy(mKeyMap, sourceIO.KeyMap, sizeof(mKeyMap));
-	mpCopiedContext			= copyFrom;
+	mSavedContext			= true;
 	mConfigFlags			= sourceIO.ConfigFlags;
 	mBackendFlags			= sourceIO.BackendFlags;
 	mBackendPlatformName	= sourceIO.BackendPlatformName;
 	mBackendRendererName	= sourceIO.BackendRendererName;
 	mDrawMouse				= sourceIO.MouseDrawCursor;	
-	mClipboardUserData		= sourceIO.ClipboardUserData;
+	mClipboardUserData		= sourceIO.ClipboardUserData;	
 #if IMGUI_VERSION_NUM >= 17700 && IMGUI_VERSION_NUM < 17900
     mImeWindowHandle		= sourceIO.ImeWindowHandle;
 #endif
 }
 
 void SavedImguiContext::Restore(ImGuiContext* copyTo)
-{
-	if( copyTo == mpCopiedContext )
-	{
-		ScopedImguiContext scopedContext(copyTo);
-		ImGuiIO& destIO				= ImGui::GetIO();
+{	
+	ScopedImguiContext scopedContext(copyTo);
+	ImGuiIO& destIO				= ImGui::GetIO();
 
-		memcpy(destIO.KeyMap, mKeyMap, sizeof(destIO.KeyMap));
-		destIO.ConfigFlags			= mConfigFlags;
-		destIO.BackendFlags			= mBackendFlags;
-		destIO.BackendPlatformName	= mBackendPlatformName;
-		destIO.BackendRendererName	= mBackendRendererName;
-		destIO.MouseDrawCursor		= mDrawMouse;
-		destIO.ClipboardUserData	= mClipboardUserData;
-	#if IMGUI_VERSION_NUM >= 17700 && IMGUI_VERSION_NUM < 17900
-		destIO.ImeWindowHandle		= mImeWindowHandle;
-	#endif
-		mpCopiedContext				= nullptr;
-	}
-}
-
-//=================================================================================================
-// CLIENT INFO Constructor
-//=================================================================================================
-ClientInfo::ClientInfo() 
-: mpSocketPending(nullptr)
-, mpSocketComs(nullptr)
-, mpSocketListen(nullptr)
-, mTexturesPendingCount(0)
-{ 
-	memset(mTexturesPending, 0, sizeof(mTexturesPending));
+	memcpy(destIO.KeyMap, mKeyMap, sizeof(destIO.KeyMap));
+	mSavedContext				= false;
+	destIO.ConfigFlags			= mConfigFlags;
+	destIO.BackendFlags			= mBackendFlags;
+	destIO.BackendPlatformName	= mBackendPlatformName;
+	destIO.BackendRendererName	= mBackendRendererName;
+	destIO.MouseDrawCursor		= mDrawMouse;
+	destIO.ClipboardUserData	= mClipboardUserData;
+#if IMGUI_VERSION_NUM >= 17700 && IMGUI_VERSION_NUM < 17900
+	destIO.ImeWindowHandle		= mImeWindowHandle;
+#endif
 }
 
 //=================================================================================================
@@ -212,7 +197,6 @@ bool Communications_Incoming(ClientInfo& client)
 	return bOk;
 }
 
-
 //=================================================================================================
 // OUTGOING COMMUNICATIONS
 //=================================================================================================
@@ -241,7 +225,8 @@ void CommunicationsClient(void* pClientVoid)
 	bool bConnected(pClient->IsConnected());
 	while( bConnected )
 	{
-		std::this_thread::sleep_for(std::chrono::milliseconds(8));
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		//std::this_thread::yield();
 		bConnected = Communications_Outgoing(*pClient) && Communications_Incoming(*pClient);		
 	}
 
@@ -254,19 +239,20 @@ void CommunicationsClient(void* pClientVoid)
 //=================================================================================================
 void CommunicationsHost(void* pClientVoid)
 {
-	ClientInfo* pClient					= reinterpret_cast<ClientInfo*>(pClientVoid);
-	pClient->mpSocketListen				= pClient->mpSocketPending.exchange(nullptr);
+	ClientInfo* pClient		= reinterpret_cast<ClientInfo*>(pClientVoid);
+	pClient->mpSocketListen	= pClient->mpSocketPending.exchange(nullptr);
 	while( !pClient->mbDisconnectRequest && pClient->mpSocketListen )
 	{		
-		pClient->mpSocketPending		= Network::ListenConnect(pClient->mpSocketListen);
+		pClient->mpSocketPending	= Network::ListenConnect(pClient->mpSocketListen);
 		if( pClient->mpSocketPending )
 		{
 			Communications_Initialize(*pClient);
 			bool bConnected(pClient->IsConnected());
 			while (bConnected)
 			{
-				std::this_thread::sleep_for(std::chrono::milliseconds(8));
-				bConnected				= Communications_Outgoing(*pClient) && Communications_Incoming(*pClient);
+				std::this_thread::sleep_for(std::chrono::milliseconds(1));
+				//std::this_thread::yield();
+				bConnected	= Communications_Outgoing(*pClient) && Communications_Incoming(*pClient);
 			}
 			pClient->KillSocketComs();
 		}			
@@ -277,7 +263,68 @@ void CommunicationsHost(void* pClientVoid)
 }
 
 //=================================================================================================
-//
+// Support of the Dear ImGui hooks 
+// (automatic call to NetImgui::BeginFrame()/EndFrame() on ImGui::BeginFrame()/Imgui::Render()
+//=================================================================================================
+#if IMGUI_HAS_CALLBACK
+void HookBeginFrame(ImGuiContext*, ImGuiContextHook* hook)
+{
+	Client::ClientInfo& client = *reinterpret_cast<Client::ClientInfo*>(hook->UserData);
+	if (!client.mbInsideNewEnd)
+	{
+		ScopedBool scopedInside(client.mbInsideHook, true);
+		NetImgui::NewFrame(false);
+	}
+}
+
+void HookEndFrame(ImGuiContext*, ImGuiContextHook* hook)
+{
+	Client::ClientInfo& client = *reinterpret_cast<Client::ClientInfo*>(hook->UserData);
+	if (!client.mbInsideNewEnd)
+	{
+		ScopedBool scopedInside(client.mbInsideHook, true);
+		NetImgui::EndFrame();
+	}
+}
+
+void HookShutdown(ImGuiContext*, ImGuiContextHook* hook)
+{
+	Client::ClientInfo& client = *reinterpret_cast<Client::ClientInfo*>(hook->UserData);
+	client.mhImguiHookShutdown = client.mhImguiHookNewframe = client.mhImguiHookEndframe = 0;
+	//SF to do handle this properly and on shutdown
+}
+#endif 	// IMGUI_HAS_CALLBACK
+
+//=================================================================================================
+// CLIENT INFO Constructor
+//=================================================================================================
+ClientInfo::ClientInfo()
+: mpSocketPending(nullptr)
+, mpSocketComs(nullptr)
+, mpSocketListen(nullptr)
+, mTexturesPendingCount(0)
+{
+	memset(mTexturesPending, 0, sizeof(mTexturesPending));
+}
+
+//=================================================================================================
+// CLIENT INFO Constructor
+//=================================================================================================
+ClientInfo::~ClientInfo()
+{
+	for( auto& texture : mTextures ){
+		texture.Set(nullptr);
+	}
+
+	for(size_t i(0); i<ArrayCount(mTexturesPending); ++i){
+		netImguiDeleteSafe(mTexturesPending[i]);
+	}
+
+	netImguiDeleteSafe(mpLastInput);
+}
+
+//=================================================================================================
+// 
 //=================================================================================================
 void ClientInfo::TextureProcessPending()
 {
@@ -307,6 +354,113 @@ void ClientInfo::TextureProcessPending()
 			mTextures[texIdx].mbSent = false;
 		}
 	}
+}
+
+//=================================================================================================
+// Initialize the 
+//=================================================================================================
+void ClientInfo::ContextInitialize()
+{
+	mpContext				= ImGui::GetCurrentContext();
+
+#if IMGUI_HAS_CALLBACK
+	ImGuiContextHook hookNewframe, hookEndframe, hookShutdown;
+	
+	hookNewframe.Type		= ImGuiContextHookType_NewFramePre;
+	hookNewframe.Callback	= HookBeginFrame;
+	hookNewframe.UserData	= this;	
+	mhImguiHookNewframe		= ImGui::AddContextHook(mpContext, &hookNewframe);
+	
+	hookEndframe.Type		= ImGuiContextHookType_RenderPost;
+	hookEndframe.Callback	= HookEndFrame;
+	hookEndframe.UserData	= this;
+	mhImguiHookEndframe		= ImGui::AddContextHook(mpContext, &hookEndframe);
+
+	hookShutdown.Type		= ImGuiContextHookType_Shutdown;
+	hookShutdown.Callback	= HookShutdown;
+	hookShutdown.UserData	= this;
+	mhImguiHookShutdown		= ImGui::AddContextHook(mpContext, &hookShutdown);
+#endif
+}
+
+//=================================================================================================
+// Take over a Dear ImGui context for use with NetImgui
+//=================================================================================================
+void ClientInfo::ContextOverride()
+{
+	ScopedImguiContext scopedSourceCtx(mpContext);
+
+	// Keep a copy of original settings of this context	
+	mSavedContextValues.Save(mpContext);
+	mTimeTracking = std::chrono::high_resolution_clock::now();
+
+	// Override some settings
+	// Note: Make sure every setting overwritten here, are handled in 'SavedImguiContext::Save(...)'
+	{
+		ImGuiIO& newIO						= ImGui::GetIO();
+		newIO.KeyMap[ImGuiKey_Tab]			= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardTab);
+		newIO.KeyMap[ImGuiKey_LeftArrow]	= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardLeft);
+		newIO.KeyMap[ImGuiKey_RightArrow]	= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardRight);
+		newIO.KeyMap[ImGuiKey_UpArrow]		= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardUp);
+		newIO.KeyMap[ImGuiKey_DownArrow]	= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardDown);
+		newIO.KeyMap[ImGuiKey_PageUp]		= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardPageUp);
+		newIO.KeyMap[ImGuiKey_PageDown]		= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardPageDown);
+		newIO.KeyMap[ImGuiKey_Home]			= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardHome);
+		newIO.KeyMap[ImGuiKey_End]			= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardEnd);
+		newIO.KeyMap[ImGuiKey_Insert]		= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardInsert);
+		newIO.KeyMap[ImGuiKey_Delete]		= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardDelete);
+		newIO.KeyMap[ImGuiKey_Backspace]	= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardBackspace);
+		newIO.KeyMap[ImGuiKey_Space]		= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardSpace);
+		newIO.KeyMap[ImGuiKey_Enter]		= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardEnter);
+		newIO.KeyMap[ImGuiKey_Escape]		= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardEscape);
+#if IMGUI_VERSION_NUM >= 17102
+		newIO.KeyMap[ImGuiKey_KeyPadEnter]	= 0;//static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardKeypadEnter);
+#endif
+		newIO.KeyMap[ImGuiKey_A]			= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardA);
+		newIO.KeyMap[ImGuiKey_C]			= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardA) - 'A' + 'C';
+		newIO.KeyMap[ImGuiKey_V]			= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardA) - 'A' + 'V';
+		newIO.KeyMap[ImGuiKey_X]			= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardA) - 'A' + 'X';
+		newIO.KeyMap[ImGuiKey_Y]			= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardA) - 'A' + 'Y';
+		newIO.KeyMap[ImGuiKey_Z]			= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardA) - 'A' + 'Z';
+
+		newIO.ClipboardUserData				= nullptr;
+		newIO.BackendPlatformName			= "NetImgui";
+		newIO.BackendRendererName			= "DirectX11";
+#if IMGUI_VERSION_NUM >= 17700 && IMGUI_VERSION_NUM < 17900
+		newIO.ImeWindowHandle				= nullptr;
+#endif
+#if defined(IMGUI_HAS_VIEWPORT)
+		newIO.ConfigFlags					&= ~(ImGuiConfigFlags_ViewportsEnable); // Viewport unsupported at the moment
+#endif
+	}
+}
+
+//=================================================================================================
+// Restore a Dear ImGui context to initial state before we modified it
+//=================================================================================================
+void ClientInfo::ContextRestore()
+{
+	// Note: only happens if context overriden is same as current one, to prevent trying to restore to a deleted context
+	if (IsContextOverriden() && ImGui::GetCurrentContext() == mpContext)
+	{
+		mSavedContextValues.Restore(mpContext);
+	}
+}
+
+//=================================================================================================
+// Remove callback hooks, once we detect a disconnection
+//=================================================================================================
+void ClientInfo::ContextRemoveHooks()
+{
+#if IMGUI_HAS_CALLBACK
+	if (mpContext && mhImguiHookNewframe != 0)
+	{
+		ImGui::RemContextHook(mpContext, mhImguiHookNewframe);
+		ImGui::RemContextHook(mpContext, mhImguiHookEndframe);
+		ImGui::RemContextHook(mpContext, mhImguiHookShutdown);
+		mhImguiHookShutdown = mhImguiHookNewframe = mhImguiHookEndframe = 0;
+	}
+#endif
 }
 
 }}} // namespace NetImgui::Internal::Client

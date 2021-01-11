@@ -93,8 +93,8 @@ void ClientInfoTooltip(const RemoteClient::Client& Client)
 		ImGui::TextUnformatted("ImGui");	ImGui::SameLine(width); ImGui::TextColored(kColorContent, ": %s", Client.mInfoImguiVerName);
 		ImGui::TextUnformatted("Time");		ImGui::SameLine(width); ImGui::TextColored(kColorContent, ": %03ih%02i:%02i", tmHour,tmMin,tmSec );
 		ImGui::TextUnformatted("Fps");		ImGui::SameLine(width); ImGui::TextColored(kColorContent, ": %04.1f", Client.mStatsFPS );
-		ImGui::TextUnformatted("Data");		ImGui::SameLine(width); ImGui::TextColored(kColorContent, ": (Rx) %i KB/s   (Tx) %i KB/s", (Client.mStatsRcvdKBs/10)*10, (Client.mStatsSentKBs/10)*10);
-		ImGui::NewLine();					ImGui::SameLine(width); ImGui::TextColored(kColorContent, ": (Rx) %i %s   (Tx) %i %s", static_cast<int>(rxData), kDataSizeUnits[rxUnitIdx], static_cast<int>(txData), kDataSizeUnits[txUnitIdx]);
+		ImGui::TextUnformatted("Data");		ImGui::SameLine(width); ImGui::TextColored(kColorContent, ": (Rx) %7i KB/s \t(Tx) %7i KB/s", Client.mStatsRcvdBps/1024, Client.mStatsSentBps/1024);
+		ImGui::NewLine();					ImGui::SameLine(width); ImGui::TextColored(kColorContent, ": (Rx) %7i %s   \t(Tx) %7i %s", static_cast<int>(rxData), kDataSizeUnits[rxUnitIdx], static_cast<int>(txData), kDataSizeUnits[txUnitIdx]);
 		ImGui::EndTooltip();
 	}
 }
@@ -196,14 +196,16 @@ void Popup_AboutNetImgui()
 //=================================================================================================
 void Popup_ServerConfig()
 {
-	static int sEditPort			= -1;
-	static float sEditRefreshRate	= 0;
+	static int sEditPort					= -1;
+	static float sEditRefreshFPSActive		= 0;
+	static float sEditRefreshFPSInactive	= 0;
 
 	if( gPopup_ServerConfig_Show )
 	{		
 		if( sEditPort == -1 ){
-			sEditPort			= static_cast<int>(NetImguiServer::Config::Server::sPort);
-			sEditRefreshRate	= NetImguiServer::Config::Server::sRefreshRateDefault;
+			sEditPort				= static_cast<int>(NetImguiServer::Config::Server::sPort);
+			sEditRefreshFPSActive	= NetImguiServer::Config::Server::sRefreshFPSActive;
+			sEditRefreshFPSInactive	= NetImguiServer::Config::Server::sRefreshFPSInactive;
 		}
 		ImGuiWindowClass windowClass;
 		windowClass.ViewportFlagsOverrideSet = ImGuiViewportFlags_TopMost;
@@ -224,9 +226,14 @@ void Popup_ServerConfig()
 			}
 
 			// --- Refresh ---	
-			ImGui::SliderFloat("Default Refresh", &sEditRefreshRate, 0.f, 1.f );
+			ImGui::SliderFloat("Active Window", &sEditRefreshFPSActive, 0.f, 60.f, "%2.f Fps" );
 			if( ImGui::IsItemHovered() ){
-				ImGui::SetTooltip("How often we refresh content of *visible* and *unfocused* clients.\nThis apply for client without a Config\nNote: Active clients are refreshed as soon as possible.\nNote: Lowering this will reduce network traffic.");
+				ImGui::SetTooltip("How often we refresh content of *visible* and *focused* clients.\nNote: Lowering this will reduce network traffic.");
+			}
+
+			ImGui::SliderFloat("Inactive Window", &sEditRefreshFPSInactive, 0.f, 60.f, "%2.f Fps" );
+			if( ImGui::IsItemHovered() ){
+				ImGui::SetTooltip("How often we refresh content of *visible* and *unfocused* clients.\nNote: Lowering this will reduce network traffic.");
 			}
 
 			// --- Save/Cancel ---
@@ -237,8 +244,9 @@ void Popup_ServerConfig()
 			ImGui::SetItemDefaultFocus();
 			ImGui::SameLine();
 			if (ImGui::Button("Save", ImVec2(ImGui::GetContentRegionAvailWidth(), 0))) {
-				NetImguiServer::Config::Server::sPort					= static_cast<uint32_t>(sEditPort);
-				NetImguiServer::Config::Server::sRefreshRateDefault	= sEditRefreshRate;
+				NetImguiServer::Config::Server::sPort				= static_cast<uint32_t>(sEditPort);
+				NetImguiServer::Config::Server::sRefreshFPSActive	= sEditRefreshFPSActive;
+				NetImguiServer::Config::Server::sRefreshFPSInactive	= sEditRefreshFPSInactive;
 				NetImguiServer::Config::Client::SaveAll();
 				gPopup_ServerConfig_Show = false;
 			}
@@ -286,12 +294,6 @@ void Popup_ClientConfigEdit()
 			ImGui::SameLine();
 			if (ImGui::Button("Default")){
 				gPopup_ClientConfig_pConfig->mHostPort = NetImgui::kDefaultClientPort;
-			}
-
-			// --- Refresh ---	
-			ImGui::SliderFloat("Refresh", &gPopup_ClientConfig_pConfig->mRefreshRate, 0.f, 1.f );
-			if( ImGui::IsItemHovered() ){
-				ImGui::SetTooltip("How often we refresh content of *visible* and *unfocused* clients.\nNote: Active clients are refreshed as soon as possible.\nNote: Lowering this will reduce network traffic.");
 			}
 
 			// --- Auto ---
@@ -693,13 +695,13 @@ void DrawImguiContent_MainMenu_Stats()
 	for(uint32_t i(0); i<RemoteClient::Client::GetCountMax(); ++i)
 	{
 		RemoteClient::Client& client = RemoteClient::Client::Get(i);
-		txKBs		+= client.mbIsConnected ? client.mStatsSentKBs : 0;
-		rxKBs		+= client.mbIsConnected ? client.mStatsRcvdKBs : 0;
+		txKBs		+= client.mbIsConnected ? client.mStatsSentBps/1024 : 0;
+		rxKBs		+= client.mbIsConnected ? client.mStatsRcvdBps/1024 : 0;
 		connected	+= client.mbIsConnected ? 1 : 0;
 	}
 
 	ImGui::SameLine(0.f, ImGui::GetContentRegionAvailWidth()-200.f);
-	ImGui::TextColored(kColorContent, "(Rx) %iKB/s   (Tx) %iKB/s", (rxKBs/10)*10, (txKBs/10)*10); // Round down number to 10s, reducing variation
+	ImGui::TextColored(kColorContent, "(Rx) %iKB/s   (Tx) %iKB/s", rxKBs, txKBs);
 	if (ImGui::IsItemHovered())
 	{
 		uint64_t txData(NetImguiServer::Network::GetStatsDataSent());

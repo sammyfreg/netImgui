@@ -48,7 +48,7 @@ void Client_Draw_Content()
 {
 	bool bModeChanged(false);
 
-	ClientUtil_ImGuiContent_Common("SampleNewFrame", false);
+	ClientUtil_ImGuiContent_Common("SampleNewFrame");
 	ImGui::SetNextWindowPos(ImVec2(32,48), ImGuiCond_Once);
 	ImGui::SetNextWindowSize(ImVec2(400,400), ImGuiCond_Once);
 	if (ImGui::Begin("Sample NewFrame", nullptr))
@@ -109,7 +109,7 @@ ImDrawData* Client_Draw_ModeAlways()
 	// (4) Forward to drawing data our local renderer when not connected or 
 	//	connected and wanting to mirror the remote content. 
 	//---------------------------------------------------------------------------------------------
-	return !NetImgui::IsConnected() ? NetImgui::GetDrawData() : nullptr;
+	return !NetImgui::IsConnected() ? ImGui::GetDrawData() : nullptr;
 }
 
 //=============================================================================================
@@ -144,7 +144,7 @@ ImDrawData* Client_Draw_ModeOnDemand()
 		//	connected and wanting to mirror the remote content. 
 		//---------------------------------------------------------------------------------------------
 		sFrameDrawnCount++;
-		return !NetImgui::IsConnected() ? NetImgui::GetDrawData() : nullptr;
+		return !NetImgui::IsConnected() ? ImGui::GetDrawData() : nullptr;
 	}
 		
 	sFrameSkippedCount++;

@@ -110,7 +110,7 @@ ImDrawData* Client_Draw()
 		//-----------------------------------------------------------------------------------------
 		// (2) Draw ImGui Content 		
 		//-----------------------------------------------------------------------------------------
-		ClientUtil_ImGuiContent_Common("SampleTextures", false);
+		ClientUtil_ImGuiContent_Common("SampleTextures");
 		ImGui::SetNextWindowPos(ImVec2(32, 48), ImGuiCond_Once);
 		ImGui::SetNextWindowSize(ImVec2(400, 400), ImGuiCond_Once);
 		if (ImGui::Begin("Sample Textures", nullptr))
@@ -172,7 +172,7 @@ ImDrawData* Client_Draw()
 	//---------------------------------------------------------------------------------------------
 	// (4b) Render nothing locally (when connected)
 	//---------------------------------------------------------------------------------------------
-	return bCanDisplayLocally ? NetImgui::GetDrawData() : nullptr;
+	return bCanDisplayLocally ? ImGui::GetDrawData() : nullptr;
 }
 
 } // namespace SampleClient

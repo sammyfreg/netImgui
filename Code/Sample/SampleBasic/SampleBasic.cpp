@@ -38,14 +38,15 @@ void Client_Shutdown()
 ImDrawData* Client_Draw()
 {
 	//---------------------------------------------------------------------------------------------
-	// (1) Start a new Frame
+	// (1) Start a new Frame. 
 	//---------------------------------------------------------------------------------------------
 	NetImgui::NewFrame();
 	
 	//-----------------------------------------------------------------------------------------
 	// (2) Draw ImGui Content 		
 	//-----------------------------------------------------------------------------------------
-	ClientUtil_ImGuiContent_Common("SampleBasic", false);
+	ClientUtil_ImGuiContent_Common("SampleBasic"); //Note: Connection to remote server done in there
+
 	ImGui::SetNextWindowPos(ImVec2(32,48), ImGuiCond_Once);
 	ImGui::SetNextWindowSize(ImVec2(400,400), ImGuiCond_Once);
 	if( ImGui::Begin("Sample Basic", nullptr) )
@@ -61,17 +62,17 @@ ImDrawData* Client_Draw()
 		ImGui::TextWrapped("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.");
 	}
 	ImGui::End();
-	
+		
 	//---------------------------------------------------------------------------------------------
 	// (3) Finish the frame, preparing the drawing data and...
 	// (3a) Send the data to the netImGui server when connected
 	//---------------------------------------------------------------------------------------------
 	NetImgui::EndFrame();
-	
+
 	//---------------------------------------------------------------------------------------------
 	// (4) Forward to drawing data our local renderer when not remotely drawing
 	//---------------------------------------------------------------------------------------------
-	return !NetImgui::IsConnected() ? NetImgui::GetDrawData() : nullptr;
+	return !NetImgui::IsConnected() ? ImGui::GetDrawData() : nullptr;	
 }
 
 } // namespace SampleClient

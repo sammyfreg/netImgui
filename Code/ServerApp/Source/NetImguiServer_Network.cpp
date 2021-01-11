@@ -136,31 +136,36 @@ bool Communications_Outgoing(NetImgui::Internal::Network::SocketInfo* pClientSoc
 void Communications_UpdateClientStats(RemoteClient::Client& Client)
 {
 	// Update data transfer stats
-	constexpr uint64_t kHysteresisFactor= 5; // in %
-	const uint32_t idxOldest			= (Client.mStatsIndex + 1) % IM_ARRAYSIZE(Client.mStatsDataRcvd);
-	const uint32_t idxNewest			= Client.mStatsIndex;
-	Client.mStatsTime[idxNewest]		= std::chrono::steady_clock::now();
-	auto elapsedTime					= Client.mStatsTime[idxNewest] - Client.mStatsTime[idxOldest];
-	uint32_t tmMs						= static_cast<uint32_t>(std::chrono::duration_cast<std::chrono::milliseconds>(elapsedTime).count());
-	uint64_t newDataRcvd				= Client.mStatsDataRcvd[idxNewest] - Client.mStatsDataRcvd[idxOldest];
-	uint64_t newDataSent				= Client.mStatsDataSent[idxNewest] - Client.mStatsDataSent[idxOldest];
-	uint32_t newDataRcvdKBs				= static_cast<uint32_t>(newDataRcvd * 1000u / 1024u / tmMs);
-	uint32_t newDataSentKBs				= static_cast<uint32_t>(newDataSent * 1000u / 1024u / tmMs);
-	Client.mStatsRcvdKBs				= (Client.mStatsRcvdKBs*(100u-kHysteresisFactor) + newDataRcvdKBs*kHysteresisFactor)/100u;
-	Client.mStatsSentKBs				= (Client.mStatsSentKBs*(100u-kHysteresisFactor) + newDataSentKBs*kHysteresisFactor)/100u;
+	constexpr uint32_t HistoryCount	= IM_ARRAYSIZE(Client.mStatsDataRcvd);
+	const uint32_t idxNewest		= Client.mStatsIndex;
+	const uint32_t idxOldest		= (Client.mStatsIndex + 1) % HistoryCount;
+	const uint32_t idxPrevious		= (Client.mStatsIndex + HistoryCount - 1) % HistoryCount;
+	Client.mStatsTime[idxNewest]	= std::chrono::steady_clock::now();	
+	
+	// Update data rate once per completed array (reduce fluctuations)		
+	if( idxOldest == 0 ){
+		constexpr uint64_t kHysteresis	= 2; // out of 100
+		uint64_t newDataRcvd			= Client.mStatsDataRcvd[idxNewest] - Client.mStatsDataRcvd[idxOldest];
+		uint64_t newDataSent			= Client.mStatsDataSent[idxNewest] - Client.mStatsDataSent[idxOldest];
+		auto elapsedTime				= Client.mStatsTime[idxNewest] - Client.mStatsTime[idxOldest];	
+		uint64_t tmMicrosS				= std::max<uint64_t>(1u, std::chrono::duration_cast<std::chrono::microseconds>(elapsedTime).count());
+		uint32_t newDataRcvdBps			= static_cast<uint32_t>(newDataRcvd * 1000000u / tmMicrosS);
+		uint32_t newDataSentBps			= static_cast<uint32_t>(newDataSent * 1000000u / tmMicrosS);
+		Client.mStatsRcvdBps			= (Client.mStatsRcvdBps*(100u-kHysteresis) + newDataRcvdBps*kHysteresis)/100u;
+		Client.mStatsSentBps			= (Client.mStatsSentBps*(100u-kHysteresis) + newDataSentBps*kHysteresis)/100u;
+	}
+	gStatsDataRcvd					+= Client.mStatsDataRcvd[idxNewest] - Client.mStatsDataRcvd[idxPrevious];
+	gStatsDataSent					+= Client.mStatsDataSent[idxNewest] - Client.mStatsDataSent[idxPrevious];
 
 	// Prepate for next frame data info
-	Client.mStatsIndex					= idxOldest;
-	Client.mStatsDataRcvd[idxOldest]	= Client.mStatsDataRcvd[idxNewest];
-	Client.mStatsDataSent[idxOldest]	= Client.mStatsDataSent[idxNewest];
+	Client.mStatsIndex				= idxOldest;
+	Client.mStatsDataRcvd[idxOldest]= Client.mStatsDataRcvd[idxNewest];
+	Client.mStatsDataSent[idxOldest]= Client.mStatsDataSent[idxNewest];
 
 	// Reset FPS to zero, when detected as not visible
 	if( !Client.mbIsVisible ){
-		Client.mStatsFPS				= 0.f;
+		Client.mStatsFPS			= 0.f;
 	}
-
-	gStatsDataRcvd						+= newDataRcvd;
-	gStatsDataSent						+= newDataSent;
 }
 
 //=================================================================================================
@@ -178,7 +183,7 @@ void Communications_ClientExchangeLoop(NetImgui::Internal::Network::SocketInfo* 
 						Communications_Incoming(pClientSocket, pClient);
 
 		Communications_UpdateClientStats(*pClient);
-		std::this_thread::sleep_for(std::chrono::milliseconds(8));
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 	}
 	NetImguiServer::Config::Client::SetProperty_Connected(pClient->mClientConfigID, false);
 	NetImgui::Internal::Network::Disconnect(pClientSocket);
@@ -219,8 +224,8 @@ bool Communications_InitializeClient(NetImgui::Internal::Network::SocketInfo* pC
 		pClient->mLastUpdateTime	= std::chrono::steady_clock::now() - std::chrono::hours(1);
 		pClient->mLastDrawFrame		= std::chrono::steady_clock::now();
 		pClient->mStatsIndex		= 0;
-		pClient->mStatsRcvdKBs		= 0;
-		pClient->mStatsSentKBs		= 0;
+		pClient->mStatsRcvdBps		= 0;
+		pClient->mStatsSentBps		= 0;
 		pClient->mStatsFPS			= 0.f;
 		memset(pClient->mStatsDataRcvd, 0, sizeof(pClient->mStatsDataRcvd));
 		memset(pClient->mStatsDataSent, 0, sizeof(pClient->mStatsDataSent));
@@ -344,7 +349,7 @@ void NetworkConnectRequest_Send()
 			if( (clientConfig.mConnectAuto || clientConfig.mConnectRequest) && !clientConfig.mConnected && clientConfig.mHostPort != NetImguiServer::Config::Server::sPort)
 			{
 				NetImguiServer::Config::Client::SetProperty_ConnectRequest(clientConfig.mRuntimeID, false);	// Reset the Connection request, we are processing it
-				clientConfigID	= clientConfig.mRuntimeID;									// Keep track of ClientConfig we are attempting to connect to
+				clientConfigID	= clientConfig.mRuntimeID;													// Keep track of ClientConfig we are attempting to connect to
 				pClientSocket	= NetImgui::Internal::Network::Connect(clientConfig.mHostName, clientConfig.mHostPort);
 			}
 		}			
@@ -396,6 +401,8 @@ void Shutdown()
 	gbShutdown = true;
 	while( gActiveClientThreadCount > 0 )
 		std::this_thread::yield();
+
+	NetImgui::Internal::Network::Shutdown();
 }
 
 //=================================================================================================
