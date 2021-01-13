@@ -6,6 +6,8 @@
 #endif
 #include <windows.h>
 #include <tchar.h>
+#include <WinSock2.h>
+#include <WS2tcpip.h>
 #include <shellapi.h>	// To open webpage link
 #include "imgui.h"
 #include "imgui_impl_win32.h"
@@ -141,4 +143,25 @@ void HAL_ShellCommand(const char* aCommandline)
 	ShellExecuteA(0, 0, aCommandline, 0, 0 , SW_SHOW );
 }
 
+//=================================================================================================
+// HAL GET SOCKET INFO
+// Take a platform specific socket (based on the NetImguiNetworkXXX.cpp implementation) and
+// fetch informations about the client IP connected
+//=================================================================================================
+bool HAL_GetSocketInfo(NetImgui::Internal::Network::SocketInfo* pClientSocket, char* pOutHostname, size_t HostNameLen, int& outPort)
+{
+	sockaddr socketAdr;
+	int sizeSocket(sizeof(sockaddr));
+	SOCKET* pClientSocketWin = reinterpret_cast<SOCKET*>(pClientSocket);
+	if( getsockname(*pClientSocketWin, &socketAdr, &sizeSocket) == 0 )
+	{
+		char zPortBuffer[32];
+		if( getnameinfo(&socketAdr, sizeSocket, pOutHostname, static_cast<DWORD>(HostNameLen), zPortBuffer, sizeof(zPortBuffer), NI_NUMERICSERV) == 0 )
+		{
+			outPort = atoi(zPortBuffer);
+			return true;
+		}
+	}
+	return false;
+}
 }} // namespace NetImguiServer { namespace App

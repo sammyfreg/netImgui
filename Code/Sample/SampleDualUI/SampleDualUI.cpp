@@ -11,8 +11,9 @@
 namespace SampleClient
 {
 enum class eDisplayMode : int { LocalNone, LocalMirror, LocalIndependent };
-static eDisplayMode skDisplayMode	= eDisplayMode::LocalNone;
-// static ImGuiContext* gSecondContext	= nullptr; //SF TODO
+static eDisplayMode		sDisplayMode			= eDisplayMode::LocalNone;
+static ImGuiContext*	gpContextMain			= nullptr;
+static ImGuiContext*	gpContextSide			= nullptr;
 
 //=================================================================================================
 //
@@ -22,10 +23,8 @@ bool Client_Startup()
 	if (!NetImgui::Startup())
 		return false;
 
-	// Can have more ImGui initialization here, like loading extra fonts.
-	// ...
-
-	//ImGui::CreateContext(gSecondContext, )
+	gpContextMain	= ImGui::GetCurrentContext();					// Dear ImGui backend already creates a default context
+	gpContextSide	= ImGui::CreateContext(ImGui::GetIO().Fonts);	// Creating a side context, used as a second display when connected
 	return true;
 }
 
@@ -33,8 +32,12 @@ bool Client_Startup()
 //
 //=================================================================================================
 void Client_Shutdown()
-{	
+{			
 	NetImgui::Shutdown(true);
+	ImGui::DestroyContext(gpContextSide);
+	ImGui::SetCurrentContext(gpContextMain);
+	gpContextMain	= nullptr;
+	gpContextSide	= nullptr;
 }
 
 //=================================================================================================
@@ -73,10 +76,10 @@ void Client_Draw_MainContent()
 	if (NetImgui::IsConnected())
 	{
 		ImGui::TextColored(ImVec4(0.1, 1, 0.1, 1), "Dual Display Mode:");
-		ImGui::RadioButton("None", reinterpret_cast<int*>(&skDisplayMode), static_cast<int>(eDisplayMode::LocalNone)); ImGui::SameLine();
-		ImGui::RadioButton("Mirror", reinterpret_cast<int*>(&skDisplayMode), static_cast<int>(eDisplayMode::LocalMirror)); ImGui::SameLine();
-		ImGui::RadioButton("Independent", reinterpret_cast<int*>(&skDisplayMode), static_cast<int>(eDisplayMode::LocalIndependent));
-		if (skDisplayMode == eDisplayMode::LocalMirror)
+		ImGui::RadioButton("None", reinterpret_cast<int*>(&sDisplayMode), static_cast<int>(eDisplayMode::LocalNone)); ImGui::SameLine();
+		ImGui::RadioButton("Mirror", reinterpret_cast<int*>(&sDisplayMode), static_cast<int>(eDisplayMode::LocalMirror)); ImGui::SameLine();
+		ImGui::RadioButton("Independent", reinterpret_cast<int*>(&sDisplayMode), static_cast<int>(eDisplayMode::LocalIndependent));
+		if (sDisplayMode == eDisplayMode::LocalMirror)
 		{
 			ImGui::TextWrapped("(Note: While the content is duplicated on local screen, it can only be interacted with on the netImgui remote server.)");
 		}
@@ -95,22 +98,38 @@ void Client_Draw_SharedContent()
 // Function used by the sample, to draw all ImGui Content
 //=================================================================================================
 ImDrawData* Client_Draw()
-{
+{	
+	// Saving local window size
+	ImVec2 CurrentWindowSize = ImGui::GetIO().DisplaySize;
+
 	//---------------------------------------------------------------------------------------------
 	// (1) Start a new Frame
 	//---------------------------------------------------------------------------------------------
+	//	IMPORTANT NOTE: NetImgui uses the curent context when 'ConnectToApp' or 'ConnectFromApp' 
+	//	was called.
+	//
+	//	For this sample, main content is always displayed on ContextMain, both when 
+	//	connected to server or only drawing locally. We then have a secondary context to display
+	//	locally, when we are drawing the main content for the remote connection.
+	//
+	//	You could decide to have a dedicated Remote NetImgui context instead. 
+	//---------------------------------------------------------------------------------------------
+
+	// Because a window resize might happen while main context wasn't the default, we are
+	// making sure it knows about the current size. While we are connected remotely it doesn't 
+	// matter, but once disconnected, we want the context to be up to date on the real window size.
+	// This is not needed if your own engine already update the display size every frame or this
+	// is the context that always receives the window size updates.
+	ImGui::SetCurrentContext(gpContextMain);
+	ImGui::GetIO().DisplaySize = CurrentWindowSize; 
 	if( NetImgui::NewFrame(true) )
 	{
 		//-----------------------------------------------------------------------------------------
 		// (2) Draw ImGui Content 		
 		//-----------------------------------------------------------------------------------------
-		// IMPORTANT NOTE: We are telling the connection that we want the original Context 'Cloned'.
-		// Meaning a duplicate context will be created for remote drawing. This leaves the original 
-		// Context untouched and free to continue using for a separate ImGui output in the 
-		// 'Local Independent' UI drawing section. 'Cloning' the context is not needed if you are 
-		// not planning to keep drawing in local windows while connected, or you can manage this 
-		// yourself using your own new context.
-		ClientUtil_ImGuiContent_Common("SampleDualUI"); //SF handle dual ui
+		// This is the main content that we are always displaying. When connected, it will appear
+		// on the remote server, otherwise will appear in the local window
+		ClientUtil_ImGuiContent_Common("SampleDualUI");
 		ImGui::SetNextWindowPos(ImVec2(32,48), ImGuiCond_Once);
 		ImGui::SetNextWindowSize(ImVec2(400,400), ImGuiCond_Once);
 		if (ImGui::Begin("SampleDualUI", nullptr))
@@ -122,18 +141,21 @@ ImDrawData* Client_Draw()
 			ImGui::End();
 		}
 
-		//---------------------------------------------------------------------------------------------
+		//-----------------------------------------------------------------------------------------
 		// (3) Finish the frame, preparing the drawing data and...
 		// (3a) Send the data to the netImGui server when connected
-		//---------------------------------------------------------------------------------------------
+		//-----------------------------------------------------------------------------------------
 		NetImgui::EndFrame();
 	}
 	
 	//---------------------------------------------------------------------------------------------
 	// (4) Draw a second UI for local display, when connected and display mode is 'Independent'
 	//---------------------------------------------------------------------------------------------
-	if( NetImgui::IsConnected() && skDisplayMode == eDisplayMode::LocalIndependent )
+	if( NetImgui::IsConnected() && sDisplayMode == eDisplayMode::LocalIndependent )
 	{
+		ImGui::SetCurrentContext(gpContextSide);
+		// Need to let this context know about the window size, when we just activated it
+		ImGui::GetIO().DisplaySize = CurrentWindowSize;	
 		ImGui::NewFrame();
 		ImGui::SetNextWindowSize(ImVec2(300, 220), ImGuiCond_Once);
 		if( ImGui::Begin("Extra Local Window") )
@@ -148,23 +170,13 @@ ImDrawData* Client_Draw()
 		}
 		ImGui::End();
 		ImGui::Render();
+
+		// Note: When this mode is active, the Side Context is left as current active context in 
+		//		 Dear ImGui. This will let the Dear ImGui backend forward all input/display size
+		//		 to this context instead of the MainContext which the remote is using.
 	}
 
-	//---------------------------------------------------------------------------------------------
-	// (5) Decide what to render locally
-	//---------------------------------------------------------------------------------------------
-	if( NetImgui::IsConnected() )
-	{ 
-		switch(skDisplayMode)
-		{
-		case eDisplayMode::LocalNone:			return nullptr;
-		case eDisplayMode::LocalMirror:			//SF return NetImgui::GetDrawData();
-		case eDisplayMode::LocalIndependent:	return ImGui::GetDrawData();
-		}
-	}
-
-	// When disconnected, NetImgui::GetDrawData() and ImGui::GetDrawData() are the same
-	return ImGui::GetDrawData();
+	return NetImgui::IsConnected() && sDisplayMode == eDisplayMode::LocalNone ? nullptr : ImGui::GetDrawData();
 } 
 
 } // namespace SampleClient

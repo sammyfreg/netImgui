@@ -357,7 +357,7 @@ void Shutdown(bool bWait)
 
 
 //=================================================================================================
-ImGuiContext* CloneContext(ImGuiContext* pSourceContext) //SF REMOVE
+ImGuiContext* CloneContext(ImGuiContext* pSourceContext)
 //=================================================================================================
 {
 	// Create a context duplicate

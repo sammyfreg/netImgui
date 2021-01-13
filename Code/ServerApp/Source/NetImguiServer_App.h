@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Private/NetImgui_Shared.h>
+#include <Private/NetImgui_Network.h>
 
 namespace NetImguiServer { namespace App
 {
@@ -13,8 +14,6 @@ namespace NetImguiServer { namespace App
 	void	Shutdown();
 	// Receive rendering request of each Remote client and output it to their own RenderTarget
 	void	UpdateRemoteContent();
-	// Draw our NetImgui server Imgui content
-	//ImVec4	DrawImguiContent();
 	// Add a new remote client config to our list (to attempt conexion)
 	bool	AddClientConfigFromString(const char* string, bool transient);	
 
@@ -26,6 +25,8 @@ namespace NetImguiServer { namespace App
 	//=============================================================================================
 	// Receive the 'Dear ImGui' key down values from the 'NetImgui' application, and convert them to windows virtual key codes
 	void	HAL_ConvertKeyDown(const bool ImguiKeysDown[512], uint64_t outKeysDownMask[512/64] );
+	// Receive a platform specific socket, and return us with info on the connection
+	bool	HAL_GetSocketInfo(NetImgui::Internal::Network::SocketInfo* pClientSocket, char* pOutHostname, size_t HostNameLen, int& outPort);
 	// Receive a command to execute by the OS. Used to open our weblink to the NetImgui Github
 	void	HAL_ShellCommand(const char* aCommandline);
 

@@ -1,6 +1,7 @@
 #include "NetImguiServer_App.h"
 #include "NetImguiServer_RemoteClient.h"
 #include "NetImguiServer_Config.h"
+#include "NetImguiServer_UI.h"
 #include <Private/NetImgui_CmdPackets.h>
 
 namespace NetImguiServer { namespace RemoteClient
@@ -28,13 +29,16 @@ Client::~Client()
 
 void Client::ReceiveDrawFrame(NetImgui::Internal::CmdDrawFrame* pFrameData)
 {
-	constexpr float hysteresisFactor	= 0.05f; // Between 0 to 1.0
-	auto elapsedTime					= std::chrono::steady_clock::now() - mLastDrawFrame;
-	float tmMs							= static_cast<float>(std::chrono::duration_cast<std::chrono::milliseconds>(elapsedTime).count());
-	float newFPS						= 1000.f / tmMs;
-	mStatsFPS							= mStatsFPS * (1.f-hysteresisFactor) + newFPS*hysteresisFactor;
-	mLastDrawFrame						= std::chrono::steady_clock::now();
-	mPendingFrame.Assign(pFrameData);	
+	// Receive new draw data
+	mPendingFrame.Assign(pFrameData);
+
+	// Update framerate
+	constexpr float kHysteresis	= 0.05f; // Between 0 to 1.0
+	auto elapsedTime			= std::chrono::steady_clock::now() - mLastDrawFrame;
+	float tmMicroS				= static_cast<float>(std::chrono::duration_cast<std::chrono::microseconds>(elapsedTime).count());
+	float newFPS				= 1000000.f / tmMicroS;
+	mStatsFPS					= mStatsFPS * (1.f-kHysteresis) + newFPS*kHysteresis;
+	mLastDrawFrame				= std::chrono::steady_clock::now();	
 }
 
 void Client::ReceiveTexture(NetImgui::Internal::CmdTexture* pTextureCmd)
@@ -168,10 +172,15 @@ void Client::CaptureImguiInput()
 	bool wasActive		= mbIsActive;
 	mbIsActive			= ImGui::IsWindowFocused();
 	float refreshFPS	= mbIsActive ? NetImguiServer::Config::Server::sRefreshFPSActive : NetImguiServer::Config::Server::sRefreshFPSInactive;	
-	float elapsedMs		= static_cast<float>(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - mLastUpdateTime).count());
-	bool bRefresh		=	wasActive != mbIsActive ||	// Important to sent input to client losing focus, making sure it receives knows to release the keypress
-							(elapsedMs > 60000.f)	||	// Keep 1 refresh per minute minimum
-							(refreshFPS >= 0.01f && elapsedMs >= 1000.f/refreshFPS);								
+	float elapsedMs		= static_cast<float>(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - mLastUpdateTime).count()) / 1000.f;
+	
+	// This method is tied to the Server VSync setting, which might not match our client desired refresh setting
+	// When client refresh drops too much, take into consideration the lenght of the Server frame, to evaluate if we should update or not
+	elapsedMs			+= mStatsFPS < refreshFPS ? 1000.f / (NetImguiServer::UI::GetDisplayFPS()/2.f) : 0.f;	
+
+	bool bRefresh		=	wasActive != mbIsActive ||						// Important to sent input to client losing focus, making sure it receives knows to release the keypress
+							(elapsedMs > 60000.f)	||						// Keep 1 refresh per minute minimum
+							(refreshFPS >= 0.01f && elapsedMs > 1000.f/refreshFPS);	
 	if( !bRefresh )
 	{ 
 		return;

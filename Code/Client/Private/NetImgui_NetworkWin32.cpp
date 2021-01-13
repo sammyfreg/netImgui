@@ -99,23 +99,6 @@ void Disconnect(SocketInfo* pClientSocket)
 	}
 }
 
-bool GetClientInfo(SocketInfo* pClientSocket, char* pOutHostname, size_t HostNameLen, int& outPort)
-{
-	sockaddr socketAdr;
-	int sizeSocket(sizeof(sockaddr));
-
-	if( getsockname(pClientSocket->mSocket, &socketAdr, &sizeSocket) == 0 )
-	{
-		char zPortBuffer[32];
-		if( getnameinfo(&socketAdr, sizeSocket, pOutHostname, static_cast<DWORD>(HostNameLen), zPortBuffer, sizeof(zPortBuffer), NI_NUMERICSERV) == 0 )
-		{
-			outPort = atoi(zPortBuffer);
-			return true;
-		}
-	}
-	return false;
-}
-
 bool DataReceive(SocketInfo* pClientSocket, void* pDataIn, size_t Size)
 {
 	int resultRcv = recv(pClientSocket->mSocket, reinterpret_cast<char*>(pDataIn), static_cast<int>(Size), MSG_WAITALL);
