@@ -89,7 +89,7 @@ struct ClientInfo
 	bool								mbInsideNewEnd				= false;	// Currently inside NetImgui::NewFrame() or NetImgui::EndFrame() (prevents recusrive hook call)
 	bool								mbValidDrawFrame			= false;	// If we should forward the drawdata to the server at the end of ImGui::Render()
 
-	//char								PADDING[1];
+	char								PADDING[3];
 	ImGuiID								mhImguiHookNewframe			= 0;
 	ImGuiID								mhImguiHookEndframe			= 0;
 	ImGuiID								mhImguiHookShutdown			= 0;

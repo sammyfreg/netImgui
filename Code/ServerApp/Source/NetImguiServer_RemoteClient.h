@@ -62,9 +62,11 @@ struct Client
 	std::chrono::steady_clock::time_point	mLastDrawFrame;					//!< When we last receive a new drawframe commant	
 	uint32_t								mClientConfigID;				//!< ID of ClientConfig that connected (if connection came from our list of ClientConfigs)	
 	uint32_t								mClientIndex;					//!< Entry idx into table of connected clients
-	uint64_t								mStatsDataRcvd[64];				//!< Amount of Bytes received since connected (with history of last x values)
-	uint64_t								mStatsDataSent[64];				//!< Amount of Bytes sent to client since connected (with history of last x values)
-	std::chrono::steady_clock::time_point	mStatsTime[64];					//!< Time when info was collected (with history of last x values)
+	uint64_t								mStatsDataRcvd;					//!< Current amount of Bytes received since connected
+	uint64_t								mStatsDataSent;					//!< Current amount of Bytes sent to client since connected
+	uint64_t								mStatsDataRcvdPrev;				//!< Last amount of Bytes received since connected
+	uint64_t								mStatsDataSentPrev;				//!< Last amount of Bytes sent to client since connected
+	std::chrono::steady_clock::time_point	mStatsTime;						//!< Time when info was collected (with history of last x values)
 	uint32_t								mStatsRcvdBps;					//!< Average Bytes received per second
 	uint32_t								mStatsSentBps;					//!< Average Bytes sent per second
 	float									mStatsFPS;						//!< Average refresh rate of content

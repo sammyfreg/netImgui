@@ -25,6 +25,8 @@ static ImGuiID		gMainDockID							= 0;
 static void*		gpHAL_BackgroundTexture				= nullptr;
 static ImVec2		gvBackgroundTextureSize				= ImVec2(0,0);
 static ImVec4		gBackgroundColor					= ImVec4(0,0,0,0);
+static float		gDisplayFPS							= 30.f;
+static auto			gLastUIUpdate						= std::chrono::steady_clock::now();
 
 static uint32_t		gPopup_ConfirmDisconnect_ClientIdx	= kClientRemoteInvalid;
 static uint32_t		gPopup_ConfirmDelete_ConfigIdx		= NetImguiServer::Config::Client::kInvalidRuntimeID;
@@ -80,8 +82,8 @@ void ClientInfoTooltip(const RemoteClient::Client& Client)
 		int tmHour			= static_cast<int>(std::chrono::duration_cast<std::chrono::hours>(elapsedTime).count());
 		bool validConfig	= NetImguiServer::Config::Client::GetConfigByID(Client.mClientConfigID, config);
 		
-		uint64_t rxData(Client.mStatsDataRcvd[0]);
-		uint64_t txData(Client.mStatsDataSent[0]);
+		uint64_t rxData(Client.mStatsDataRcvdPrev);
+		uint64_t txData(Client.mStatsDataSentPrev);
 		uint8_t txUnitIdx = ConvertDataAmount(txData);
 		uint8_t rxUnitIdx = ConvertDataAmount(rxData);
 
@@ -538,7 +540,7 @@ void DrawImguiContent_MainMenu_Clients_Entry(RemoteClient::Client* pClient, NetI
 	// Hostname info IP/Port
 	ImGui::Text("%s : %i", pClientConfig ? pClientConfig->mHostName : pClient->mConnectHost, pClientConfig ? pClientConfig->mHostPort : pClient->mConnectPort);
 	if( ImGui::IsItemHovered() && pClient ){
-		ImGui::SetTooltip("Port assigned for communications:%i", pClient->mConnectPort );
+		ImGui::SetTooltip("Communications assigned port: %i", pClient->mConnectPort );
 	}
 	ImGui::TableNextColumn();
 	
@@ -559,7 +561,7 @@ void DrawImguiContent_MainMenu_Clients_Entry(RemoteClient::Client* pClient, NetI
 			gPopup_ConfirmDelete_ConfigIdx = pClientConfig->mRuntimeID;
 		}		
 		ImGui::SameLine(); 
-		if ( ImGui::Button("...") && !gPopup_ClientConfig_pConfig ) // Only 1 config edit at a time, preventing mem leak
+		if ( ImGui::Button("...") && !gPopup_ClientConfig_pConfig ) // Only 1 config edit at a time, otherwise need to handle properly to avoid mem leak
 		{
 			gPopup_ClientConfig_pConfig	= NetImgui::Internal::netImguiNew<NetImguiServer::Config::Client>(*pClientConfig);
 		}		
@@ -743,9 +745,13 @@ void DrawImguiContent_MainMenu()
 // Main entry point for rendering all of our NetImguiServer UI
 //=================================================================================================
 ImVec4 DrawImguiContent()
-{   	
-	const ImVec4 viewportTint(0.5f, 0.5f, 0.5f, 1.f);
+{   		
+	constexpr float kHysteresis = 0.05f;
+	float elapsedMicroS			= static_cast<float>(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - gLastUIUpdate).count());
+	gLastUIUpdate				= std::chrono::steady_clock::now();
+	gDisplayFPS					= gDisplayFPS*(1.f-kHysteresis) + (1000000.f/elapsedMicroS)*kHysteresis;
 
+	const ImVec4 viewportTint(0.5f, 0.5f, 0.5f, 1.f);
 	Popup_ServerConfig();
 	Popup_ClientConfigEdit();
 	Popup_ClientConfigDelete();
@@ -792,6 +798,14 @@ bool Startup()
 void Shutdown()
 {
 	NetImguiServer::App::HAL_DestroyTexture(gpHAL_BackgroundTexture);	
+}
+
+//=================================================================================================
+// Return the current average FPS of UI refreshed (tied to GPU VSync setting of backend)
+//=================================================================================================
+float GetDisplayFPS()
+{	
+	return gDisplayFPS;
 }
 
 }} // namespace NetImguiServer { namespace UI
