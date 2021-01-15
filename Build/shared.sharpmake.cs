@@ -161,6 +161,15 @@ namespace NetImgui
 			//conf.Options.Add(new Options.Vc.Compiler.DisableSpecificWarnings(""));
 			//conf.Options.Add(Options.Vc.Librarian.TreatLibWarningAsErrors.Enable);	//Note: VisualStudio 2019 doesn't support this option properly
 		}
+		
+		// Add sources files for platform specific Dear ImGui backend (OS/Renderer support)
+		public void AddImguiBackendSources()
+		{
+			SourceFiles.Add(NetImguiTarget.GetPath(ProjectImgui.sDefaultPath) + @"\backends\imgui_impl_dx11.h");
+			SourceFiles.Add(NetImguiTarget.GetPath(ProjectImgui.sDefaultPath) + @"\backends\imgui_impl_dx11.cpp");
+			SourceFiles.Add(NetImguiTarget.GetPath(ProjectImgui.sDefaultPath) + @"\backends\imgui_impl_win32.h");
+			SourceFiles.Add(NetImguiTarget.GetPath(ProjectImgui.sDefaultPath) + @"\backends\imgui_impl_win32.cpp");
+		}
 		bool mIsExe;
 	}
 
@@ -211,11 +220,7 @@ namespace NetImgui
             Name			= inName;
             SourceRootPath	= NetImguiTarget.GetPath(@"\Code\Sample\") + Name;
 			AdditionalSourceRootPaths.Add(NetImguiTarget.GetPath(@"\Code\Sample\Common"));
-			
-			SourceFiles.Add(NetImguiTarget.GetPath(ProjectImgui.sDefaultPath) + @"\backends\imgui_impl_dx11.h");
-			SourceFiles.Add(NetImguiTarget.GetPath(ProjectImgui.sDefaultPath) + @"\backends\imgui_impl_dx11.cpp");
-			SourceFiles.Add(NetImguiTarget.GetPath(ProjectImgui.sDefaultPath) + @"\backends\imgui_impl_win32.h");
-			SourceFiles.Add(NetImguiTarget.GetPath(ProjectImgui.sDefaultPath) + @"\backends\imgui_impl_win32.cpp");
+			AddImguiBackendSources();
         }
 
 		[Configure()]

@@ -4,15 +4,18 @@
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
+
 #include <windows.h>
 #include <tchar.h>
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 #include <shellapi.h>	// To open webpage link
+#include "../resource.h"
 #include "imgui.h"
 #include "imgui_impl_win32.h"
 
 constexpr char kServerNamedPipe[] = "\\\\.\\pipe\\netImgui";	// Communication piped to receive connection request
+HINSTANCE ghInstance;
 
 //=================================================================================================
 // NETIMGUI NAMEDPIPE SEND MESSAGE
@@ -115,6 +118,33 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 
 namespace NetImguiServer { namespace App
 {
+
+//=================================================================================================
+// HAL STARTUP
+// Additional initialisation that are platform specific
+//=================================================================================================
+bool HAL_Startup(const char* CmdLine)
+{
+	UNREFERENCED_PARAMETER(CmdLine);
+
+	// Change the icon for hwnd's window class. 
+	HICON appIconBig				= LoadIcon(GetModuleHandle(nullptr), MAKEINTRESOURCE(IDI_NETIMGUIAPP));
+	HICON appIconSmall				= LoadIcon(GetModuleHandle(nullptr), MAKEINTRESOURCE(IDI_SMALL));
+	ImGuiViewport* main_viewport	= ImGui::GetMainViewport();
+    HWND hwnd						= reinterpret_cast<HWND>(main_viewport->PlatformHandleRaw);
+	SendMessage(hwnd, WM_SETICON, ICON_BIG, reinterpret_cast<LPARAM>(appIconBig));
+	SendMessage(hwnd, WM_SETICON, ICON_SMALL, reinterpret_cast<LPARAM>(appIconSmall));
+	return true;
+}
+
+//=================================================================================================
+// HAL SHUTDOWN
+// Prepare for shutdown of application, with platform specific code
+//=================================================================================================
+void HAL_Shutdown()
+{
+
+}
 
 //=================================================================================================
 // HAL CONVERT KEY DOWN

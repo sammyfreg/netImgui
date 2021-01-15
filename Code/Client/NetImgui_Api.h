@@ -127,18 +127,33 @@ bool				NewFrame(bool bSupportFrameSkip=false);
 void				EndFrame(void);
 
 //=================================================================================================
-// Return the context *currently* used for drawing. Null when outside BeginFrame()/EndFrame().
+// Return the context associated to this remote connection. Null when not connected.
 //=================================================================================================
-ImGuiContext*		GetDrawingContext();
+ImGuiContext*		GetContext();
 
 //=================================================================================================
 // Helper function to quickly create a context duplicate (sames settings/font/styles)
 //=================================================================================================
-ImGuiContext*		CloneContext(ImGuiContext* pSourceContext);
-
 uint8_t				GetTexture_BitsPerPixel	(eTexFormat eFormat);
 uint32_t			GetTexture_BytePerLine	(eTexFormat eFormat, uint32_t pixelWidth);
 uint32_t			GetTexture_BytePerImage	(eTexFormat eFormat, uint32_t pixelWidth, uint32_t pixelHeight);
 } 
 
 #include "Private/NetImgui_WarningReenable.h"
+
+//=================================================================================================
+// Optional single include compiling option
+// Note: User that do not wish adding the few NetImgui cpp files to their project,
+//		 can instead define 'NETIMGUI_IMPLEMENTATION' *once* before including 'NetImgui_Api.h'
+//		 and this will load the required cpp files alongside
+//=================================================================================================
+#if NETIMGUI_ENABLED && defined(NETIMGUI_IMPLEMENTATION)
+
+#include "Private/NetImgui_Api.cpp"
+#include "Private/NetImgui_Client.cpp"
+#include "Private/NetImgui_CmdPackets_DrawFrame.cpp"
+#include "Private/NetImgui_NetworkPosix.cpp"
+#include "Private/NetImgui_NetworkUE4.cpp"
+#include "Private/NetImgui_NetworkWin32.cpp"
+
+#endif

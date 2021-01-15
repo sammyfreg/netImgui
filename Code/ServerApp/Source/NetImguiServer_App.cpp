@@ -36,7 +36,8 @@ bool Startup(const char* CmdLine)
 		if (ImGui::GetIO().Fonts->AddFontFromFileTTF("Roboto-Medium.ttf", 16.0f) == nullptr) {
 			ImGui::GetIO().Fonts->AddFontDefault();
 		}
-		return true;
+		
+		return HAL_Startup(CmdLine);
 	}
 	
 	return false;
@@ -49,6 +50,7 @@ void Shutdown()
 	NetImguiServer::App::HAL_DestroyTexture(gpHAL_EmptyTexture);
 	NetImguiServer::Config::Client::Clear();
 	RemoteClient::Client::Shutdown();
+	HAL_Shutdown();
 }
 
 void SetupRenderState(const ImDrawList*, const ImDrawCmd*)

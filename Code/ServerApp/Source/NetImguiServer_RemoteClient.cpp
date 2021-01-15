@@ -3,6 +3,7 @@
 #include "NetImguiServer_Config.h"
 #include "NetImguiServer_UI.h"
 #include <Private/NetImgui_CmdPackets.h>
+#include <algorithm>
 
 namespace NetImguiServer { namespace RemoteClient
 {
