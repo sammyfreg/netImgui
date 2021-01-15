@@ -35,16 +35,12 @@ namespace NetImgui
 		{
             Name			= "NetImguiServer"; 
             SourceRootPath	= NetImguiTarget.GetPath(@"\Code\ServerApp");
-			SourceFiles.Add(NetImguiTarget.GetPath(ProjectImgui.sDefaultPath) + @"\backends\imgui_impl_dx11.h");
-			SourceFiles.Add(NetImguiTarget.GetPath(ProjectImgui.sDefaultPath) + @"\backends\imgui_impl_dx11.cpp");
-			SourceFiles.Add(NetImguiTarget.GetPath(ProjectImgui.sDefaultPath) + @"\backends\imgui_impl_win32.h");
-			SourceFiles.Add(NetImguiTarget.GetPath(ProjectImgui.sDefaultPath) + @"\backends\imgui_impl_win32.cpp");
-			
 			ResourceFiles.Add(NetImguiTarget.GetPath(@"\Code\ServerApp\small.ico"));
 			ResourceFiles.Add(NetImguiTarget.GetPath(@"\Code\ServerApp\netImguiApp.ico"));
 			ResourceFiles.Add(NetImguiTarget.GetPath(@"\Code\ServerApp\netImguiApp.rc"));
 			ResourceFiles.Add(NetImguiTarget.GetPath(@"\Code\ServerApp\Background.png"));
 			ResourceFiles.Add(NetImguiTarget.GetPath(@"\Code\ServerApp\Roboto-Medium.ttf"));
+			AddImguiBackendSources();
 		}
 
 		[Configure()]
@@ -70,12 +66,8 @@ namespace NetImgui
 		{
             Name			= "SampleDisabled";
             SourceRootPath	= NetImguiTarget.GetPath(@"\Code\Sample\") + Name;
-			AdditionalSourceRootPaths.Add(NetImguiTarget.GetPath(@"\Code\Sample\Common"));
-			
-			SourceFiles.Add(NetImguiTarget.GetPath(ProjectImgui.sDefaultPath) + @"\backends\imgui_impl_dx11.h");
-			SourceFiles.Add(NetImguiTarget.GetPath(ProjectImgui.sDefaultPath) + @"\backends\imgui_impl_dx11.cpp");
-			SourceFiles.Add(NetImguiTarget.GetPath(ProjectImgui.sDefaultPath) + @"\backends\imgui_impl_win32.h");
-			SourceFiles.Add(NetImguiTarget.GetPath(ProjectImgui.sDefaultPath) + @"\backends\imgui_impl_win32.cpp");
+			AdditionalSourceRootPaths.Add(NetImguiTarget.GetPath(@"\Code\Sample\Common"));			
+			AddImguiBackendSources();
         }
 
 		[Configure()]
@@ -90,7 +82,29 @@ namespace NetImgui
 		}
     }
 	
-	[Sharpmake.Generate] public class ProjectSample_Basic 	: ProjectSample { public ProjectSample_Basic() 		: base("SampleBasic"){} }	
+	[Sharpmake.Generate]
+    public class ProjectSample_SingleInclude : ProjectBase
+    {
+        public ProjectSample_SingleInclude()
+		: base(true)
+		{
+            Name			= "SampleSingleInclude";
+            SourceRootPath	= NetImguiTarget.GetPath(@"\Code\Sample\") + Name;
+			AdditionalSourceRootPaths.Add(NetImguiTarget.GetPath(@"\Code\Sample\Common"));			
+			AddImguiBackendSources();
+        }
+
+		[Configure()]
+		public new void ConfigureAll(Configuration conf, NetImguiTarget target)
+        {
+			base.ConfigureAll(conf, target);			
+			conf.AddPublicDependency<ProjectImgui>(target);
+			conf.IncludePaths.Add(NetImguiTarget.GetPath(ProjectImgui.sDefaultPath));
+			conf.IncludePaths.Add(NetImguiTarget.GetPath(@"\Code\Client"));
+		}
+    }
+	
+	[Sharpmake.Generate] public class ProjectSample_Basic 	: ProjectSample { public ProjectSample_Basic() 		: base("SampleBasic"){} }
 	[Sharpmake.Generate] public class ProjectSample_DualUI 	: ProjectSample { public ProjectSample_DualUI()		: base("SampleDualUI"){} }	
 	[Sharpmake.Generate] public class ProjectSample_Textures: ProjectSample { public ProjectSample_Textures() 	: base("SampleTextures"){} }	
 	[Sharpmake.Generate] public class ProjectSample_NewFrame: ProjectSample { public ProjectSample_NewFrame()	: base("SampleNewFrame"){} }		
@@ -118,7 +132,7 @@ namespace NetImgui
 			conf.AddProject<ProjectSample_DualUI>(target, false, SolutionFolder);
 			conf.AddProject<ProjectSample_Textures>(target, false, SolutionFolder);
 			conf.AddProject<ProjectSample_Disabled>(target, false, SolutionFolder);
-			
+			conf.AddProject<ProjectSample_SingleInclude>(target, false, SolutionFolder);
 			// Moving an already auto added dependcy, so it can be moved to more appropriate folder
 			conf.AddProject<ProjectNetImgui_Disabled>(target, false, "CompatibilityTest");
 		}

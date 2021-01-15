@@ -23,6 +23,10 @@ namespace NetImguiServer { namespace App
 	//			theses are the few functions needed to be supported by each specific API that 
 	//			are not already supported by de 'Dear ImGui' provided backends
 	//=============================================================================================
+	// Additional initialisation that are platform specific
+	bool	HAL_Startup(const char* CmdLine);
+	// Prepare for shutdown of application, with platform specific code
+	void	HAL_Shutdown();
 	// Receive the 'Dear ImGui' key down values from the 'NetImgui' application, and convert them to windows virtual key codes
 	void	HAL_ConvertKeyDown(const bool ImguiKeysDown[512], uint64_t outKeysDownMask[512/64] );
 	// Receive a platform specific socket, and return us with info on the connection

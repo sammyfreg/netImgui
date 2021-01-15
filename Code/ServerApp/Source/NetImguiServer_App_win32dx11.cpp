@@ -94,13 +94,6 @@ int main(int, char**)
     ImGui_ImplWin32_Init(hwnd);
     ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
 
-    //---------------------------------------------------------------------------------------------
-    // @SAMPLE_EDIT (Start our own initialisation)    
-    //SF TODO skip loop instead of returning, to get proper un-init
-    if( !NetImguiServer::App::Startup( GetCommandLineA() ) )
-        return -1;
-    //---------------------------------------------------------------------------------------------
-
     // Load Fonts
     // - If no fonts are loaded, dear imgui will use the default font. You can also load multiple fonts and use ImGui::PushFont()/PopFont() to select them.
     // - AddFontFromFileTTF() will return the ImFont* so you can store it if you need to select the font among multiple.
@@ -124,6 +117,14 @@ int main(int, char**)
     // Main loop
     MSG msg;
     ZeroMemory(&msg, sizeof(msg));
+
+    //---------------------------------------------------------------------------------------------
+    // @SAMPLE_EDIT (Start our own initialisation)    
+    if( !NetImguiServer::App::Startup( GetCommandLineA() ) ){
+       msg.message = WM_QUIT;
+    }
+    //---------------------------------------------------------------------------------------------
+
     while (msg.message != WM_QUIT)
     {
         // Poll and handle messages (inputs, window resize, etc.)
