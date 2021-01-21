@@ -266,7 +266,7 @@ void CommunicationsHost(void* pClientVoid)
 // Support of the Dear ImGui hooks 
 // (automatic call to NetImgui::BeginFrame()/EndFrame() on ImGui::BeginFrame()/Imgui::Render()
 //=================================================================================================
-#if IMGUI_HAS_CALLBACK
+#if NETIMGUI_IMGUI_CALLBACK_ENABLED
 void HookBeginFrame(ImGuiContext*, ImGuiContextHook* hook)
 {
 	Client::ClientInfo& client = *reinterpret_cast<Client::ClientInfo*>(hook->UserData);
@@ -293,7 +293,7 @@ void HookShutdown(ImGuiContext*, ImGuiContextHook* hook)
 	client.mhImguiHookShutdown = client.mhImguiHookNewframe = client.mhImguiHookEndframe = 0;
 	//SF to do handle this properly and on shutdown
 }
-#endif 	// IMGUI_HAS_CALLBACK
+#endif 	// NETIMGUI_IMGUI_CALLBACK_ENABLED
 
 //=================================================================================================
 // CLIENT INFO Constructor
@@ -363,7 +363,7 @@ void ClientInfo::ContextInitialize()
 {
 	mpContext				= ImGui::GetCurrentContext();
 
-#if IMGUI_HAS_CALLBACK
+#if NETIMGUI_IMGUI_CALLBACK_ENABLED
 	ImGuiContextHook hookNewframe, hookEndframe, hookShutdown;
 	
 	hookNewframe.Type		= ImGuiContextHookType_NewFramePre;
@@ -452,7 +452,7 @@ void ClientInfo::ContextRestore()
 //=================================================================================================
 void ClientInfo::ContextRemoveHooks()
 {
-#if IMGUI_HAS_CALLBACK
+#if NETIMGUI_IMGUI_CALLBACK_ENABLED
 	if (mpContext && mhImguiHookNewframe != 0)
 	{
 		ImGui::RemContextHook(mpContext, mhImguiHookNewframe);

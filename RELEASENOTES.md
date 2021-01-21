@@ -1,10 +1,28 @@
 # Release notes
 
+### Version 1.3
+(2021/01/21)
+- **API Changes**
+  - Removed parameter from `NetImGui::ConnectToApp() / NetImGui::::ConnectFromApp()` to clone the current context. **NetImgui** now only uses the **Dear ImGui** Context that was active when requesting a connection, without internally using other contexts.
+
+- **New**  
+  - Complete refactor of the **NetImguiServer** application. 
+    - Now relying on **Dear ImGui**'s backend for the renderer and OS support.
+    - Other platform's specific functions have all been cleanly abstracted.
+    - This means that porting the server application to other platform should be straightforward.
+    - Copy/paste from Server to Client support. From Client to Server is still up to the user engine.
+  - Complete refactor of the **NetImguiServer** application UI. 
+    - Now relying on 'Dear ImGui' docking branch to draw the user interface.
+    - Can display multiple connected client's windows at the same time, and they can be docked / moved around as user sees fit.
+    - Can now specify a display refresh rate for the connected clients.
+  - Single header include support. 
+    - For user wanting to minimize changes to their project, it is now possible to only include `NetImgui_Api.h` after declaring the define `NETIMGUI_IMPLEMENTATION`, and all needed source files will also be included for compilation.
+  
 ### Version 1.2
 (2020/08/22)
  - **API Changes**
   - `NetImGui::NewFrame()` / `NetImGui::EndFrame()` should always be used, even when disconnected
-  - `NetImGui::NewFrame()` takes a new parameter, telling **netImgui** to continue using the same context or use a duplicate
+  - `NetImGui::ConnectToApp() / NetImGui::::ConnectFromApp()` take a new parameter, telling **netImgui** to continue using the same context or use a duplicate
   - `NetImgui::Connect()` replaced by `NetImgui::ConnectToApp()` / `NetImGui::ConnectFromApp()`
   - `NetImgui::IsRemoteDraw()` renamed to `NetImgui::IsDrawingRemote()`
   - `NetImgui::IsDrawing()` added

@@ -23,7 +23,7 @@
 #include "NetImgui_WarningReenable.h"
 //=================================================================================================
 
-#define IMGUI_HAS_CALLBACK 0 && (IMGUI_VERSION_NUM >= 17905)
+#define NETIMGUI_IMGUI_CALLBACK_ENABLED ((IMGUI_VERSION_NUM >= 17905) && 0)
 
 //=================================================================================================
 #include "NetImgui_WarningDisable.h"
