@@ -31,10 +31,15 @@ Here is a quick overview of the logic behind using the **NetImgui Server** and o
 ![NetImgui](https://raw.githubusercontent.com/wiki/sammyfreg/netImgui/Web/img/NetImguiExplanation.gif)
 
 **1.** *(NetImgui Server)* **Capture user's inputs with mouse/keyboard**
+
 **2.** *(NetImgui Server)* **Send the Inputs to client and request a draw update**
+
 **3.** *(NetImgui Client)* **Draw the *Dear ImGui* content normally** (without need to display on client) 
+
 **4.** *(NetImgui Client)* **Send the drawing results to server**
+
 **5.** *(NetImgui Server)* **Receives the drawing result and display them**
+
 **6. Repeat the process**
 
 #### Note
@@ -89,9 +94,25 @@ Related projects making use of **NetImgui**.
 - ~~Networking: Add support of client accepting connection from netImgui App~~
 
 ### Version 1.3
-  
+(2021/01/22)
+- **API Changes**
+  - Removed parameter from `NetImGui::ConnectToApp() / NetImGui::::ConnectFromApp()` to clone the current context. **NetImgui** now only uses the **Dear ImGui** Context that was active when requesting a connection, without internally using other contexts.
+
+- **New**  
+  - Complete refactor of the **NetImguiServer** application. 
+    - Now relying on **Dear ImGui**'s backend for the renderer and OS support.
+    - Other platform's specific functions have all been cleanly abstracted.
+    - This means that porting the server application to other platform should be straightforward.
+    - Copy/paste from Server to Client support. From Client to Server is still up to the user engine.
+  - Complete refactor of the **NetImguiServer** application UI. 
+    - Now relying on 'Dear ImGui' docking branch to draw the user interface.
+    - Can display multiple connected client's windows at the same time, and they can be docked / moved around as user sees fit.
+    - Can now specify a display refresh rate for the connected clients.
+  - Single header include support. 
+    - For user wanting to minimize changes to their project, it is now possible to only include `NetImgui_Api.h` after declaring the define `NETIMGUI_IMPLEMENTATION`, and all needed source files will also be added for compilation.
+
 ### Older
-[Release Notes](RELEASENOTES.md)
+[Release Notes](https://github.com/sammyfreg/netImgui/wiki/Release-notes)
 
 # Contact
 Author can be reached for feedbacks / comments at: sammyfreg (at) gmail . com or through **[GitHub Issues](https://github.com/sammyfreg/netImgui/issues "GitHub Issues")** report.
