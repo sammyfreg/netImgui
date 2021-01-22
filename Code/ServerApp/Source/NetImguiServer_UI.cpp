@@ -598,9 +598,9 @@ void DrawImguiContent_MainMenu_Clients()
 	{
 		ImGui::TableSetupColumn("Name",				ImGuiTableColumnFlags_WidthStretch);
 		ImGui::TableSetupColumn("HostName (IP)",	ImGuiTableColumnFlags_WidthStretch);
-		ImGui::TableSetupColumn("Auto",				ImGuiTableColumnFlags_WidthAuto);
-		ImGui::TableSetupColumn("###Config",		ImGuiTableColumnFlags_WidthAuto|ImGuiTableColumnFlags_NoResize|ImGuiTableColumnFlags_NoReorder);
-		ImGui::TableSetupColumn("###Connection",	ImGuiTableColumnFlags_WidthAuto|ImGuiTableColumnFlags_NoResize|ImGuiTableColumnFlags_NoReorder);
+		ImGui::TableSetupColumn("Auto",				ImGuiTableColumnFlags_WidthFixed | ImGuiTableColumnFlags_NoResize);
+		ImGui::TableSetupColumn("###Config",		ImGuiTableColumnFlags_WidthFixed | ImGuiTableColumnFlags_NoResize |ImGuiTableColumnFlags_NoResize|ImGuiTableColumnFlags_NoReorder);
+		ImGui::TableSetupColumn("###Connection",	ImGuiTableColumnFlags_WidthFixed | ImGuiTableColumnFlags_NoResize |ImGuiTableColumnFlags_NoResize|ImGuiTableColumnFlags_NoReorder);
 		ImGui::TableHeadersRow();
 
 		// First, display all connected clients without a config

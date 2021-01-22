@@ -4,12 +4,12 @@
 //! @Name		: netImgui
 //=================================================================================================
 //! @author		: Sammy Fatnassi
-//! @date		: 2021/01/06
-//!	@version	: v1.2.6
+//! @date		: 2021/01/22
+//!	@version	: v1.3.0
 //! @Details	: For integration info : https://github.com/sammyfreg/netImgui/wiki
 //=================================================================================================
-#define NETIMGUI_VERSION		"1.2.6"
-#define NETIMGUI_VERSION_NUM	10206
+#define NETIMGUI_VERSION		"1.3.0"
+#define NETIMGUI_VERSION_NUM	10300
 
 #include <stdint.h>
 
