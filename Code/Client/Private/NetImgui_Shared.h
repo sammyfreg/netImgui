@@ -23,7 +23,7 @@
 #include "NetImgui_WarningReenable.h"
 //=================================================================================================
 
-#define NETIMGUI_IMGUI_CALLBACK_ENABLED ((IMGUI_VERSION_NUM >= 17905) && 0)
+#define NETIMGUI_IMGUI_CALLBACK_ENABLED ((IMGUI_VERSION_NUM >= 18000) && 0)
 
 //=================================================================================================
 #include "NetImgui_WarningDisable.h"
@@ -60,7 +60,11 @@ public:
 	: mValueRef(ValueRef)
 	, mValueRestore(ValueRef) 
 	{
-		ValueRef = Value; 
+		mValueRef = Value; 
+	}
+	~ScopedValue() 
+	{
+		mValueRef = mValueRestore; 
 	}
 protected:
 	TType&	mValueRef;

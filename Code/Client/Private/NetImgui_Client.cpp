@@ -287,12 +287,6 @@ void HookEndFrame(ImGuiContext*, ImGuiContextHook* hook)
 	}
 }
 
-void HookShutdown(ImGuiContext*, ImGuiContextHook* hook)
-{
-	Client::ClientInfo& client = *reinterpret_cast<Client::ClientInfo*>(hook->UserData);
-	client.mhImguiHookShutdown = client.mhImguiHookNewframe = client.mhImguiHookEndframe = 0;
-	//SF to do handle this properly and on shutdown
-}
 #endif 	// NETIMGUI_IMGUI_CALLBACK_ENABLED
 
 //=================================================================================================
@@ -312,6 +306,8 @@ ClientInfo::ClientInfo()
 //=================================================================================================
 ClientInfo::~ClientInfo()
 {
+	ContextRemoveHooks();
+
 	for( auto& texture : mTextures ){
 		texture.Set(nullptr);
 	}
@@ -364,7 +360,7 @@ void ClientInfo::ContextInitialize()
 	mpContext				= ImGui::GetCurrentContext();
 
 #if NETIMGUI_IMGUI_CALLBACK_ENABLED
-	ImGuiContextHook hookNewframe, hookEndframe, hookShutdown;
+	ImGuiContextHook hookNewframe, hookEndframe;
 	
 	hookNewframe.Type		= ImGuiContextHookType_NewFramePre;
 	hookNewframe.Callback	= HookBeginFrame;
@@ -375,11 +371,6 @@ void ClientInfo::ContextInitialize()
 	hookEndframe.Callback	= HookEndFrame;
 	hookEndframe.UserData	= this;
 	mhImguiHookEndframe		= ImGui::AddContextHook(mpContext, &hookEndframe);
-
-	hookShutdown.Type		= ImGuiContextHookType_Shutdown;
-	hookShutdown.Callback	= HookShutdown;
-	hookShutdown.UserData	= this;
-	mhImguiHookShutdown		= ImGui::AddContextHook(mpContext, &hookShutdown);
 #endif
 }
 
@@ -457,8 +448,7 @@ void ClientInfo::ContextRemoveHooks()
 	{
 		ImGui::RemContextHook(mpContext, mhImguiHookNewframe);
 		ImGui::RemContextHook(mpContext, mhImguiHookEndframe);
-		ImGui::RemContextHook(mpContext, mhImguiHookShutdown);
-		mhImguiHookShutdown = mhImguiHookNewframe = mhImguiHookEndframe = 0;
+		mhImguiHookNewframe = mhImguiHookNewframe = 0;
 	}
 #endif
 }
