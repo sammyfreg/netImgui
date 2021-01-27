@@ -3,6 +3,7 @@
 #include "NetImguiServer_Network.h"
 #include "NetImguiServer_UI.h"
 #include "NetImguiServer_RemoteClient.h"
+#include "Fonts/Roboto_Medium.cpp"
 #include <algorithm>
 
 namespace NetImguiServer { namespace App
@@ -33,7 +34,9 @@ bool Startup(const char* CmdLine)
 		//-----------------------------------------------------------------------------------------
 		// Using a different default font (provided with Dear ImGui)
 		//-----------------------------------------------------------------------------------------
-		if (ImGui::GetIO().Fonts->AddFontFromFileTTF("Roboto-Medium.ttf", 16.0f) == nullptr) {
+		ImFontConfig Config;
+		NetImgui::Internal::StringCopy(Config.Name, "Roboto Medium, 16px");		
+		if( !ImGui::GetIO().Fonts->AddFontFromMemoryCompressedTTF(Roboto_Medium_compressed_data, Roboto_Medium_compressed_size, 16.f, &Config) ){
 			ImGui::GetIO().Fonts->AddFontDefault();
 		}
 		

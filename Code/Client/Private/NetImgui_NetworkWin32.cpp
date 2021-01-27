@@ -48,11 +48,16 @@ SocketInfo* Connect(const char* ServerHost, uint32_t ServerPort)
 	while( pResultCur && !pSocketInfo )
 	{
 		if( connect(ConnectSocket, pResultCur->ai_addr, static_cast<int>(pResultCur->ai_addrlen)) == 0 )
+		{
 			pSocketInfo = netImguiNew<SocketInfo>(ConnectSocket);
-				
+		}		
 		pResultCur = pResultCur->ai_next;
 	}
 	freeaddrinfo(pResults);
+	if( !pSocketInfo )
+	{
+		closesocket(ConnectSocket);
+	}
 	return pSocketInfo;
 }
 

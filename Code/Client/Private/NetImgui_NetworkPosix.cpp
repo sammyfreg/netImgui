@@ -49,6 +49,10 @@ SocketInfo* Connect(const char* ServerHost, uint32_t ServerPort)
 	}
 
 	freeaddrinfo(pResults);
+	if( !pSocketInfo )
+	{
+		close(ConnectSocket);
+	}
 	return pSocketInfo;
 }
 

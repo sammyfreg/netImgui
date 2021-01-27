@@ -361,12 +361,12 @@ void ClientInfo::ContextInitialize()
 
 #if NETIMGUI_IMGUI_CALLBACK_ENABLED
 	ImGuiContextHook hookNewframe, hookEndframe;
-	
+	hookNewframe.HookId		= 0;
 	hookNewframe.Type		= ImGuiContextHookType_NewFramePre;
 	hookNewframe.Callback	= HookBeginFrame;
 	hookNewframe.UserData	= this;	
 	mhImguiHookNewframe		= ImGui::AddContextHook(mpContext, &hookNewframe);
-	
+	hookEndframe.HookId		= 0;
 	hookEndframe.Type		= ImGuiContextHookType_RenderPost;
 	hookEndframe.Callback	= HookEndFrame;
 	hookEndframe.UserData	= this;
@@ -446,8 +446,8 @@ void ClientInfo::ContextRemoveHooks()
 #if NETIMGUI_IMGUI_CALLBACK_ENABLED
 	if (mpContext && mhImguiHookNewframe != 0)
 	{
-		ImGui::RemContextHook(mpContext, mhImguiHookNewframe);
-		ImGui::RemContextHook(mpContext, mhImguiHookEndframe);
+		ImGui::RemoveContextHook(mpContext, mhImguiHookNewframe);
+		ImGui::RemoveContextHook(mpContext, mhImguiHookEndframe);
 		mhImguiHookNewframe = mhImguiHookNewframe = 0;
 	}
 #endif
