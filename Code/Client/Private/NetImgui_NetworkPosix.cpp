@@ -105,12 +105,6 @@ void Disconnect(SocketInfo* pClientSocket)
 	}
 }
 
-bool GetClientInfo(SocketInfo* pClientSocket, char* pOutHostname, size_t HostNameLen, int& outPort)
-{
-	// TODO
-	return false;
-}
-
 bool DataReceive(SocketInfo* pClientSocket, void* pDataIn, size_t Size)
 {
 	int resultRcv = recv(pClientSocket->mSocket, static_cast<char*>(pDataIn), static_cast<int>(Size), MSG_WAITALL);

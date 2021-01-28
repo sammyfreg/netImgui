@@ -104,12 +104,6 @@ void Disconnect(SocketInfo* pClientSocket)
 	netImguiDelete(pClientSocket);	
 }
 
-bool GetClientInfo(SocketInfo* pClientSocket, char* pOutHostname, size_t HostNameLen, int& outPort)
-{
-	// TODO
-	return false;
-}
-
 bool DataReceive(SocketInfo* pClientSocket, void* pDataIn, size_t Size)
 {
 	int32 sizeRcv(0);
