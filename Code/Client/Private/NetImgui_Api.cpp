@@ -49,7 +49,7 @@ bool ConnectToApp(const char* clientName, const char* ServerHost, uint32_t serve
 
 	StringCopy(client.mName, (clientName == nullptr || clientName[0] == 0 ? "Unnamed" : clientName));
 	client.mpSocketPending	= Network::Connect(ServerHost, serverPort);	
-	if (client.mpSocketPending)
+	if (client.mpSocketPending.load() != nullptr)
 	{				
 		client.ContextInitialize();
 		threadFunction		= threadFunction == nullptr ? DefaultStartCommunicationThread : threadFunction;
@@ -73,7 +73,7 @@ bool ConnectFromApp(const char* clientName, uint32_t serverPort, ThreadFunctPtr 
 
 	StringCopy(client.mName, (clientName == nullptr || clientName[0] == 0 ? "Unnamed" : clientName));
 	client.mpSocketPending = Network::ListenStart(serverPort);
-	if (client.mpSocketPending)
+	if (client.mpSocketPending.load() != nullptr)
 	{				
 		client.ContextInitialize();
 		threadFunction		= threadFunction == nullptr ? DefaultStartCommunicationThread : threadFunction;
@@ -91,7 +91,6 @@ void Disconnect(void)
 	
 	Client::ClientInfo& client	= *gpClientInfo;
 	client.mbDisconnectRequest	= client.IsActive();
-	client.KillSocketListen(); // Forcefully disconnect Listening socket, since it is blocking
 }
 
 //=================================================================================================

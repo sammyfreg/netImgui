@@ -98,9 +98,8 @@ struct ClientInfo
 	inline bool							IsConnected()const;
 	inline bool							IsConnectPending()const;
 	inline bool							IsActive()const;
-	inline void							KillSocketComs();
-	inline void							KillSocketListen();
-	inline void							KillSocketAll();
+	inline void							KillSocketComs();						// Kill communication sockets (should only be called from communication thread)
+	inline void							KillSocketListen();						// Kill connecting listening socket (should only be called from communication thread)
 
 // Prevent warnings about implicitly created copy
 protected:

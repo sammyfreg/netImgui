@@ -266,40 +266,27 @@ void NetworkConnectionNew(NetImgui::Internal::Network::SocketInfo* pClientSocket
 }
 
 //=================================================================================================
-// Open a listening port for netImgui Client trying to connect with us
+// Thread waiting on new Client Connection request
 //=================================================================================================
-void NetworkConnectRequest_Receive_UpdateListenSocket(NetImgui::Internal::Network::SocketInfo** ppListenSocket)
+void NetworkConnectRequest_Receive()
 {	
-	uint32_t serverPort = 0;
+	uint32_t									serverPort(0);
+	NetImgui::Internal::Network::SocketInfo*	pListenSocket(nullptr);
+	
 	while( !gbShutdown )
-	{		
-		if( serverPort != NetImguiServer::Config::Server::sPort || *ppListenSocket == nullptr )
+	{
+		// Open (and update when needed) listening socket
+		if (pListenSocket == nullptr || serverPort != NetImguiServer::Config::Server::sPort)
 		{
-			NetImgui::Internal::Network::Disconnect(*ppListenSocket);
-			serverPort			= NetImguiServer::Config::Server::sPort;			
-			*ppListenSocket		= NetImgui::Internal::Network::ListenStart(serverPort);
-			gbValidListenSocket	= *ppListenSocket != nullptr;
+			serverPort			= NetImguiServer::Config::Server::sPort;
+			pListenSocket		= NetImgui::Internal::Network::ListenStart(serverPort);
+			gbValidListenSocket	= pListenSocket != nullptr;
 			if( !gbValidListenSocket )
 			{
 				printf("Failed to start connection listen on port : %i", serverPort);
 			}
 		}
-		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-	}
 
-	NetImgui::Internal::Network::Disconnect(*ppListenSocket);
-}
-
-//=================================================================================================
-// Thread waiting on new Client Connection request
-//=================================================================================================
-void NetworkConnectRequest_Receive()
-{	
-	NetImgui::Internal::Network::SocketInfo* pListenSocket = nullptr;
-	std::thread(NetworkConnectRequest_Receive_UpdateListenSocket, &pListenSocket).detach();
-
-	while( !gbShutdown )
-	{
 		// Detect connection request from Clients
 		if( pListenSocket != nullptr )
 		{
@@ -319,7 +306,7 @@ void NetworkConnectRequest_Receive()
 					NetImgui::Internal::Network::Disconnect(pClientSocket);
 			}
 		}
-		std::this_thread::yield();
+		std::this_thread::sleep_for(std::chrono::milliseconds(10));
 	}	
 }
 
