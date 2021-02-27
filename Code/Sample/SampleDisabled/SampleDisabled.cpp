@@ -2,7 +2,8 @@
 // SAMPLE DISABLED
 //-------------------------------------------------------------------------------------------------
 // This sample demonstrate compiling your code with netImgui disabled but ImGui still active.
-// It relies on the Define 'NETIMGUI_ENABLED' assigned in the project properties.
+// It relies on the Define 'NETIMGUI_ENABLED' assigned in the project properties to compile 
+// with NetImfui inactive.
 //=================================================================================================
 
 #include <NetImgui_Api.h>

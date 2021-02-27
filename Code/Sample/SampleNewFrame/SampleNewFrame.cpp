@@ -1,9 +1,9 @@
 //=================================================================================================
 // SAMPLE NEW FRAME
 //-------------------------------------------------------------------------------------------------
-// Example of handling frame skipping. When connected with remote netImgui Server, we don't need
-// to refresh the ImGui content every frame. If you program can handle skipping drawing, this 
-// allow to save CPU cycles when no refresh is expected.
+// Example of handling frame skipping. 
+// When connected to NetImgui Server, we don't need to refresh the ImGui content every frame.
+// If your program can handle skipping drawing, saves CPU cycles when no refresh is expected.
 //=================================================================================================
 
 #include <NetImgui_Api.h>
@@ -124,7 +124,9 @@ ImDrawData* Client_Draw_ModeOnDemand()
 	// When 'NewFrame' returns false, we should skip drawing this frame
 	// Note 1 : Key point is using the 'NewFrame()' return value to decide when to skip drawing
 	// Note 2 : Instead of relying on 'NewFrame()' return value, 'IsDrawing()' can be queried 
-	// Note 3 : Frame skipping only happens when remote drawing	
+	// Note 3 : Frame skipping only happens when remote drawing
+	// Note 4 : To enable this, we explicitly call NetImgui::NewFrame/EndFrame() instead of
+	//			relying on ImGui::NewFrame/Render interception by NetImgui.
 	//---------------------------------------------------------------------------------------------
 	if (NetImgui::NewFrame(true))
 	{		

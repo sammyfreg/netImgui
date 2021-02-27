@@ -1,20 +1,27 @@
 #pragma once
 
 //=================================================================================================
-//! @Name		: netImgui
+//! @Name		: NetImgui
 //=================================================================================================
 //! @author		: Sammy Fatnassi
-//! @date		: 2021/02/13
-//!	@version	: v1.3.3
+//! @date		: 2021/02/27
+//!	@version	: v1.3.4
 //! @Details	: For integration info : https://github.com/sammyfreg/netImgui/wiki
 //=================================================================================================
-#define NETIMGUI_VERSION		"1.3.3"
-#define NETIMGUI_VERSION_NUM	10303
+#define NETIMGUI_VERSION		"1.3.4"
+#define NETIMGUI_VERSION_NUM	10304
 
 #include <stdint.h>
 
 #include "Private/NetImgui_WarningDisable.h"
+
+#ifdef NETIMGUI_IMPLEMENTATION
+	#define NETIMGUI_INTERNAL_INCLUDE
+#endif
 #include "NetImgui_Config.h"
+#ifdef NETIMGUI_IMPLEMENTATION
+	#undef NETIMGUI_INTERNAL_INCLUDE
+#endif
 
 //=================================================================================================
 // NetImgui needs to detect Dear ImGui to be active
