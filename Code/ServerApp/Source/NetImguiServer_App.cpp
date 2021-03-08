@@ -9,11 +9,11 @@
 namespace NetImguiServer { namespace App
 {
 
-constexpr uint32_t kClientCountMax		= 32;	//! @sammyfreg todo: support unlimited client count
-static void* gpHAL_EmptyTexture			= nullptr;
+constexpr uint32_t		kClientCountMax			= 32;	//! @sammyfreg todo: support unlimited client count
+static ServerTexture	gEmptyTexture;
 
 bool Startup(const char* CmdLine)
-{
+{	
 	//---------------------------------------------------------------------------------------------
 	// Load Settings savefile and parse for auto connect commandline option
 	//---------------------------------------------------------------------------------------------	
@@ -29,7 +29,7 @@ bool Startup(const char* CmdLine)
 	{
 		uint8_t EmptyPixels[8*8];
 		memset(EmptyPixels, 0, sizeof(EmptyPixels));
-		NetImguiServer::App::HAL_CreateTexture(8, 8, NetImgui::eTexFormat::kTexFmtA8, EmptyPixels, gpHAL_EmptyTexture);
+		NetImguiServer::App::HAL_CreateTexture(8, 8, NetImgui::eTexFormat::kTexFmtA8, EmptyPixels, gEmptyTexture);
 	
 		//-----------------------------------------------------------------------------------------
 		// Using a different default font (provided with Dear ImGui)
@@ -39,26 +39,19 @@ bool Startup(const char* CmdLine)
 		if( !ImGui::GetIO().Fonts->AddFontFromMemoryCompressedTTF(Roboto_Medium_compressed_data, Roboto_Medium_compressed_size, 16.f, &Config) ){
 			ImGui::GetIO().Fonts->AddFontDefault();
 		}
-		
 		return HAL_Startup(CmdLine);
 	}
-	
 	return false;
 }
 
 void Shutdown()
-{				
+{
 	NetImguiServer::Network::Shutdown();
 	NetImguiServer::UI::Shutdown();
-	NetImguiServer::App::HAL_DestroyTexture(gpHAL_EmptyTexture);
+	NetImguiServer::App::HAL_DestroyTexture(gEmptyTexture);
 	NetImguiServer::Config::Client::Clear();
 	RemoteClient::Client::Shutdown();
 	HAL_Shutdown();
-}
-
-void SetupRenderState(const ImDrawList*, const ImDrawCmd*)
-{
-	HAL_RenderStateSetup();
 }
 
 ImDrawData* CreateDrawData(RemoteClient::Client& client)
@@ -104,17 +97,14 @@ ImDrawData* CreateDrawData(RemoteClient::Client& client)
 	// Draw command conversion
 	unsigned int IndiceOffset	= 0;
 	pCmdList->Flags				= ImDrawListFlags_AllowVtxOffset|ImDrawListFlags_AntiAliasedLines|ImDrawListFlags_AntiAliasedFill|ImDrawListFlags_AntiAliasedLinesUseTex;
-	pCmdList->CmdBuffer.resize(pCmdDrawFrame->mDrawCount+1);
+	pCmdList->CmdBuffer.resize(pCmdDrawFrame->mDrawCount);
 	pCmdList->IdxBuffer.resize(pDrawData->TotalIdxCount);
-
-	// 1st Command is callback to update GPU state with our own blending settings
-	pCmdList->CmdBuffer[0].UserCallback = SetupRenderState; 
-
+	
 	// Following commands are all remote client rendering commands
 	for(uint32_t drawIdx(0); drawIdx < pCmdDrawFrame->mDrawCount; ++drawIdx)
 	{
 		const NetImgui::Internal::ImguiDraw& cmdDrawSrc	= pCmdDrawFrame->mpDraws[drawIdx];
-		ImDrawCmd& cmdDrawDst							= pCmdList->CmdBuffer[1+drawIdx];
+		ImDrawCmd& cmdDrawDst							= pCmdList->CmdBuffer[drawIdx];
 
 		cmdDrawDst.ClipRect.x		= cmdDrawSrc.mClipRect[0];
 		cmdDrawDst.ClipRect.y		= cmdDrawSrc.mClipRect[1];
@@ -141,7 +131,7 @@ ImDrawData* CreateDrawData(RemoteClient::Client& client)
 		IndiceOffset += cmdDrawSrc.mIdxCount;
 		
 		// Find and assign wanted texture
-		cmdDrawDst.TextureId = gpHAL_EmptyTexture; // Default to empty texture
+		cmdDrawDst.TextureId = gEmptyTexture.mpHAL_Texture; // Default to empty texture
 		for(size_t i=0; i<client.mvTextures.size(); ++i)
 		{
 			if( client.mvTextures[i].mImguiId == cmdDrawSrc.mTextureId )
@@ -159,7 +149,7 @@ void DestroyDrawData(ImDrawData*& pDrawData)
 	if( pDrawData )
 	{
 		if( pDrawData->CmdLists )
-		{			
+		{
 			NetImgui::Internal::netImguiDelete( pDrawData->CmdLists[0] );
 			NetImgui::Internal::netImguiDelete( pDrawData->CmdLists );
 		}
@@ -178,7 +168,7 @@ bool AddClientConfigFromString(const char* string, bool transient)
 	const char* zEntryStart		= string;
 	const char* zEntryCur		= string;
 	int paramIndex				= 0;
-	cmdlineClient.mTransient		= transient;
+	cmdlineClient.mTransient	= transient;
 	strcpy_s(cmdlineClient.mClientName, "Commandline");
 
 	while( *zEntryCur != 0 )
@@ -205,8 +195,58 @@ bool AddClientConfigFromString(const char* string, bool transient)
 	return false;
 }
 
+//=================================================================================================
+// DRAW CLIENT BACKGROUND
+// Create a separate Dear ImGui drawing context, to generate a commandlist that will fill the
+// RenderTarget with a specific background picture
+void DrawClientBackground(RemoteClient::Client& client)
+//=================================================================================================
+{
+	NetImgui::Internal::CmdBackground* pBGUpdate = client.mPendingBackgroundIn.Release();
+	if (pBGUpdate) {
+		client.mBGSettings		= *pBGUpdate;
+		client.mBGNeedUpdate	= true;
+		netImguiDeleteSafe(pBGUpdate);
+	}
 
+	if (client.mBGNeedUpdate) 
+	{
+		if( client.mpBGContext == nullptr )
+		{
+			client.mpBGContext					= ImGui::CreateContext(ImGui::GetIO().Fonts);
+			client.mpBGContext->IO.DeltaTime	= 1/30.f;
+		}
+
+		NetImgui::Internal::ScopedImguiContext scopedCtx(client.mpBGContext);
+		ImGui::GetIO().DisplaySize = ImVec2(client.mAreaSizeX,client.mAreaSizeY);
+		ImGui::NewFrame();
+		ImGui::SetNextWindowPos(ImVec2(0,0));
+		ImGui::SetNextWindowSize(ImVec2(client.mAreaSizeX,client.mAreaSizeY));
+		ImGui::Begin("Background", nullptr, ImGuiWindowFlags_NoDecoration|ImGuiWindowFlags_NoInputs|ImGuiWindowFlags_NoNav|ImGuiWindowFlags_NoBackground|ImGuiWindowFlags_NoSavedSettings);
+		// Look for the desired texture (and use default if not found)
+		const ServerTexture* pTexture = &UI::GetBackgroundTexture();
+		for(size_t i=0; i<client.mvTextures.size(); ++i)
+		{
+			if( client.mvTextures[i].mImguiId == client.mBGSettings.mTextureId )
+			{
+				pTexture = &client.mvTextures[i];
+				break;
+			}
+		}		
+		UI::DrawCenteredBackground(*pTexture, ImVec4(client.mBGSettings.mTextureTint[0],client.mBGSettings.mTextureTint[1],client.mBGSettings.mTextureTint[2],client.mBGSettings.mTextureTint[3]));
+		ImGui::End();
+		ImGui::Render();
+		client.mBGNeedUpdate = false;
+	}
+}
+
+//=================================================================================================
+// UPDATE REMOTE CONTENT
+// Create a render target for each connected remote client once, and update it every frame
+// with the last drawing commands received from it. This Render Target will then be used
+// normally as the background image of each client window renderered by this Server
 void UpdateRemoteContent()
+//=================================================================================================
 {
 	for (uint32_t i(0); i < RemoteClient::Client::GetCountMax(); ++i)
 	{
@@ -214,29 +254,27 @@ void UpdateRemoteContent()
 		if( client.mbIsConnected && client.mbIsVisible )
 		{
 			// Update the RenderTarget destination of each client, of size was updated
-			if (client.mAreaRTSizeX != client.mAreaSizeX || client.mAreaRTSizeY != client.mAreaSizeY)
+			if (client.mAreaSizeX > 0 && client.mAreaSizeY > 0 && (client.mAreaRTSizeX != client.mAreaSizeX || client.mAreaRTSizeY != client.mAreaSizeY))
 			{
 				if (HAL_CreateRenderTarget(client.mAreaSizeX, client.mAreaSizeY, client.mpHAL_AreaRT, client.mpHAL_AreaTexture))
 				{
 					client.mAreaRTSizeX		= client.mAreaSizeX;
 					client.mAreaRTSizeY		= client.mAreaSizeY;
 					client.mLastUpdateTime	= std::chrono::steady_clock::now() - std::chrono::hours(1); // Will redraw the client
+					client.mBGNeedUpdate	= true;
 				}
 			}
 
 			// Render the remote results
 			ImDrawData* pDrawData = CreateDrawData(client);
 			if( pDrawData )
-			{				
-				//HAL_RenderRemoteClient();
-				const float ClearColor[4] = {0.0f, 0.0f, 0.0f, 0.f};
-				HAL_RenderDrawData(client.mpHAL_AreaRT, pDrawData, ClearColor);				
+			{
+				DrawClientBackground(client);
+				HAL_RenderDrawData(client, pDrawData);
 				DestroyDrawData(pDrawData);
 			}
 		}
 	}
 }
-
-
 
 }} // namespace NetImguiServer { namespace App

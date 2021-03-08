@@ -3,6 +3,7 @@
 // It complement the rendering backend with a few more functinoalities.
 //=================================================================================================
 #include "NetImguiServer_App.h"
+#include "NetImguiServer_RemoteClient.h"
 #include <Private/NetImgui_Shared.h>
 #include "imgui_impl_dx11.h"
 #include <d3d11.h>
@@ -18,54 +19,21 @@ namespace NetImguiServer { namespace App
 // The drawing of remote clients is handled normally by the standard rendering backend,
 // but output is redirected to an allocated client texture  instead default swapchain
 //=================================================================================================
-void HAL_RenderDrawData(void* pRT, ImDrawData* pDrawData, const float ClearColor[4])
+void HAL_RenderDrawData(RemoteClient::Client& client, ImDrawData* pDrawData)
 {
-    if( pRT )
+    if( client.mpHAL_AreaRT )
     {
-        g_pd3dDeviceContextExtern->OMSetRenderTargets(1, reinterpret_cast<ID3D11RenderTargetView**>(&pRT), NULL);
-        g_pd3dDeviceContextExtern->ClearRenderTargetView(reinterpret_cast<ID3D11RenderTargetView*>(pRT), ClearColor);
+        g_pd3dDeviceContextExtern->OMSetRenderTargets(1, reinterpret_cast<ID3D11RenderTargetView**>(&client.mpHAL_AreaRT), NULL);
+        g_pd3dDeviceContextExtern->ClearRenderTargetView(reinterpret_cast<ID3D11RenderTargetView*>(client.mpHAL_AreaRT), client.mBGSettings.mClearColor);
+        {
+			NetImgui::Internal::ScopedImguiContext scopedCtx(client.mpBGContext);
+			ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+        }
         if (pDrawData)
         {
             ImGui_ImplDX11_RenderDrawData(pDrawData);
         }
     }
-}
-
-//=================================================================================================
-// HAL RENDER STATE SETUP
-// Before rendering a client's ImGui content, this function let us modify the current state. 
-// Each remote client content is outputed into a rendertarget, and default alpha channel behavior
-// doesn't suits our needs. 
-//
-// Note : The rendertarget results used as display texture during drawing of the 'NetImgui Server'  
-//        UI, as a background of each client's window
-//=================================================================================================
-void HAL_RenderStateSetup()
-{
-    // We want the rendertarget to remember the most opaque value per pixel, 
-    //when compositing it back inside our Imgui window
-    static ID3D11BlendState* spBlendState = nullptr;
-    if( spBlendState == nullptr )
-    {
-        D3D11_BLEND_DESC desc;
-        ZeroMemory(&desc, sizeof(desc));
-        desc.AlphaToCoverageEnable = false;
-        desc.RenderTarget[0].BlendEnable = true;
-        desc.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
-        desc.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
-        desc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
-        desc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
-        desc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ONE;
-        desc.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_MAX;
-        desc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
-        g_pd3dDeviceExtern->CreateBlendState(&desc, &spBlendState);
-    }
-
-    ID3D11BlendState*   BlendState;
-    FLOAT               BlendFactor[4];
-    UINT                SampleMask;
-    g_pd3dDeviceContextExtern->OMGetBlendState(&BlendState, BlendFactor, &SampleMask);
-    g_pd3dDeviceContextExtern->OMSetBlendState(spBlendState, BlendFactor, SampleMask);
 }
 
 //=================================================================================================
@@ -152,9 +120,9 @@ void HAL_DestroyRenderTarget(void*& pOutRT, void*& pOutTexture)
 // Receive info on a Texture to allocate. At the moment, 'Dear ImGui' default rendering backend
 // only support RGBA8 format, so first convert any input format to a RGBA8 that we can use
 //=================================================================================================
-bool HAL_CreateTexture(uint16_t Width, uint16_t Height, NetImgui::eTexFormat Format, const uint8_t* pPixelData, void*& pOutTexture)
+bool HAL_CreateTexture(uint16_t Width, uint16_t Height, NetImgui::eTexFormat Format, const uint8_t* pPixelData, ServerTexture& OutTexture)
 {
-    HAL_DestroyTexture(pOutTexture);
+    HAL_DestroyTexture(OutTexture);
 
     // Convert all incoming textures data to RGBA8
     uint32_t* pPixelDataAlloc = nullptr;    
@@ -208,7 +176,9 @@ bool HAL_CreateTexture(uint16_t Width, uint16_t Height, NetImgui::eTexFormat For
         if( Result == S_OK )
         {
             pTexture->Release();
-            pOutTexture = reinterpret_cast<void*>(pTextureView);
+            OutTexture.mpHAL_Texture    = reinterpret_cast<void*>(pTextureView);
+            OutTexture.mSize[0]         = static_cast<uint16_t>(Width);
+            OutTexture.mSize[1]         = static_cast<uint16_t>(Height);
             return true;
         }
     }
@@ -227,12 +197,12 @@ bool HAL_CreateTexture(uint16_t Width, uint16_t Height, NetImgui::eTexFormat For
 // HAL DESTROY TEXTURE
 // Free up allocated resources tried to a Texture
 //=================================================================================================
-void HAL_DestroyTexture(void*& pTexture)
+void HAL_DestroyTexture(ServerTexture& OutTexture)
 {
-    if( pTexture )
+    if( OutTexture.mpHAL_Texture )
     {
-        reinterpret_cast<ID3D11ShaderResourceView*>(pTexture)->Release();        
-        pTexture = nullptr;
+        reinterpret_cast<ID3D11ShaderResourceView*>(OutTexture.mpHAL_Texture)->Release();
+        memset(&OutTexture, 0, sizeof(OutTexture));
     }
 }
 

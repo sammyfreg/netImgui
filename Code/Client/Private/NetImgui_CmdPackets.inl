@@ -35,4 +35,18 @@ void CmdInput::SetKeyDown(eVirtualKeys vkKey, bool isDown)
 											mKeysDownMask[keyEntryIndex] & ~keyBitMask;
 }
 
+bool CmdBackground::operator==(const CmdBackground& cmp)const
+{
+	bool sameValue(true);
+	for(size_t i(0); i<sizeof(CmdBackground)/8; i++){
+		sameValue &= reinterpret_cast<const uint64_t*>(this)[i] == reinterpret_cast<const uint64_t*>(&cmp)[i];
+	}
+	return sameValue;
+}
+
+bool CmdBackground::operator!=(const CmdBackground& cmp)const
+{
+	return (*this == cmp) == false;
+}
+
 }} // namespace NetImgui::Internal

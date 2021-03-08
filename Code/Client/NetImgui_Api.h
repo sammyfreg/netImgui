@@ -139,6 +139,14 @@ void				EndFrame(void);
 ImGuiContext*		GetContext();
 
 //=================================================================================================
+// Set the remote client backoground color and texture
+// Note: If no TextureID is specified, will use the default server texture
+//=================================================================================================
+void				SetBackground(const ImVec4& bgColor);
+void				SetBackground(const ImVec4& bgColor, const ImVec4& textureTint );
+void				SetBackground(const ImVec4& bgColor, const ImVec4& textureTint, ImTextureID bgTextureID);
+
+//=================================================================================================
 // Helper function to quickly create a context duplicate (sames settings/font/styles)
 //=================================================================================================
 uint8_t				GetTexture_BitsPerPixel	(eTexFormat eFormat);

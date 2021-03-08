@@ -71,8 +71,9 @@ bool Communications_Initialize(ClientInfo& client)
 			texture.mbSent = false;
 		}
 
-		client.mbHasTextureUpdate	= true;
-		client.mpSocketComs			= client.mpSocketPending.exchange(nullptr);
+		client.mbHasTextureUpdate			= true;								// Force sending the client textures
+		client.mBGSettingSent.mTextureId	= client.mBGSetting.mTextureId-1u;	// Force sending the Background settings (by making different than current settings)
+		client.mpSocketComs					= client.mpSocketPending.exchange(nullptr);
 	}
 	return client.mpSocketComs.load() != nullptr;
 }
@@ -114,6 +115,22 @@ bool Communications_Outgoing_Textures(ClientInfo& client)
 			}
 		}
 		client.mbHasTextureUpdate = !bSuccess;
+	}
+	return bSuccess;
+}
+
+//=================================================================================================
+// OUTCOM: BACKGROUND
+// Transmit the current client background settings
+//=================================================================================================
+bool Communications_Outgoing_Background(ClientInfo& client)
+{	
+	bool bSuccess(true);
+	CmdBackground* pPendingBackground = client.mPendingBackgroundOut.Release();
+	if( pPendingBackground )
+	{
+		bSuccess = Network::DataSend(client.mpSocketComs, pPendingBackground, pPendingBackground->mHeader.mSize);
+		netImguiDeleteSafe(pPendingBackground);
 	}
 	return bSuccess;
 }
@@ -189,7 +206,8 @@ bool Communications_Incoming(ClientInfo& client)
 			case CmdHeader::eCommands::Invalid:
 			case CmdHeader::eCommands::Version:
 			case CmdHeader::eCommands::Texture:
-			case CmdHeader::eCommands::DrawFrame:	break;
+			case CmdHeader::eCommands::DrawFrame:	
+			case CmdHeader::eCommands::Background:	break;
 			}
 		}		
 		netImguiDeleteSafe(pCmdData);
@@ -205,6 +223,8 @@ bool Communications_Outgoing(ClientInfo& client)
 	bool bSuccess(true);
 	if( bSuccess )
 		bSuccess = Communications_Outgoing_Textures(client);
+	if( bSuccess )
+		bSuccess = Communications_Outgoing_Background(client);
 	if( bSuccess )
 		bSuccess = Communications_Outgoing_Frame(client);	
 	if( bSuccess )
@@ -352,7 +372,7 @@ void ClientInfo::TextureProcessPending()
 }
 
 //=================================================================================================
-// Initialize the 
+// Initialize the associated ImguiContext
 //=================================================================================================
 void ClientInfo::ContextInitialize()
 {
