@@ -87,6 +87,7 @@ Related projects making use of **NetImgui**.
 
 # Release notes
 ### To do
+- Add compression to data between Client and Server
 - Support of additional texture formats
 - Handle Linear/sRGB vertex color format
 - Add logging information in **NetImgui Server** application
