@@ -49,8 +49,8 @@ void CustomTextureCreate(NetImgui::eTexFormat eTexFmt)
 		}break;
 	case NetImgui::eTexFormat::kTexFmt_Invalid: assert(0); break;
 	}
-	TextureCreate(pixelData, Width, Height, gCustomTextureView[static_cast<int>(eTexFmt)]);
-	NetImgui::SendDataTexture(static_cast<ImTextureID>(gCustomTextureView[static_cast<int>(eTexFmt)]), pixelData, Width, Height, eTexFmt);
+	TextureCreate(pixelData, Width, Height, gCustomTextureView[static_cast<int>(eTexFmt)]);													// For local display
+	NetImgui::SendDataTexture(static_cast<ImTextureID>(gCustomTextureView[static_cast<int>(eTexFmt)]), pixelData, Width, Height, eTexFmt);	// For remote display
 }
 
 //=================================================================================================
@@ -119,7 +119,7 @@ ImDrawData* Client_Draw()
 			const ImVec4 border_col = ImVec4(1.0f, 1.0f, 1.0f, 0.5f);
 
 			ImGui::TextColored(ImVec4(0.1, 1, 0.1, 1), "Demonstration of textures usage with netImgui.");	
-			ImGui::TextWrapped("Note: Textures properly displayed on netImgui server only, since the original 'Dear ImGui' sample code is limited to the RGBA format.");
+			ImGui::TextWrapped("Note: Textures properly displayed on netImgui server only. Original 'Dear ImGui' sample code was left intact for easier maintenance and is limited to the RGBA format. This is not a NetImgui limitation.");
 			ImGui::NewLine();
 			for (int i = 0; i < static_cast<int>(NetImgui::eTexFormat::kTexFmt_Count); ++i)
 			{

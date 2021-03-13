@@ -71,10 +71,11 @@ bool Communications_Initialize(ClientInfo& client)
 			texture.mbSent = false;
 		}
 
-		client.mbHasTextureUpdate	= true;
-		client.mpSocketComs			= client.mpSocketPending.exchange(nullptr);
+		client.mbHasTextureUpdate			= true;								// Force sending the client textures
+		client.mBGSettingSent.mTextureId	= client.mBGSetting.mTextureId-1u;	// Force sending the Background settings (by making different than current settings)
+		client.mpSocketComs					= client.mpSocketPending.exchange(nullptr);
 	}
-	return client.mpSocketComs != nullptr;
+	return client.mpSocketComs.load() != nullptr;
 }
 
 //=================================================================================================
@@ -114,6 +115,22 @@ bool Communications_Outgoing_Textures(ClientInfo& client)
 			}
 		}
 		client.mbHasTextureUpdate = !bSuccess;
+	}
+	return bSuccess;
+}
+
+//=================================================================================================
+// OUTCOM: BACKGROUND
+// Transmit the current client background settings
+//=================================================================================================
+bool Communications_Outgoing_Background(ClientInfo& client)
+{	
+	bool bSuccess(true);
+	CmdBackground* pPendingBackground = client.mPendingBackgroundOut.Release();
+	if( pPendingBackground )
+	{
+		bSuccess = Network::DataSend(client.mpSocketComs, pPendingBackground, pPendingBackground->mHeader.mSize);
+		netImguiDeleteSafe(pPendingBackground);
 	}
 	return bSuccess;
 }
@@ -189,7 +206,8 @@ bool Communications_Incoming(ClientInfo& client)
 			case CmdHeader::eCommands::Invalid:
 			case CmdHeader::eCommands::Version:
 			case CmdHeader::eCommands::Texture:
-			case CmdHeader::eCommands::DrawFrame:	break;
+			case CmdHeader::eCommands::DrawFrame:	
+			case CmdHeader::eCommands::Background:	break;
 			}
 		}		
 		netImguiDeleteSafe(pCmdData);
@@ -205,6 +223,8 @@ bool Communications_Outgoing(ClientInfo& client)
 	bool bSuccess(true);
 	if( bSuccess )
 		bSuccess = Communications_Outgoing_Textures(client);
+	if( bSuccess )
+		bSuccess = Communications_Outgoing_Background(client);
 	if( bSuccess )
 		bSuccess = Communications_Outgoing_Frame(client);	
 	if( bSuccess )
@@ -227,11 +247,11 @@ void CommunicationsClient(void* pClientVoid)
 	{
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		//std::this_thread::yield();
-		bConnected = Communications_Outgoing(*pClient) && Communications_Incoming(*pClient);		
+		bConnected = !pClient->mbDisconnectRequest && Communications_Outgoing(*pClient) && Communications_Incoming(*pClient);		
 	}
 
 	pClient->KillSocketComs();
-	pClient->mbDisconnectRequest = false;
+	pClient->mbDisconnectRequest = false; // Signal the main thread that it can continue
 }
 
 //=================================================================================================
@@ -241,25 +261,24 @@ void CommunicationsHost(void* pClientVoid)
 {
 	ClientInfo* pClient		= reinterpret_cast<ClientInfo*>(pClientVoid);
 	pClient->mpSocketListen	= pClient->mpSocketPending.exchange(nullptr);
-	while( !pClient->mbDisconnectRequest && pClient->mpSocketListen )
-	{		
-		pClient->mpSocketPending	= Network::ListenConnect(pClient->mpSocketListen);
-		if( pClient->mpSocketPending )
+	while( !pClient->mbDisconnectRequest && pClient->mpSocketListen.load() != nullptr )
+	{
+		std::this_thread::sleep_for(std::chrono::milliseconds(10));	// Prevents this thread from taking entire core, waiting on server connection
+		pClient->mpSocketPending = Network::ListenConnect(pClient->mpSocketListen);
+		if( pClient->mpSocketPending.load() != nullptr )
 		{
-			Communications_Initialize(*pClient);
-			bool bConnected(pClient->IsConnected());
+			bool bConnected = Communications_Initialize(*pClient);
 			while (bConnected)
 			{
 				std::this_thread::sleep_for(std::chrono::milliseconds(1));
 				//std::this_thread::yield();
-				bConnected	= Communications_Outgoing(*pClient) && Communications_Incoming(*pClient);
+				bConnected	= !pClient->mbDisconnectRequest && Communications_Outgoing(*pClient) && Communications_Incoming(*pClient);
 			}
 			pClient->KillSocketComs();
-		}			
+		}
 	}
-
-	pClient->KillSocketAll();
-	pClient->mbDisconnectRequest = false;
+	pClient->KillSocketListen();
+	pClient->mbDisconnectRequest = false; // Signal the main thread that it can continue
 }
 
 //=================================================================================================
@@ -287,12 +306,6 @@ void HookEndFrame(ImGuiContext*, ImGuiContextHook* hook)
 	}
 }
 
-void HookShutdown(ImGuiContext*, ImGuiContextHook* hook)
-{
-	Client::ClientInfo& client = *reinterpret_cast<Client::ClientInfo*>(hook->UserData);
-	client.mhImguiHookShutdown = client.mhImguiHookNewframe = client.mhImguiHookEndframe = 0;
-	//SF to do handle this properly and on shutdown
-}
 #endif 	// NETIMGUI_IMGUI_CALLBACK_ENABLED
 
 //=================================================================================================
@@ -312,6 +325,8 @@ ClientInfo::ClientInfo()
 //=================================================================================================
 ClientInfo::~ClientInfo()
 {
+	ContextRemoveHooks();
+
 	for( auto& texture : mTextures ){
 		texture.Set(nullptr);
 	}
@@ -357,29 +372,24 @@ void ClientInfo::TextureProcessPending()
 }
 
 //=================================================================================================
-// Initialize the 
+// Initialize the associated ImguiContext
 //=================================================================================================
 void ClientInfo::ContextInitialize()
 {
 	mpContext				= ImGui::GetCurrentContext();
 
 #if NETIMGUI_IMGUI_CALLBACK_ENABLED
-	ImGuiContextHook hookNewframe, hookEndframe, hookShutdown;
-	
+	ImGuiContextHook hookNewframe, hookEndframe;
+	hookNewframe.HookId		= 0;
 	hookNewframe.Type		= ImGuiContextHookType_NewFramePre;
 	hookNewframe.Callback	= HookBeginFrame;
 	hookNewframe.UserData	= this;	
 	mhImguiHookNewframe		= ImGui::AddContextHook(mpContext, &hookNewframe);
-	
+	hookEndframe.HookId		= 0;
 	hookEndframe.Type		= ImGuiContextHookType_RenderPost;
 	hookEndframe.Callback	= HookEndFrame;
 	hookEndframe.UserData	= this;
 	mhImguiHookEndframe		= ImGui::AddContextHook(mpContext, &hookEndframe);
-
-	hookShutdown.Type		= ImGuiContextHookType_Shutdown;
-	hookShutdown.Callback	= HookShutdown;
-	hookShutdown.UserData	= this;
-	mhImguiHookShutdown		= ImGui::AddContextHook(mpContext, &hookShutdown);
 #endif
 }
 
@@ -455,10 +465,9 @@ void ClientInfo::ContextRemoveHooks()
 #if NETIMGUI_IMGUI_CALLBACK_ENABLED
 	if (mpContext && mhImguiHookNewframe != 0)
 	{
-		ImGui::RemContextHook(mpContext, mhImguiHookNewframe);
-		ImGui::RemContextHook(mpContext, mhImguiHookEndframe);
-		ImGui::RemContextHook(mpContext, mhImguiHookShutdown);
-		mhImguiHookShutdown = mhImguiHookNewframe = mhImguiHookEndframe = 0;
+		ImGui::RemoveContextHook(mpContext, mhImguiHookNewframe);
+		ImGui::RemoveContextHook(mpContext, mhImguiHookEndframe);
+		mhImguiHookNewframe = mhImguiHookNewframe = 0;
 	}
 #endif
 }

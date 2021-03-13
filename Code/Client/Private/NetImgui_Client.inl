@@ -17,12 +17,12 @@ bool ClientTexture::IsValid()const
 
 bool ClientInfo::IsConnected()const
 {
-	return mpSocketComs != nullptr;
+	return mpSocketComs.load() != nullptr;
 }
 
 bool ClientInfo::IsConnectPending()const
 {
-	return mpSocketPending != nullptr || mpSocketListen != nullptr;
+	return mpSocketPending.load() != nullptr || mpSocketListen.load() != nullptr;
 }
 
 bool ClientInfo::IsActive()const
@@ -52,12 +52,6 @@ void ClientInfo::KillSocketListen()
 	{
 		NetImgui::Internal::Network::Disconnect(pSocket);
 	}
-}
-
-void ClientInfo::KillSocketAll()
-{	
-	KillSocketComs();
-	KillSocketListen();	
 }
 
 bool ClientInfo::IsContextOverriden()const

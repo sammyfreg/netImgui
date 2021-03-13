@@ -39,7 +39,7 @@ namespace NetImgui
 			ResourceFiles.Add(NetImguiTarget.GetPath(@"\Code\ServerApp\netImguiApp.ico"));
 			ResourceFiles.Add(NetImguiTarget.GetPath(@"\Code\ServerApp\netImguiApp.rc"));
 			ResourceFiles.Add(NetImguiTarget.GetPath(@"\Code\ServerApp\Background.png"));
-			ResourceFiles.Add(NetImguiTarget.GetPath(@"\Code\ServerApp\Roboto-Medium.ttf"));
+			SourceFilesBuildExcludeRegex.Add(@".*Code\\ServerApp\\Source\\Fonts\\.*");
 			AddImguiBackendSources();
 		}
 
@@ -54,7 +54,6 @@ namespace NetImgui
 			conf.IncludePaths.Add(NetImguiTarget.GetPath(ProjectImgui.sDefaultPath));
 			conf.IncludePaths.Add(NetImguiTarget.GetPath(@"\Code\Client"));
 			conf.EventPostBuild.Add(@"xcopy " + NetImguiTarget.GetPath(@"\Code\ServerApp\Background.png") + " " + conf.TargetPath + " /D /Y");
-			conf.EventPostBuild.Add(@"xcopy " + NetImguiTarget.GetPath(@"\Code\ServerApp\Roboto-Medium.ttf") + " " + conf.TargetPath + " /D /Y");
 		}
     }
 	
@@ -104,10 +103,11 @@ namespace NetImgui
 		}
     }
 	
-	[Sharpmake.Generate] public class ProjectSample_Basic 	: ProjectSample { public ProjectSample_Basic() 		: base("SampleBasic"){} }
-	[Sharpmake.Generate] public class ProjectSample_DualUI 	: ProjectSample { public ProjectSample_DualUI()		: base("SampleDualUI"){} }	
-	[Sharpmake.Generate] public class ProjectSample_Textures: ProjectSample { public ProjectSample_Textures() 	: base("SampleTextures"){} }	
-	[Sharpmake.Generate] public class ProjectSample_NewFrame: ProjectSample { public ProjectSample_NewFrame()	: base("SampleNewFrame"){} }		
+	[Sharpmake.Generate] public class ProjectSample_Basic 		: ProjectSample { public ProjectSample_Basic() 		: base("SampleBasic"){} }
+	[Sharpmake.Generate] public class ProjectSample_DualUI 		: ProjectSample { public ProjectSample_DualUI()		: base("SampleDualUI"){} }
+	[Sharpmake.Generate] public class ProjectSample_Textures	: ProjectSample { public ProjectSample_Textures() 	: base("SampleTextures"){} }
+	[Sharpmake.Generate] public class ProjectSample_NewFrame	: ProjectSample { public ProjectSample_NewFrame()	: base("SampleNewFrame"){} }
+	[Sharpmake.Generate] public class ProjectSample_Background	: ProjectSample { public ProjectSample_Background()	: base("SampleBackground"){} }
 	
 	//=============================================================================================
 	// SOLUTIONS
@@ -131,9 +131,10 @@ namespace NetImgui
 			conf.AddProject<ProjectSample_NewFrame>(target, false, SolutionFolder);
 			conf.AddProject<ProjectSample_DualUI>(target, false, SolutionFolder);
 			conf.AddProject<ProjectSample_Textures>(target, false, SolutionFolder);
+			conf.AddProject<ProjectSample_Background>(target, false, SolutionFolder);			
 			conf.AddProject<ProjectSample_Disabled>(target, false, SolutionFolder);
 			conf.AddProject<ProjectSample_SingleInclude>(target, false, SolutionFolder);
-			// Moving an already auto added dependcy, so it can be moved to more appropriate folder
+			// Adding an already auto included dependcy, so it can be moved to more appropriate folder
 			conf.AddProject<ProjectNetImgui_Disabled>(target, false, "CompatibilityTest");
 		}
 	}

@@ -48,12 +48,16 @@ The NetImgui Server application currently compiles under Windows, but few change
 # Integration
 - Download the [latest version](https://github.com/sammyfreg/netImgui/releases "latest version") of the **NetImgui** library.
 - Add the content of ***Code\Client*** to your codebase.
-- In your codebase :
-  - [once] Call `NetImgui::ConnectToApp()` or `NetImgui::ConnectFromApp()`.
-  - [Every Redraw]
-    - Replace call to `ImGui::NewFrame()` with `NetImgui::NewFrame()`.
+- In your codebase:
+  - [once]
+    - Call `NetImgui::Startup()` *(at program start)*.
+    - Call `NetImgui::ConnectToApp()` or `NetImgui::ConnectFromApp()`.
+    - Call `NetImgui::Shutdown()` *(at program exit)*.
+  - [every redraw]
     - Draw your ImGui menu as usual.
-    - Replace call to `ImGui::Render()` and `ImGui::EndFrame()` with `NetImgui::EndFrame()`.
+    - *If **Dear ImGui** 1.80 and lower (or want frameskip support)*.
+      - Replace call to `ImGui::NewFrame()` with `NetImgui::NewFrame()`.
+      - Replace call to `ImGui::Render()` / `ImGui::EndFrame()` with `NetImgui::EndFrame()`.  
 - Start the **NetImgui** server application and connect your application to it
 
 - *More integration details can be found on the [Wiki](https://github.com/sammyfreg/netImgui/wiki "Wiki"). Multiple samples are also included, providing additional insights*
@@ -73,7 +77,7 @@ The NetImgui Server application currently compiles under Windows, but few change
 - `NetImgui::IsConnected()` and `NetImgui::IsDrawingRemote()` can be used during Dear ImGui drawing, helping to make selective decisions on the content to draw based on where it will be displayed.
 
 #### Dear Imgui versions
-- Tested against **Dear ImGui** versions: **1.74, 1.75, 1.76, 1.76** (docking)**, 1.77, 1.78, 1.79, 1.80, 1.80** (docking).
+- Tested against **Dear ImGui** versions: **1.74, 1.75, 1.76, 1.76** (docking)**, 1.77, 1.78, 1.79, 1.80, 1.80** (docking)**, 1.81**.
 - *Note*: Should support other versions without too much difficulties.
 
 # Related
@@ -83,33 +87,29 @@ Related projects making use of **NetImgui**.
 
 # Release notes
 ### To do
+- Add compression to data between Client and Server
 - Support of additional texture formats
-- Commands to assign custom backgrounds
 - Handle Linear/sRGB vertex color format
-- Add logging information in netImgui server application
+- Add logging information in **NetImgui Server** application
 - Profile and optimize performances
 - Add new **Dear ImGui** multi windows support (docking branch)
-- ~~Bugfix : netImgui Server application unable to start when post configured for listening can't be opened. Need to manually edit `netImgui.cfg` with a valid port.~~
-- ~~Add copy/paste support~~
-- ~~Networking: Add support of client accepting connection from netImgui App~~
+- ~~Commands to assign custom backgrounds~~
 
-### Version 1.3
-(2021/01/22)
+### Version 1.4
+(2021/03/13)
 - **API Changes**
-  - Removed parameter from `NetImGui::ConnectToApp() / NetImGui::::ConnectFromApp()` to clone the current context. **NetImgui** now only uses the **Dear ImGui** Context that was active when requesting a connection, without internally using other contexts.
-
+  - Added ``SetBackground(...)`` letting user configure the client window background appearance
+    - The new sample **SampleBackground** demonstrate its usage.
+  - Removed support of empty API functions when ``NETIMGUI_ENABLED`` is false
+    - Keeps **NetImgui** client code clutter to minimum.
 - **New**  
-  - Complete refactor of the **NetImguiServer** application. 
-    - Now relying on **Dear ImGui**'s backend for the renderer and OS support.
-    - Other platform's specific functions have all been cleanly abstracted.
-    - This means that porting the server application to other platform should be straightforward.
-    - Copy/paste from Server to Client support. From Client to Server is still up to the user engine.
-  - Complete refactor of the **NetImguiServer** application UI. 
-    - Now relying on 'Dear ImGui' docking branch to draw the user interface.
-    - Can display multiple connected client's windows at the same time, and they can be docked / moved around as user sees fit.
-    - Can now specify a display refresh rate for the connected clients.
-  - Single header include support. 
-    - For user wanting to minimize changes to their project, it is now possible to only include `NetImgui_Api.h` after declaring the define `NETIMGUI_IMPLEMENTATION`, and all needed source files will also be added for compilation.
+  - Auto interception of **Dear ImGui** `ImGui::NewFrame()` / `ImGui::Render()`
+    - Using **Dear ImGui 1.81's** *Callbacks* support, replacing theses Dear ImGui functions call with `NetImgui::NewFrame()` / `NetImgui::EndFrame()` can now be avoided
+    - This means less changes to existing codebase wanting to use **NetImgui**, only requiring a single call to :
+      - `Startup`
+      - `Shutdown`
+      - `ConnectToApp` or `ConnectFromApp`
+    - However, calling directly `NetImgui::NewFrame()` / `NetImgui::EndFrame()` has the additional benefit of being able to skip drawing when not needed
 
 ### Older
 [Release Notes](https://github.com/sammyfreg/netImgui/wiki/Release-notes)

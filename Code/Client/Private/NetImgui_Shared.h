@@ -23,7 +23,13 @@
 #include "NetImgui_WarningReenable.h"
 //=================================================================================================
 
-#define NETIMGUI_IMGUI_CALLBACK_ENABLED ((IMGUI_VERSION_NUM >= 17905) && 0)
+//=================================================================================================
+// Enable using Dear ImGui Callbacks support to automatically intercept BeginFrame/Render.
+// Needs Dear ImGui 1.81+
+//=================================================================================================
+#ifndef NETIMGUI_IMGUI_CALLBACK_ENABLED
+	#define NETIMGUI_IMGUI_CALLBACK_ENABLED (IMGUI_VERSION_NUM >= 18100)
+#endif
 
 //=================================================================================================
 #include "NetImgui_WarningDisable.h"
@@ -60,7 +66,11 @@ public:
 	: mValueRef(ValueRef)
 	, mValueRestore(ValueRef) 
 	{
-		ValueRef = Value; 
+		mValueRef = Value; 
+	}
+	~ScopedValue() 
+	{
+		mValueRef = mValueRestore; 
 	}
 protected:
 	TType&	mValueRef;

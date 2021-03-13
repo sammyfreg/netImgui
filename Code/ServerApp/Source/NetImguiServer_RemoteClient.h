@@ -3,28 +3,23 @@
 #include <vector>
 #include <chrono>
 #include <Private/NetImgui_CmdPackets.h>
+#include "NetImguiServer_App.h"
 
 namespace NetImguiServer { namespace RemoteClient
 {
 
-struct TextureEntry
-{
-	uint64_t	mImguiId;
-	void*		mpHAL_Texture;
-};
-
 struct Client
 {	
-	static constexpr uint32_t kInvalidClient	= static_cast<uint32_t>(-1);
-	using ExchPtrFrame	= NetImgui::Internal::ExchangePtr<NetImgui::Internal::CmdDrawFrame>;
-	using ExchPtrInput	= NetImgui::Internal::ExchangePtr<NetImgui::Internal::CmdInput>;
-
+	static constexpr uint32_t kInvalidClient = static_cast<uint32_t>(-1);
+	using ExchPtrFrame		= NetImgui::Internal::ExchangePtr<NetImgui::Internal::CmdDrawFrame>;
+	using ExchPtrInput		= NetImgui::Internal::ExchangePtr<NetImgui::Internal::CmdInput>;
+	using ExchPtrBackground = NetImgui::Internal::ExchangePtr<NetImgui::Internal::CmdBackground>;
 											Client();
 											~Client();
 											Client(const Client&)	= delete;
 											Client(const Client&&)	= delete;
 	void									operator=(const Client&) = delete;
-
+	void									Initialize();
 	void									Reset();
 
 	void									ReceiveTexture(NetImgui::Internal::CmdTexture*);	
@@ -49,9 +44,10 @@ struct Client
 	char									mConnectHost[64]		= {0};	//!< Connected Hostname of this remote client
 	int										mConnectPort;					//!< Connected Port of this remote client
 	NetImgui::Internal::CmdDrawFrame*		mpFrameDraw;					//!< Current valid DrawFrame
-	std::vector<TextureEntry>				mvTextures;						//!< List of textures received and used by the client	
-	ExchPtrFrame							mPendingFrame;					//!< Frame received and waiting to be displayed
-	ExchPtrInput							mPendingInput;					//!< Input command waiting to be sent out to client
+	std::vector<App::ServerTexture>			mvTextures;						//!< List of textures received and used by the client	
+	ExchPtrFrame							mPendingFrameIn;				//!< Frame received and waiting to be displayed
+	ExchPtrBackground						mPendingBackgroundIn;			//!< Background settings received and waiting to update client setting
+	ExchPtrInput							mPendingInputOut;				//!< Input command waiting to be sent out to client	
 	bool									mbIsVisible;					//!< If currently shown
 	bool									mbIsActive;						//!< Is the current active window (will receive input, only one is true at a time)
 	std::atomic_bool						mbIsFree;						//!< If available to use for a new connected client
@@ -74,6 +70,9 @@ struct Client
 	float									mMousePos[2]		= {0,0};
 	float									mMouseWheelPos[2]	= {0,0};
 	ImGuiMouseCursor						mMouseCursor		= ImGuiMouseCursor_None;	// Last mosue cursor remote client requested
+	ImGuiContext*							mpBGContext			= nullptr;					// Special Imgui Context used to render the background (only updated when needed)
+	bool									mBGNeedUpdate		= true;						// Let engine know that we should regenerate the background draw commands
+	NetImgui::Internal::CmdBackground		mBGSettings;									// Settings for client background drawing settings
 
 	static bool								Startup(uint32_t clientCountMax);
 	static void								Shutdown();

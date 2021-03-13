@@ -28,6 +28,13 @@ void Shutdown()
 {
 }
 
+inline void SetNonBlocking(int Socket, bool bIsNonBlocking)
+{
+	int Flags	= fcntl(Socket, F_GETFL, 0);
+	Flags		= bIsNonBlocking ? Flags | O_NONBLOCK : Flags ^ (Flags & O_NONBLOCK);
+	fcntl(Socket, F_SETFL, Flags);
+}
+
 SocketInfo* Connect(const char* ServerHost, uint32_t ServerPort)
 {
 	int ConnectSocket = socket(AF_INET , SOCK_STREAM , 0 );
@@ -43,12 +50,18 @@ SocketInfo* Connect(const char* ServerHost, uint32_t ServerPort)
 	while( pResultCur && !pSocketInfo)
 	{
 		if( connect(ConnectSocket, pResultCur->ai_addr, static_cast<int>(pResultCur->ai_addrlen)) == 0 )
+		{
+			SetNonBlocking(ConnectSocket, false);
 			pSocketInfo = netImguiNew<SocketInfo>(ConnectSocket);
-				
+		}		
 		pResultCur = pResultCur->ai_next;
 	}
 
 	freeaddrinfo(pResults);
+	if( !pSocketInfo )
+	{
+		close(ConnectSocket);
+	}
 	return pSocketInfo;
 }
 
@@ -70,6 +83,7 @@ SocketInfo* ListenStart(uint32_t ListenPort)
 		if(	bind(ListenSocket, addrInfo->ai_addr, addrInfo->ai_addrlen) != -1 &&
 			listen(ListenSocket, 0) != -1)
 		{
+			SetNonBlocking(ListenSocket, true);
 			return netImguiNew<SocketInfo>(ListenSocket);
 		}
 		close(ListenSocket);
@@ -86,6 +100,7 @@ SocketInfo* ListenConnect(SocketInfo* ListenSocket)
 		int ServerSocket = accept(ListenSocket->mSocket, (sockaddr*)&ClientAddress, &Size) ;
 		if (ServerSocket != -1)
 		{
+			SetNonBlocking(ServerSocket, false);
 			return netImguiNew<SocketInfo>(ServerSocket);
 		}
 	}
@@ -99,12 +114,6 @@ void Disconnect(SocketInfo* pClientSocket)
 		close(pClientSocket->mSocket);
 		netImguiDelete(pClientSocket);
 	}
-}
-
-bool GetClientInfo(SocketInfo* pClientSocket, char* pOutHostname, size_t HostNameLen, int& outPort)
-{
-	// TODO
-	return false;
 }
 
 bool DataReceive(SocketInfo* pClientSocket, void* pDataIn, size_t Size)

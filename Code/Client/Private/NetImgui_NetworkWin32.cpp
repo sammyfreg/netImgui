@@ -33,10 +33,16 @@ void Shutdown()
 	WSACleanup();
 }
 
+inline void SetNonBlocking(SOCKET Socket, bool bIsNonBlocking)
+{
+	u_long IsNonBlocking = bIsNonBlocking;
+	ioctlsocket(Socket, static_cast<long>(FIONBIO), &IsNonBlocking);
+}
+
 SocketInfo* Connect(const char* ServerHost, uint32_t ServerPort)
 {
-	SOCKET ConnectSocket = socket(AF_INET , SOCK_STREAM , 0);
-	if(ConnectSocket == INVALID_SOCKET)
+	SOCKET ClientSocket = socket(AF_INET , SOCK_STREAM , 0);
+	if(ClientSocket == INVALID_SOCKET)
 		return nullptr;
 	
 	char zPortName[32];
@@ -47,12 +53,18 @@ SocketInfo* Connect(const char* ServerHost, uint32_t ServerPort)
 	addrinfo*	pResultCur	= pResults;
 	while( pResultCur && !pSocketInfo )
 	{
-		if( connect(ConnectSocket, pResultCur->ai_addr, static_cast<int>(pResultCur->ai_addrlen)) == 0 )
-			pSocketInfo = netImguiNew<SocketInfo>(ConnectSocket);
-				
+		if( connect(ClientSocket, pResultCur->ai_addr, static_cast<int>(pResultCur->ai_addrlen)) == 0 )
+		{	
+			SetNonBlocking(ClientSocket, false);
+			pSocketInfo = netImguiNew<SocketInfo>(ClientSocket);
+		}		
 		pResultCur = pResultCur->ai_next;
 	}
 	freeaddrinfo(pResults);
+	if( !pSocketInfo )
+	{
+		closesocket(ClientSocket);
+	}
 	return pSocketInfo;
 }
 
@@ -68,6 +80,7 @@ SocketInfo* ListenStart(uint32_t ListenPort)
 		if(	bind(ListenSocket, reinterpret_cast<sockaddr*>(&server), sizeof(server)) != SOCKET_ERROR &&
 			listen(ListenSocket, 0) != SOCKET_ERROR )
 		{
+			SetNonBlocking(ListenSocket, true);
 			return netImguiNew<SocketInfo>(ListenSocket);
 		}
 		closesocket(ListenSocket);
@@ -89,6 +102,7 @@ SocketInfo* ListenConnect(SocketInfo* ListenSocket)
 			setsockopt(ClientSocket, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<const char*>(&kComsTimeoutMs), sizeof(kComsTimeoutMs));
 			setsockopt(ClientSocket, SOL_SOCKET, SO_SNDTIMEO, reinterpret_cast<const char*>(&kComsTimeoutMs), sizeof(kComsTimeoutMs));
 		#endif
+			SetNonBlocking(ClientSocket, false);
 			return netImguiNew<SocketInfo>(ClientSocket);
 		}
 	}

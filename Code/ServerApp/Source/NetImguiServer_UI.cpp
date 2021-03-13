@@ -16,23 +16,23 @@
 namespace NetImguiServer { namespace UI
 {
 
-constexpr uint32_t	kClientRemoteInvalid				= 0xFFFFFFFF;
-constexpr char		kNetImguiURL[]						= "https://github.com/sammyfreg/netImgui";
-const char*			kDataSizeUnits[]					= {"B", "KB", "MB", "GB"};
-static const ImVec4	kColorTitle							= ImVec4(0.7f,1.0f,0.7f,1.f);
-static const ImVec4	kColorContent						= ImVec4(0.7f,0.75f,0.7f,1.f);
-static ImGuiID		gMainDockID							= 0;
-static void*		gpHAL_BackgroundTexture				= nullptr;
-static ImVec2		gvBackgroundTextureSize				= ImVec2(0,0);
-static ImVec4		gBackgroundColor					= ImVec4(0,0,0,0);
-static float		gDisplayFPS							= 30.f;
-static auto			gLastUIUpdate						= std::chrono::steady_clock::now();
+constexpr uint32_t			kClientRemoteInvalid				= 0xFFFFFFFF;
+constexpr char				kNetImguiURL[]						= "https://github.com/sammyfreg/netImgui";
+const char*					kDataSizeUnits[]					= {"B", "KB", "MB", "GB"};
+static const  ImVec4		kColorBGClear						= ImVec4(0.8f,0.8f,0.8f, 1.f);	// Background color of the main Server window
+static const  ImVec4		kColorBGTint						= ImVec4(1.f, 1.f, 1.f, 1.f);	// Tint applied to the main server window bg logo
+static const ImVec4			kColorTitle							= ImVec4(0.3f,1.0f,0.3f,1.f);	// Various Server title content color
+static const ImVec4			kColorContent						= ImVec4(0.7f,0.75f,0.7f,1.f);	// Various Server text content color
+static ImGuiID				gMainDockID							= 0;
+static float				gDisplayFPS							= 30.f;
+static auto					gLastUIUpdate						= std::chrono::steady_clock::now();
+static App::ServerTexture	gBackgroundTexture;
 
-static uint32_t		gPopup_ConfirmDisconnect_ClientIdx	= kClientRemoteInvalid;
-static uint32_t		gPopup_ConfirmDelete_ConfigIdx		= NetImguiServer::Config::Client::kInvalidRuntimeID;
-static bool			gPopup_AboutNetImgui_Show			= false;
-static bool			gPopup_ServerConfig_Show			= false;
-static NetImguiServer::Config::Client*	gPopup_ClientConfig_pConfig	= nullptr;
+static uint32_t							gPopup_ConfirmDisconnect_ClientIdx	= kClientRemoteInvalid;
+static uint32_t							gPopup_ConfirmDelete_ConfigIdx		= NetImguiServer::Config::Client::kInvalidRuntimeID;
+static bool								gPopup_AboutNetImgui_Show			= false;
+static bool								gPopup_ServerConfig_Show			= false;
+static NetImguiServer::Config::Client*	gPopup_ClientConfig_pConfig			= nullptr;
 
 //=================================================================================================
 // Convert a memory size to a displayable value
@@ -48,21 +48,26 @@ uint8_t ConvertDataAmount(uint64_t& dataSize)
 	return outUnitIdx;
 }
 
+const App::ServerTexture& GetBackgroundTexture()
+{
+	return gBackgroundTexture;
+}
+
 //=================================================================================================
 // Fill current window with our main background picture
 //=================================================================================================
-void DrawBackground( ImVec4 Tint=ImVec4(1.f,1.f,1.f,1.f) )
+void DrawCenteredBackground(const App::ServerTexture& Texture, const ImVec4& Tint)
 {
 	const ImVec2 savedPos	= ImGui::GetCursorPos();
 	const ImVec2 areaSize	= ImGui::GetContentRegionAvail();
-	const float ratioH		= gvBackgroundTextureSize.x / areaSize.x;
-	const float ratioV		= gvBackgroundTextureSize.y / areaSize.y;
-	float bgSizeX			= ratioH > ratioV ? areaSize.x : areaSize.y * gvBackgroundTextureSize.x / gvBackgroundTextureSize.y;
-	float bgSizeY			= ratioH < ratioV ? areaSize.y : areaSize.x * gvBackgroundTextureSize.y / gvBackgroundTextureSize.x;
+	const float ratioH		= static_cast<float>(Texture.mSize[0]) / areaSize.x;
+	const float ratioV		= static_cast<float>(Texture.mSize[1]) / areaSize.y;
+	float bgSizeX			= ratioH > ratioV ? areaSize.x : areaSize.y * static_cast<float>(Texture.mSize[0]) / static_cast<float>(Texture.mSize[1]);
+	float bgSizeY			= ratioH < ratioV ? areaSize.y : areaSize.x * static_cast<float>(Texture.mSize[1]) / static_cast<float>(Texture.mSize[0]);
 	float uvOffsetX			= (areaSize.x - bgSizeX) / 2.f;
 	float uvOffsetY			= (areaSize.y - bgSizeY) / 2.f;
 	ImGui::SetCursorPos(ImVec2(savedPos.x+uvOffsetX, savedPos.y+uvOffsetY));
-	ImGui::Image(reinterpret_cast<ImTextureID>(gpHAL_BackgroundTexture), ImVec2(bgSizeX, bgSizeY), ImVec2(0, 0), ImVec2(1, 1), Tint);
+	ImGui::Image(reinterpret_cast<ImTextureID>(Texture.mpHAL_Texture), ImVec2(bgSizeX, bgSizeY), ImVec2(0, 0), ImVec2(1, 1), Tint);
 	ImGui::SetCursorPos(savedPos);
 }
 
@@ -374,7 +379,7 @@ void Popup_ClientConfigDelete()
 //=================================================================================================
 // Setuping the docking of our application
 //=================================================================================================
-void DrawImguiContent_SetupDocking(const ImVec4& BackgroundTint)
+void DrawImguiContent_SetupDocking()
 {
 	if (gMainDockID == 0 )
 	{
@@ -387,8 +392,8 @@ void DrawImguiContent_SetupDocking(const ImVec4& BackgroundTint)
     ImGuiWindowFlags window_flags   = ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoBackground;
     window_flags                    |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
     window_flags                    |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
-    ImGui::SetNextWindowPos(viewport->GetWorkPos());
-    ImGui::SetNextWindowSize(viewport->GetWorkSize());
+    ImGui::SetNextWindowPos(viewport->WorkPos);
+    ImGui::SetNextWindowSize(viewport->WorkSize);
     ImGui::SetNextWindowViewport(viewport->ID);
 	
 	// Important: note that we proceed even if Begin() returns false (aka window is collapsed).
@@ -398,9 +403,10 @@ void DrawImguiContent_SetupDocking(const ImVec4& BackgroundTint)
     // any change of dockspace/settings would lead to windows being stuck in limbo and never being visible.
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.f, 4.f));
 	ImGui::Begin("DockSpace", nullptr, window_flags);
-	ImGui::PopStyleVar(2);
-	DrawBackground(BackgroundTint);
+	ImGui::PopStyleVar(3);
+	DrawCenteredBackground(gBackgroundTexture, kColorBGTint);
 	if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable)
 	{
 		ImGui::DockSpace(gMainDockID, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode);
@@ -413,9 +419,7 @@ void DrawImguiContent_SetupDocking(const ImVec4& BackgroundTint)
 // Display the dockable window of each connected client we can interact with
 //=================================================================================================
 void DrawImguiContent_Clients()
-{	
-	ImGui::PushStyleColor(ImGuiCol_WindowBg, gBackgroundColor);	// When remote client window is floating
-	ImGui::PushStyleColor(ImGuiCol_ChildBg, gBackgroundColor);	// When Remote client window is docked
+{
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 4.0f);
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);	
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.f, 0.f));
@@ -457,7 +461,6 @@ void DrawImguiContent_Clients()
 					ImGui::SetCursorPos(savedPos);
 
 					// Display Client Context
-					DrawBackground(ImVec4(1.f, 1.f, 1.f, 0.15f));
 					ImGui::Image(reinterpret_cast<ImTextureID>(client.mpHAL_AreaTexture), areaSize, ImVec2(0, 0), ImVec2(1, 1), tint_col, border_col);
 					if( ImGui::IsItemHovered() ){
 						ImGui::SetMouseCursor(client.mMouseCursor);
@@ -480,9 +483,10 @@ void DrawImguiContent_Clients()
 	{
 		ImGui::SetNextWindowBgAlpha(1.0);
 		ImGui::SetNextWindowDockID(gMainDockID, ImGuiCond_Always);
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding , ImVec2(24.f,24.f));
 		if (ImGui::Begin("Information", nullptr, 0))
 		{
-			DrawBackground(ImVec4(1.f, 1.f, 1.f, 0.15f));
+			DrawCenteredBackground(gBackgroundTexture, ImVec4(1.f, 1.f, 1.f, 0.15f));
 
 			ImGui::TextColored(kColorTitle, "%s", "Purpose:");
 			ImGui::PushStyleColor(ImGuiCol_Text, kColorContent);
@@ -504,10 +508,10 @@ void DrawImguiContent_Clients()
 			ImGui::PopStyleColor();			
 		}
 		ImGui::End();
+		ImGui::PopStyleVar();
 	}
 
 	ImGui::PopStyleVar(3);
-	ImGui::PopStyleColor(2);
 }
 
 //=================================================================================================
@@ -751,7 +755,6 @@ ImVec4 DrawImguiContent()
 	gLastUIUpdate				= std::chrono::steady_clock::now();
 	gDisplayFPS					= gDisplayFPS*(1.f-kHysteresis) + (1000000.f/elapsedMicroS)*kHysteresis;
 
-	const ImVec4 viewportTint(0.5f, 0.5f, 0.5f, 1.f);
 	Popup_ServerConfig();
 	Popup_ClientConfigEdit();
 	Popup_ClientConfigDelete();
@@ -759,11 +762,11 @@ ImVec4 DrawImguiContent()
 	Popup_AboutNetImgui();
 
 	DrawImguiContent_MainMenu();
-	DrawImguiContent_SetupDocking(viewportTint);
+	DrawImguiContent_SetupDocking();
 	DrawImguiContent_Clients();	
 	//ImGui::ShowDemoWindow();
 
-	return ImVec4(gBackgroundColor.x*viewportTint.x, gBackgroundColor.y*viewportTint.y, gBackgroundColor.z*viewportTint.z, 1.f);
+	return kColorBGClear;
 }
 
 
@@ -777,13 +780,7 @@ bool Startup()
 	if( pBGPixels )
 	{		
 		// @Sammyfreg TODO : Support multiple format for Background
-		gvBackgroundTextureSize.x = static_cast<float>(Width);
-		gvBackgroundTextureSize.y = static_cast<float>(Height);
-		NetImguiServer::App::HAL_CreateTexture(uint16_t(Width), uint16_t(Height), NetImgui::eTexFormat::kTexFmtRGBA8, pBGPixels, gpHAL_BackgroundTexture);
-		gBackgroundColor.x	= static_cast<float>(pBGPixels[0]) / 255.f;
-		gBackgroundColor.y	= static_cast<float>(pBGPixels[1]) / 255.f;
-		gBackgroundColor.z	= static_cast<float>(pBGPixels[2]) / 255.f;
-		gBackgroundColor.w	= 1.f;
+		NetImguiServer::App::HAL_CreateTexture(uint16_t(Width), uint16_t(Height), NetImgui::eTexFormat::kTexFmtRGBA8, pBGPixels, gBackgroundTexture);
 		stbi_image_free(pBGPixels);
 	}
 
@@ -797,7 +794,7 @@ bool Startup()
 //=================================================================================================
 void Shutdown()
 {
-	NetImguiServer::App::HAL_DestroyTexture(gpHAL_BackgroundTexture);	
+	NetImguiServer::App::HAL_DestroyTexture(gBackgroundTexture);	
 }
 
 //=================================================================================================

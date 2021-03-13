@@ -26,12 +26,18 @@ Client::Client()
 Client::~Client()
 {
 	Reset();
+
+	//Note: Reset is usually called from com thread, can't destroy ImGui Context in it
+	if (mpBGContext) {
+		ImGui::DestroyContext(mpBGContext);
+		mpBGContext		= nullptr;
+	}
 }
 
 void Client::ReceiveDrawFrame(NetImgui::Internal::CmdDrawFrame* pFrameData)
 {
 	// Receive new draw data
-	mPendingFrame.Assign(pFrameData);
+	mPendingFrameIn.Assign(pFrameData);
 
 	// Update framerate
 	constexpr float kHysteresis	= 0.05f; // Between 0 to 1.0
@@ -53,7 +59,7 @@ void Client::ReceiveTexture(NetImgui::Internal::CmdTexture* pTextureCmd)
 			if( mvTextures[i].mImguiId == pTextureCmd->mTextureId )
 			{
 				foundIdx = i;
-				NetImguiServer::App::HAL_DestroyTexture(mvTextures[foundIdx].mpHAL_Texture);
+				NetImguiServer::App::HAL_DestroyTexture(mvTextures[foundIdx]);
 				if( isRemoval )
 				{
 					mvTextures[foundIdx] = mvTextures.back();
@@ -70,7 +76,7 @@ void Client::ReceiveTexture(NetImgui::Internal::CmdTexture* pTextureCmd)
 				mvTextures.resize(foundIdx+1);
 				mvTextures[foundIdx].mImguiId = pTextureCmd->mTextureId;
 			}
-			NetImguiServer::App::HAL_CreateTexture(pTextureCmd->mWidth, pTextureCmd->mHeight, pTextureCmd->mFormat, pTextureCmd->mpTextureData.Get(), mvTextures[foundIdx].mpHAL_Texture);
+			NetImguiServer::App::HAL_CreateTexture(pTextureCmd->mWidth, pTextureCmd->mHeight, pTextureCmd->mFormat, pTextureCmd->mpTextureData.Get(), mvTextures[foundIdx]);
 		}
 	}
 }
@@ -79,21 +85,39 @@ void Client::Reset()
 {
 	for(auto& texEntry : mvTextures )
 	{
-		NetImguiServer::App::HAL_DestroyTexture(texEntry.mpHAL_Texture);
+		NetImguiServer::App::HAL_DestroyTexture(texEntry);
 	}
 	mvTextures.clear();
 
-	mPendingFrame.Free();
-	mPendingInput.Free();
-	netImguiDeleteSafe(mpFrameDraw);
+	mPendingFrameIn.Free();
+	mPendingBackgroundIn.Free();
+	mPendingInputOut.Free();
+	NetImgui::Internal::netImguiDeleteSafe(mpFrameDraw);
 
 	mInfoName[0]		= 0;
 	mClientConfigID		= NetImguiServer::Config::Client::kInvalidRuntimeID;
 	mClientIndex		= 0;
 	mbPendingDisconnect	= false;
 	mbIsConnected		= false;
-	mbIsFree			= true;	
+	mbIsFree			= true;
+	mBGNeedUpdate		= true;
+}
 
+void Client::Initialize()
+{
+	mConnectedTime		= std::chrono::steady_clock::now();
+	mLastUpdateTime		= std::chrono::steady_clock::now() - std::chrono::hours(1);
+	mLastDrawFrame		= std::chrono::steady_clock::now();
+	mStatsIndex			= 0;
+	mStatsRcvdBps		= 0;
+	mStatsSentBps		= 0;
+	mStatsFPS			= 0.f;
+	mStatsDataRcvd		= 0;
+	mStatsDataSent		= 0;
+	mStatsDataRcvdPrev	= 0;
+	mStatsDataSentPrev	= 0;
+	mStatsTime			= std::chrono::steady_clock::now();
+	mBGSettings			= NetImgui::Internal::CmdBackground(); // Assign background default value, until we receive first update from client
 }
 
 bool Client::Startup(uint32_t clientCountMax)
@@ -142,7 +166,7 @@ uint32_t Client::GetFreeIndex()
 NetImgui::Internal::CmdDrawFrame* Client::TakeDrawFrame()
 {
 	// Check if a new frame has been added. If yes, then take ownership of it.
-	NetImgui::Internal::CmdDrawFrame* pPendingFrame = mPendingFrame.Release();
+	NetImgui::Internal::CmdDrawFrame* pPendingFrame = mPendingFrameIn.Release();
 	if( pPendingFrame )
 	{
 		netImguiDeleteSafe( mpFrameDraw );
@@ -156,7 +180,7 @@ NetImgui::Internal::CmdDrawFrame* Client::TakeDrawFrame()
 //=================================================================================================
 NetImgui::Internal::CmdInput* Client::TakePendingInput()
 {
-	return mPendingInput.Release();
+	return mPendingInputOut.Release();
 }
 
 //=================================================================================================
@@ -229,7 +253,7 @@ void Client::CaptureImguiInput()
 		memcpy(&pNewInput->mKeyChars[pNewInput->mKeyCharCount], io.InputQueueCharacters.Data, addedKeyCount*sizeof(ImWchar));
 		pNewInput->mKeyCharCount	+= static_cast<uint16_t>(addedKeyCount);
 	}
-	mPendingInput.Assign(pNewInput);
+	mPendingInputOut.Assign(pNewInput);
 	mLastUpdateTime = std::chrono::steady_clock::now();
 }
 

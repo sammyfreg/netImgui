@@ -48,9 +48,16 @@ void Client_Draw_LocalContent()
 	if( !NetImgui::IsDrawingRemote())
 	{
 		ImGui::NewLine();
-		ImGui::TextWrapped("This text is only displayed locally.");
+		ImGui::TextWrapped("This text is only displayed locally.");		
+		if( NetImgui::IsConnected() )
+		{
+			if (ImGui::Button("Disconnect"))
+			{
+				NetImgui::Disconnect();
+			}
+		}
 		ImGui::NewLine();
-	}		
+	}
 }
 
 //=================================================================================================
@@ -109,8 +116,8 @@ ImDrawData* Client_Draw()
 	//	was called.
 	//
 	//	For this sample, main content is always displayed on ContextMain, both when 
-	//	connected to server or only drawing locally. We then have a secondary context to display
-	//	locally, when we are drawing the main content for the remote connection.
+	//	connected to server or only drawing locally. We then have a secondary context used to
+	//	display extra content locally, when rempte connection is active.
 	//
 	//	You could decide to have a dedicated Remote NetImgui context instead. 
 	//---------------------------------------------------------------------------------------------

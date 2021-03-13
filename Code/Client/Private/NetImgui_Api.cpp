@@ -49,7 +49,7 @@ bool ConnectToApp(const char* clientName, const char* ServerHost, uint32_t serve
 
 	StringCopy(client.mName, (clientName == nullptr || clientName[0] == 0 ? "Unnamed" : clientName));
 	client.mpSocketPending	= Network::Connect(ServerHost, serverPort);	
-	if (client.mpSocketPending)
+	if (client.mpSocketPending.load() != nullptr)
 	{				
 		client.ContextInitialize();
 		threadFunction		= threadFunction == nullptr ? DefaultStartCommunicationThread : threadFunction;
@@ -73,7 +73,7 @@ bool ConnectFromApp(const char* clientName, uint32_t serverPort, ThreadFunctPtr 
 
 	StringCopy(client.mName, (clientName == nullptr || clientName[0] == 0 ? "Unnamed" : clientName));
 	client.mpSocketPending = Network::ListenStart(serverPort);
-	if (client.mpSocketPending)
+	if (client.mpSocketPending.load() != nullptr)
 	{				
 		client.ContextInitialize();
 		threadFunction		= threadFunction == nullptr ? DefaultStartCommunicationThread : threadFunction;
@@ -91,7 +91,6 @@ void Disconnect(void)
 	
 	Client::ClientInfo& client	= *gpClientInfo;
 	client.mbDisconnectRequest	= client.IsActive();
-	client.KillSocketListen(); // Forcefully disconnect Listening socket, since it is blocking
 }
 
 //=================================================================================================
@@ -240,6 +239,15 @@ void EndFrame(void)
 			client.mPendingFrameOut.Assign(pNewDrawFrame);
 		}
 
+		// Detect change to background settings by user, and forward them to server
+		if( client.mBGSetting != client.mBGSettingSent )
+		{
+			CmdBackground* pCmdBackground	= netImguiNew<CmdBackground>();
+			*pCmdBackground					= client.mBGSetting;
+			client.mBGSettingSent			= client.mBGSetting;
+			client.mPendingBackgroundOut.Assign(pCmdBackground);
+		}
+
 		// Restore display size, so we never lose original setting that may get updated after initial connection
 		if( client.mbIsRemoteDrawing ) {			
 			ImGui::GetIO().DisplaySize = client.mSavedDisplaySize;
@@ -327,6 +335,59 @@ void SendDataTexture(ImTextureID textureId, void* pData, uint16_t width, uint16_
 	// If not connected to server yet, update all pending textures
 	if( !IsConnected() )
 		client.TextureProcessPending();
+}
+
+//=================================================================================================
+void SetBackground(const ImVec4& bgColor)
+//=================================================================================================
+{
+	if (!gpClientInfo) return;
+
+	Client::ClientInfo& client			= *gpClientInfo;
+	client.mBGSetting					= NetImgui::Internal::CmdBackground();
+	client.mBGSetting.mClearColor[0]	= bgColor.x;
+	client.mBGSetting.mClearColor[1]	= bgColor.y;
+	client.mBGSetting.mClearColor[2]	= bgColor.z;
+	client.mBGSetting.mClearColor[3]	= bgColor.w;
+}
+
+//=================================================================================================
+void SetBackground(const ImVec4& bgColor, const ImVec4& textureTint )
+//=================================================================================================
+{
+	if (!gpClientInfo) return;
+
+	Client::ClientInfo& client			= *gpClientInfo;
+	client.mBGSetting.mClearColor[0]	= bgColor.x;
+	client.mBGSetting.mClearColor[1]	= bgColor.y;
+	client.mBGSetting.mClearColor[2]	= bgColor.z;
+	client.mBGSetting.mClearColor[3]	= bgColor.w;
+	client.mBGSetting.mTextureTint[0]	= textureTint.x;
+	client.mBGSetting.mTextureTint[1]	= textureTint.y;
+	client.mBGSetting.mTextureTint[2]	= textureTint.z;
+	client.mBGSetting.mTextureTint[3]	= textureTint.w;
+	client.mBGSetting.mTextureId		= NetImgui::Internal::CmdBackground::kDefaultTexture;
+}
+
+//=================================================================================================
+void SetBackground(const ImVec4& bgColor, const ImVec4& textureTint, ImTextureID bgTextureID)
+//=================================================================================================
+{
+	if (!gpClientInfo) return;
+
+	Client::ClientInfo& client			= *gpClientInfo;
+	client.mBGSetting.mClearColor[0]	= bgColor.x;
+	client.mBGSetting.mClearColor[1]	= bgColor.y;
+	client.mBGSetting.mClearColor[2]	= bgColor.z;
+	client.mBGSetting.mClearColor[3]	= bgColor.w;
+	client.mBGSetting.mTextureTint[0]	= textureTint.x;
+	client.mBGSetting.mTextureTint[1]	= textureTint.y;
+	client.mBGSetting.mTextureTint[2]	= textureTint.z;
+	client.mBGSetting.mTextureTint[3]	= textureTint.w;
+
+	uint64_t texId64(0);
+	reinterpret_cast<ImTextureID*>(&texId64)[0] = bgTextureID;
+	client.mBGSetting.mTextureId		= texId64;
 }
 
 //=================================================================================================
@@ -461,67 +522,6 @@ bool ProcessInputData(Client::ClientInfo& client)
 		client.mpLastInput		= pCmdInputNew;
 	}
 	return hasNewInput;
-}
-
-} // namespace NetImgui
-
-
-#else //NETIMGUI_ENABLED
-
-namespace NetImgui {
-
-#ifdef IMGUI_VERSION
-static bool 		sIsDrawing = false;
-#endif
-
-bool				Startup(void)														{ return true; }
-void				Shutdown(bool)														{ }
-bool				ConnectToApp(const char*, const char*, uint32_t, ThreadFunctPtr)	{ return false; }
-bool				ConnectFromApp(const char*, uint32_t, ThreadFunctPtr)				{ return false; }
-void				Disconnect(void)													{ }
-bool				IsConnected(void)													{ return false; }
-bool				IsDrawingRemote(void)												{ return false; }
-bool				IsConnectionPending(void)											{ return false; }
-void				SendDataTexture(uint64_t, void*, uint16_t, uint16_t, eTexFormat)	{ }
-ImGuiContext*		CloneContext(ImGuiContext*)											{ return nullptr; }
-uint8_t				GetTexture_BitsPerPixel(eTexFormat)									{ return 0; }
-uint32_t			GetTexture_BytePerLine(eTexFormat, uint32_t)						{ return 0; }
-uint32_t			GetTexture_BytePerImage(eTexFormat, uint32_t, uint32_t)				{ return 0; }
-
-//=================================================================================================
-// If ImGui is enabled but not NetImgui, handle the BeginFrame/EndFrame normally
-//=================================================================================================
-bool NewFrame(bool)													
-{ 
-#ifdef IMGUI_VERSION
-	if( !sIsDrawing )
-	{
-		sIsDrawing = true;
-		ImGui::NewFrame();
-		return true;
-	}
-#endif
-	return false; 
-
-}
-void EndFrame(void)													
-{
-#ifdef IMGUI_VERSION
-	if( sIsDrawing )
-	{		
-		ImGui::Render();
-		sIsDrawing = false;
-	}
-#endif
-}
-
-bool IsDrawing(void)
-{ 
-#ifdef IMGUI_VERSION
-	return sIsDrawing; 
-#else
-	return false;
-#endif
 }
 
 } // namespace NetImgui
