@@ -19,21 +19,20 @@ namespace NetImguiServer { namespace UI
 constexpr uint32_t			kClientRemoteInvalid				= 0xFFFFFFFF;
 constexpr char				kNetImguiURL[]						= "https://github.com/sammyfreg/netImgui";
 const char*					kDataSizeUnits[]					= {"B", "KB", "MB", "GB"};
-static const  ImVec4		kColorBGClear						= ImVec4(0.6f,0.6f,0.6f, 1.f);	// Background color of the main Server window
+static const  ImVec4		kColorBGClear						= ImVec4(0.8f,0.8f,0.8f, 1.f);	// Background color of the main Server window
 static const  ImVec4		kColorBGTint						= ImVec4(1.f, 1.f, 1.f, 1.f);	// Tint applied to the main server window bg logo
-static const ImVec4			kColorTitle							= ImVec4(0.7f,1.0f,0.7f,1.f);	// Various Server title content color
+static const ImVec4			kColorTitle							= ImVec4(0.3f,1.0f,0.3f,1.f);	// Various Server title content color
 static const ImVec4			kColorContent						= ImVec4(0.7f,0.75f,0.7f,1.f);	// Various Server text content color
 static ImGuiID				gMainDockID							= 0;
 static float				gDisplayFPS							= 30.f;
 static auto					gLastUIUpdate						= std::chrono::steady_clock::now();
 static App::ServerTexture	gBackgroundTexture;
 
-
-static uint32_t				gPopup_ConfirmDisconnect_ClientIdx	= kClientRemoteInvalid;
-static uint32_t				gPopup_ConfirmDelete_ConfigIdx		= NetImguiServer::Config::Client::kInvalidRuntimeID;
-static bool					gPopup_AboutNetImgui_Show			= false;
-static bool					gPopup_ServerConfig_Show			= false;
-static NetImguiServer::Config::Client*	gPopup_ClientConfig_pConfig	= nullptr;
+static uint32_t							gPopup_ConfirmDisconnect_ClientIdx	= kClientRemoteInvalid;
+static uint32_t							gPopup_ConfirmDelete_ConfigIdx		= NetImguiServer::Config::Client::kInvalidRuntimeID;
+static bool								gPopup_AboutNetImgui_Show			= false;
+static bool								gPopup_ServerConfig_Show			= false;
+static NetImguiServer::Config::Client*	gPopup_ClientConfig_pConfig			= nullptr;
 
 //=================================================================================================
 // Convert a memory size to a displayable value
@@ -380,7 +379,7 @@ void Popup_ClientConfigDelete()
 //=================================================================================================
 // Setuping the docking of our application
 //=================================================================================================
-void DrawImguiContent_SetupDocking(const ImVec4& BackgroundTint)
+void DrawImguiContent_SetupDocking()
 {
 	if (gMainDockID == 0 )
 	{
@@ -404,9 +403,10 @@ void DrawImguiContent_SetupDocking(const ImVec4& BackgroundTint)
     // any change of dockspace/settings would lead to windows being stuck in limbo and never being visible.
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.f, 4.f));
 	ImGui::Begin("DockSpace", nullptr, window_flags);
-	ImGui::PopStyleVar(2);
-	DrawCenteredBackground(gBackgroundTexture, BackgroundTint);
+	ImGui::PopStyleVar(3);
+	DrawCenteredBackground(gBackgroundTexture, kColorBGTint);
 	if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable)
 	{
 		ImGui::DockSpace(gMainDockID, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode);
@@ -483,6 +483,7 @@ void DrawImguiContent_Clients()
 	{
 		ImGui::SetNextWindowBgAlpha(1.0);
 		ImGui::SetNextWindowDockID(gMainDockID, ImGuiCond_Always);
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding , ImVec2(24.f,24.f));
 		if (ImGui::Begin("Information", nullptr, 0))
 		{
 			DrawCenteredBackground(gBackgroundTexture, ImVec4(1.f, 1.f, 1.f, 0.15f));
@@ -507,6 +508,7 @@ void DrawImguiContent_Clients()
 			ImGui::PopStyleColor();			
 		}
 		ImGui::End();
+		ImGui::PopStyleVar();
 	}
 
 	ImGui::PopStyleVar(3);
@@ -760,7 +762,7 @@ ImVec4 DrawImguiContent()
 	Popup_AboutNetImgui();
 
 	DrawImguiContent_MainMenu();
-	DrawImguiContent_SetupDocking(kColorBGTint);
+	DrawImguiContent_SetupDocking();
 	DrawImguiContent_Clients();	
 	//ImGui::ShowDemoWindow();
 

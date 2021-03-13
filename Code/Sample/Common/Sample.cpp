@@ -7,6 +7,13 @@
 #include <NetImgui_Api.h>
 #include "..\Common\Sample.h"
 
+// Since NetImgui is disabled in this sample, hit will not include this header
+#if !NETIMGUI_ENABLED
+#include "imgui.h" 
+namespace SampleClient { void ClientUtil_ImGuiContent_Common(const char*){} }
+
+#else
+
 namespace SampleClient
 {
 
@@ -117,3 +124,4 @@ void ClientUtil_ImGuiContent_Common(const char* zAppName)
 }
 
 } // namespace SampleClient
+#endif

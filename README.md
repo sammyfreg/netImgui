@@ -88,27 +88,27 @@ Related projects making use of **NetImgui**.
 # Release notes
 ### To do
 - Support of additional texture formats
-- Commands to assign custom backgrounds
 - Handle Linear/sRGB vertex color format
-- Add logging information in netImgui server application
+- Add logging information in **NetImgui Server** application
 - Profile and optimize performances
 - Add new **Dear ImGui** multi windows support (docking branch)
-- ~~Bugfix : netImgui Server application unable to start when post configured for listening can't be opened. Need to manually edit `netImgui.cfg` with a valid port.~~
-- ~~Add copy/paste support~~
-- ~~Networking: Add support of client accepting connection from netImgui App~~
+- ~~Commands to assign custom backgrounds~~
 
 ### Version 1.4
-(2021/xx/xx)
+(2021/03/13)
 - **API Changes**
-  - xxx
+  - Added ``SetBackground(...)`` letting user configure the client window background appearance
+    - The new sample **SampleBackground** demonstrate its usage.
+  - Removed support of empty API functions when ``NETIMGUI_ENABLED`` is false
+    - Keeps **NetImgui** client code clutter to minimum.
 - **New**  
   - Auto interception of **Dear ImGui** `ImGui::NewFrame()` / `ImGui::Render()`
-    - Using **Dear ImGui 1.81's** *Callbacks* support, replacing them with `NetImgui::NewFrame()` / `NetImgui::EndFrame()` in codebase can be avoided
+    - Using **Dear ImGui 1.81's** *Callbacks* support, replacing theses Dear ImGui functions call with `NetImgui::NewFrame()` / `NetImgui::EndFrame()` can now be avoided
     - This means less changes to existing codebase wanting to use **NetImgui**, only requiring a single call to :
       - `Startup`
       - `Shutdown`
       - `ConnectToApp` or `ConnectFromApp`
-    - However, calling directly `NetImgui::NewFrame()` / `NetImgui::EndFrame()` can allow skipping draw when not needed
+    - However, calling directly `NetImgui::NewFrame()` / `NetImgui::EndFrame()` has the additional benefit of being able to skip drawing when not needed
 
 ### Older
 [Release Notes](https://github.com/sammyfreg/netImgui/wiki/Release-notes)

@@ -1,6 +1,15 @@
 #pragma once
 
 //=================================================================================================
+// Enable code compilation for this library
+// Note: Useful to disable 'netImgui' on unsupported builds while keeping functions declared
+//=================================================================================================
+#ifndef NETIMGUI_ENABLED
+	#define NETIMGUI_ENABLED	1
+#endif
+
+#if NETIMGUI_ENABLED
+//=================================================================================================
 // Set the path to 'imgui.h' used by your codebase here. 
 // Also suppress a few warnings imgui.h generates in 'warning All' (-Wall)
 //=================================================================================================
@@ -14,6 +23,8 @@
 
 #include "Private/NetImgui_WarningReenable.h"
 
+#endif // NETIMGUI_ENABLED
+
 //=================================================================================================
 // Port used by connect the Server and Client together
 //=================================================================================================
@@ -22,14 +33,6 @@ namespace NetImgui
 constexpr uint32_t kDefaultServerPort = 8888;	//!< Default port Server waits for a connection
 constexpr uint32_t kDefaultClientPort = 8889;	//!< Default port Client waits for a connection
 }
-
-//=================================================================================================
-// Enable code compilation for this library
-// Note: Useful to disable 'netImgui' on unsupported builds while keeping functions declared
-//=================================================================================================
-#ifndef NETIMGUI_ENABLED
-	#define NETIMGUI_ENABLED	1
-#endif
 
 //=================================================================================================
 // Enable default Win32/Posix networking code

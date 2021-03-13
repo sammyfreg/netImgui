@@ -526,67 +526,6 @@ bool ProcessInputData(Client::ClientInfo& client)
 
 } // namespace NetImgui
 
-
-#else //NETIMGUI_ENABLED
-
-namespace NetImgui {
-
-#ifdef IMGUI_VERSION
-static bool 		sIsDrawing = false;
-#endif
-
-bool				Startup(void)														{ return true; }
-void				Shutdown(bool)														{ }
-bool				ConnectToApp(const char*, const char*, uint32_t, ThreadFunctPtr)	{ return false; }
-bool				ConnectFromApp(const char*, uint32_t, ThreadFunctPtr)				{ return false; }
-void				Disconnect(void)													{ }
-bool				IsConnected(void)													{ return false; }
-bool				IsDrawingRemote(void)												{ return false; }
-bool				IsConnectionPending(void)											{ return false; }
-void				SendDataTexture(uint64_t, void*, uint16_t, uint16_t, eTexFormat)	{ }
-ImGuiContext*		CloneContext(ImGuiContext*)											{ return nullptr; }
-uint8_t				GetTexture_BitsPerPixel(eTexFormat)									{ return 0; }
-uint32_t			GetTexture_BytePerLine(eTexFormat, uint32_t)						{ return 0; }
-uint32_t			GetTexture_BytePerImage(eTexFormat, uint32_t, uint32_t)				{ return 0; }
-
-//=================================================================================================
-// If ImGui is enabled but not NetImgui, handle the BeginFrame/EndFrame normally
-//=================================================================================================
-bool NewFrame(bool)													
-{ 
-#ifdef IMGUI_VERSION
-	if( !sIsDrawing )
-	{
-		sIsDrawing = true;
-		ImGui::NewFrame();
-		return true;
-	}
-#endif
-	return false; 
-
-}
-void EndFrame(void)													
-{
-#ifdef IMGUI_VERSION
-	if( sIsDrawing )
-	{		
-		ImGui::Render();
-		sIsDrawing = false;
-	}
-#endif
-}
-
-bool IsDrawing(void)
-{ 
-#ifdef IMGUI_VERSION
-	return sIsDrawing; 
-#else
-	return false;
-#endif
-}
-
-} // namespace NetImgui
-
 #endif //NETIMGUI_ENABLED
 
 #include "NetImgui_WarningDisable.h"

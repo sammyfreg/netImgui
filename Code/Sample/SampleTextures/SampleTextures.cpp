@@ -49,8 +49,8 @@ void CustomTextureCreate(NetImgui::eTexFormat eTexFmt)
 		}break;
 	case NetImgui::eTexFormat::kTexFmt_Invalid: assert(0); break;
 	}
-	TextureCreate(pixelData, Width, Height, gCustomTextureView[static_cast<int>(eTexFmt)]);
-	NetImgui::SendDataTexture(static_cast<ImTextureID>(gCustomTextureView[static_cast<int>(eTexFmt)]), pixelData, Width, Height, eTexFmt);
+	TextureCreate(pixelData, Width, Height, gCustomTextureView[static_cast<int>(eTexFmt)]);													// For local display
+	NetImgui::SendDataTexture(static_cast<ImTextureID>(gCustomTextureView[static_cast<int>(eTexFmt)]), pixelData, Width, Height, eTexFmt);	// For remote display
 }
 
 //=================================================================================================
