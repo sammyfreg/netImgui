@@ -26,11 +26,13 @@ Client::Client()
 Client::~Client()
 {
 	Reset();
-
-	//Note: Reset is usually called from com thread, can't destroy ImGui Context in it
+	
+	//Note: Reset is usually called from com thread, can't destroy ImGui Context in it, 
+	//		or drawing data that could be currently in use by server to draw client results
+	NetImgui::Internal::netImguiDeleteSafe(mpFrameDraw);
 	if (mpBGContext) {
 		ImGui::DestroyContext(mpBGContext);
-		mpBGContext		= nullptr;
+		mpBGContext	= nullptr;
 	}
 }
 
@@ -91,8 +93,7 @@ void Client::Reset()
 
 	mPendingFrameIn.Free();
 	mPendingBackgroundIn.Free();
-	mPendingInputOut.Free();
-	NetImgui::Internal::netImguiDeleteSafe(mpFrameDraw);
+	mPendingInputOut.Free();	
 
 	mInfoName[0]		= 0;
 	mClientConfigID		= NetImguiServer::Config::Client::kInvalidRuntimeID;
@@ -117,7 +118,8 @@ void Client::Initialize()
 	mStatsDataRcvdPrev	= 0;
 	mStatsDataSentPrev	= 0;
 	mStatsTime			= std::chrono::steady_clock::now();
-	mBGSettings			= NetImgui::Internal::CmdBackground(); // Assign background default value, until we receive first update from client
+	mBGSettings			= NetImgui::Internal::CmdBackground();	// Assign background default value, until we receive first update from client
+	NetImgui::Internal::netImguiDeleteSafe(mpFrameDraw);
 }
 
 bool Client::Startup(uint32_t clientCountMax)

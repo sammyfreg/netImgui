@@ -27,9 +27,6 @@ void SavedImguiContext::Save(ImGuiContext* copyFrom)
 	mBackendRendererName	= sourceIO.BackendRendererName;
 	mDrawMouse				= sourceIO.MouseDrawCursor;	
 	mClipboardUserData		= sourceIO.ClipboardUserData;	
-#if IMGUI_VERSION_NUM >= 17700 && IMGUI_VERSION_NUM < 17900
-    mImeWindowHandle		= sourceIO.ImeWindowHandle;
-#endif
 }
 
 void SavedImguiContext::Restore(ImGuiContext* copyTo)
@@ -45,9 +42,6 @@ void SavedImguiContext::Restore(ImGuiContext* copyTo)
 	destIO.BackendRendererName	= mBackendRendererName;
 	destIO.MouseDrawCursor		= mDrawMouse;
 	destIO.ClipboardUserData	= mClipboardUserData;
-#if IMGUI_VERSION_NUM >= 17700 && IMGUI_VERSION_NUM < 17900
-	destIO.ImeWindowHandle		= mImeWindowHandle;
-#endif
 }
 
 //=================================================================================================
@@ -436,9 +430,7 @@ void ClientInfo::ContextOverride()
 		newIO.ClipboardUserData				= nullptr;
 		newIO.BackendPlatformName			= "NetImgui";
 		newIO.BackendRendererName			= "DirectX11";
-#if IMGUI_VERSION_NUM >= 17700 && IMGUI_VERSION_NUM < 17900
-		newIO.ImeWindowHandle				= nullptr;
-#endif
+
 #if defined(IMGUI_HAS_VIEWPORT)
 		newIO.ConfigFlags					&= ~(ImGuiConfigFlags_ViewportsEnable); // Viewport unsupported at the moment
 #endif

@@ -123,7 +123,7 @@ bool IsDrawing(void)
 	if (!gpClientInfo) return false;
 
 	Client::ClientInfo& client = *gpClientInfo;
-	return client.mbIsDrawing && client.mpContext == ImGui::GetCurrentContext();
+	return client.mbIsDrawing;
 }
 
 //=================================================================================================
@@ -528,4 +528,4 @@ bool ProcessInputData(Client::ClientInfo& client)
 
 #endif //NETIMGUI_ENABLED
 
-#include "NetImgui_WarningDisable.h"
+#include "NetImgui_WarningReenable.h"
