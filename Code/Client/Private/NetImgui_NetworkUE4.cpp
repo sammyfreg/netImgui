@@ -3,6 +3,7 @@
 #if NETIMGUI_ENABLED && defined(__UNREAL__)
 
 #include "CoreMinimal.h"
+#include "Misc/OutputDeviceRedirector.h"
 #include "SocketSubsystem.h"
 #include "Sockets.h"
 
