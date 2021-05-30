@@ -46,9 +46,9 @@ Here is a quick overview of the logic behind using the **NetImgui Server** and o
 The NetImgui Server application currently compiles under Windows, but few changes are required to properly have it running under other Operating Systems.
 
 # Integration
-- Download the [latest version](https://github.com/sammyfreg/netImgui/releases "latest version") of the **NetImgui** library.
-- Add the content of ***Code\Client*** to your codebase.
-- In your codebase:
+1. Download the [latest version](https://github.com/sammyfreg/netImgui/releases "latest version") of the **NetImgui** library.
+1. Add the content of ***Code\Client*** to your codebase.
+1. In your codebase:
   - [once]
     - Call `NetImgui::Startup()` *(at program start)*.
     - Call `NetImgui::ConnectToApp()` or `NetImgui::ConnectFromApp()`.
@@ -57,10 +57,10 @@ The NetImgui Server application currently compiles under Windows, but few change
     - Draw your ImGui menu as usual.
     - *If **Dear ImGui** 1.80 and lower (or want frameskip support)*.
       - Replace call to `ImGui::NewFrame()` with `NetImgui::NewFrame()`.
-      - Replace call to `ImGui::Render()` / `ImGui::EndFrame()` with `NetImgui::EndFrame()`.  
-- Start the **NetImgui** server application and connect your application to it
-
-- *More integration details can be found on the [Wiki](https://github.com/sammyfreg/netImgui/wiki "Wiki"). Multiple samples are also included, providing additional insights*
+      - Replace call to `ImGui::Render()` / `ImGui::EndFrame()` with `NetImgui::EndFrame()`.
+1. Start the **NetImgui** server application and connect your application to it.
+- *More integration details can be found on the [Wiki](https://github.com/sammyfreg/netImgui/wiki "Wiki").*
+- *Multiple samples are also provided in the depot, providing additional insights.*
 
 #### Note
 - Connection between **NetImgui Server** and a **netImGui Client** can be achieved in 4 different ways.
@@ -77,7 +77,7 @@ The NetImgui Server application currently compiles under Windows, but few change
 - `NetImgui::IsConnected()` and `NetImgui::IsDrawingRemote()` can be used during Dear ImGui drawing, helping to make selective decisions on the content to draw based on where it will be displayed.
 
 #### Dear Imgui versions
-- Tested against **Dear ImGui** versions: **1.74, 1.75, 1.76, 1.76** (docking)**, 1.77, 1.78, 1.79, 1.80, 1.80** (docking)**, 1.81**.
+- Tested against **Dear ImGui** versions: **1.74, 1.75, 1.76, 1.76** (docking)**, 1.77, 1.78, 1.79, 1.80, 1.80** (docking)**, 1.81, 1.82, 1.83**.
 - *Note*: Should support other versions without too much difficulties.
 
 # Related
@@ -95,21 +95,14 @@ Related projects making use of **NetImgui**.
 - Add new **Dear ImGui** multi windows support (docking branch)
 - ~~Commands to assign custom backgrounds~~
 
-### Version 1.4
-(2021/03/13)
+### Version 1.5
+(2021/05/30)
 - **API Changes**
-  - Added ``SetBackground(...)`` letting user configure the client window background appearance
-    - The new sample **SampleBackground** demonstrate its usage.
-  - Removed support of empty API functions when ``NETIMGUI_ENABLED`` is false
-    - Keeps **NetImgui** client code clutter to minimum.
-- **New**  
-  - Auto interception of **Dear ImGui** `ImGui::NewFrame()` / `ImGui::Render()`
-    - Using **Dear ImGui 1.81's** *Callbacks* support, replacing theses Dear ImGui functions call with `NetImgui::NewFrame()` / `NetImgui::EndFrame()` can now be avoided
-    - This means less changes to existing codebase wanting to use **NetImgui**, only requiring a single call to :
-      - `Startup`
-      - `Shutdown`
-      - `ConnectToApp` or `ConnectFromApp`
-    - However, calling directly `NetImgui::NewFrame()` / `NetImgui::EndFrame()` has the additional benefit of being able to skip drawing when not needed
+  - None
+- **Other Changes**
+  - Mostly some small bug fixes
+  - Reduced **NetImgui server** CPU/GPU usage
+  - Better handling of **NetImgui server's** window move between 4K and lower resolution monitors
 
 ### Older
 [Release Notes](https://github.com/sammyfreg/netImgui/wiki/Release-notes)
