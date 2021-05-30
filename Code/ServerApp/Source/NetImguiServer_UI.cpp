@@ -274,8 +274,7 @@ void Popup_ClientConfigEdit()
 {	
 	bool bOpenEdit(gPopup_ClientConfig_pConfig != nullptr);
 	if (bOpenEdit)
-	{		
-		
+	{
 		ImGuiWindowClass windowClass;
 		windowClass.ViewportFlagsOverrideSet = ImGuiViewportFlags_TopMost;
 		ImGui::SetNextWindowClass(&windowClass);

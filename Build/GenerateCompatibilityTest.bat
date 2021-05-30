@@ -6,7 +6,8 @@ cls
 :: SETTINGS 
 ::-----------------------------------------------------------------------------------
 :: List of offical Dear ImGui (from official depot)
-set VERSIONS=(v1.70 v1.71 v1.72 v1.73 v1.74 v1.75 v1.76 v1.77 v1.78 v1.79, v1.80, v1.81)
+set VERSIONS=(v1.70 v1.71 v1.72 v1.73 v1.74 v1.75 v1.76 v1.77 v1.78 v1.79, v1.80, v1.81, v1.82, v1.83)
+
 :: List of custom Dear ImGui releases (from own depot)
 set EXTRA_VERSIONS=(dock-1-76, dock-1-80)
 
