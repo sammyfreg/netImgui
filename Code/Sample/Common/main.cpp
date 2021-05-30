@@ -5,6 +5,8 @@
 #include "imgui_impl_win32.h"
 #include <d3d11.h>
 #include <d3dcompiler.h>
+#include <chrono>
+#include <thread>
 
 // Data
 static ID3D11Device* g_pd3dDevice = NULL;
@@ -230,11 +232,21 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
 				DispatchMessage(&msg);
 				continue;
 			}
-						
+			//=========================================================================================
+            // @SAMPLE_EDIT (avoids high CPU/GPU usage by releasing this thread until enough time has passed)
+            static auto sLastTime                   = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<float> elapsedSec	= std::chrono::high_resolution_clock::now() - sLastTime;
+            if( elapsedSec.count() < 1.f/120.f ){
+                std::this_thread::sleep_for(std::chrono::microseconds(250));
+                continue;
+            }        
+            sLastTime = std::chrono::high_resolution_clock::now();
+            //=========================================================================================
+
 			ImGui_ImplDX11_NewFrame();
 			ImGui_ImplWin32_NewFrame();
             //=============================================================================
-            // EDIT TO ORIGINAL IMGUI main.cpp
+            // @SAMPLE_EDIT EDIT TO ORIGINAL IMGUI main.cpp
             // Draw the Local Imgui UI and remote imgui UI
             ImDrawData* pDraw = SampleClient::Client_Draw();
             //=============================================================================

@@ -24,7 +24,7 @@ void CmdDrawFrame::ToOffsets()
 bool CmdInput::IsKeyDown(eVirtualKeys vkKey)const
 {
 	const uint64_t key = static_cast<uint64_t>(vkKey);
-	return (mKeysDownMask[key/64] & (uint64_t(1)<<(key%64))) != 0;
+	return (mKeysDownMask[key/64] & (static_cast<uint64_t>(1)<<(key%64))) != 0;
 }
 
 void CmdInput::SetKeyDown(eVirtualKeys vkKey, bool isDown)

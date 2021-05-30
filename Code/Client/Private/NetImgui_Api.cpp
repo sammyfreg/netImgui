@@ -177,9 +177,10 @@ bool NewFrame(bool bSupportFrameSkip)
 		assert(client.mbFontUploaded);
 			
 		// Update current active content with our time
-		std::chrono::duration<float> elapsedSec	= std::chrono::high_resolution_clock::now() - client.mTimeTracking;
+		const auto TimeNow						= std::chrono::high_resolution_clock::now();
+		std::chrono::duration<float> elapsedSec	= TimeNow - client.mTimeTracking;
 		ImGui::GetIO().DeltaTime				= std::max<float>(1.f / 1000.f, elapsedSec.count());
-		client.mTimeTracking					= std::chrono::high_resolution_clock::now();
+		client.mTimeTracking					= TimeNow;
 		
 		// NetImgui isn't waiting for a new frame, try to skip drawing when caller supports it
 		if( !client.mbValidDrawFrame && bSupportFrameSkip )
@@ -500,7 +501,7 @@ bool ProcessInputData(Client::ClientInfo& client)
 
 		memset(io.KeysDown, 0, sizeof(io.KeysDown));
 		for (uint32_t i(0); i < ArrayCount(pCmdInput->mKeysDownMask) * 64; ++i)
-			io.KeysDown[i] = (pCmdInput->mKeysDownMask[i / 64] & (uint64_t(1) << (i % 64))) != 0;
+			io.KeysDown[i] = (pCmdInput->mKeysDownMask[i / 64] & (static_cast<uint64_t>(1) << (i % 64))) != 0;
 
 		// @sammyfreg TODO: Optimize this
 		io.ClearInputCharacters();
