@@ -5,11 +5,11 @@
 //=================================================================================================
 //! @author		: Sammy Fatnassi
 //! @date		: 2021/05/30
-//!	@version	: v1.5.0
+//!	@version	: v1.5.1
 //! @Details	: For integration info : https://github.com/sammyfreg/netImgui/wiki
 //=================================================================================================
-#define NETIMGUI_VERSION		"1.5.0"
-#define NETIMGUI_VERSION_NUM	10500
+#define NETIMGUI_VERSION		"1.5.1 WIP"
+#define NETIMGUI_VERSION_NUM	10501
 
 #include <stdint.h>
 #include "Private/NetImgui_WarningDisable.h"
