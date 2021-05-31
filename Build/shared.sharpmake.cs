@@ -17,7 +17,7 @@ namespace NetImgui
 	[Fragment, Flags]
 	public enum Compiler
 	{
-		VS = 1 << 1,
+		MSBuild = 1 << 1,
 		Clang = 1 << 2
 	}
 
@@ -35,7 +35,7 @@ namespace NetImgui
 			DevEnv = DevEnv.vs2019;
 			Platform = Platform.win64;
 			Optimization = Optimization.Debug | Optimization.Release;
-			Compiler = Compiler.VS | Compiler.Clang;
+			Compiler = Compiler.MSBuild | Compiler.Clang;
 		}
 		
 		static public string GetPath(string pathFromRoot)
@@ -111,7 +111,7 @@ namespace NetImgui
 		: base(typeof(NetImguiTarget))
 		{
 			AddTargets(new NetImguiTarget{});
-			AddTargets(new NetImguiTarget{DevEnv = DevEnv.vs2017, Compiler = Compiler.VS});
+			AddTargets(new NetImguiTarget{DevEnv = DevEnv.vs2017, Compiler = Compiler.MSBuild});
 			
 			CustomBuildFileHLSL.AddFilesExt(this);
 			IsFileNameToLower		= false;
@@ -139,9 +139,10 @@ namespace NetImgui
 
 			conf.IncludePaths.Add(NetImguiTarget.GetPath(ProjectImgui.sDefaultPath) + @"\backends");
 			
-			if ( target.Compiler == Compiler.Clang )
+			if ( target.Compiler == Compiler.Clang ){
 				conf.Options.Add(Options.Vc.General.PlatformToolset.ClangCL);
-
+				conf.AdditionalCompilerOptions.Add("-Wno-unused-command-line-argument"); //Note: Latest Clang doesn't support '/MP' (multiprocessor build) option, creating a compile error
+			}
 			if (mIsExe)
 			{
 				conf.VcxprojUserFile = new ProjConfig.VcxprojUserFileSettings();
@@ -157,6 +158,7 @@ namespace NetImgui
 			conf.Options.Add(Options.Vc.Linker.TreatLinkerWarningAsErrors.Enable);
 			
 			conf.Defines.Add("_HAS_EXCEPTIONS=0"); // Prevents error in VisualStudio c++ library with NoExcept, like xlocale
+			
 			
 			//conf.Options.Add(new Options.Vc.Compiler.DisableSpecificWarnings(""));
 			//conf.Options.Add(Options.Vc.Librarian.TreatLibWarningAsErrors.Enable);	//Note: VisualStudio 2019 doesn't support this option properly
@@ -243,7 +245,7 @@ namespace NetImgui
 		: base(typeof(NetImguiTarget))
         {
 			AddTargets(new NetImguiTarget{ });
-			AddTargets(new NetImguiTarget{DevEnv = DevEnv.vs2017, Compiler = Compiler.VS});
+			AddTargets(new NetImguiTarget{DevEnv = DevEnv.vs2017, Compiler = Compiler.MSBuild});
 			Name					= inName;
 			IsFileNameToLower		= false;
 		}
