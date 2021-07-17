@@ -76,9 +76,9 @@ void Client::ReceiveTexture(NetImgui::Internal::CmdTexture* pTextureCmd)
 			{
 				foundIdx = mvTextures.size();
 				mvTextures.resize(foundIdx+1);
-				mvTextures[foundIdx].mImguiId = pTextureCmd->mTextureId;
 			}
 			NetImguiServer::App::HAL_CreateTexture(pTextureCmd->mWidth, pTextureCmd->mHeight, pTextureCmd->mFormat, pTextureCmd->mpTextureData.Get(), mvTextures[foundIdx]);
+			mvTextures[foundIdx].mImguiId = pTextureCmd->mTextureId;
 		}
 	}
 }

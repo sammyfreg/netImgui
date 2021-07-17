@@ -79,7 +79,8 @@ struct ClientInfo
 	ImTextureID							mFontTextureID				= reinterpret_cast<ImTextureID>(0);
 	SavedImguiContext					mSavedContextValues;
 	Time								mTimeTracking;							// Used to update Dear ImGui time delta on remote context //SF remove?
-	std::atomic_int32_t					mTexturesPendingCount;	
+	std::atomic_uint32_t				mTexturesPendingSent;
+	std::atomic_uint32_t				mTexturesPendingCreated;
 	float								mMouseWheelVertPrev			= 0.f;
 	float								mMouseWheelHorizPrev		= 0.f;	
 	bool								mbDisconnectRequest			= false;	// Waiting to Disconnect
