@@ -194,50 +194,55 @@ NetImgui::Internal::CmdInput* Client::TakePendingInput()
 //=================================================================================================
 void Client::CaptureImguiInput()
 {
-	// Try to re-acquire unsent input command, or create a new one if none pending
-	NetImguiServer::Config::Client configClient;
+	// Capture input from Dear ImGui (when this Client is in focus)
+	const ImGuiIO& io = ImGui::GetIO();
+	if( ImGui::IsWindowFocused() ) {
+		const size_t initialSize	= mPendingInputChars.size();
+		const size_t addedChar		= io.InputQueueCharacters.size();
+		if( addedChar ){
+			mPendingInputChars.resize(initialSize+addedChar);
+			memcpy(&mPendingInputChars[initialSize], io.InputQueueCharacters.Data, addedChar*sizeof(ImWchar));
+		}
+
+		mMouseWheelPos[0] += io.MouseWheel;
+		mMouseWheelPos[1] += io.MouseWheelH;
+	}
+
+	// Update persistent mouse status	
+	if( ImGui::IsMousePosValid(&io.MousePos)){
+		mMousePos[0] = io.MousePos.x - ImGui::GetCursorScreenPos().x;
+		mMousePos[1] = io.MousePos.y - ImGui::GetCursorScreenPos().y;		
+	}
+
+	// This method is tied to the Server VSync setting, which might not match our client desired refresh setting
+	// When client refresh drops too much, take into consideration the lenght of the Server frame, to evaluate if we should update or not
 	bool wasActive		= mbIsActive;
 	mbIsActive			= ImGui::IsWindowFocused();
 	float refreshFPS	= mbIsActive ? NetImguiServer::Config::Server::sRefreshFPSActive : NetImguiServer::Config::Server::sRefreshFPSInactive;	
 	float elapsedMs		= static_cast<float>(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - mLastUpdateTime).count()) / 1000.f;
-	
-	// This method is tied to the Server VSync setting, which might not match our client desired refresh setting
-	// When client refresh drops too much, take into consideration the lenght of the Server frame, to evaluate if we should update or not
-	elapsedMs			+= mStatsFPS < refreshFPS ? 1000.f / (NetImguiServer::UI::GetDisplayFPS()/2.f) : 0.f;	
-
-	bool bRefresh		=	wasActive != mbIsActive ||						// Important to sent input to client losing focus, making sure it receives knows to release the keypress
+	elapsedMs			+= mStatsFPS < refreshFPS ? 1000.f / (NetImguiServer::UI::GetDisplayFPS()/2.f) : 0.f;
+	bool bRefresh		=	wasActive != mbIsActive ||						// Important to sent input to client losing focus, making sure it knows to release the keypress
 							(elapsedMs > 60000.f)	||						// Keep 1 refresh per minute minimum
 							(refreshFPS >= 0.01f && elapsedMs > 1000.f/refreshFPS);	
-	if( !bRefresh )
-	{ 
+
+	if( !bRefresh ){
 		return;
 	}
-	
+
+	// Try to re-acquire unsent input command, or create a new one if none pending
 	NetImgui::Internal::CmdInput* pNewInput = TakePendingInput();
 	pNewInput								= pNewInput ? pNewInput : NetImgui::Internal::netImguiNew<NetImgui::Internal::CmdInput>();
-
-	// Update persistent mouse status
-	const ImGuiIO& io = ImGui::GetIO();
-	if( ImGui::IsMousePosValid(&io.MousePos)){
-		mMousePos[0]				= io.MousePos.x - ImGui::GetCursorScreenPos().x;
-		mMousePos[1]				= io.MousePos.y - ImGui::GetCursorScreenPos().y;		
-	}
 
 	// Create new Input command to send to client
 	pNewInput->mScreenSize[0]	= static_cast<uint16_t>(ImGui::GetContentRegionAvail().x);
 	pNewInput->mScreenSize[1]	= static_cast<uint16_t>(ImGui::GetContentRegionAvail().y);
 	pNewInput->mMousePos[0]		= static_cast<int16_t>(mMousePos[0]);
 	pNewInput->mMousePos[1]		= static_cast<int16_t>(mMousePos[1]);
+	pNewInput->mMouseWheelVert	= mMouseWheelPos[0];
+	pNewInput->mMouseWheelHoriz	= mMouseWheelPos[1];
 
-	// Only capture keypress, mosue button, ... when window has the focus
 	if( ImGui::IsWindowFocused() )
 	{
-		mMouseWheelPos[0] += io.MouseWheel;
-		mMouseWheelPos[1] += io.MouseWheelH;
-		
-		pNewInput->mMouseWheelVert	= mMouseWheelPos[0];
-		pNewInput->mMouseWheelHoriz	= mMouseWheelPos[1];
-	
 		NetImguiServer::App::HAL_ConvertKeyDown(io.KeysDown, pNewInput->mKeysDownMask);
 		pNewInput->SetKeyDown(NetImgui::Internal::CmdInput::eVirtualKeys::vkMouseBtnLeft,	io.MouseDown[0]);
 		pNewInput->SetKeyDown(NetImgui::Internal::CmdInput::eVirtualKeys::vkMouseBtnRight,	io.MouseDown[1]);
@@ -248,13 +253,22 @@ void Client::CaptureImguiInput()
 		pNewInput->SetKeyDown(NetImgui::Internal::CmdInput::eVirtualKeys::vkKeyboardCtrl,	io.KeyCtrl);
 		pNewInput->SetKeyDown(NetImgui::Internal::CmdInput::eVirtualKeys::vkKeyboardAlt,	io.KeyAlt);
 		pNewInput->SetKeyDown(NetImgui::Internal::CmdInput::eVirtualKeys::vkKeyboardSuper1, io.KeySuper);
-	
-		//! @sammyfreg: ToDo Add support for gamepad
 
-		size_t addedKeyCount		= std::min<size_t>(NetImgui::Internal::ArrayCount(pNewInput->mKeyChars)-pNewInput->mKeyCharCount, io.InputQueueCharacters.size());
-		memcpy(&pNewInput->mKeyChars[pNewInput->mKeyCharCount], io.InputQueueCharacters.Data, addedKeyCount*sizeof(ImWchar));
-		pNewInput->mKeyCharCount	+= static_cast<uint16_t>(addedKeyCount);
+		//! @sammyfreg: ToDo Add support for gamepad
 	}
+
+	// Copy waiting characters inputs
+	size_t addedKeyCount	= std::min<size_t>(NetImgui::Internal::ArrayCount(pNewInput->mKeyChars)-pNewInput->mKeyCharCount, mPendingInputChars.size());
+	if( addedKeyCount ){
+		memcpy(&pNewInput->mKeyChars[pNewInput->mKeyCharCount], &mPendingInputChars[0], addedKeyCount*sizeof(ImWchar));
+		pNewInput->mKeyCharCount	+= static_cast<uint16_t>(addedKeyCount);
+		size_t charRemainCount		= mPendingInputChars.size() - addedKeyCount;
+		if( charRemainCount > 0 ){
+			memcpy(&mPendingInputChars[0], &mPendingInputChars[addedKeyCount], mPendingInputChars.size()-addedKeyCount);
+		}
+		mPendingInputChars.resize( charRemainCount );
+	}
+
 	mPendingInputOut.Assign(pNewInput);
 	mLastUpdateTime = std::chrono::steady_clock::now();
 }

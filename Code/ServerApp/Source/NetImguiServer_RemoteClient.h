@@ -35,19 +35,20 @@ struct Client
 	uint16_t								mAreaRTSizeY			= 0;
 	uint16_t								mAreaSizeX				= 0;	// Available area size available to remote client
 	uint16_t								mAreaSizeY				= 0;	
-	char									mInfoName[128]			= {0};
-	char									mWindowID[128+16]		= {0};
-	char									mInfoImguiVerName[16]	= {0};
-	char									mInfoNetImguiVerName[16]= {0};
+	char									mInfoName[128]			= {};
+	char									mWindowID[128+16]		= {};
+	char									mInfoImguiVerName[16]	= {};
+	char									mInfoNetImguiVerName[16]= {};
 	uint32_t								mInfoImguiVerID			= 0;
 	uint32_t								mInfoNetImguiVerID		= 0;
-	char									mConnectHost[64]		= {0};	//!< Connected Hostname of this remote client
+	char									mConnectHost[64]		= {};	//!< Connected Hostname of this remote client
 	int										mConnectPort;					//!< Connected Port of this remote client
 	NetImgui::Internal::CmdDrawFrame*		mpFrameDraw;					//!< Current valid DrawFrame
 	std::vector<App::ServerTexture>			mvTextures;						//!< List of textures received and used by the client	
 	ExchPtrFrame							mPendingFrameIn;				//!< Frame received and waiting to be displayed
 	ExchPtrBackground						mPendingBackgroundIn;			//!< Background settings received and waiting to update client setting
 	ExchPtrInput							mPendingInputOut;				//!< Input command waiting to be sent out to client	
+	std::vector<ImWchar>					mPendingInputChars;				//!< Captured Imgui characters input waiting to be added to new InputCmd
 	bool									mbIsVisible;					//!< If currently shown
 	bool									mbIsActive;						//!< Is the current active window (will receive input, only one is true at a time)
 	std::atomic_bool						mbIsFree;						//!< If available to use for a new connected client

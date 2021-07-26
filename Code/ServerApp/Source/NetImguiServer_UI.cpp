@@ -439,13 +439,13 @@ void DrawImguiContent_Clients()
 			hasConnection = true;
 			client.mbIsVisible = ImGui::Begin(client.mWindowID, &bOpened, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
 			ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.f, 8.f));
-			ClientInfoTooltip(client);
+			ClientInfoTooltip(client); //!< @sammyfreg: For some reasons, the window tab isn't registering under 'IsItemHovered()' anymore, so no tooltip when docked...
 			ImGui::PopStyleVar(1);
 			if( client.mbIsVisible )
 			{
 				// Capture input to forward to remote client, and update drawing area size
 				ImVec2 areaSize		= ImGui::GetContentRegionAvail();
-				client.mAreaSizeX	= static_cast<uint16_t>(std::max<float>(8.f,areaSize.x)); //Prevents issue with render target of size 0
+				client.mAreaSizeX	= static_cast<uint16_t>(std::max<float>(8.f,areaSize.x)); // Prevents issue with render target of size 0
 				client.mAreaSizeY	= static_cast<uint16_t>(std::max<float>(8.f,areaSize.y));
 				client.CaptureImguiInput();
 

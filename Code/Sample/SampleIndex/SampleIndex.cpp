@@ -55,7 +55,7 @@ ImDrawData* Client_Draw()
 		//-----------------------------------------------------------------------------------------
 		ClientUtil_ImGuiContent_Common(sizeof(ImDrawIdx) == 2 ? "SampleIndex16Bits" : "SampleIndex32Bits");
 		ImGui::SetNextWindowPos(ImVec2(32, 48), ImGuiCond_Once);
-		ImGui::SetNextWindowSize(ImVec2(525, 640), ImGuiCond_Once);
+		ImGui::SetNextWindowSize(ImVec2(525, 675), ImGuiCond_Once);
 		if (ImGui::Begin("Sample Index", nullptr))
 		{
 			ImGui::TextColored(ImVec4(0.1, 1, 0.1, 1), "Large amount of mesh drawing.");
@@ -64,10 +64,10 @@ ImDrawData* Client_Draw()
 
 			static size_t sIndexSize =  sizeof(ImDrawIdx); // Using a static value to prevent VS warning :/ (C4127: Conditional Expression is Constant)
 			if( sIndexSize == 2 ){
-				ImGui::TextWrapped("Note: This sample uses Dear ImGui compiled with 16bits indices. This means that each draw will be splitted in multiple drawcalls of less than 65k vertices each.");
+				ImGui::TextWrapped("Note: This sample uses Dear ImGui compiled with 16bits indices. Meaning that each draw will be splitted in multiple drawcalls of less than 65k vertices each.");
 			}
 			else {
-				ImGui::TextWrapped("Note: This sample uses Dear ImGui compiled with 32bits indices. This means that each draw can be sent as a single drawcall, even when having more than 65k vertices.");
+				ImGui::TextWrapped("Note: This sample uses Dear ImGui compiled with 32bits indices. Meaning that each draw can be sent as a single drawcall, even when having more than 65k vertices.");
 			}
 			
 			ImGui::NewLine();
