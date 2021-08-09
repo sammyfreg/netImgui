@@ -17,7 +17,7 @@ namespace NetImgui
 	[Fragment, Flags]
 	public enum Compiler
 	{
-		VS = 1 << 1,
+		MSBuild = 1 << 1,
 		Clang = 1 << 2
 	}
 
@@ -35,13 +35,14 @@ namespace NetImgui
 			DevEnv = DevEnv.vs2019;
 			Platform = Platform.win64;
 			Optimization = Optimization.Debug | Optimization.Release;
-			Compiler = Compiler.VS | Compiler.Clang;
+			Compiler = Compiler.MSBuild | Compiler.Clang;
 		}
 		
 		static public string GetPath(string pathFromRoot)
 		{
 			return sRootPath + pathFromRoot;
 		}
+		
 		static protected string sRootPath = AppDomain.CurrentDomain.BaseDirectory + @"..\..";
 	}
 
@@ -111,7 +112,7 @@ namespace NetImgui
 		: base(typeof(NetImguiTarget))
 		{
 			AddTargets(new NetImguiTarget{});
-			AddTargets(new NetImguiTarget{DevEnv = DevEnv.vs2017, Compiler = Compiler.VS});
+			AddTargets(new NetImguiTarget{DevEnv = DevEnv.vs2017, Compiler = Compiler.MSBuild});
 			
 			CustomBuildFileHLSL.AddFilesExt(this);
 			IsFileNameToLower		= false;
@@ -139,9 +140,10 @@ namespace NetImgui
 
 			conf.IncludePaths.Add(NetImguiTarget.GetPath(ProjectImgui.sDefaultPath) + @"\backends");
 			
-			if ( target.Compiler == Compiler.Clang )
+			if ( target.Compiler == Compiler.Clang ){
 				conf.Options.Add(Options.Vc.General.PlatformToolset.ClangCL);
-
+				conf.AdditionalCompilerOptions.Add("-Wno-unused-command-line-argument"); //Note: Latest Clang doesn't support '/MP' (multiprocessor build) option, creating a compile error
+			}
 			if (mIsExe)
 			{
 				conf.VcxprojUserFile = new ProjConfig.VcxprojUserFileSettings();
@@ -158,6 +160,7 @@ namespace NetImgui
 			
 			conf.Defines.Add("_HAS_EXCEPTIONS=0"); // Prevents error in VisualStudio c++ library with NoExcept, like xlocale
 			
+			
 			//conf.Options.Add(new Options.Vc.Compiler.DisableSpecificWarnings(""));
 			//conf.Options.Add(Options.Vc.Librarian.TreatLibWarningAsErrors.Enable);	//Note: VisualStudio 2019 doesn't support this option properly
 		}
@@ -170,22 +173,78 @@ namespace NetImgui
 			SourceFiles.Add(NetImguiTarget.GetPath(ProjectImgui.sDefaultPath) + @"\backends\imgui_impl_win32.h");
 			SourceFiles.Add(NetImguiTarget.GetPath(ProjectImgui.sDefaultPath) + @"\backends\imgui_impl_win32.cpp");
 		}
+		
+		public void AddDependencyImguiIndex16(Configuration conf, NetImguiTarget target)
+		{
+			conf.AddPublicDependency<ProjectImguiIndex16>(target);
+			EnabledImguiIndex16Bits(conf);
+		}
+		
+		public void AddDependencyImguiIndex32(Configuration conf, NetImguiTarget target)
+		{
+			conf.AddPublicDependency<ProjectImguiIndex32>(target);			
+			EnabledImguiIndex32Bits(conf);
+		}
+	
+		public void EnabledImguiIndex16Bits(Configuration conf)
+		{
+		}
+		
+		public void EnabledImguiIndex32Bits(Configuration conf)
+		{
+			conf.Defines.Add("ImDrawIdx=unsigned int");
+		}
+		
 		bool mIsExe;
 	}
 
+	//---------------------------------------------------------------------------------------------
+	// IMGUI Project
+	//---------------------------------------------------------------------------------------------
 	[Sharpmake.Generate]
 	public class ProjectImgui : ProjectBase
 	{
 		public ProjectImgui()
 		: base(false)
-		{
-			Name = "DearImgui";
+		{			
 			SourceRootPath = NetImguiTarget.GetPath(sDefaultPath);
 			SourceFilesExcludeRegex.Add(@"backends\.*");
 		}
+		
 		public static string sDefaultPath = @"\Code\ThirdParty\DearImgui";
 	}
+	
+	// Dear ImGui Library, 16bits index
+	[Sharpmake.Generate]
+	public class ProjectImguiIndex16 : ProjectImgui
+	{
+		public ProjectImguiIndex16() { Name = "DearImguiIndex16Lib"; }
+		
+		[Configure()]
+		public new void ConfigureAll(Configuration conf, NetImguiTarget target)
+        {
+			base.ConfigureAll(conf, target);
+			EnabledImguiIndex16Bits(conf);
+		}
+	}
 
+	// Dear ImGui Library, 32bits index
+	[Sharpmake.Generate] 
+	public class ProjectImguiIndex32 : ProjectImgui 
+	{ 
+		public ProjectImguiIndex32() { Name = "DearImguiIndex32Lib"; }
+		
+		[Configure()]
+		public new void ConfigureAll(Configuration conf, NetImguiTarget target)
+        {
+			base.ConfigureAll(conf, target);
+			EnabledImguiIndex32Bits(conf);
+		}
+	}
+	
+	//---------------------------------------------------------------------------------------------
+	// NETIMGUI Project
+	//---------------------------------------------------------------------------------------------
 	[Sharpmake.Generate]
     public class ProjectNetImgui : ProjectBase
     {
@@ -214,24 +273,33 @@ namespace NetImgui
 	[Sharpmake.Generate]
     public class ProjectSample : ProjectBase
     {
-        public ProjectSample(string inName)
+        public ProjectSample(string inName, bool useIndex32=false)
 		: base(true)
 		{
             Name			= inName;
+			mUseIndex32		= useIndex32;
             SourceRootPath	= NetImguiTarget.GetPath(@"\Code\Sample\") + Name;
 			AdditionalSourceRootPaths.Add(NetImguiTarget.GetPath(@"\Code\Sample\Common"));
-			AddImguiBackendSources();
+			AddImguiBackendSources();			
         }
 
 		[Configure()]
 		public new void ConfigureAll(Configuration conf, NetImguiTarget target)
         {
-			base.ConfigureAll(conf, target);			
-			conf.AddPublicDependency<ProjectImgui>(target);
-			conf.AddPublicDependency<ProjectNetImgui_Default>(target);
+			base.ConfigureAll(conf, target);
+			if( mUseIndex32 == false ){
+				AddDependencyImguiIndex16(conf, target);
+				conf.AddPublicDependency<ProjectNetImgui16_Default>(target);
+			}
+			else
+			{
+				AddDependencyImguiIndex32(conf, target);
+				conf.AddPublicDependency<ProjectNetImgui32_Default>(target);
+			}
 			conf.IncludePaths.Add(ProjectImgui.sDefaultPath);
 			conf.IncludePaths.Add(NetImguiTarget.GetPath(@"\Code\Client"));
 		}
+		bool mUseIndex32;
     }
 	
 	//=============================================================================================
@@ -243,7 +311,7 @@ namespace NetImgui
 		: base(typeof(NetImguiTarget))
         {
 			AddTargets(new NetImguiTarget{ });
-			AddTargets(new NetImguiTarget{DevEnv = DevEnv.vs2017, Compiler = Compiler.VS});
+			AddTargets(new NetImguiTarget{DevEnv = DevEnv.vs2017, Compiler = Compiler.MSBuild});
 			Name					= inName;
 			IsFileNameToLower		= false;
 		}

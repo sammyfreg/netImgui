@@ -119,7 +119,7 @@ ImDrawData* CreateDrawData(RemoteClient::Client& client)
 		// Copy/Convert indices for this draw
 		if (cmdDrawSrc.mIndexSize == 4)
 		{
-			memcpy(&pCmdList->IdxBuffer[IndiceOffset], &pCmdDrawFrame->mpIndices[cmdDrawSrc.mIdxOffset], cmdDrawSrc.mIdxCount);
+			memcpy(&pCmdList->IdxBuffer[IndiceOffset], &pCmdDrawFrame->mpIndices[cmdDrawSrc.mIdxOffset], cmdDrawSrc.mIdxCount*sizeof(uint32_t));
 		}
 		else
 		{

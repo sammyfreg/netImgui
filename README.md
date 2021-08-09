@@ -82,8 +82,8 @@ The NetImgui Server application currently compiles under Windows, but few change
 
 # Related
 Related projects making use of **NetImgui**.
+- **[Unreal NetImgui](https://github.com/sammyfreg/UnrealNetImgui "UnrealNetImgui")** : Unreal4 plugin also adding access to **Dear ImGui** and **NetImgui**. Unlike the next plugin, it is a basic and simple implementation with only remote access possible (no ImGui drawing over the game).
 - **[Unreal ImGui](https://github.com/segross/UnrealImGui/ "UnrealImGui") :** Unreal4 Plugin adding **Dear ImGui** support and allowing to display ImGui content over a game or editor. The **net_imgui** branch of this repository contains an integration of the **NetImgui** library for remote access and is ready to go.
-- **[Unreal NetImgui](https://github.com/sammyfreg/UnrealNetImgui "UnrealNetImgui")** : Unreal4 plugin also adding access to **Dear ImGui** and **NetImgui**. Unlike the previous plugin, it is a simple implementation with only remote access possible (no ImGui drawing over the game).
 
 # Release notes
 ### To do
@@ -95,14 +95,14 @@ Related projects making use of **NetImgui**.
 - Add new **Dear ImGui** multi windows support (docking branch)
 - ~~Commands to assign custom backgrounds~~
 
-### Version 1.5
-(2021/05/30)
+### Version 1.6
+(2021/08/09)
 - **API Changes**
   - None
 - **Other Changes**
   - Mostly some small bug fixes
-  - Reduced **NetImgui server** CPU/GPU usage
-  - Better handling of **NetImgui server's** window move between 4K and lower resolution monitors
+  - Fixed issue with keyboard input
+  - Fixed 16/32bits index handling (NetImgui Server app now handle both case without recompiling)
 
 ### Older
 [Release Notes](https://github.com/sammyfreg/netImgui/wiki/Release-notes)

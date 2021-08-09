@@ -13,7 +13,22 @@ namespace NetImgui
 	// PROJECTS
 	//=============================================================================================
 	// Generate the default Imgui/netImgui Libraries (used to link against with Samples/Server)
-	[Sharpmake.Generate] public class ProjectNetImgui_Default : ProjectNetImgui { public ProjectNetImgui_Default() : base(NetImguiTarget.GetPath(ProjectImgui.sDefaultPath)) { Name = "NetImguiLib"; } }
+	[Sharpmake.Generate] public class ProjectNetImgui16_Default : ProjectNetImgui 
+	{ 
+		public ProjectNetImgui16_Default() : base(NetImguiTarget.GetPath(ProjectImgui.sDefaultPath)) { Name = "NetImgui16Lib"; } 
+	}
+	
+	[Sharpmake.Generate] public class ProjectNetImgui32_Default : ProjectNetImgui 
+	{ 
+		public ProjectNetImgui32_Default() : base(NetImguiTarget.GetPath(ProjectImgui.sDefaultPath)) { Name = "NetImgui32Lib"; } 
+		
+		[Configure()]
+		public new void ConfigureAll(Configuration conf, NetImguiTarget target)
+        {
+			base.ConfigureAll(conf, target);
+			conf.Defines.Add("ImDrawIdx=unsigned int");
+		}
+	}
 	
 	// Test compiling netImgui with the Disabled Define
 	[Sharpmake.Generate] public class ProjectNetImgui_Disabled : ProjectNetImgui { 
@@ -47,8 +62,9 @@ namespace NetImgui
 		public new void ConfigureAll(Configuration conf, NetImguiTarget target)
         {
 			base.ConfigureAll(conf, target);
-			conf.AddPublicDependency<ProjectImgui>(target);
-			conf.AddPublicDependency<ProjectNetImgui_Default>(target);
+			
+			AddDependencyImguiIndex32(conf, target);
+			conf.AddPublicDependency<ProjectNetImgui32_Default>(target);
 
 			conf.IncludePaths.Add(SourceRootPath + @"\Source");
 			conf.IncludePaths.Add(NetImguiTarget.GetPath(ProjectImgui.sDefaultPath));
@@ -73,7 +89,7 @@ namespace NetImgui
 		public new void ConfigureAll(Configuration conf, NetImguiTarget target)
         {
 			base.ConfigureAll(conf, target);			
-			conf.AddPublicDependency<ProjectImgui>(target);
+			AddDependencyImguiIndex16(conf, target);
 			conf.AddPublicDependency<ProjectNetImgui_Disabled>(target);
 			conf.IncludePaths.Add(NetImguiTarget.GetPath(ProjectImgui.sDefaultPath));
 			conf.IncludePaths.Add(NetImguiTarget.GetPath(@"\Code\Client"));
@@ -97,7 +113,7 @@ namespace NetImgui
 		public new void ConfigureAll(Configuration conf, NetImguiTarget target)
         {
 			base.ConfigureAll(conf, target);			
-			conf.AddPublicDependency<ProjectImgui>(target);
+			AddDependencyImguiIndex16(conf, target);
 			conf.IncludePaths.Add(NetImguiTarget.GetPath(ProjectImgui.sDefaultPath));
 			conf.IncludePaths.Add(NetImguiTarget.GetPath(@"\Code\Client"));
 		}
@@ -108,6 +124,8 @@ namespace NetImgui
 	[Sharpmake.Generate] public class ProjectSample_Textures	: ProjectSample { public ProjectSample_Textures() 	: base("SampleTextures"){} }
 	[Sharpmake.Generate] public class ProjectSample_NewFrame	: ProjectSample { public ProjectSample_NewFrame()	: base("SampleNewFrame"){} }
 	[Sharpmake.Generate] public class ProjectSample_Background	: ProjectSample { public ProjectSample_Background()	: base("SampleBackground"){} }
+	[Sharpmake.Generate] public class ProjectSample_Index16Bits	: ProjectSample { public ProjectSample_Index16Bits(): base("SampleIndex"){ Name = "SampleIndex16Bits"; } }
+	[Sharpmake.Generate] public class ProjectSample_Index32Bits	: ProjectSample { public ProjectSample_Index32Bits(): base("SampleIndex", true){ Name = "SampleIndex32Bits"; } }
 	
 	//=============================================================================================
 	// SOLUTIONS
@@ -131,7 +149,9 @@ namespace NetImgui
 			conf.AddProject<ProjectSample_NewFrame>(target, false, SolutionFolder);
 			conf.AddProject<ProjectSample_DualUI>(target, false, SolutionFolder);
 			conf.AddProject<ProjectSample_Textures>(target, false, SolutionFolder);
-			conf.AddProject<ProjectSample_Background>(target, false, SolutionFolder);			
+			conf.AddProject<ProjectSample_Background>(target, false, SolutionFolder);
+			conf.AddProject<ProjectSample_Index16Bits>(target, false, SolutionFolder);
+			conf.AddProject<ProjectSample_Index32Bits>(target, false, SolutionFolder);
 			conf.AddProject<ProjectSample_Disabled>(target, false, SolutionFolder);
 			conf.AddProject<ProjectSample_SingleInclude>(target, false, SolutionFolder);
 			// Adding an already auto included dependcy, so it can be moved to more appropriate folder

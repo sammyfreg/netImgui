@@ -53,3 +53,6 @@ constexpr uint32_t kDefaultClientPort = 8889;	//!< Default port Client waits for
 #if !defined(NETIMGUI_POSIX_SOCKETS_ENABLED) && !defined(__UNREAL__)
 	#define NETIMGUI_POSIX_SOCKETS_ENABLED	!(NETIMGUI_WINSOCKET_ENABLED)
 #endif
+
+// Disable auto interception of ImGui::NewFrame() / ImGui::Render()
+//#define NETIMGUI_IMGUI_CALLBACK_ENABLED 0

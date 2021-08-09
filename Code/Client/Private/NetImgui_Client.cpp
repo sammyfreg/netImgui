@@ -309,7 +309,8 @@ ClientInfo::ClientInfo()
 : mpSocketPending(nullptr)
 , mpSocketComs(nullptr)
 , mpSocketListen(nullptr)
-, mTexturesPendingCount(0)
+, mTexturesPendingSent(0)
+, mTexturesPendingCreated(0)
 {
 	memset(mTexturesPending, 0, sizeof(mTexturesPending));
 }
@@ -337,12 +338,12 @@ ClientInfo::~ClientInfo()
 //=================================================================================================
 void ClientInfo::TextureProcessPending()
 {
-	mbHasTextureUpdate |= mTexturesPendingCount > 0;
-	while( mTexturesPendingCount > 0 )
+	while( mTexturesPendingCreated != mTexturesPendingSent )
 	{
-		int32_t count				= mTexturesPendingCount.fetch_sub(1);
-		CmdTexture* pCmdTexture		= mTexturesPending[count-1];
-		mTexturesPending[count-1]	= nullptr;
+		mbHasTextureUpdate			|= true;
+		uint32_t idx				= mTexturesPendingSent.fetch_add(1) % static_cast<uint32_t>(ArrayCount(mTexturesPending));
+		CmdTexture* pCmdTexture		= mTexturesPending[idx];
+		mTexturesPending[idx]		= nullptr;
 		if( pCmdTexture )
 		{
 			// Find the TextureId from our list (or free slot)

@@ -302,8 +302,8 @@ void NetworkConnectRequest_Receive()
 					NetImgui::Internal::Network::Disconnect(pClientSocket);
 			}
 		}
-		std::this_thread::sleep_for(std::chrono::milliseconds(10));
-	}	
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+	}
 }
 
 //=================================================================================================

@@ -63,7 +63,7 @@ struct ClientInfo
 	std::atomic<Network::SocketInfo*>	mpSocketPending;						// Hold socket info until communication is established
 	std::atomic<Network::SocketInfo*>	mpSocketComs;							// Socket used for communications with server
 	std::atomic<Network::SocketInfo*>	mpSocketListen;							// Socket used to wait for communication request from server
-	char								mName[16]					={0};
+	char								mName[64]					={};
 	VecTexture							mTextures;
 	CmdTexture*							mTexturesPending[16];
 	ExchangePtr<CmdDrawFrame>			mPendingFrameOut;
@@ -79,7 +79,8 @@ struct ClientInfo
 	ImTextureID							mFontTextureID				= reinterpret_cast<ImTextureID>(0);
 	SavedImguiContext					mSavedContextValues;
 	Time								mTimeTracking;							// Used to update Dear ImGui time delta on remote context //SF remove?
-	std::atomic_int32_t					mTexturesPendingCount;	
+	std::atomic_uint32_t				mTexturesPendingSent;
+	std::atomic_uint32_t				mTexturesPendingCreated;
 	float								mMouseWheelVertPrev			= 0.f;
 	float								mMouseWheelHorizPrev		= 0.f;	
 	bool								mbDisconnectRequest			= false;	// Waiting to Disconnect
@@ -91,7 +92,7 @@ struct ClientInfo
 	bool								mbInsideHook				= false;	// Currently inside ImGui hook callback
 	bool								mbInsideNewEnd				= false;	// Currently inside NetImgui::NewFrame() or NetImgui::EndFrame() (prevents recusrive hook call)
 	bool								mbValidDrawFrame			= false;	// If we should forward the drawdata to the server at the end of ImGui::Render()
-	char								PADDING[3];
+	char								PADDING[7];
 		
 	ImGuiID								mhImguiHookNewframe			= 0;
 	ImGuiID								mhImguiHookEndframe			= 0;
