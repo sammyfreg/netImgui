@@ -1,4 +1,7 @@
 #include "NetImguiServer_App.h"
+
+#if HAL_API_PLATFORM_WIN32_DX11
+
 #include <Private/NetImgui_Shared.h>
 
 #ifndef WIN32_LEAN_AND_MEAN
@@ -195,3 +198,5 @@ bool HAL_GetSocketInfo(NetImgui::Internal::Network::SocketInfo* pClientSocket, c
 	return false;
 }
 }} // namespace NetImguiServer { namespace App
+
+#endif // HAL_API_PLATFORM_WIN32_DX11

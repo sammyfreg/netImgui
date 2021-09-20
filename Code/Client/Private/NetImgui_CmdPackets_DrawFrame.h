@@ -7,7 +7,6 @@ namespace NetImgui { namespace Internal
 
 struct ImguiVert
 {
-	//Note: Keep these 4 constants in sync with 'ImguiVS.hlsl'
 	//Note: If updating this, increase 'CmdVersion::eVersion'
 	enum Constants{ kUvRange_Min=-2, kUvRange_Max=2, kPosRange_Min=-2048, kPosRange_Max=4096};
 	uint16_t	mPos[2];	

@@ -14,12 +14,13 @@ static uint32_t gClientCountMax = 0;
 Client::Client()
 : mConnectPort(0)
 , mpFrameDraw(nullptr)
+, mPendingTextureReadIndex(0)
+, mPendingTextureWriteIndex(0)
 , mbIsVisible(false)
 , mbIsFree(true)
 , mbIsConnected(false)
 , mbPendingDisconnect(false)
 , mClientConfigID(NetImguiServer::Config::Client::kInvalidRuntimeID)
-, mClientIndex(0)
 {
 }
 
@@ -54,8 +55,19 @@ void Client::ReceiveTexture(NetImgui::Internal::CmdTexture* pTextureCmd)
 {
 	if( pTextureCmd )
 	{
-		size_t foundIdx		= static_cast<size_t>(-1);
-		bool isRemoval		= pTextureCmd->mFormat == NetImgui::eTexFormat::kTexFmt_Invalid;
+		// Wait for a free spot in the ring buffer
+		while ( mPendingTextureWriteIndex-mPendingTextureReadIndex > IM_ARRAYSIZE(mpPendingTextures) );
+		mpPendingTextures[(mPendingTextureWriteIndex++) % IM_ARRAYSIZE(mpPendingTextures)] = pTextureCmd;
+	}
+}
+
+void Client::ProcessPendingTextures()
+{
+	while( mPendingTextureReadIndex < mPendingTextureWriteIndex )
+	{
+		NetImgui::Internal::CmdTexture* pTextureCmd = mpPendingTextures[(mPendingTextureReadIndex++) % IM_ARRAYSIZE(mpPendingTextures)];
+		size_t foundIdx								= static_cast<size_t>(-1);
+		bool isRemoval								= pTextureCmd->mFormat == NetImgui::eTexFormat::kTexFmt_Invalid;
 		for(size_t i=0; foundIdx == static_cast<size_t>(-1) && i<mvTextures.size(); i++)
 		{
 			if( mvTextures[i].mImguiId == pTextureCmd->mTextureId )
@@ -77,9 +89,12 @@ void Client::ReceiveTexture(NetImgui::Internal::CmdTexture* pTextureCmd)
 				foundIdx = mvTextures.size();
 				mvTextures.resize(foundIdx+1);
 			}
+			
 			NetImguiServer::App::HAL_CreateTexture(pTextureCmd->mWidth, pTextureCmd->mHeight, pTextureCmd->mFormat, pTextureCmd->mpTextureData.Get(), mvTextures[foundIdx]);
 			mvTextures[foundIdx].mImguiId = pTextureCmd->mTextureId;
 		}
+
+		NetImgui::Internal::netImguiDeleteSafe(pTextureCmd);
 	}
 }
 

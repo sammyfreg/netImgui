@@ -28,7 +28,8 @@ struct Client
 		
 	void									CaptureImguiInput();
 	NetImgui::Internal::CmdInput*			TakePendingInput();
-	
+	void									ProcessPendingTextures();
+
 	void*									mpHAL_AreaRT			= nullptr;
 	void*									mpHAL_AreaTexture		= nullptr;
 	uint16_t								mAreaRTSizeX			= 0;	// Currently allocated RenderTarget size
@@ -49,6 +50,9 @@ struct Client
 	ExchPtrBackground						mPendingBackgroundIn;			//!< Background settings received and waiting to update client setting
 	ExchPtrInput							mPendingInputOut;				//!< Input command waiting to be sent out to client	
 	std::vector<ImWchar>					mPendingInputChars;				//!< Captured Imgui characters input waiting to be added to new InputCmd
+	NetImgui::Internal::CmdTexture*			mpPendingTextures[64]	= {};	//!< Textures commands waiting to be processed in main update loop
+	std::atomic_uint64_t					mPendingTextureReadIndex;
+	std::atomic_uint64_t					mPendingTextureWriteIndex;
 	bool									mbIsVisible;					//!< If currently shown
 	bool									mbIsActive;						//!< Is the current active window (will receive input, only one is true at a time)
 	std::atomic_bool						mbIsFree;						//!< If available to use for a new connected client
@@ -58,7 +62,7 @@ struct Client
 	std::chrono::steady_clock::time_point	mLastUpdateTime;				//!< When the client last send a content refresh request
 	std::chrono::steady_clock::time_point	mLastDrawFrame;					//!< When we last receive a new drawframe commant	
 	uint32_t								mClientConfigID;				//!< ID of ClientConfig that connected (if connection came from our list of ClientConfigs)	
-	uint32_t								mClientIndex;					//!< Entry idx into table of connected clients
+	uint32_t								mClientIndex			= 0;	//!< Entry idx into table of connected clients
 	uint64_t								mStatsDataRcvd;					//!< Current amount of Bytes received since connected
 	uint64_t								mStatsDataSent;					//!< Current amount of Bytes sent to client since connected
 	uint64_t								mStatsDataRcvdPrev;				//!< Last amount of Bytes received since connected
@@ -68,13 +72,13 @@ struct Client
 	uint32_t								mStatsSentBps;					//!< Average Bytes sent per second
 	float									mStatsFPS;						//!< Average refresh rate of content
 	uint32_t								mStatsIndex;
-	float									mMousePos[2]		= {0,0};
-	float									mMouseWheelPos[2]	= {0,0};
-	ImGuiMouseCursor						mMouseCursor		= ImGuiMouseCursor_None;	// Last mosue cursor remote client requested
-	ImGuiContext*							mpBGContext			= nullptr;					// Special Imgui Context used to render the background (only updated when needed)
-	bool									mBGNeedUpdate		= true;						// Let engine know that we should regenerate the background draw commands
-	NetImgui::Internal::CmdBackground		mBGSettings;									// Settings for client background drawing settings
-
+	float									mMousePos[2]				= {0,0};
+	float									mMouseWheelPos[2]			= {0,0};
+	ImGuiMouseCursor						mMouseCursor				= ImGuiMouseCursor_None;	// Last mosue cursor remote client requested
+	ImGuiContext*							mpBGContext					= nullptr;					// Special Imgui Context used to render the background (only updated when needed)
+	bool									mBGNeedUpdate				= true;						// Let engine know that we should regenerate the background draw commands
+	NetImgui::Internal::CmdBackground		mBGSettings;											// Settings for client background drawing settings
+	
 	static bool								Startup(uint32_t clientCountMax);
 	static void								Shutdown();
 	static uint32_t							GetCountMax();

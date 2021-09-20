@@ -253,6 +253,8 @@ void UpdateRemoteContent()
 		RemoteClient::Client& client = RemoteClient::Client::Get(i);
 		if( client.mbIsConnected && client.mbIsVisible )
 		{
+			client.ProcessPendingTextures();
+
 			// Update the RenderTarget destination of each client, of size was updated
 			if (client.mAreaSizeX > 0 && client.mAreaSizeY > 0 && (client.mAreaRTSizeX != client.mAreaSizeX || client.mAreaRTSizeY != client.mAreaSizeY))
 			{

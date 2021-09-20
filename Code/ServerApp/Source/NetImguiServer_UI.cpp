@@ -460,7 +460,7 @@ void DrawImguiContent_Clients()
 					ImGui::SetCursorPos(savedPos);
 
 					// Display Client Context
-					ImGui::Image(reinterpret_cast<ImTextureID>(client.mpHAL_AreaTexture), areaSize, ImVec2(0, 0), ImVec2(1, 1), tint_col, border_col);
+					ImGui::Image(reinterpret_cast<ImTextureID>(client.mpHAL_AreaTexture), areaSize, ImVec2(0, HAL_API_RENDERTARGET_INVERT_Y ? 1 : 0), ImVec2(1, HAL_API_RENDERTARGET_INVERT_Y ? 0 : 1), tint_col, border_col);
 					if( ImGui::IsItemHovered() ){
 						ImGui::SetMouseCursor(client.mMouseCursor);
 					}
@@ -471,7 +471,7 @@ void DrawImguiContent_Clients()
 			{
 				gPopup_ConfirmDisconnect_ClientIdx = i;
 			}
-			ImGui::PopID();			
+			ImGui::PopID();
 		}
 	}
 	

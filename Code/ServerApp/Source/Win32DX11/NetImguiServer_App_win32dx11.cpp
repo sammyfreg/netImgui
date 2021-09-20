@@ -1,3 +1,18 @@
+//=================================================================================================
+// @SAMPLE_EDIT
+// Note:    This file a duplicate of 'Dear ImGui Sample' : "examples\example_win32_directx11\main.cpp"
+//          With a few editions added to customize it for our NetImGui server needs. 
+//          These fews edits will be found in a few location, using the tag '@SAMPLE_EDIT' 
+#include "NetImguiServer_App.h"
+
+#if HAL_API_PLATFORM_WIN32_DX11
+#include "backends/imgui_impl_dx11.cpp"
+#include "backends/imgui_impl_win32.cpp"
+#include "NetImguiServer_UI.h"
+ID3D11Device*&            g_pd3dDeviceExtern        = g_pd3dDevice;
+ID3D11DeviceContext*&     g_pd3dDeviceContextExtern = g_pd3dDeviceContext;
+//=================================================================================================
+
 // Dear ImGui: standalone example application for DirectX 11
 // If you are new to Dear ImGui, read documentation from the docs/ folder + read the top of imgui.cpp.
 // Read online: https://github.com/ocornut/imgui/tree/master/docs
@@ -9,21 +24,11 @@
 #include <tchar.h>
 
 // Data
-static ID3D11Device*            g_pd3dDevice = NULL;
-static ID3D11DeviceContext*     g_pd3dDeviceContext = NULL;
+//static ID3D11Device*            g_pd3dDevice = NULL;          // @SAMPLE_EDIT
+//static ID3D11DeviceContext*     g_pd3dDeviceContext = NULL;   // @SAMPLE_EDIT
 static IDXGISwapChain*          g_pSwapChain = NULL;
 static ID3D11RenderTargetView*  g_mainRenderTargetView = NULL;
 
-//=================================================================================================
-//@SAMPLE_EDIT
-// Note:    This file a duplicate of 'Dear ImGui Sample' : "examples\example_win32_directx11\main.cpp"
-//          With a few editions added to customize it for our NetImGui server needs. 
-//          These fews edits will be found in a few location, using the tag '@SAMPLE_EDIT' 
-#include "NetImguiServer_App.h"
-#include "NetImguiServer_UI.h"
-ID3D11Device*&            g_pd3dDeviceExtern        = g_pd3dDevice;
-ID3D11DeviceContext*&     g_pd3dDeviceContextExtern = g_pd3dDeviceContext;
-//=================================================================================================
 
 // Forward declarations of helper functions
 bool CreateDeviceD3D(HWND hWnd);
@@ -139,7 +144,7 @@ int main(int, char**)
         }
         sLastTime = std::chrono::high_resolution_clock::now();
         NetImguiServer::App::UpdateRemoteContent();         // @SAMPLE_EDIT (Request each client to update their drawing content )
-        //=========================================================================================        
+        //=========================================================================================
 		
         // Start the Dear ImGui frame
         ImGui_ImplDX11_NewFrame();
@@ -319,3 +324,5 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
     }
     return ::DefWindowProc(hWnd, msg, wParam, lParam);
 }
+
+#endif // @SAMPLE_EDIT HAL_API_PLATFORM_WIN32_DX11

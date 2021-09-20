@@ -47,8 +47,8 @@ The NetImgui Server application currently compiles under Windows, but few change
 
 # Integration
 1. Download the [latest version](https://github.com/sammyfreg/netImgui/releases "latest version") of the **NetImgui** library.
-1. Add the content of ***Code\Client*** to your codebase.
-1. In your codebase:
+2. Add the content of ***Code\Client*** to your codebase.
+3. In your codebase:
   - [once]
     - Call `NetImgui::Startup()` *(at program start)*.
     - Call `NetImgui::ConnectToApp()` or `NetImgui::ConnectFromApp()`.
@@ -58,7 +58,7 @@ The NetImgui Server application currently compiles under Windows, but few change
     - *If **Dear ImGui** 1.80 and lower (or want frameskip support)*.
       - Replace call to `ImGui::NewFrame()` with `NetImgui::NewFrame()`.
       - Replace call to `ImGui::Render()` / `ImGui::EndFrame()` with `NetImgui::EndFrame()`.
-1. Start the **NetImgui** server application and connect your application to it.
+4. Start the **NetImgui** server application and connect your application to it.
 - *More integration details can be found on the [Wiki](https://github.com/sammyfreg/netImgui/wiki "Wiki").*
 - *Multiple samples are also provided in the depot, providing additional insights.*
 
@@ -85,7 +85,7 @@ Related projects making use of **NetImgui**.
 - **[Unreal NetImgui](https://github.com/sammyfreg/UnrealNetImgui "UnrealNetImgui")** : Unreal4 plugin also adding access to **Dear ImGui** and **NetImgui**. Unlike the next plugin, it is a basic and simple implementation with only remote access possible (no ImGui drawing over the game).
 - **[Unreal ImGui](https://github.com/segross/UnrealImGui/ "UnrealImGui") :** Unreal4 Plugin adding **Dear ImGui** support and allowing to display ImGui content over a game or editor. The **net_imgui** branch of this repository contains an integration of the **NetImgui** library for remote access and is ready to go.
 - **[Unreal NetImgui](https://github.com/sammyfreg/UnrealNetImgui "UnrealNetImgui")** : Unreal4 plugin also adding access to **Dear ImGui** and **NetImgui**. Unlike the previous plugin, it is a simple implementation with only remote access possible (no ImGui drawing over the game).
-- **Unreal** developpers with their **Dear ImGui** integration, **[Unreal NetImgui](https://github.com/sammyfreg/UnrealNetImgui "UnrealNetImgui")** has support for an **Imgui Unreal Commands window** that can be of interest. The code can easily be impported in your own codebase, with no dependency to **Unreal NetImgui** proper.
+- **Unreal** developpers with their **Dear ImGui** integration, **[Unreal NetImgui](https://github.com/sammyfreg/UnrealNetImgui "UnrealNetImgui")** has support for an **Imgui Unreal Commands window** that can be of interest. The code can easily be imported in your own codebase, with no dependency to **Unreal NetImgui** proper.
 ![NetImgui](https://raw.githubusercontent.com/wiki/sammyfreg/netImgui/Web/img/UnrealCommandsFull.gif)
 
 # Release notes

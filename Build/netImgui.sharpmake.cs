@@ -55,7 +55,19 @@ namespace NetImgui
 			ResourceFiles.Add(NetImguiTarget.GetPath(@"\Code\ServerApp\netImguiApp.rc"));
 			ResourceFiles.Add(NetImguiTarget.GetPath(@"\Code\ServerApp\Background.png"));
 			SourceFilesBuildExcludeRegex.Add(@".*Code\\ServerApp\\Source\\Fonts\\.*");
-			AddImguiBackendSources();
+			
+			// Want the Dear Imgui Backend source files listed in the project, but not compiled
+			// (we selectively include them in the build, based on the HAL)
+			AdditionalSourceRootPaths.Add(NetImguiTarget.GetPath(ProjectImgui.sDefaultPath) + @"\backends");
+			SourceFilesBuildExcludeRegex.Add(@"backends\\");
+			
+			//---------------------------------------------
+			// For the OpenGL Server build
+			AdditionalSourceRootPaths.Add(NetImguiTarget.GetPath(@"\Code\ThirdParty\gl3w"));
+			AdditionalSourceRootPaths.Add(NetImguiTarget.GetPath(@"\Code\ThirdParty\glfw\include"));			
+			SourceFilesBuildExcludeRegex.Add(@"ThirdParty\\gl3w\\");
+			SourceFilesBuildExcludeRegex.Add(@"ThirdParty\\glfw\\");
+			//---------------------------------------------
 		}
 
 		[Configure()]
@@ -65,10 +77,19 @@ namespace NetImgui
 			
 			AddDependencyImguiIndex32(conf, target);
 			conf.AddPublicDependency<ProjectNetImgui32_Default>(target);
-
+			
 			conf.IncludePaths.Add(SourceRootPath + @"\Source");
 			conf.IncludePaths.Add(NetImguiTarget.GetPath(ProjectImgui.sDefaultPath));
 			conf.IncludePaths.Add(NetImguiTarget.GetPath(@"\Code\Client"));
+			
+			//---------------------------------------------
+			// For the OpenGL Server build
+			conf.IncludePaths.Add(NetImguiTarget.GetPath(@"\Code\ThirdParty\gl3w"));
+			conf.IncludePaths.Add(NetImguiTarget.GetPath(@"\Code\ThirdParty\glfw\include"));
+			if( target.DevEnv == DevEnv.vs2019 )		conf.LibraryPaths.Add(NetImguiTarget.GetPath(@"\Code\ThirdParty\glfw\lib-vc2019-64"));
+			else if( target.DevEnv == DevEnv.vs2017 )	conf.LibraryPaths.Add(NetImguiTarget.GetPath(@"\Code\ThirdParty\glfw\lib-vc2017-64"));
+			//---------------------------------------------
+			
 			conf.EventPostBuild.Add(@"xcopy " + NetImguiTarget.GetPath(@"\Code\ServerApp\Background.png") + " " + conf.TargetPath + " /D /Y");
 		}
     }
