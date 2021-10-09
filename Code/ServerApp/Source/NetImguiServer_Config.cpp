@@ -66,8 +66,8 @@ Client::Client()
 , mConnected(false)
 , mTransient(false)
 {
-	strcpy_s(mClientName, "New Client");
-	strcpy_s(mHostName, "localhost");
+	NetImgui::Internal::StringCopy(mClientName, "New Client");
+	NetImgui::Internal::StringCopy(mHostName, "localhost");
 }
 
 //=================================================================================================
@@ -249,10 +249,10 @@ void Client::LoadAll()
 				pConfig->mRuntimeID		= gRuntimeID++;
 
 				if( config.find(kConfigField_Name) != config.end() )
-					strcpy_s(pConfig->mClientName, sizeof(pConfig->mClientName), config[kConfigField_Name].get<std::string>().c_str());
+					NetImgui::Internal::StringCopy(pConfig->mClientName, config[kConfigField_Name].get<std::string>().c_str());
 				
 				if( config.find(kConfigField_Hostname) != config.end() )
-					strcpy_s(pConfig->mHostName, sizeof(pConfig->mHostName), config[kConfigField_Hostname].get<std::string>().c_str());
+					NetImgui::Internal::StringCopy(pConfig->mHostName, config[kConfigField_Hostname].get<std::string>().c_str());
 				
 				pConfig->mHostPort		= GetPropertyValue(config, kConfigField_Hostport, pConfig->mHostPort);
 				pConfig->mConnectAuto	= GetPropertyValue(config, kConfigField_AutoConnect, pConfig->mConnectAuto);

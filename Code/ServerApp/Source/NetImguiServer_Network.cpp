@@ -207,7 +207,7 @@ bool Communications_InitializeClient(NetImgui::Internal::Network::SocketInfo* pC
 {
 	NetImgui::Internal::CmdVersion cmdVersionSend;
 	NetImgui::Internal::CmdVersion cmdVersionRcv;
-	strcpy_s(cmdVersionSend.mClientName,"Server");
+	NetImgui::Internal::StringCopy(cmdVersionSend.mClientName, "Server");
 		
 	if(	NetImgui::Internal::Network::DataSend(pClientSocket, reinterpret_cast<void*>(&cmdVersionSend), cmdVersionSend.mHeader.mSize) && 
 		NetImgui::Internal::Network::DataReceive(pClientSocket, reinterpret_cast<void*>(&cmdVersionRcv), cmdVersionRcv.mHeader.mSize) &&
@@ -217,16 +217,16 @@ bool Communications_InitializeClient(NetImgui::Internal::Network::SocketInfo* pC
 		pClient->Initialize();
 		pClient->mInfoImguiVerID	= cmdVersionRcv.mImguiVerID;
 		pClient->mInfoNetImguiVerID = cmdVersionRcv.mNetImguiVerID;
-		strcpy_s(pClient->mInfoName,			cmdVersionRcv.mClientName);
-		strcpy_s(pClient->mInfoImguiVerName,	cmdVersionRcv.mImguiVerName);
-		strcpy_s(pClient->mInfoNetImguiVerName, cmdVersionRcv.mNetImguiVerName);
+		NetImgui::Internal::StringCopy(pClient->mInfoName,				cmdVersionRcv.mClientName);
+		NetImgui::Internal::StringCopy(pClient->mInfoImguiVerName,		cmdVersionRcv.mImguiVerName);
+		NetImgui::Internal::StringCopy(pClient->mInfoNetImguiVerName,	cmdVersionRcv.mNetImguiVerName);
 
 		NetImguiServer::Config::Client clientConfig;		
 		if( NetImguiServer::Config::Client::GetConfigByID(pClient->mClientConfigID, clientConfig) ){
-			sprintf_s(pClient->mWindowID, "%s (%s)###%i", pClient->mInfoName, clientConfig.mClientName, clientConfig.mHostPort); // Using HostPort as a window unique ID
+			NetImgui::Internal::StringFormat(pClient->mWindowID, "%s (%s)###%i", pClient->mInfoName, clientConfig.mClientName, clientConfig.mHostPort); // Using HostPort as a window unique ID
 		}
 		else{
-			sprintf_s(pClient->mWindowID, "%s##%i", pClient->mInfoName, static_cast<int>(pClient->mClientIndex)); // Using HostPort as a window unique ID
+			NetImgui::Internal::StringFormat(pClient->mWindowID, "%s##%i", pClient->mInfoName, static_cast<int>(pClient->mClientIndex)); // Using HostPort as a window unique ID
 		}
 		
 		return true;
@@ -341,7 +341,7 @@ void NetworkConnectRequest_Send()
 				RemoteClient::Client& newClient = RemoteClient::Client::Get(freeIndex);
 				if( NetImguiServer::Config::Client::GetConfigByID(clientConfigID, clientConfig) )
 				{
-					strcpy_s(newClient.mInfoName, clientConfig.mClientName);
+					NetImgui::Internal::StringCopy(newClient.mInfoName, clientConfig.mClientName);
 					newClient.mConnectPort		= clientConfig.mHostPort;
 					newClient.mClientConfigID	= clientConfigID;					
 					newClient.mClientIndex		= freeIndex;

@@ -90,6 +90,7 @@ void Disconnect(void)
 	if (!gpClientInfo) return;
 	
 	Client::ClientInfo& client	= *gpClientInfo;
+	client.KillSocketListen();
 	client.mbDisconnectRequest	= client.IsActive();
 }
 

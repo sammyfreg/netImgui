@@ -170,7 +170,10 @@ constexpr std::size_t ArrayCount(T const (&)[N]) noexcept
 }
 
 template <size_t charCount>
-inline void StringCopy(char (&output)[charCount], const char* pSrc);
+inline void StringCopy(char (&output)[charCount], const char* pSrc, size_t srcCharCount=0xFFFFFFFE);
+
+template <size_t charCount>
+int StringFormat(char(&output)[charCount], char const* const format, ...);
 
 }} //namespace NetImgui::Internal
 

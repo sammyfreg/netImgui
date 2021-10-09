@@ -215,23 +215,44 @@ void Ringbuffer<TType,TCount>::ReadData(TType* pData, size_t& count)
 // and many other discussions online on the topic.
 //=============================================================================
 template <size_t charCount>
-void StringCopy(char (&output)[charCount], const char* pSrc)
+void StringCopy(char (&output)[charCount], const char* pSrc, size_t srcCharCount)
 {
-#if defined(_MSC_VER) && defined(__clang__)
+#if defined(__clang__)
 	#pragma clang diagnostic push
 	#pragma clang diagnostic ignored "-Wdeprecated-declarations"
 #elif defined(_MSC_VER)
 	#pragma warning (push)
-	#pragma warning (disable: 4996)
+	#pragma warning (disable: 4996)	// warning C4996: 'strncpy': This function or variable may be unsafe.
 #endif
 
-	strncpy(output, pSrc, charCount - 1);
+	size_t charToCopyCount = charCount < srcCharCount + 1 ? charCount : srcCharCount + 1;
+	strncpy(output, pSrc, charToCopyCount - 1);
 	output[charCount - 1] = 0;
 
 #if defined(_MSC_VER) && defined(__clang__)
 	#pragma clang diagnostic pop
 #elif defined(_MSC_VER)
 	#pragma warning (pop)
+#endif
+}
+
+template <size_t charCount>
+int StringFormat(char(&output)[charCount], char const* const format, ...)
+{
+#if defined(__clang__)
+	#pragma clang diagnostic push
+	#pragma clang diagnostic ignored "-Wformat-nonliteral"	
+#endif
+
+	va_list args;
+    va_start(args, format);
+	int w = vsnprintf(output, charCount, format, args);
+	va_end(args);
+	output[charCount - 1] = 0;
+	return w;
+
+#if defined(__clang__)
+	#pragma clang diagnostic pop
 #endif
 }
 

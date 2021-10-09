@@ -169,7 +169,7 @@ bool AddClientConfigFromString(const char* string, bool transient)
 	const char* zEntryCur		= string;
 	int paramIndex				= 0;
 	cmdlineClient.mTransient	= transient;
-	strcpy_s(cmdlineClient.mClientName, "Commandline");
+	NetImgui::Internal::StringCopy(cmdlineClient.mClientName, "Commandline");
 
 	while( *zEntryCur != 0 )
 	{
@@ -177,7 +177,7 @@ bool AddClientConfigFromString(const char* string, bool transient)
 		if( (*zEntryCur == ';' || *zEntryCur == 0) )
 		{
 			if (paramIndex == 0)
-				strncpy_s(cmdlineClient.mHostName, zEntryStart, zEntryCur-zEntryStart);
+				NetImgui::Internal::StringCopy(cmdlineClient.mHostName, zEntryStart, zEntryCur-zEntryStart);
 			else if (paramIndex == 1)
 				cmdlineClient.mHostPort = static_cast<uint32_t>(atoi(zEntryStart));
 

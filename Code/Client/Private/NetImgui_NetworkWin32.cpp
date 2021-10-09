@@ -48,7 +48,7 @@ SocketInfo* Connect(const char* ServerHost, uint32_t ServerPort)
 	char zPortName[32];
 	addrinfo*	pResults	= nullptr;
 	SocketInfo* pSocketInfo	= nullptr;
-	sprintf_s(zPortName, "%i", ServerPort);
+	NetImgui::Internal::StringFormat(zPortName, "%i", ServerPort);
 	getaddrinfo(ServerHost, zPortName, nullptr, &pResults);
 	addrinfo*	pResultCur	= pResults;
 	while( pResultCur && !pSocketInfo )
