@@ -447,6 +447,9 @@ void ClientInfo::ContextRestore()
 	// Note: only happens if context overriden is same as current one, to prevent trying to restore to a deleted context
 	if (IsContextOverriden() && ImGui::GetCurrentContext() == mpContext)
 	{
+#ifdef IMGUI_HAS_VIEWPORT
+		ImGui::UpdatePlatformWindows(); // Prevents issue with mismatched frame tracking, when restoring enabled viewport feature
+#endif
 		mSavedContextValues.Restore(mpContext);
 	}
 }
