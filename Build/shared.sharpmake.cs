@@ -158,8 +158,8 @@ namespace NetImgui
 			conf.Options.Add(Options.Vc.General.CharacterSet.Unicode);			
 			conf.Options.Add(Options.Vc.Linker.TreatLinkerWarningAsErrors.Enable);
 			
-			conf.Defines.Add("_HAS_EXCEPTIONS=0"); // Prevents error in VisualStudio c++ library with NoExcept, like xlocale
-			
+			conf.Defines.Add("_HAS_EXCEPTIONS=0"); 					// Prevents error in VisualStudio c++ library with NoExcept, like xlocale
+			conf.Defines.Add("IMGUI_DISABLE_OBSOLETE_FUNCTIONS");	// Enforce using up to date Dear ImGui Api (In Server, Compatibility tests and Samples)
 			
 			//conf.Options.Add(new Options.Vc.Compiler.DisableSpecificWarnings(""));
 			//conf.Options.Add(Options.Vc.Librarian.TreatLibWarningAsErrors.Enable);	//Note: VisualStudio 2019 doesn't support this option properly

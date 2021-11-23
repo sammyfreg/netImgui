@@ -8,7 +8,7 @@
 namespace NetImguiServer { namespace RemoteClient
 {
 
-static Client* gpClients	= nullptr;	// Table of all potentially connected clients to this server
+static Client* gpClients		= nullptr;	// Table of all potentially connected clients to this server
 static uint32_t gClientCountMax = 0;
 
 Client::Client()

@@ -126,22 +126,23 @@ void Popup_ConfirmDisconnect()
 			ImGui::NewLine();
 			ImGui::TextUnformatted("Are you certain you want to disconnect\nfrom this client configuration ?");
 			ImGui::SetNextItemWidth(-1.0f);
-			if (ImGui::ListBoxHeader("##", 1, 2))
-			{				
+
+			if (ImGui::BeginListBox("##", ImVec2(0, ImGui::GetTextLineHeightWithSpacing() * 2.f)))
+			{
 				ImGui::TextUnformatted(client.mInfoName);
-				ImGui::ListBoxFooter();
+				ImGui::EndListBox();
 			}
 
 			ImGui::NewLine();
 			ImGui::Separator();			
-			if (ImGui::Button("Cancel", ImVec2(ImGui::GetContentRegionAvailWidth() / 2.f, 0)) || wantExit ) 
+			if (ImGui::Button("Cancel", ImVec2(ImGui::GetContentRegionAvail().x / 2.f, 0)) || wantExit ) 
 			{
 				pendingDisconnectOpen		= false;
 			}
 			ImGui::SetItemDefaultFocus();
 
 			ImGui::SameLine();
-			if (ImGui::Button("Yes", ImVec2(ImGui::GetContentRegionAvailWidth(), 0)) && gPopup_ConfirmDisconnect_ClientIdx != kClientRemoteInvalid)
+			if (ImGui::Button("Yes", ImVec2(ImGui::GetContentRegionAvail().x, 0)) && gPopup_ConfirmDisconnect_ClientIdx != kClientRemoteInvalid)
 			{
 				client.mbPendingDisconnect	= true;
 				pendingDisconnectOpen		= false;
@@ -191,7 +192,7 @@ void Popup_AboutNetImgui()
 
 			bool wantExit	 = ImGui::IsKeyPressed(static_cast<int>(NetImgui::Internal::CmdInput::eVirtualKeys::vkKeyboardEscape), false);
 			wantExit		|= ImGui::IsKeyPressed(static_cast<int>(NetImgui::Internal::CmdInput::eVirtualKeys::vkKeyboardEnter), false);
-			if( ImGui::Button("Close", ImVec2(ImGui::GetContentRegionAvailWidth(), 0)) || wantExit) 
+			if( ImGui::Button("Close", ImVec2(ImGui::GetContentRegionAvail().x, 0)) || wantExit) 
 				gPopup_AboutNetImgui_Show = false;
 			ImGui::EndPopup();
 		}
@@ -247,10 +248,10 @@ void Popup_ServerConfig()
 			ImGui::NewLine();
 			ImGui::Separator();
 			bool wantExit				= ImGui::IsKeyPressed(static_cast<int>(NetImgui::Internal::CmdInput::eVirtualKeys::vkKeyboardEscape), false);
-			gPopup_ServerConfig_Show	&= !ImGui::Button("Cancel", ImVec2(ImGui::GetContentRegionAvailWidth() / 2.f, 0)) && !wantExit;
+			gPopup_ServerConfig_Show	&= !ImGui::Button("Cancel", ImVec2(ImGui::GetContentRegionAvail().x / 2.f, 0)) && !wantExit;
 			ImGui::SetItemDefaultFocus();
 			ImGui::SameLine();
-			if (ImGui::Button("Save", ImVec2(ImGui::GetContentRegionAvailWidth(), 0))) {
+			if (ImGui::Button("Save", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
 				NetImguiServer::Config::Server::sPort				= static_cast<uint32_t>(sEditPort);
 				NetImguiServer::Config::Server::sRefreshFPSActive	= sEditRefreshFPSActive;
 				NetImguiServer::Config::Server::sRefreshFPSInactive	= sEditRefreshFPSInactive;
@@ -308,10 +309,10 @@ void Popup_ClientConfigEdit()
 			// --- Save/Cancel ---
 			ImGui::NewLine();
 			ImGui::Separator();
-			bOpenEdit &= !ImGui::Button("Cancel", ImVec2(ImGui::GetContentRegionAvailWidth()/2.f, 0));
+			bOpenEdit &= !ImGui::Button("Cancel", ImVec2(ImGui::GetContentRegionAvail().x/2.f, 0));
 			ImGui::SetItemDefaultFocus();
 			ImGui::SameLine();
-			if (ImGui::Button("Save", ImVec2(ImGui::GetContentRegionAvailWidth(), 0))){
+			if (ImGui::Button("Save", ImVec2(ImGui::GetContentRegionAvail().x, 0))){
 				NetImguiServer::Config::Client::SetConfig(*gPopup_ClientConfig_pConfig);
 				NetImguiServer::Config::Client::SaveAll();
 				bOpenEdit = false;
@@ -347,19 +348,19 @@ void Popup_ClientConfigDelete()
 			ImGui::NewLine();
 			ImGui::TextUnformatted("Are you certain you want to remove\nthis client configuration ?");
 			ImGui::SetNextItemWidth(-1.0f);
-			if (ImGui::ListBoxHeader("##", 1, 2))
+			if (ImGui::BeginListBox("##", ImVec2(0, ImGui::GetTextLineHeightWithSpacing() * 2.f)))
 			{				
 				ImGui::TextUnformatted(config.mClientName);
-				ImGui::ListBoxFooter();
+				ImGui::EndListBox();
 			}
 
 			ImGui::NewLine();
 			ImGui::Separator();
-			bOpenDelConfirm &= !ImGui::Button("Cancel", ImVec2(ImGui::GetContentRegionAvailWidth()/2.f, 0));
+			bOpenDelConfirm &= !ImGui::Button("Cancel", ImVec2(ImGui::GetContentRegionAvail().x/2.f, 0));
 			ImGui::SetItemDefaultFocus();
 
 			ImGui::SameLine();
-			if (ImGui::Button("Yes", ImVec2(ImGui::GetContentRegionAvailWidth(), 0))){
+			if (ImGui::Button("Yes", ImVec2(ImGui::GetContentRegionAvail().x, 0))){
 				NetImguiServer::Config::Client::DelConfig(gPopup_ConfirmDelete_ConfigIdx);
 				NetImguiServer::Config::Client::SaveAll();
 				bOpenDelConfirm = false;
@@ -439,7 +440,7 @@ void DrawImguiContent_Clients()
 			hasConnection = true;
 			client.mbIsVisible = ImGui::Begin(client.mWindowID, &bOpened, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
 			ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.f, 8.f));
-			ClientInfoTooltip(client); //!< @sammyfreg: For some reasons, the window tab isn't registering under 'IsItemHovered()' anymore, so no tooltip when docked...
+			ClientInfoTooltip(client);
 			ImGui::PopStyleVar(1);
 			if( client.mbIsVisible )
 			{
@@ -705,7 +706,7 @@ void DrawImguiContent_MainMenu_Stats()
 		connected	+= client.mbIsConnected ? 1 : 0;
 	}
 
-	ImGui::SameLine(0.f, ImGui::GetContentRegionAvailWidth()-200.f);
+	ImGui::SameLine(0.f, ImGui::GetContentRegionAvail().x-200.f);
 	ImGui::TextColored(kColorContent, "(Rx) %iKB/s   (Tx) %iKB/s", rxKBs, txKBs);
 	if (ImGui::IsItemHovered())
 	{
@@ -730,7 +731,7 @@ void DrawImguiContent_MainMenu()
 {	
 	if( ImGui::BeginMainMenuBar() )
 	{		
-		ImGui::SetNextWindowSize(ImVec2(ImGui::GetContentRegionAvailWidth(),0)); // Will let Menu popup content fill the screen width
+		ImGui::SetNextWindowSize(ImVec2(ImGui::GetContentRegionAvail().x,0)); // Will let Menu popup content fill the screen width
 		if (ImGui::BeginMenu("Clients"))
 		{
 			DrawImguiContent_MainMenu_Clients();

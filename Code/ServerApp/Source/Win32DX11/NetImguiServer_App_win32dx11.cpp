@@ -9,8 +9,6 @@
 #include "backends/imgui_impl_dx11.cpp"
 #include "backends/imgui_impl_win32.cpp"
 #include "NetImguiServer_UI.h"
-ID3D11Device*&            g_pd3dDeviceExtern        = g_pd3dDevice;
-ID3D11DeviceContext*&     g_pd3dDeviceContextExtern = g_pd3dDeviceContext;
 //=================================================================================================
 
 // Dear ImGui: standalone example application for DirectX 11
@@ -24,11 +22,13 @@ ID3D11DeviceContext*&     g_pd3dDeviceContextExtern = g_pd3dDeviceContext;
 #include <tchar.h>
 
 // Data
-//static ID3D11Device*            g_pd3dDevice = NULL;          // @SAMPLE_EDIT
-//static ID3D11DeviceContext*     g_pd3dDeviceContext = NULL;   // @SAMPLE_EDIT
+static ID3D11Device*            g_pd3dDevice = NULL;
+static ID3D11DeviceContext*     g_pd3dDeviceContext = NULL;
 static IDXGISwapChain*          g_pSwapChain = NULL;
 static ID3D11RenderTargetView*  g_mainRenderTargetView = NULL;
 
+ID3D11Device*&                  g_pd3dDeviceExtern        = g_pd3dDevice;		// @SAMPLE_EDIT
+ID3D11DeviceContext*&           g_pd3dDeviceContextExtern = g_pd3dDeviceContext;// @SAMPLE_EDIT
 
 // Forward declarations of helper functions
 bool CreateDeviceD3D(HWND hWnd);
@@ -112,9 +112,9 @@ int main(int, char**)
 
     // Main loop
     bool done = false;
-    //=========================================================================================
+	//=========================================================================================
     // @SAMPLE_EDIT (Start our own initialisation)
-    done = !NetImguiServer::App::Startup( GetCommandLineA() );  
+    done = !NetImguiServer::App::Startup( GetCommandLineA() );
     //=========================================================================================
     while (!done)
     {

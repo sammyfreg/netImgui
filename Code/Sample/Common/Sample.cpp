@@ -74,7 +74,7 @@ void ClientUtil_ImGuiContent_Common(const char* zAppName)
 				ImGui::InputInt("Port", &sServerPort);
 				ImGui::NewLine();
 				ImGui::Separator();
-				if (ImGui::Button("Connect", ImVec2(ImGui::GetContentRegionAvailWidth(), 0)))
+				if (ImGui::Button("Connect", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
 				{
 					NetImgui::ConnectToApp(zAppName, sServerHostname, sServerPort);
 				}
@@ -92,7 +92,7 @@ void ClientUtil_ImGuiContent_Common(const char* zAppName)
 				ImGui::InputInt("Port", &sClientPort);
 				ImGui::NewLine();
 				ImGui::Separator();
-				if (ImGui::Button("Listen", ImVec2(ImGui::GetContentRegionAvailWidth(), 0)))
+				if (ImGui::Button("Listen", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
 				{
 					NetImgui::ConnectFromApp(zAppName, sClientPort);
 				}

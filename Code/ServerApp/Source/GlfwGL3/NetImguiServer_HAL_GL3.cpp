@@ -11,8 +11,7 @@
 #include <array>
 #include "NetImguiServer_RemoteClient.h"
 #include <imgui_impl_opengl3.h>
-#include <GL/glcorearb.h>
-#include <GL/gl3w.h>
+#include "imgui_impl_opengl3_loader.h"
 
 namespace NetImguiServer { namespace App
 {
@@ -29,7 +28,9 @@ void HAL_RenderDrawData(RemoteClient::Client& client, ImDrawData* pDrawData)
 		glClearColor(client.mBGSettings.mClearColor[0], client.mBGSettings.mClearColor[1], client.mBGSettings.mClearColor[2], client.mBGSettings.mClearColor[3]);
 		glClear(GL_COLOR_BUFFER_BIT);
 		{
+			void* mainBackend = ImGui::GetIO().BackendRendererUserData;
 			NetImgui::Internal::ScopedImguiContext scopedCtx(client.mpBGContext);
+			ImGui::GetIO().BackendRendererUserData = mainBackend; // Re-appropriate the existing renderer backend, for this client rendeering
 			ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 		}
 		if (pDrawData)
