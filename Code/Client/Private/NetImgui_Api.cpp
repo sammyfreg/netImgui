@@ -282,7 +282,7 @@ void SendDataTexture(ImTextureID textureId, void* pData, uint16_t width, uint16_
 
 	// Makes sure even 32bits ImTextureID value are received properly as 64bits
 	uint64_t texId64(0);
-	static_assert(sizeof(uint64_t) <= sizeof(textureId), "ImTextureID is bigger than 64bits, CmdTexture::mTextureId needs to be updated to support it");
+	static_assert(sizeof(uint64_t) >= sizeof(textureId), "ImTextureID is bigger than 64bits, CmdTexture::mTextureId needs to be updated to support it");
 	reinterpret_cast<ImTextureID*>(&texId64)[0] = textureId;
 
 	// Add/Update a texture
