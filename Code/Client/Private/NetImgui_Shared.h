@@ -175,6 +175,9 @@ inline void StringCopy(char (&output)[charCount], const char* pSrc, size_t srcCh
 template <size_t charCount>
 int StringFormat(char(&output)[charCount], char const* const format, ...);
 
+inline uint64_t TextureCastHelper(ImTextureID textureID);
+inline ImTextureID TextureCastHelper(uint64_t textureID);
+
 }} //namespace NetImgui::Internal
 
 #include "NetImgui_Shared.inl"

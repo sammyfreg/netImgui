@@ -76,7 +76,7 @@ struct ClientInfo
 	ImGuiContext*						mpContext					= nullptr;	// Context that the remote drawing should use (either the one active when connection request happened, or a clone)
 	ImVec2								mSavedDisplaySize			= {0, 0};	// Save original display size on 'NewFrame' and restore it on 'EndFrame' (making sure size is still valid after a disconnect)
 	const void*							mpFontTextureData			= nullptr;	// Last font texture data send to server (used to detect if font was changed)
-	ImTextureID							mFontTextureID				= reinterpret_cast<ImTextureID>(0);
+	ImTextureID							mFontTextureID;
 	SavedImguiContext					mSavedContextValues;
 	Time								mTimeTracking;							// Used to update Dear ImGui time delta on remote context
 	std::atomic_uint32_t				mTexturesPendingSent;

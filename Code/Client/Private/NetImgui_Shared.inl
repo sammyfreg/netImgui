@@ -256,4 +256,25 @@ int StringFormat(char(&output)[charCount], char const* const format, ...)
 #endif
 }
 
+
+union TextureCastHelperUnion
+{
+	ImTextureID TextureID;
+	uint64_t	TextureUint;
+};
+
+uint64_t TextureCastHelper(ImTextureID textureID)
+{
+	TextureCastHelperUnion textureUnion;
+	textureUnion.TextureID = textureID;
+	return textureUnion.TextureUint;
+}
+
+ImTextureID TextureCastHelper(uint64_t textureID)
+{
+	TextureCastHelperUnion textureUnion;
+	textureUnion.TextureUint = textureID;
+	return textureUnion.TextureID;
+}
+
 }} //namespace NetImgui::Internal
