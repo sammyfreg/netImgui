@@ -63,7 +63,7 @@ struct ClientInfo
 	std::atomic<Network::SocketInfo*>	mpSocketPending;						// Hold socket info until communication is established
 	std::atomic<Network::SocketInfo*>	mpSocketComs;							// Socket used for communications with server
 	std::atomic<Network::SocketInfo*>	mpSocketListen;							// Socket used to wait for communication request from server
-	char								mName[64]					={};
+	char								mName[64]					= {};
 	VecTexture							mTextures;
 	CmdTexture*							mTexturesPending[16];
 	ExchangePtr<CmdDrawFrame>			mPendingFrameOut;
@@ -76,9 +76,9 @@ struct ClientInfo
 	ImGuiContext*						mpContext					= nullptr;	// Context that the remote drawing should use (either the one active when connection request happened, or a clone)
 	ImVec2								mSavedDisplaySize			= {0, 0};	// Save original display size on 'NewFrame' and restore it on 'EndFrame' (making sure size is still valid after a disconnect)
 	const void*							mpFontTextureData			= nullptr;	// Last font texture data send to server (used to detect if font was changed)
-	ImTextureID							mFontTextureID				= static_cast<ImTextureID>(0);
+	ImTextureID							mFontTextureID				= reinterpret_cast<ImTextureID>(0);
 	SavedImguiContext					mSavedContextValues;
-	Time								mTimeTracking;							// Used to update Dear ImGui time delta on remote context //SF remove?
+	Time								mTimeTracking;							// Used to update Dear ImGui time delta on remote context
 	std::atomic_uint32_t				mTexturesPendingSent;
 	std::atomic_uint32_t				mTexturesPendingCreated;
 	float								mMouseWheelVertPrev			= 0.f;
