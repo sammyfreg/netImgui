@@ -9,6 +9,7 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 namespace NetImgui { namespace Internal { namespace Network 
 {
@@ -81,8 +82,8 @@ SocketInfo* ListenStart(uint32_t ListenPort)
 	if( ListenSocket != -1 )
 	{
 		int flag = 1;  
-		setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &flag, sizeof(flag));
-		setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT, &flag, sizeof(flag));
+		setsockopt(ListenSocket, SOL_SOCKET, SO_REUSEADDR, &flag, sizeof(flag));
+		setsockopt(ListenSocket, SOL_SOCKET, SO_REUSEPORT, &flag, sizeof(flag));
 		if(	bind(ListenSocket, addrInfo->ai_addr, addrInfo->ai_addrlen) != -1 &&
 			listen(ListenSocket, 0) != -1)
 		{
