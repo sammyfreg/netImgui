@@ -141,7 +141,7 @@ namespace NetImgui
 		}
 		
 		[Configure()]
-        public void ConfigureAll(Configuration conf, NetImguiTarget target)
+        public virtual void ConfigureAll(Configuration conf, NetImguiTarget target)
         {			
 			conf.Name				= @"[target.Compiler]_[target.Optimization]";
 			conf.ProjectFileName	= @"[project.Name]";
@@ -236,8 +236,7 @@ namespace NetImgui
 	{
 		public ProjectImguiIndex16() { Name = "DearImguiIndex16Lib"; }
 		
-		[Configure()]
-		public new void ConfigureAll(Configuration conf, NetImguiTarget target)
+		public override void ConfigureAll(Configuration conf, NetImguiTarget target)
         {
 			base.ConfigureAll(conf, target);
 			EnabledImguiIndex16Bits(conf);
@@ -250,8 +249,7 @@ namespace NetImgui
 	{ 
 		public ProjectImguiIndex32() { Name = "DearImguiIndex32Lib"; }
 		
-		[Configure()]
-		public new void ConfigureAll(Configuration conf, NetImguiTarget target)
+		public override void ConfigureAll(Configuration conf, NetImguiTarget target)
         {
 			base.ConfigureAll(conf, target);
 			EnabledImguiIndex32Bits(conf);
@@ -274,8 +272,7 @@ namespace NetImgui
 			SourceFiles.Add(mImguiPath + @"\imgui.h");
         }
 
-		[Configure()]
-		public new void ConfigureAll(Configuration conf, NetImguiTarget target)
+		public override void ConfigureAll(Configuration conf, NetImguiTarget target)
         {
 			base.ConfigureAll(conf, target);
 			conf.Options.Add(Options.Vc.General.WarningLevel.EnableAllWarnings);
@@ -299,8 +296,7 @@ namespace NetImgui
 			AddImguiBackendSources();			
         }
 
-		[Configure()]
-		public new void ConfigureAll(Configuration conf, NetImguiTarget target)
+		public override void ConfigureAll(Configuration conf, NetImguiTarget target)
         {
 			base.ConfigureAll(conf, target);
 			if( mUseIndex32 == false ){
@@ -332,7 +328,7 @@ namespace NetImgui
 		}
  
         [Configure()]
-        public void ConfigureAll(Configuration conf, NetImguiTarget target)
+        public virtual void ConfigureAll(Configuration conf, NetImguiTarget target)
         {
 			conf.Name				= "[target.Compiler]_[target.Optimization]";
             conf.SolutionFileName	= "[target.DevEnv]_[solution.Name]";

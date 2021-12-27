@@ -22,8 +22,7 @@ namespace NetImgui
 	{ 
 		public ProjectNetImgui32_Default() : base(NetImguiTarget.GetPath(ProjectImgui.sDefaultPath)) { Name = "NetImgui32Lib"; } 
 		
-		[Configure()]
-		public new void ConfigureAll(Configuration conf, NetImguiTarget target)
+		public override void ConfigureAll(Configuration conf, NetImguiTarget target)
         {
 			base.ConfigureAll(conf, target);
 			conf.Defines.Add("ImDrawIdx=unsigned int");
@@ -34,8 +33,7 @@ namespace NetImgui
 	[Sharpmake.Generate] public class ProjectNetImgui_Disabled : ProjectNetImgui { 
 		public ProjectNetImgui_Disabled() : base(NetImguiTarget.GetPath(ProjectImgui.sDefaultPath)) { Name = "NetImguiLib (Disabled)"; }
 		
-		[Configure()]
-		public new void ConfigureAll(Configuration conf, NetImguiTarget target)
+		public override void ConfigureAll(Configuration conf, NetImguiTarget target)
         {
 			base.ConfigureAll(conf, target);
 			conf.Defines.Add("NETIMGUI_ENABLED=0");
@@ -70,8 +68,7 @@ namespace NetImgui
 			//---------------------------------------------
 		}
 
-		[Configure()]
-		public new void ConfigureAll(Configuration conf, NetImguiTarget target)
+		public override void ConfigureAll(Configuration conf, NetImguiTarget target)
         {
 			base.ConfigureAll(conf, target);
 			
@@ -106,8 +103,7 @@ namespace NetImgui
 			AddImguiBackendSources();
         }
 
-		[Configure()]
-		public new void ConfigureAll(Configuration conf, NetImguiTarget target)
+		public override void ConfigureAll(Configuration conf, NetImguiTarget target)
         {
 			base.ConfigureAll(conf, target);			
 			AddDependencyImguiIndex16(conf, target);
@@ -130,8 +126,7 @@ namespace NetImgui
 			AddImguiBackendSources();
         }
 
-		[Configure()]
-		public new void ConfigureAll(Configuration conf, NetImguiTarget target)
+		public override void ConfigureAll(Configuration conf, NetImguiTarget target)
         {
 			base.ConfigureAll(conf, target);			
 			AddDependencyImguiIndex16(conf, target);
@@ -156,8 +151,7 @@ namespace NetImgui
     {
 		public SolutionSample() : base("netImgui_Sample"){}
 
-		[Configure()]
-		public new void ConfigureAll(Configuration conf, NetImguiTarget target)
+		public override void ConfigureAll(Configuration conf, NetImguiTarget target)
         {			
 			base.ConfigureAll(conf, target);
 			SolutionSample.AddSampleProjects(conf, target);
@@ -185,8 +179,7 @@ namespace NetImgui
 	{
 		public SolutionServer() : base("netImgui_Server") { }
 
-		[Configure()]
-		public new void ConfigureAll(Configuration conf, NetImguiTarget target)
+		public override void ConfigureAll(Configuration conf, NetImguiTarget target)
 		{
 			base.ConfigureAll(conf, target);
 			conf.AddProject<ProjectNetImguiServer>(target);
@@ -197,9 +190,8 @@ namespace NetImgui
     public class SolutionAll : SolutionBase
     {
         public SolutionAll() : base("netImgui_All"){}
-
-		[Configure()]
-		public new void ConfigureAll(Configuration conf, NetImguiTarget target)
+		
+		public override void ConfigureAll(Configuration conf, NetImguiTarget target)
         {
 			base.ConfigureAll(conf, target);
 			conf.AddProject<ProjectNetImguiServer>(target);
