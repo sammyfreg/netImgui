@@ -1,0 +1,41 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>Sharpmake.CommonPlatforms</name>
+    </assembly>
+    <members>
+        <member name="P:Sharpmake.Android.GlobalSettings.AndroidHome">
+            <summary>
+            Android SDK path
+            </summary>
+        </member>
+        <member name="P:Sharpmake.Android.GlobalSettings.NdkRoot">
+            <summary>
+            Android NDK path
+            </summary>
+        </member>
+        <member name="P:Sharpmake.Android.GlobalSettings.JavaHome">
+            <summary>
+            Java SE Development Kit path
+            </summary>
+        </member>
+        <member name="P:Sharpmake.Android.GlobalSettings.AntHome">
+            <summary>
+            Apache Ant path
+            </summary>
+        </member>
+        <member name="P:Sharpmake.Linux.GlobalSettings.SystemPathProvider">
+            <summary>
+            Allows setting a custom provider for system paths
+            </summary>
+        </member>
+        <member name="T:Sharpmake.Linux.Options.Compiler.PositionIndependentCode">
+            <summary>
+            Generates position-independent code, suitable for shared libraries.
+            </summary>
+            <remarks>
+            The corresponding clang flags is <c>-fPIC</c>.
+            </remarks>
+        </member>
+    </members>
+</doc>

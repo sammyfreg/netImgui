@@ -94,7 +94,7 @@ ImDrawData* Client_Draw_ModeAlways()
 	NetImgui::NewFrame(false);
 
 	//-----------------------------------------------------------------------------------------
-	// (2) Draw ImGui Content 		
+	// (2) Draw ImGui Content
 	//-----------------------------------------------------------------------------------------
 	Client_Draw_Content();
 

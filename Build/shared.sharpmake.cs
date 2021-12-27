@@ -38,12 +38,28 @@ namespace NetImgui
 			Compiler = Compiler.MSBuild | Compiler.Clang;
 		}
 		
-		static public string GetPath(string pathFromRoot)
-		{
-			return sRootPath + pathFromRoot;
+		// Generates a solution for each Visual Studio version found
+		// Note: Add a Clang target when detected isntalled for that Visual Studio version
+		static public NetImguiTarget[] CreateTargets()
+		{		
+			List<NetImguiTarget> targets = new List<NetImguiTarget>();
+			foreach (var devEnv in new [] { DevEnv.vs2017, DevEnv.vs2019, DevEnv.vs2022 })
+			{				
+				if( Util.DirectoryExists(devEnv.GetVisualStudioDir()) ){
+					Compiler compiler = Compiler.MSBuild;
+					if(Util.FileExists(ClangForWindows.Settings.LLVMInstallDirVsEmbedded(devEnv) + @"\bin\clang.exe" )){
+						compiler |= Compiler.Clang;
+					}
+					targets.Add(new NetImguiTarget{DevEnv = devEnv, Compiler = compiler});
+				}
+			}
+			return targets.ToArray();
 		}
 		
-		static protected string sRootPath = AppDomain.CurrentDomain.BaseDirectory + @"..\..";
+		static public string GetPath(string pathFromRoot)
+		{
+			return Directory.GetCurrentDirectory() + pathFromRoot;
+		}
 	}
 
 	//=============================================================================================
@@ -110,14 +126,12 @@ namespace NetImgui
 	{
 		public ProjectBase(bool isExe)
 		: base(typeof(NetImguiTarget))
-		{
-			AddTargets(new NetImguiTarget{});
-			AddTargets(new NetImguiTarget{DevEnv = DevEnv.vs2017, Compiler = Compiler.MSBuild});
-			
+		{			
 			CustomBuildFileHLSL.AddFilesExt(this);
 			IsFileNameToLower		= false;
 			IsTargetFileNameToLower = false;
 			mIsExe					= isExe;
+			AddTargets(NetImguiTarget.CreateTargets());
 		}
 
 		protected override void ExcludeOutputFiles()
@@ -148,7 +162,7 @@ namespace NetImgui
 			{
 				conf.VcxprojUserFile = new ProjConfig.VcxprojUserFileSettings();
 				conf.VcxprojUserFile.LocalDebuggerWorkingDirectory = "$(TargetDir)";
-				conf.Options.Add(Options.Vc.Linker.SubSystem.Application);
+				conf.Options.Add(Options.Vc.Linker.SubSystem.Windows);
 				conf.LibraryFiles.Add("D3D11.lib");
 				conf.IncludePaths.Add(NetImguiTarget.GetPath(@"\Code"));
 			}
@@ -161,8 +175,10 @@ namespace NetImgui
 			conf.Defines.Add("_HAS_EXCEPTIONS=0"); 					// Prevents error in VisualStudio c++ library with NoExcept, like xlocale
 			conf.Defines.Add("IMGUI_DISABLE_OBSOLETE_FUNCTIONS");	// Enforce using up to date Dear ImGui Api (In Server, Compatibility tests and Samples)
 			
-			//conf.Options.Add(new Options.Vc.Compiler.DisableSpecificWarnings(""));
-			//conf.Options.Add(Options.Vc.Librarian.TreatLibWarningAsErrors.Enable);	//Note: VisualStudio 2019 doesn't support this option properly
+			if( target.Compiler == Compiler.MSBuild ){
+				conf.Options.Add(new Options.Vc.Compiler.DisableSpecificWarnings(""));
+				conf.Options.Add(Options.Vc.Librarian.TreatLibWarningAsErrors.Enable);	//Note: Clang VS2019 doesn't support this option properly
+			}
 		}
 		
 		// Add sources files for platform specific Dear ImGui backend (OS/Renderer support)
@@ -310,10 +326,9 @@ namespace NetImgui
 		public SolutionBase(string inName)
 		: base(typeof(NetImguiTarget))
         {
-			AddTargets(new NetImguiTarget{ });
-			AddTargets(new NetImguiTarget{DevEnv = DevEnv.vs2017, Compiler = Compiler.MSBuild});
 			Name					= inName;
-			IsFileNameToLower		= false;
+			IsFileNameToLower		= false;			
+			AddTargets(NetImguiTarget.CreateTargets());
 		}
  
         [Configure()]
