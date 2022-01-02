@@ -35,7 +35,7 @@ bool Startup(const char* CmdLine)
 		// Using a different default font (provided with Dear ImGui)
 		//-----------------------------------------------------------------------------------------
 		ImFontConfig Config;
-		NetImgui::Internal::StringCopy(Config.Name, "Roboto Medium, 16px");		
+		NetImgui::Internal::StringCopy(Config.Name, "Roboto Medium, 16px");
 		if( !ImGui::GetIO().Fonts->AddFontFromMemoryCompressedTTF(Roboto_Medium_compressed_data, Roboto_Medium_compressed_size, 16.f, &Config) ){
 			ImGui::GetIO().Fonts->AddFontDefault();
 		}
@@ -52,96 +52,6 @@ void Shutdown()
 	NetImguiServer::Config::Client::Clear();
 	RemoteClient::Client::Shutdown();
 	HAL_Shutdown();
-}
-
-ImDrawData* CreateDrawData(RemoteClient::Client& client)
-{
-	const NetImgui::Internal::CmdDrawFrame* pCmdDrawFrame = client.TakeDrawFrame();	
-	if (!pCmdDrawFrame){
-		return nullptr;
-	}
-	client.mMouseCursor				= static_cast<ImGuiMouseCursor>(pCmdDrawFrame->mMouseCursor);
-
-	ImDrawData* pDrawData			= NetImgui::Internal::netImguiNew<ImDrawData>();
-	pDrawData->Valid				= true;    
-    pDrawData->CmdListsCount		= 1; // All draws collapsed in same CmdList	
-    pDrawData->TotalVtxCount		= static_cast<int>(pCmdDrawFrame->mVerticeCount);
-	pDrawData->TotalIdxCount		= static_cast<int>(pCmdDrawFrame->mIndiceCount);
-    pDrawData->DisplayPos.x			= pCmdDrawFrame->mDisplayArea[0];
-	pDrawData->DisplayPos.y			= pCmdDrawFrame->mDisplayArea[1];
-    pDrawData->DisplaySize.x		= pCmdDrawFrame->mDisplayArea[2] - pCmdDrawFrame->mDisplayArea[0];
-	pDrawData->DisplaySize.y		= pCmdDrawFrame->mDisplayArea[3] - pCmdDrawFrame->mDisplayArea[1];
-    pDrawData->FramebufferScale		= ImVec2(1,1); //! @sammyfreg Currently untested, so force set to 1
-    pDrawData->OwnerViewport		= nullptr;
-	pDrawData->CmdLists				= NetImgui::Internal::netImguiNew<ImDrawList*>();
-	pDrawData->CmdLists[0]			= NetImgui::Internal::netImguiNew<ImDrawList>(nullptr);
-	ImDrawList* pCmdList			= pDrawData->CmdLists[0];
-	
-	// Vertex Buffer Conversion
-	pCmdList->VtxBuffer.resize(pCmdDrawFrame->mVerticeCount);
-	constexpr float kPosRangeMin	= static_cast<float>(NetImgui::Internal::ImguiVert::kPosRange_Min);
-	constexpr float kPosRangeMax	= static_cast<float>(NetImgui::Internal::ImguiVert::kPosRange_Max);
-	constexpr float kUVRangeMin		= static_cast<float>(NetImgui::Internal::ImguiVert::kUvRange_Min);
-	constexpr float kUVRangeMax		= static_cast<float>(NetImgui::Internal::ImguiVert::kUvRange_Max);
-	ImDrawVert* pVertexDst			= &pCmdList->VtxBuffer[0];
-	const NetImgui::Internal::ImguiVert* pVertexSrc	= &pCmdDrawFrame->mpVertices[0];
-	for (uint32_t i(0); i < pCmdDrawFrame->mVerticeCount; ++i)
-	{
-		pVertexDst[i].pos.x	= (static_cast<float>(pVertexSrc[i].mPos[0]) * (kPosRangeMax - kPosRangeMin)) / static_cast<float>(0xFFFF) + kPosRangeMin;
-		pVertexDst[i].pos.y	= (static_cast<float>(pVertexSrc[i].mPos[1]) * (kPosRangeMax - kPosRangeMin)) / static_cast<float>(0xFFFF) + kPosRangeMin;
-		pVertexDst[i].uv.x	= (static_cast<float>(pVertexSrc[i].mUV[0]) * (kUVRangeMax - kUVRangeMin)) / static_cast<float>(0xFFFF) + kUVRangeMin;
-		pVertexDst[i].uv.y	= (static_cast<float>(pVertexSrc[i].mUV[1]) * (kUVRangeMax - kUVRangeMin)) / static_cast<float>(0xFFFF) + kUVRangeMin;
-		pVertexDst[i].col	= pVertexSrc[i].mColor;
-	}
-
-	// Draw command conversion
-	unsigned int IndiceOffset	= 0;
-	pCmdList->Flags				= ImDrawListFlags_AllowVtxOffset|ImDrawListFlags_AntiAliasedLines|ImDrawListFlags_AntiAliasedFill|ImDrawListFlags_AntiAliasedLinesUseTex;
-	pCmdList->CmdBuffer.resize(pCmdDrawFrame->mDrawCount);
-	pCmdList->IdxBuffer.resize(pDrawData->TotalIdxCount);
-	
-	// Following commands are all remote client rendering commands
-	for(uint32_t drawIdx(0); drawIdx < pCmdDrawFrame->mDrawCount; ++drawIdx)
-	{
-		const NetImgui::Internal::ImguiDraw& cmdDrawSrc	= pCmdDrawFrame->mpDraws[drawIdx];
-		ImDrawCmd& cmdDrawDst							= pCmdList->CmdBuffer[drawIdx];
-
-		cmdDrawDst.ClipRect.x		= cmdDrawSrc.mClipRect[0];
-		cmdDrawDst.ClipRect.y		= cmdDrawSrc.mClipRect[1];
-		cmdDrawDst.ClipRect.z		= cmdDrawSrc.mClipRect[2];
-		cmdDrawDst.ClipRect.w		= cmdDrawSrc.mClipRect[3];
-		cmdDrawDst.VtxOffset		= cmdDrawSrc.mVtxOffset;
-		cmdDrawDst.IdxOffset		= IndiceOffset;
-		cmdDrawDst.ElemCount		= cmdDrawSrc.mIdxCount;
-		cmdDrawDst.UserCallback		= nullptr;
-		cmdDrawDst.UserCallbackData	= nullptr;		
-		
-		// Copy/Convert indices for this draw
-		if (cmdDrawSrc.mIndexSize == 4)
-		{
-			memcpy(&pCmdList->IdxBuffer[IndiceOffset], &pCmdDrawFrame->mpIndices[cmdDrawSrc.mIdxOffset], cmdDrawSrc.mIdxCount*sizeof(uint32_t));
-		}
-		else
-		{
-			const uint16_t* pIndices = reinterpret_cast<const uint16_t*>(&pCmdDrawFrame->mpIndices[cmdDrawSrc.mIdxOffset]);
-			for (uint32_t i(0); i < cmdDrawSrc.mIdxCount; ++i){
-				pCmdList->IdxBuffer[IndiceOffset+i] = static_cast<ImDrawIdx>(pIndices[i]);
-			}
-		}		
-		IndiceOffset += cmdDrawSrc.mIdxCount;
-		
-		// Find and assign wanted texture
-		cmdDrawDst.TextureId = gEmptyTexture.mpHAL_Texture; // Default to empty texture
-		for(size_t i=0; i<client.mvTextures.size(); ++i)
-		{
-			if( client.mvTextures[i].mImguiId == cmdDrawSrc.mTextureId )
-			{
-				cmdDrawDst.TextureId = client.mvTextures[i].mpHAL_Texture;
-				break;
-			}
-		}
-	}
-	return pDrawData;
 }
 
 void DestroyDrawData(ImDrawData*& pDrawData)
@@ -268,12 +178,11 @@ void UpdateRemoteContent()
 			}
 
 			// Render the remote results
-			ImDrawData* pDrawData = CreateDrawData(client);
+			ImDrawData* pDrawData = client.GetImguiDrawData(gEmptyTexture.mpHAL_Texture);
 			if( pDrawData )
 			{
 				DrawClientBackground(client);
 				HAL_RenderDrawData(client, pDrawData);
-				DestroyDrawData(pDrawData);
 			}
 		}
 	}

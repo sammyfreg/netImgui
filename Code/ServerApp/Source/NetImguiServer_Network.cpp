@@ -128,7 +128,7 @@ bool Communications_Outgoing(NetImgui::Internal::Network::SocketInfo* pClientSoc
 		NetImgui::Internal::netImguiDeleteSafe(pInputCmd);
 	}
 
-	if( pClient->mbPendingDisconnect )
+	if( pClient->mbDisconnectPending )
 	{
 		NetImgui::Internal::CmdDisconnect cmdDisconnect;
 		bSuccess &= NetImgui::Internal::Network::DataSend(pClientSocket, reinterpret_cast<void*>(&cmdDisconnect), cmdDisconnect.mHeader.mSize);
@@ -184,7 +184,7 @@ void Communications_ClientExchangeLoop(NetImgui::Internal::Network::SocketInfo* 
 	gActiveClientThreadCount++;
 
 	NetImguiServer::Config::Client::SetProperty_Connected(pClient->mClientConfigID, true);
-	while (bConnected && !gbShutdown && pClient->mbIsConnected && !pClient->mbPendingDisconnect )
+	while (bConnected && !gbShutdown && pClient->mbIsConnected && !pClient->mbDisconnectPending )
 	{	
 		bConnected =	Communications_Outgoing(pClientSocket, pClient) && 
 						Communications_Incoming(pClientSocket, pClient);

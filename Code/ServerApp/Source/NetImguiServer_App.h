@@ -33,7 +33,7 @@ namespace NetImguiServer { namespace App
 	struct ServerTexture 
 	{
 		inline bool	IsValid(){ return mpHAL_Texture != nullptr; }
-		void*		mpHAL_Texture		= nullptr;		
+		void*		mpHAL_Texture		= nullptr;
 		uint16_t	mSize[2]			= {0, 0};
 		uint64_t	mImguiId			= 0u;		// Associated ImGui TextureId in Imgui commandlist
 	};

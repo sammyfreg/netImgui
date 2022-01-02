@@ -12,14 +12,13 @@ static Client* gpClients		= nullptr;	// Table of all potentially connected clien
 static uint32_t gClientCountMax = 0;
 
 Client::Client()
-: mConnectPort(0)
-, mpFrameDraw(nullptr)
-, mPendingTextureReadIndex(0)
+: mPendingTextureReadIndex(0)
 , mPendingTextureWriteIndex(0)
 , mbIsVisible(false)
 , mbIsFree(true)
 , mbIsConnected(false)
-, mbPendingDisconnect(false)
+, mbDisconnectPending(false)
+, mbCompressionSkipOncePending(false)
 , mClientConfigID(NetImguiServer::Config::Client::kInvalidRuntimeID)
 {
 }
@@ -30,7 +29,8 @@ Client::~Client()
 	
 	//Note: Reset is usually called from com thread, can't destroy ImGui Context in it, 
 	//		or drawing data that could be currently in use by server to draw client results
-	NetImgui::Internal::netImguiDeleteSafe(mpFrameDraw);
+	NetImgui::Internal::netImguiDeleteSafe(mpImguiDrawData);
+	NetImgui::Internal::netImguiDeleteSafe(mpFrameDrawPrev);
 	if (mpBGContext) {
 		ImGui::DestroyContext(mpBGContext);
 		mpBGContext	= nullptr;
@@ -39,16 +39,39 @@ Client::~Client()
 
 void Client::ReceiveDrawFrame(NetImgui::Internal::CmdDrawFrame* pFrameData)
 {
-	// Receive new draw data
-	mPendingFrameIn.Assign(pFrameData);
+	if( pFrameData->mCompressed )
+	{
+		if( mpFrameDrawPrev != nullptr && (mpFrameDrawPrev->mFrameIndex+1) == pFrameData->mFrameIndex ) {
+			NetImgui::Internal::CmdDrawFrame* pUncompressedFrame = NetImgui::Internal::DecompressCmdDrawFrame(mpFrameDrawPrev, pFrameData);
+			netImguiDeleteSafe( pFrameData );
+			pFrameData = pUncompressedFrame;
+		}
+		// Missing previous frame data
+		// ignore this drawframe and request a new uncompressed one to be able to resume display
+		else
+		{
+			mbCompressionSkipOncePending = true;
+			netImguiDeleteSafe( pFrameData );
+		}
+	}
 
-	// Update framerate
-	constexpr float kHysteresis	= 0.05f; // Between 0 to 1.0
-	auto elapsedTime			= std::chrono::steady_clock::now() - mLastDrawFrame;
-	float tmMicroS				= static_cast<float>(std::chrono::duration_cast<std::chrono::microseconds>(elapsedTime).count());
-	float newFPS				= 1000000.f / tmMicroS;
-	mStatsFPS					= mStatsFPS * (1.f-kHysteresis) + newFPS*kHysteresis;
-	mLastDrawFrame				= std::chrono::steady_clock::now();	
+	netImguiDeleteSafe( mpFrameDrawPrev );
+	if( pFrameData )
+	{
+		// Convert DrawFrame command to Dear Imgui DrawData,
+		// and make it available for main thread to use in rendering
+		mpFrameDrawPrev				= pFrameData;
+		ImDrawData*	pNewDrawData	= ConvertToImguiDrawData(pFrameData);
+		mPendingImguiDrawDataIn.Assign(pNewDrawData);
+		
+		// Update framerate
+		constexpr float kHysteresis	= 0.05f; // Between 0 to 1.0
+		auto elapsedTime			= std::chrono::steady_clock::now() - mLastDrawFrame;
+		float tmMicroS				= static_cast<float>(std::chrono::duration_cast<std::chrono::microseconds>(elapsedTime).count());
+		float newFPS				= 1000000.f / tmMicroS;
+		mStatsFPS					= mStatsFPS * (1.f-kHysteresis) + newFPS*kHysteresis;
+		mLastDrawFrame				= std::chrono::steady_clock::now();
+	}
 }
 
 void Client::ReceiveTexture(NetImgui::Internal::CmdTexture* pTextureCmd)
@@ -106,17 +129,19 @@ void Client::Reset()
 	}
 	mvTextures.clear();
 
-	mPendingFrameIn.Free();
+	mPendingImguiDrawDataIn.Free();
 	mPendingBackgroundIn.Free();
-	mPendingInputOut.Free();	
+	mPendingInputOut.Free();
 
-	mInfoName[0]		= 0;
-	mClientConfigID		= NetImguiServer::Config::Client::kInvalidRuntimeID;
-	mClientIndex		= 0;
-	mbPendingDisconnect	= false;
-	mbIsConnected		= false;
-	mbIsFree			= true;
-	mBGNeedUpdate		= true;
+	mInfoName[0]					= 0;
+	mClientConfigID					= NetImguiServer::Config::Client::kInvalidRuntimeID;
+	mClientIndex					= 0;
+	mbCompressionSkipOncePending	= false;
+	mbDisconnectPending				= false;
+	mbIsConnected					= false;
+	mbIsFree						= true;
+	mBGNeedUpdate					= true;
+
 }
 
 void Client::Initialize()
@@ -134,7 +159,8 @@ void Client::Initialize()
 	mStatsDataSentPrev	= 0;
 	mStatsTime			= std::chrono::steady_clock::now();
 	mBGSettings			= NetImgui::Internal::CmdBackground();	// Assign background default value, until we receive first update from client
-	NetImgui::Internal::netImguiDeleteSafe(mpFrameDraw);
+	NetImgui::Internal::netImguiDeleteSafe(mpImguiDrawData);
+	NetImgui::Internal::netImguiDeleteSafe(mpFrameDrawPrev);
 }
 
 bool Client::Startup(uint32_t clientCountMax)
@@ -178,18 +204,133 @@ uint32_t Client::GetFreeIndex()
 }
 
 //=================================================================================================
-//
+// Get the current Dear Imgui drawdata to use for this client rendering content
 //=================================================================================================
-NetImgui::Internal::CmdDrawFrame* Client::TakeDrawFrame()
+ImDrawData*	Client::GetImguiDrawData(void* pEmtpyTextureHAL)
 {
 	// Check if a new frame has been added. If yes, then take ownership of it.
-	NetImgui::Internal::CmdDrawFrame* pPendingFrame = mPendingFrameIn.Release();
-	if( pPendingFrame )
+	ImDrawData* pPendingDrawData = mPendingImguiDrawDataIn.Release();
+	if( pPendingDrawData )
 	{
-		netImguiDeleteSafe( mpFrameDraw );
-		mpFrameDraw = pPendingFrame;
+		NetImgui::Internal::netImguiDeleteSafe( mpImguiDrawData );
+		mpImguiDrawData				= pPendingDrawData;
+		const size_t clientTexCount = mvTextures.size();
+		
+		// When a new drawdata is available, need to convert the textureid from NetImgui Id
+		// to the backend renderer format (texture view pointer). 
+		// Done here (in main thread) instead of when first received on the (com thread),
+		// since 'mvTextures' can only be safely accessed on (main thread).
+		for(int i(0); i<pPendingDrawData->CmdListsCount; ++i)
+		{
+			ImDrawList* pCmdList = pPendingDrawData->CmdLists[i];
+			for(int drawIdx(0), drawCount(pCmdList->CmdBuffer.size()); drawIdx<drawCount; ++drawIdx)
+			{
+				uint64_t wantedTexID					= NetImgui::Internal::TextureCastHelper(pCmdList->CmdBuffer[drawIdx].TextureId);
+				pCmdList->CmdBuffer[drawIdx].TextureId	= pEmtpyTextureHAL; // Default to empty texture
+				for(size_t texIdx=0; texIdx<clientTexCount; ++texIdx)
+				{
+					if( mvTextures[texIdx].mImguiId == wantedTexID )
+					{
+						pCmdList->CmdBuffer[drawIdx].TextureId	= mvTextures[texIdx].mpHAL_Texture;
+						break;
+					}
+				}
+			}
+		}
 	}	
-	return mpFrameDraw;
+	return mpImguiDrawData;
+}
+
+//=================================================================================================
+// Create a new Dear Imgui DrawData ready to be submitted for rendering
+//=================================================================================================
+ImDrawData* Client::ConvertToImguiDrawData(const NetImgui::Internal::CmdDrawFrame* pCmdDrawFrame)
+{
+	constexpr float kPosRangeMin	= static_cast<float>(NetImgui::Internal::ImguiVert::kPosRange_Min);
+	constexpr float kPosRangeMax	= static_cast<float>(NetImgui::Internal::ImguiVert::kPosRange_Max);
+	constexpr float kUVRangeMin		= static_cast<float>(NetImgui::Internal::ImguiVert::kUvRange_Min);
+	constexpr float kUVRangeMax		= static_cast<float>(NetImgui::Internal::ImguiVert::kUvRange_Max);
+
+	if (!pCmdDrawFrame){
+		return nullptr;
+	}
+	mMouseCursor					= static_cast<ImGuiMouseCursor>(pCmdDrawFrame->mMouseCursor);
+
+	ImDrawData* pDrawData			= NetImgui::Internal::netImguiNew<ImDrawData>();
+	pDrawData->Valid				= true;
+    pDrawData->CmdListsCount		= 1; // All draws collapsed in same CmdList	
+    pDrawData->TotalVtxCount		= static_cast<int>(pCmdDrawFrame->mTotalVerticeCount);
+	pDrawData->TotalIdxCount		= static_cast<int>(pCmdDrawFrame->mTotalIndiceCount);
+    pDrawData->DisplayPos.x			= pCmdDrawFrame->mDisplayArea[0];
+	pDrawData->DisplayPos.y			= pCmdDrawFrame->mDisplayArea[1];
+    pDrawData->DisplaySize.x		= pCmdDrawFrame->mDisplayArea[2] - pCmdDrawFrame->mDisplayArea[0];
+	pDrawData->DisplaySize.y		= pCmdDrawFrame->mDisplayArea[3] - pCmdDrawFrame->mDisplayArea[1];
+    pDrawData->FramebufferScale		= ImVec2(1,1); //! @sammyfreg Currently untested, so force set to 1
+    pDrawData->OwnerViewport		= nullptr;
+	pDrawData->CmdLists				= NetImgui::Internal::netImguiNew<ImDrawList*>();
+	pDrawData->CmdLists[0]			= NetImgui::Internal::netImguiNew<ImDrawList>(nullptr);
+	ImDrawList* pCmdList			= pDrawData->CmdLists[0];
+
+	uint32_t indexOffset(0), vertexOffset(0), drawOffset(0);
+	pCmdList->Flags	= ImDrawListFlags_AllowVtxOffset|ImDrawListFlags_AntiAliasedLines|ImDrawListFlags_AntiAliasedFill|ImDrawListFlags_AntiAliasedLinesUseTex;
+	pCmdList->IdxBuffer.resize(pCmdDrawFrame->mTotalIndiceCount);
+	pCmdList->VtxBuffer.resize(pCmdDrawFrame->mTotalVerticeCount);
+	pCmdList->CmdBuffer.resize(pCmdDrawFrame->mTotalDrawCount);
+	ImDrawIdx* pIndexDst			= &pCmdList->IdxBuffer[0];
+	ImDrawVert* pVertexDst			= &pCmdList->VtxBuffer[0];
+	ImDrawCmd* pCommandDst			= &pCmdList->CmdBuffer[0];
+
+	for(uint32_t i(0); i<pCmdDrawFrame->mDrawGroupCount; ++i){
+		const NetImgui::Internal::ImguiDrawGroup& drawGroup = pCmdDrawFrame->mpDrawGroups[i];
+				
+		// Copy/Convert Indices from network command to Dear ImGui indices format
+		const uint16_t* pIndices = reinterpret_cast<const uint16_t*>(drawGroup.mpIndices.Get());
+		if (drawGroup.mBytePerIndex == 4)
+		{
+			memcpy(&pIndexDst, pIndices, drawGroup.mIndiceCount*4);
+		}
+		else
+		{
+			for (uint32_t indexIdx(0); indexIdx < drawGroup.mIndiceCount; ++indexIdx){
+				pIndexDst[indexIdx] = static_cast<ImDrawIdx>(pIndices[indexIdx]);
+			}
+		}
+
+		// Convert the Vertices from network command to Dear Imgui Format
+		const NetImgui::Internal::ImguiVert* pVertexSrc = drawGroup.mpVertices.Get();
+		for (uint32_t vtxIdx(0); vtxIdx < drawGroup.mVerticeCount; ++vtxIdx)
+		{
+			pVertexDst[vtxIdx].pos.x				= (static_cast<float>(pVertexSrc[vtxIdx].mPos[0]) * (kPosRangeMax - kPosRangeMin)) / static_cast<float>(0xFFFF) + kPosRangeMin;
+			pVertexDst[vtxIdx].pos.y				= (static_cast<float>(pVertexSrc[vtxIdx].mPos[1]) * (kPosRangeMax - kPosRangeMin)) / static_cast<float>(0xFFFF) + kPosRangeMin;
+			pVertexDst[vtxIdx].uv.x					= (static_cast<float>(pVertexSrc[vtxIdx].mUV[0]) * (kUVRangeMax - kUVRangeMin)) / static_cast<float>(0xFFFF) + kUVRangeMin;
+			pVertexDst[vtxIdx].uv.y					= (static_cast<float>(pVertexSrc[vtxIdx].mUV[1]) * (kUVRangeMax - kUVRangeMin)) / static_cast<float>(0xFFFF) + kUVRangeMin;
+			pVertexDst[vtxIdx].col					= pVertexSrc[vtxIdx].mColor;
+		}
+
+		// Convert the Draws from network command to Dear Imgui Format
+		const NetImgui::Internal::ImguiDraw* pDrawSrc = drawGroup.mpDraws.Get();
+		for(uint32_t drawIdx(0); drawIdx<drawGroup.mDrawCount; ++drawIdx)
+		{
+			pCommandDst[drawIdx].ClipRect.x			= pDrawSrc[drawIdx].mClipRect[0];
+			pCommandDst[drawIdx].ClipRect.y			= pDrawSrc[drawIdx].mClipRect[1];
+			pCommandDst[drawIdx].ClipRect.z			= pDrawSrc[drawIdx].mClipRect[2];
+			pCommandDst[drawIdx].ClipRect.w			= pDrawSrc[drawIdx].mClipRect[3];
+			pCommandDst[drawIdx].VtxOffset			= pDrawSrc[drawIdx].mVtxOffset + vertexOffset;
+			pCommandDst[drawIdx].IdxOffset			= pDrawSrc[drawIdx].mIdxOffset + indexOffset;
+			pCommandDst[drawIdx].ElemCount			= pDrawSrc[drawIdx].mIdxCount;
+			pCommandDst[drawIdx].UserCallback		= nullptr;
+			pCommandDst[drawIdx].UserCallbackData	= nullptr;
+			pCommandDst[drawIdx].TextureId			= NetImgui::Internal::TextureCastHelper(pDrawSrc[drawIdx].mTextureId);
+		}
+	
+		pIndexDst		+= drawGroup.mIndiceCount;
+		pVertexDst		+= drawGroup.mVerticeCount;
+		pCommandDst		+= drawGroup.mDrawCount;
+		indexOffset		+= drawGroup.mIndiceCount;
+		vertexOffset	+= drawGroup.mVerticeCount;
+		drawOffset		+= drawGroup.mDrawCount;
+	}
+	return pDrawData;
 }
 
 //=================================================================================================
@@ -249,12 +390,15 @@ void Client::CaptureImguiInput()
 	pNewInput								= pNewInput ? pNewInput : NetImgui::Internal::netImguiNew<NetImgui::Internal::CmdInput>();
 
 	// Create new Input command to send to client
-	pNewInput->mScreenSize[0]	= static_cast<uint16_t>(ImGui::GetContentRegionAvail().x);
-	pNewInput->mScreenSize[1]	= static_cast<uint16_t>(ImGui::GetContentRegionAvail().y);
-	pNewInput->mMousePos[0]		= static_cast<int16_t>(mMousePos[0]);
-	pNewInput->mMousePos[1]		= static_cast<int16_t>(mMousePos[1]);
-	pNewInput->mMouseWheelVert	= mMouseWheelPos[0];
-	pNewInput->mMouseWheelHoriz	= mMouseWheelPos[1];
+	pNewInput->mScreenSize[0]		= static_cast<uint16_t>(ImGui::GetContentRegionAvail().x);
+	pNewInput->mScreenSize[1]		= static_cast<uint16_t>(ImGui::GetContentRegionAvail().y);
+	pNewInput->mMousePos[0]			= static_cast<int16_t>(mMousePos[0]);
+	pNewInput->mMousePos[1]			= static_cast<int16_t>(mMousePos[1]);
+	pNewInput->mMouseWheelVert		= mMouseWheelPos[0];
+	pNewInput->mMouseWheelHoriz		= mMouseWheelPos[1];
+	pNewInput->mCompressionUse		= NetImguiServer::Config::Server::sCompressionEnable;
+	pNewInput->mCompressionSkip		= mbCompressionSkipOncePending;
+	mbCompressionSkipOncePending	= false;
 
 	if( ImGui::IsWindowFocused() )
 	{

@@ -17,14 +17,33 @@ struct ImguiVert
 struct ImguiDraw
 {
 	uint64_t	mTextureId;
-	uint32_t	mIdxCount;
-	uint32_t	mIdxOffset;	// In Bytes
-	uint32_t	mVtxOffset;	// In ImguiVert Index		
+	uint32_t	mIdxCount;		// Drawcall number of indices (3 indices per triangles)
+	uint32_t	mVtxOffset;		// Drawcall start position in vertices buffer (considered index 0)
+	uint32_t	mIdxOffset;		// Drawcall start position in indices buffer
 	float		mClipRect[4];
-	uint16_t	mIndexSize;	// 2, 4 bytes
-	uint8_t		PADDING[2];
+	uint8_t		PADDING[4];
 };
 
-struct CmdDrawFrame* CreateCmdDrawFrame(const ImDrawData* pDearImguiData, ImGuiMouseCursor cursor);
+// Each DearImgui window has its own vertex/index buffers with multiple drawcalls
+struct alignas(8) ImguiDrawGroup
+{
+	static constexpr uint32_t	kInvalidDrawGroup	= 0xFFFFFFFF;
+	uint64_t					mGroupID			= 0;					// Unique ID to recognize DrawGroup between 2 frames
+	uint32_t					mVerticeCount		= 0;
+	uint32_t					mIndiceCount		= 0;
+	uint32_t					mDrawCount			= 0;
+	uint32_t					mDrawGroupIdxPrev	= kInvalidDrawGroup;	// Group index in previous DrawFrame (kInvalidDrawGroup when not using delta compression)
+	uint8_t						mBytePerIndex		= 2;					// 2, 4 bytes	
+	uint8_t						PADDING[7];
+	OffsetPointer<uint8_t>		mpIndices;
+	OffsetPointer<ImguiVert>	mpVertices;
+	OffsetPointer<ImguiDraw>	mpDraws;
+	inline void					ToPointers();
+	inline void					ToOffsets();
+};
+
+struct CmdDrawFrame*	ConvertToCmdDrawFrame(const ImDrawData* pDearImguiData, ImGuiMouseCursor cursor);
+struct CmdDrawFrame*	CompressCmdDrawFrame(const CmdDrawFrame* pDrawFramePrev, const CmdDrawFrame* pDrawFrameNew);
+struct CmdDrawFrame*	DecompressCmdDrawFrame(const CmdDrawFrame* pDrawFramePrev, const CmdDrawFrame* pDrawFramePacked);
 
 }} // namespace NetImgui::Internal

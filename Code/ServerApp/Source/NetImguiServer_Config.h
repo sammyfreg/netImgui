@@ -60,6 +60,7 @@ struct Server
 	static uint32_t	sPort;					//!< Port that Server should use for connection. (Note: not really a 'Client' setting, but easier to just bundle the value here for the moment)
 	static float	sRefreshFPSActive;		//!< Refresh rate of active Window
 	static float	sRefreshFPSInactive;	//!< Refresh rate of inactive Window
+	static bool		sCompressionEnable;		//!< Ask the clients to compress their data before transmission
 };
 
 }} // namespace NetImguiServer { namespace Config

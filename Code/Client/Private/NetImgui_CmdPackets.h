@@ -38,6 +38,7 @@ struct alignas(8) CmdVersion
 		ServerRefactor		= 4,	// Change to 'CmdInput' and 'CmdVersion' store size of 'ImWchar' to make sure they are compatible
 		BackgroundCmd		= 5,	// Added new command to control background appearance
 		ClientName			= 6,	// Increase maximum allowed client name that a program can set
+		DataCompression		= 7,	// Adding support for data compression between client/server. Simple low cost delta compressor (only send difference from previous frame)
 		// Insert new version here
 
 		//--------------------------------
@@ -99,52 +100,56 @@ struct alignas(8) CmdInput
 	inline bool IsKeyDown(eVirtualKeys vkKey)const;
 	inline void SetKeyDown(eVirtualKeys vkKey, bool isDown);
 
-	CmdHeader					mHeader			= CmdHeader(CmdHeader::eCommands::Input, sizeof(CmdInput));
-	uint16_t					mScreenSize[2];
-	int16_t						mMousePos[2];	
-	float						mMouseWheelVert;
-	float						mMouseWheelHoriz;
-	ImWchar						mKeyChars[1024];		// Input characters	
-	uint64_t					mKeysDownMask[512/64];	// List of keys currently pressed (follow Windows Virtual-Key codes)
-	uint16_t					mKeyCharCount;			// Number of valid input characters
-	uint8_t						PADDING[6]		= {};
+	CmdHeader						mHeader				= CmdHeader(CmdHeader::eCommands::Input, sizeof(CmdInput));
+	uint16_t						mScreenSize[2]		= {};
+	int16_t							mMousePos[2]		= {};
+	float							mMouseWheelVert		= 0.f;
+	float							mMouseWheelHoriz	= 0.f;
+	ImWchar							mKeyChars[256];					// Input characters	
+	uint64_t						mKeysDownMask[512/64];			// List of keys currently pressed (follow Windows Virtual-Key codes)
+	uint16_t						mKeyCharCount		= 0;		// Number of valid input characters
+	bool							mCompressionUse		= false;	// Server would like client to compress the communication data
+	bool							mCompressionSkip	= false;	// Server forcing next client's frame data to be uncompressed
+	uint8_t							PADDING[4]			= {};
 };
 
 struct alignas(8) CmdTexture
 {		
-	CmdHeader					mHeader			= CmdHeader(CmdHeader::eCommands::Texture, sizeof(CmdTexture));
-	OffsetPointer<uint8_t>		mpTextureData;
-	uint64_t					mTextureId		= 0;
-	uint16_t					mWidth			= 0;
-	uint16_t					mHeight			= 0;
-	eTexFormat					mFormat			= eTexFormat::kTexFmt_Invalid;	// eTexFormat
-	uint8_t						PADDING[3]		= {};
+	CmdHeader						mHeader			= CmdHeader(CmdHeader::eCommands::Texture, sizeof(CmdTexture));
+	OffsetPointer<uint8_t>			mpTextureData;
+	uint64_t						mTextureId		= 0;
+	uint16_t						mWidth			= 0;
+	uint16_t						mHeight			= 0;
+	eTexFormat						mFormat			= eTexFormat::kTexFmt_Invalid;	// eTexFormat
+	uint8_t							PADDING[3]		= {};
 };
 
 struct alignas(8) CmdDrawFrame
 {
-	CmdHeader					mHeader			= CmdHeader(CmdHeader::eCommands::DrawFrame, sizeof(CmdDrawFrame));	
-	uint32_t					mVerticeCount	= 0;
-	uint32_t					mIndiceCount	= 0;
-	uint32_t					mIndiceByteSize	= 0;
-	uint32_t					mDrawCount		= 0;
-	uint32_t					mMouseCursor	= 0;	// ImGuiMouseCursor value
-	float						mDisplayArea[4]	= {};
-	uint8_t						PADDING[4];
-	OffsetPointer<ImguiVert>	mpVertices;
-	OffsetPointer<uint8_t>		mpIndices;
-	OffsetPointer<ImguiDraw>	mpDraws;
-	inline void					ToPointers();
-	inline void					ToOffsets();
+	CmdHeader						mHeader				= CmdHeader(CmdHeader::eCommands::DrawFrame, sizeof(CmdDrawFrame));
+	uint64_t						mFrameIndex			= 0;
+	uint32_t						mMouseCursor		= 0;	// ImGuiMouseCursor value
+	float							mDisplayArea[4]		= {};
+	uint32_t						mIndiceByteSize		= 0;
+	uint32_t						mDrawGroupCount		= 0;
+	uint32_t						mTotalVerticeCount	= 0;
+	uint32_t						mTotalIndiceCount	= 0;
+	uint32_t						mTotalDrawCount		= 0;
+	uint32_t						mUncompressedSize	= 0;
+	uint8_t							mCompressed			= false;
+	uint8_t							PADDING[3];
+	OffsetPointer<ImguiDrawGroup>	mpDrawGroups;
+	inline void						ToPointers();
+	inline void						ToOffsets();
 };
 
 struct alignas(8) CmdBackground
 {
-	static constexpr uint64_t	kDefaultTexture		= ~0u;
-	CmdHeader					mHeader				= CmdHeader(CmdHeader::eCommands::Background, sizeof(CmdBackground));
-	float						mClearColor[4]		= {0.2f, 0.2f, 0.2f, 1.f};	// Background color 
-	float						mTextureTint[4]		= {1.f, 1.f, 1.f, 0.5f};	// Tint/alpha applied to texture
-	uint64_t					mTextureId			= kDefaultTexture;			// Texture rendered in background, use server texture by default
+	static constexpr uint64_t		kDefaultTexture		= ~0u;
+	CmdHeader						mHeader				= CmdHeader(CmdHeader::eCommands::Background, sizeof(CmdBackground));
+	float							mClearColor[4]		= {0.2f, 0.2f, 0.2f, 1.f};	// Background color 
+	float							mTextureTint[4]		= {1.f, 1.f, 1.f, 0.5f};	// Tint/alpha applied to texture
+	uint64_t						mTextureId			= kDefaultTexture;			// Texture rendered in background, use server texture by default
 	inline bool operator==(const CmdBackground& cmp)const;
 	inline bool operator!=(const CmdBackground& cmp)const;
 };

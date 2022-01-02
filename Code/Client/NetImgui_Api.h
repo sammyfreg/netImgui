@@ -46,7 +46,17 @@ enum class eTexFormat : uint8_t {
 	kTexFmtA8, 
 	kTexFmtRGBA8, 
 	kTexFmt_Count,
-	kTexFmt_Invalid=kTexFmt_Count };
+	kTexFmt_Invalid=kTexFmt_Count 
+};
+
+//=================================================================================================
+// Data Compression wanted status
+//=================================================================================================
+enum class eCompressionMode : uint8_t {
+	kForceDisable,			// Disable data compression for communications
+	kForceEnable,			// Enable data compression for communications
+	kUseServerSetting		// Use Server setting for compression (default)
+};
 
 typedef void		ThreadFunctPtr(void threadedFunction(void* pClientInfo), void* pClientInfo) ;
 
@@ -149,6 +159,12 @@ ImGuiContext*		GetContext();
 void				SetBackground(const ImVec4& bgColor);
 void				SetBackground(const ImVec4& bgColor, const ImVec4& textureTint );
 void				SetBackground(const ImVec4& bgColor, const ImVec4& textureTint, ImTextureID bgTextureID);
+
+//=================================================================================================
+// Control the data compression for communications between Client/Server
+//=================================================================================================
+void				SetCompressionMode(eCompressionMode eMode);
+eCompressionMode	GetCompressionMode();
 
 //=================================================================================================
 // Helper function to quickly create a context duplicate (sames settings/font/styles)

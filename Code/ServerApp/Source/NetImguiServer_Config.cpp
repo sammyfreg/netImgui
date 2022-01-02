@@ -12,23 +12,24 @@ static ImVector<Client*>	gConfigList;
 static std::mutex			gConfigLock;
 static Client::RuntimeID	gRuntimeID = static_cast<Client::RuntimeID>(1);
 
-static constexpr char kConfigFile[]							= "netImgui.cfg";
-static constexpr char kConfigField_ServerPort[]				= "ServerPort";
-static constexpr char kConfigField_ServerRefreshActive[]	= "RefreshFPSActive";
-static constexpr char kConfigField_ServerRefreshInactive[]	= "RefreshFPSInactive";
+static constexpr char kConfigFile[]								= "netImgui.cfg";
+static constexpr char kConfigField_ServerPort[]					= "ServerPort";
+static constexpr char kConfigField_ServerRefreshActive[]		= "RefreshFPSActive";
+static constexpr char kConfigField_ServerRefreshInactive[]		= "RefreshFPSInactive";
+static constexpr char kConfigField_ServerCompressionEnable[]	= "CompressionEnable";
 
-static constexpr char kConfigField_Note[]					= "Note";
-static constexpr char kConfigField_Version[]				= "Version";
-static constexpr char kConfigField_Configs[]				= "Configs";
-static constexpr char kConfigField_Name[]					= "Name";
-static constexpr char kConfigField_Hostname[]				= "Hostname";
-static constexpr char kConfigField_Hostport[]				= "HostPort";
-static constexpr char kConfigField_AutoConnect[]			= "Auto";
+static constexpr char kConfigField_Note[]						= "Note";
+static constexpr char kConfigField_Version[]					= "Version";
+static constexpr char kConfigField_Configs[]					= "Configs";
+static constexpr char kConfigField_Name[]						= "Name";
+static constexpr char kConfigField_Hostname[]					= "Hostname";
+static constexpr char kConfigField_Hostport[]					= "HostPort";
+static constexpr char kConfigField_AutoConnect[]				= "Auto";
 
-uint32_t Server::sPort				= NetImgui::kDefaultServerPort;
-float Server::sRefreshFPSActive		= 30.f;
-float Server::sRefreshFPSInactive	= 30.f;
-
+uint32_t	Server::sPort				= NetImgui::kDefaultServerPort;
+float		Server::sRefreshFPSActive	= 30.f;
+float		Server::sRefreshFPSInactive	= 30.f;
+bool		Server::sCompressionEnable	= true;
 
 //=================================================================================================
 // Find entry index with same configId. (-1 if not found)
@@ -205,12 +206,13 @@ void Client::SaveAll()
 			config[kConfigField_AutoConnect]	= pConfig->mConnectAuto;
 		}
 	}
-	configRoot[kConfigField_Version]				= eVersion::_Latest;
-	configRoot[kConfigField_Note]					= "netImgui Server's list of Clients (Using JSON format).";
-	configRoot[kConfigField_ServerPort]				= Server::sPort;
-	configRoot[kConfigField_ServerRefreshActive]	= Server::sRefreshFPSActive;
-	configRoot[kConfigField_ServerRefreshInactive]	= Server::sRefreshFPSInactive;
-	
+	configRoot[kConfigField_Version]					= eVersion::_Latest;
+	configRoot[kConfigField_Note]						= "netImgui Server's list of Clients (Using JSON format).";
+	configRoot[kConfigField_ServerPort]					= Server::sPort;
+	configRoot[kConfigField_ServerRefreshActive]		= Server::sRefreshFPSActive;
+	configRoot[kConfigField_ServerRefreshInactive]		= Server::sRefreshFPSInactive;
+	configRoot[kConfigField_ServerCompressionEnable]	= Server::sCompressionEnable;
+
 	std::ofstream outputFile(kConfigFile);
 	if( outputFile.is_open() )
 	{
@@ -233,10 +235,12 @@ void Client::LoadAll()
 
 	inputFile >> configRoot;
 
-	uint32_t configVersion		= GetPropertyValue(configRoot, kConfigField_Version, 0u);
-	Server::sPort				= GetPropertyValue(configRoot, kConfigField_ServerPort, NetImgui::kDefaultServerPort);
-	Server::sRefreshFPSActive	= GetPropertyValue(configRoot, kConfigField_ServerRefreshActive, Server::sRefreshFPSActive);
-	Server::sRefreshFPSInactive	= GetPropertyValue(configRoot, kConfigField_ServerRefreshInactive, Server::sRefreshFPSInactive);
+	uint32_t configVersion		= GetPropertyValue(configRoot, kConfigField_Version,					0u);
+	Server::sPort				= GetPropertyValue(configRoot, kConfigField_ServerPort,					NetImgui::kDefaultServerPort);
+	Server::sRefreshFPSActive	= GetPropertyValue(configRoot, kConfigField_ServerRefreshActive,		Server::sRefreshFPSActive);
+	Server::sRefreshFPSInactive	= GetPropertyValue(configRoot, kConfigField_ServerRefreshInactive,		Server::sRefreshFPSInactive);
+	Server::sCompressionEnable	= GetPropertyValue(configRoot, kConfigField_ServerCompressionEnable,	Server::sCompressionEnable);
+	
 	if( configVersion >= static_cast<uint32_t>(eVersion::Initial) )
 	{	
 		for(const auto& config : configRoot[kConfigField_Configs] )

@@ -144,7 +144,7 @@ void Popup_ConfirmDisconnect()
 			ImGui::SameLine();
 			if (ImGui::Button("Yes", ImVec2(ImGui::GetContentRegionAvail().x, 0)) && gPopup_ConfirmDisconnect_ClientIdx != kClientRemoteInvalid)
 			{
-				client.mbPendingDisconnect	= true;
+				client.mbDisconnectPending	= true;
 				pendingDisconnectOpen		= false;
 							
 			}
@@ -207,13 +207,14 @@ void Popup_ServerConfig()
 	static int sEditPort					= -1;
 	static float sEditRefreshFPSActive		= 0;
 	static float sEditRefreshFPSInactive	= 0;
-
+	static bool sEditCompressionEnable		= true;
 	if( gPopup_ServerConfig_Show )
 	{		
 		if( sEditPort == -1 ){
 			sEditPort				= static_cast<int>(NetImguiServer::Config::Server::sPort);
 			sEditRefreshFPSActive	= NetImguiServer::Config::Server::sRefreshFPSActive;
 			sEditRefreshFPSInactive	= NetImguiServer::Config::Server::sRefreshFPSInactive;
+			sEditCompressionEnable	= NetImguiServer::Config::Server::sCompressionEnable;
 		}
 		ImGuiWindowClass windowClass;
 		windowClass.ViewportFlagsOverrideSet = ImGuiViewportFlags_TopMost;
@@ -223,7 +224,7 @@ void Popup_ServerConfig()
 		{
 			ImGui::NewLine();
 
-			// --- Port ---						
+			// --- Port ---
 			ImGui::TextUnformatted("Port waiting for connection requests");
 			if (ImGui::InputInt("Port", &sEditPort, 1, 100, ImGuiInputTextFlags_EnterReturnsTrue)) {
 				sEditPort = std::min<int>(0xFFFF, std::max<int>(1, sEditPort));
@@ -233,7 +234,7 @@ void Popup_ServerConfig()
 				sEditPort = NetImgui::kDefaultServerPort;
 			}
 
-			// --- Refresh ---	
+			// --- Refresh ---
 			ImGui::SliderFloat("Active Window", &sEditRefreshFPSActive, 0.f, 60.f, "%2.f Fps" );
 			if( ImGui::IsItemHovered() ){
 				ImGui::SetTooltip("How often we refresh content of *visible* and *focused* clients.\nNote: Lowering this will reduce network traffic.");
@@ -242,6 +243,14 @@ void Popup_ServerConfig()
 			ImGui::SliderFloat("Inactive Window", &sEditRefreshFPSInactive, 0.f, 60.f, "%2.f Fps" );
 			if( ImGui::IsItemHovered() ){
 				ImGui::SetTooltip("How often we refresh content of *visible* and *unfocused* clients.\nNote: Lowering this will reduce network traffic.");
+			}
+
+			// --- Data Compression ---
+			ImGui::Checkbox("Use Compression", &sEditCompressionEnable);
+			if( ImGui::IsItemHovered() ){
+				ImGui::SetTooltip(	"Enable data compression between Client/Server communications.\n"
+									"Greatly reduce bandwidth for a small CPU overhead on the client.\n"
+									"Note: This setting can be overriden on client side.");
 			}
 
 			// --- Save/Cancel ---
@@ -255,6 +264,7 @@ void Popup_ServerConfig()
 				NetImguiServer::Config::Server::sPort				= static_cast<uint32_t>(sEditPort);
 				NetImguiServer::Config::Server::sRefreshFPSActive	= sEditRefreshFPSActive;
 				NetImguiServer::Config::Server::sRefreshFPSInactive	= sEditRefreshFPSInactive;
+				NetImguiServer::Config::Server::sCompressionEnable	= sEditCompressionEnable;
 				NetImguiServer::Config::Client::SaveAll();
 				gPopup_ServerConfig_Show = false;
 			}
@@ -468,7 +478,7 @@ void DrawImguiContent_Clients()
 				}
 			}
 			ImGui::End();
-			if(!bOpened && !client.mbPendingDisconnect )
+			if(!bOpened && !client.mbDisconnectPending )
 			{
 				gPopup_ConfirmDisconnect_ClientIdx = i;
 			}
@@ -573,7 +583,7 @@ void DrawImguiContent_MainMenu_Clients_Entry(RemoteClient::Client* pClient, NetI
 	ImGui::TableNextColumn();
 
 	// Config: Connection
-	if( pClient && !pClient->mbPendingDisconnect && ImGui::Button("Disconnect", ImVec2(80,0 )) )
+	if( pClient && !pClient->mbDisconnectPending && ImGui::Button("Disconnect", ImVec2(80,0 )) )
 	{
 		gPopup_ConfirmDisconnect_ClientIdx = pClient->mClientIndex;
 	}
