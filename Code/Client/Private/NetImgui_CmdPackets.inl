@@ -27,8 +27,8 @@ void ImguiDrawGroup::ToPointers()
 {
 	if( !mpIndices.IsPointer() ) //Safer to test the first element after CmdHeader
 	{
-		mpVertices.ToPointer();
 		mpIndices.ToPointer();
+		mpVertices.ToPointer();
 		mpDraws.ToPointer();
 	}
 }
@@ -37,8 +37,8 @@ void ImguiDrawGroup::ToOffsets()
 {
 	if( !mpIndices.IsOffset() ) //Safer to test the first element after CmdHeader
 	{
-		mpVertices.ToOffset();
 		mpIndices.ToOffset();
+		mpVertices.ToOffset();
 		mpDraws.ToOffset();
 	}
 }

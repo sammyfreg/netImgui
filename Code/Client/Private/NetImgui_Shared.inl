@@ -96,6 +96,12 @@ void OffsetPointer<TType>::SetPtr(TType* pPointer)
 }
 
 template <typename TType>
+void OffsetPointer<TType>::SetComDataPtr(ComDataType* pPointer)
+{
+	SetPtr(reinterpret_cast<TType*>(pPointer));
+}
+
+template <typename TType>
 void OffsetPointer<TType>::SetOff(uint64_t offset)
 {
 	mOffset = offset | 0x8000000000000000;
@@ -161,6 +167,12 @@ const TType* OffsetPointer<TType>::Get()const
 {
 	assert(IsPointer());
 	return mPointer;
+}
+
+template <typename TType>
+const ComDataType* OffsetPointer<TType>::GetComData()const
+{
+	return reinterpret_cast<const ComDataType*>(Get());
 }
 
 template <typename TType>
@@ -256,6 +268,19 @@ int StringFormat(char(&output)[charCount], char const* const format, ...)
 #endif
 }
 
+//=============================================================================
+//=============================================================================
+template <typename IntType>
+IntType DivUp(IntType Value, IntType Denominator)
+{
+	return (Value + Denominator - 1) / Denominator;
+}
+
+template <typename IntType>
+IntType RoundUp(IntType Value, IntType Round)
+{
+	return DivUp(Value, Round) * Round;
+}
 
 union TextureCastHelperUnion
 {

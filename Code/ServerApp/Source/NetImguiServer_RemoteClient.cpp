@@ -271,11 +271,11 @@ ImDrawData* Client::ConvertToImguiDrawData(const NetImgui::Internal::CmdDrawFram
 	pDrawData->CmdLists[0]			= NetImgui::Internal::netImguiNew<ImDrawList>(nullptr);
 	ImDrawList* pCmdList			= pDrawData->CmdLists[0];
 
-	uint32_t indexOffset(0), vertexOffset(0), drawOffset(0);
-	pCmdList->Flags	= ImDrawListFlags_AllowVtxOffset|ImDrawListFlags_AntiAliasedLines|ImDrawListFlags_AntiAliasedFill|ImDrawListFlags_AntiAliasedLinesUseTex;
+	uint32_t indexOffset(0), vertexOffset(0);
 	pCmdList->IdxBuffer.resize(pCmdDrawFrame->mTotalIndiceCount);
 	pCmdList->VtxBuffer.resize(pCmdDrawFrame->mTotalVerticeCount);
 	pCmdList->CmdBuffer.resize(pCmdDrawFrame->mTotalDrawCount);
+	pCmdList->Flags					= ImDrawListFlags_AllowVtxOffset|ImDrawListFlags_AntiAliasedLines|ImDrawListFlags_AntiAliasedFill|ImDrawListFlags_AntiAliasedLinesUseTex;
 	ImDrawIdx* pIndexDst			= &pCmdList->IdxBuffer[0];
 	ImDrawVert* pVertexDst			= &pCmdList->VtxBuffer[0];
 	ImDrawCmd* pCommandDst			= &pCmdList->CmdBuffer[0];
@@ -285,9 +285,9 @@ ImDrawData* Client::ConvertToImguiDrawData(const NetImgui::Internal::CmdDrawFram
 				
 		// Copy/Convert Indices from network command to Dear ImGui indices format
 		const uint16_t* pIndices = reinterpret_cast<const uint16_t*>(drawGroup.mpIndices.Get());
-		if (drawGroup.mBytePerIndex == 4)
+		if (drawGroup.mBytePerIndex == sizeof(ImDrawIdx))
 		{
-			memcpy(&pIndexDst, pIndices, drawGroup.mIndiceCount*4);
+			memcpy(&pIndexDst, pIndices, drawGroup.mIndiceCount*sizeof(ImDrawIdx));
 		}
 		else
 		{
@@ -328,7 +328,6 @@ ImDrawData* Client::ConvertToImguiDrawData(const NetImgui::Internal::CmdDrawFram
 		pCommandDst		+= drawGroup.mDrawCount;
 		indexOffset		+= drawGroup.mIndiceCount;
 		vertexOffset	+= drawGroup.mVerticeCount;
-		drawOffset		+= drawGroup.mDrawCount;
 	}
 	return pDrawData;
 }

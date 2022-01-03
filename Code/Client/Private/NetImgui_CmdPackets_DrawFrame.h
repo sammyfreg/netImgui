@@ -8,7 +8,7 @@ namespace NetImgui { namespace Internal
 struct ImguiVert
 {
 	//Note: If updating this, increase 'CmdVersion::eVersion'
-	enum Constants{ kUvRange_Min=-2, kUvRange_Max=2, kPosRange_Min=-2048, kPosRange_Max=4096};
+	enum Constants{ kUvRange_Min=-2, kUvRange_Max=2, kPosRange_Min=-1024, kPosRange_Max=16384};
 	uint16_t	mPos[2];	
 	uint16_t	mUV[2];
 	uint32_t	mColor;
@@ -28,12 +28,12 @@ struct ImguiDraw
 struct alignas(8) ImguiDrawGroup
 {
 	static constexpr uint32_t	kInvalidDrawGroup	= 0xFFFFFFFF;
-	uint64_t					mGroupID			= 0;					// Unique ID to recognize DrawGroup between 2 frames
+	uint64_t					mGroupID			= 0;				// Unique ID to recognize DrawGroup between 2 frames
 	uint32_t					mVerticeCount		= 0;
 	uint32_t					mIndiceCount		= 0;
 	uint32_t					mDrawCount			= 0;
-	uint32_t					mDrawGroupIdxPrev	= kInvalidDrawGroup;	// Group index in previous DrawFrame (kInvalidDrawGroup when not using delta compression)
-	uint8_t						mBytePerIndex		= 2;					// 2, 4 bytes	
+	uint32_t					mDrawGroupIdxPrev	= kInvalidDrawGroup;// Group index in previous DrawFrame (kInvalidDrawGroup when not using delta compression)
+	uint8_t						mBytePerIndex		= 2;				// 2, 4 bytes	
 	uint8_t						PADDING[7];
 	OffsetPointer<uint8_t>		mpIndices;
 	OffsetPointer<ImguiVert>	mpVertices;
