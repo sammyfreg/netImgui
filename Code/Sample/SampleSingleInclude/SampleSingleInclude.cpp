@@ -66,7 +66,7 @@ ImDrawData* Client_Draw()
 	ImGui::SetNextWindowSize(ImVec2(400,400), ImGuiCond_Once);
 	if( ImGui::Begin("Sample Single Include", nullptr) )
 	{
-		ImGui::TextColored(ImVec4(0.1, 1, 0.1, 1), "Basic demonstration of netImgui code integration.");		
+		ImGui::TextColored(ImVec4(0.1, 1, 0.1, 1), "Basic demonstration of NetImgui code integration.");
 		ImGui::TextWrapped("Create a basic Window with some text.");
 		ImGui::NewLine();
 		ImGui::TextWrapped("Identical to SampleBasic, the only difference is how the client code was included in the project.");

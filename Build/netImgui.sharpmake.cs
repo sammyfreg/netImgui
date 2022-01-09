@@ -105,7 +105,7 @@ namespace NetImgui
 
 		public override void ConfigureAll(Configuration conf, NetImguiTarget target)
         {
-			base.ConfigureAll(conf, target);			
+			base.ConfigureAll(conf, target);
 			AddDependencyImguiIndex16(conf, target);
 			conf.AddPublicDependency<ProjectNetImgui_Disabled>(target);
 			conf.IncludePaths.Add(NetImguiTarget.GetPath(ProjectImgui.sDefaultPath));
@@ -113,10 +113,27 @@ namespace NetImgui
 			conf.Defines.Add("NETIMGUI_ENABLED=0");
 		}
     }
-	
+	//-------------------------------------------------------------------------
+	// Standard samples
+	//-------------------------------------------------------------------------
+	[Sharpmake.Generate] public class ProjectSample_Basic 		: ProjectSample { public ProjectSample_Basic() 		: base("SampleBasic"){} }
+	[Sharpmake.Generate] public class ProjectSample_DualUI 		: ProjectSample { public ProjectSample_DualUI()		: base("SampleDualUI"){} }	
+	[Sharpmake.Generate] public class ProjectSample_Textures	: ProjectSample { public ProjectSample_Textures() 	: base("SampleTextures"){} }
+	[Sharpmake.Generate] public class ProjectSample_NewFrame	: ProjectSample { public ProjectSample_NewFrame()	: base("SampleNewFrame"){} }
+	[Sharpmake.Generate] public class ProjectSample_Background	: ProjectSample { public ProjectSample_Background()	: base("SampleBackground"){} }
+	[Sharpmake.Generate] public class ProjectSample_Index16Bits	: ProjectSample { public ProjectSample_Index16Bits(): base("SampleIndex"){ Name = "SampleIndex16Bits"; } }
+	[Sharpmake.Generate] public class ProjectSample_Index32Bits	: ProjectSample { public ProjectSample_Index32Bits(): base("SampleIndex", true){ Name = "SampleIndex32Bits"; } }	
+
+	//-------------------------------------------------------------------------
+	// Sample with more config overrides
+	//-------------------------------------------------------------------------
 	[Sharpmake.Generate]
     public class ProjectSample_SingleInclude : ProjectBase
     {
+		// This sample does not includes the NetImgui Library.
+		// Instead it includes and compiled the NetImgui sources files 
+		// directly, alongside it own sources files. This is to demonstrate
+		// being able to compile the NetImgui support with only 1 include.
         public ProjectSample_SingleInclude()
 		: base(true)
 		{
@@ -135,13 +152,37 @@ namespace NetImgui
 		}
     }
 	
-	[Sharpmake.Generate] public class ProjectSample_Basic 		: ProjectSample { public ProjectSample_Basic() 		: base("SampleBasic"){} }
-	[Sharpmake.Generate] public class ProjectSample_DualUI 		: ProjectSample { public ProjectSample_DualUI()		: base("SampleDualUI"){} }
-	[Sharpmake.Generate] public class ProjectSample_Textures	: ProjectSample { public ProjectSample_Textures() 	: base("SampleTextures"){} }
-	[Sharpmake.Generate] public class ProjectSample_NewFrame	: ProjectSample { public ProjectSample_NewFrame()	: base("SampleNewFrame"){} }
-	[Sharpmake.Generate] public class ProjectSample_Background	: ProjectSample { public ProjectSample_Background()	: base("SampleBackground"){} }
-	[Sharpmake.Generate] public class ProjectSample_Index16Bits	: ProjectSample { public ProjectSample_Index16Bits(): base("SampleIndex"){ Name = "SampleIndex16Bits"; } }
-	[Sharpmake.Generate] public class ProjectSample_Index32Bits	: ProjectSample { public ProjectSample_Index32Bits(): base("SampleIndex", true){ Name = "SampleIndex32Bits"; } }
+	//
+	[Sharpmake.Generate] 
+	public class ProjectSample_Compression : ProjectBase 
+	{
+		// This sample does not includes the NetImgui Library.
+		// Instead it includes and compiled the NetImgui sources files 
+		// directly, alongside it own sources files. This is to ignore
+		// the communications source file included by default and use
+		// its own custom version instead (SampleNetworkWin32.cpp) to add
+		// some metrics measure
+		public ProjectSample_Compression()
+		: base(true)
+		{
+			Name			= "SampleCompression";
+            SourceRootPath	= NetImguiTarget.GetPath(@"\Code\Sample\") + Name;
+			AdditionalSourceRootPaths.Add(NetImguiTarget.GetPath(@"\Code\Sample\Common"));			
+			AddImguiBackendSources();
+		}
+		
+		public override void ConfigureAll(Configuration conf, NetImguiTarget target)
+		{
+			base.ConfigureAll(conf, target);
+			AddDependencyImguiIndex16(conf, target);
+			conf.IncludePaths.Add(NetImguiTarget.GetPath(ProjectImgui.sDefaultPath));
+			conf.IncludePaths.Add(NetImguiTarget.GetPath(@"\Code\Client"));
+			// Disable the built-in communication library to implement a custom one
+			conf.Defines.Add("NETIMGUI_WINSOCKET_ENABLED=0");
+			conf.Defines.Add("NETIMGUI_POSIX_SOCKETS_ENABLED=0");
+		}
+	}
+	
 	
 	//=============================================================================================
 	// SOLUTIONS
@@ -160,9 +201,10 @@ namespace NetImgui
 		public static void AddSampleProjects(Configuration conf, NetImguiTarget target)
 		{
 			string SolutionFolder = "Samples";
-			conf.AddProject<ProjectSample_Basic>(target, false, SolutionFolder);
-			conf.AddProject<ProjectSample_NewFrame>(target, false, SolutionFolder);
+			conf.AddProject<ProjectSample_Basic>(target, false, SolutionFolder);			
 			conf.AddProject<ProjectSample_DualUI>(target, false, SolutionFolder);
+			conf.AddProject<ProjectSample_NewFrame>(target, false, SolutionFolder);
+			conf.AddProject<ProjectSample_Compression>(target, false, SolutionFolder);			
 			conf.AddProject<ProjectSample_Textures>(target, false, SolutionFolder);
 			conf.AddProject<ProjectSample_Background>(target, false, SolutionFolder);
 			conf.AddProject<ProjectSample_Index16Bits>(target, false, SolutionFolder);
