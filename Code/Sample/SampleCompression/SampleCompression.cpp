@@ -125,7 +125,7 @@ void Client_Draw_RemoteDraw()
 
 		ImGui::TextColored(ImVec4(0.1f, 1.0f, 0.1f, 1), "Performances");
 		ImGui::Text(									"Client_Draw() :   %5.03f ms", sMetric_FrameDrawTimeUS/1000.f);
-		if( ImGui::IsItemHovered() ) ImGui::SetTooltip("Sample main update function with its Dear ImGui drawing. Help giving a scale to the NetImgui cost.");
+		if( ImGui::IsItemHovered() ) ImGui::SetTooltip("Sample main update function with its Dear ImGui drawing. Help give a scale to the NetImgui cost.");
 		ImGui::Text(									"NetImgui process: %5.03f ms", (sMetric_RenderTimeUS+gMetric_SentDataTimeUS)/1000.f);
 		ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1), "...EndFrame:      %5.03f ms", sMetric_RenderTimeUS/1000.f);
 		if( ImGui::IsItemHovered() ) ImGui::SetTooltip("Includes time for Dear ImGui to generate rendering data, NetImgui to create draw command and compress it.");

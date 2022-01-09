@@ -4,12 +4,12 @@
 //! @Name		: NetImgui
 //=================================================================================================
 //! @author		: Sammy Fatnassi
-//! @date		: 2021/11/23
-//!	@version	: v1.6.3
+//! @date		: 2022/01/09
+//!	@version	: v1.6.4
 //! @Details	: For integration info : https://github.com/sammyfreg/netImgui/wiki
 //=================================================================================================
-#define NETIMGUI_VERSION		"1.6.3"
-#define NETIMGUI_VERSION_NUM	10603
+#define NETIMGUI_VERSION		"1.6.4"
+#define NETIMGUI_VERSION_NUM	10604
 
 #include <stdint.h>
 #include "Private/NetImgui_WarningDisable.h"
@@ -129,16 +129,17 @@ void				SendDataTexture(ImTextureID textureId, void* pData, uint16_t width, uint
 // Start a new Imgui Frame and wait for Draws commands, using a ImGui created internally
 // for remote drawing. Returns true if we are awaiting a new ImGui frame. 
 //
-// All ImGui drawing can be skip when false.
+// All ImGui drawing should be skipped when return is false.
 //
 // Note: This code can be used instead, to know if you should be drawing or not :
 //			'if( !NetImgui::IsDrawing() )'
 //
-// Note: If your code cannot handle skipping a ImGui frame, leave 'bSupportFrameSkip==false',
-//		 and an empty ImGui context will be assigned to receive discarded drawing commands
+// Note: If your code cannot handle skipping a ImGui frame, leave 'bSupportFrameSkip=false',
+//		 and this function will always call 'ImGui::NewFrame()' internally and return true
 //
 // Note: With Dear ImGui 1.81+, you can keep using the ImGui::BeginFrame()/Imgui::Render()
-//		 without having to use these 2 functions.
+//		 without having to use NetImgui::NewFrame()/NetImgui::EndFrame() 
+//		 (unless wanting to support frame skip)
 //=================================================================================================
 bool				NewFrame(bool bSupportFrameSkip=false);
 
@@ -153,7 +154,7 @@ void				EndFrame(void);
 ImGuiContext*		GetContext();
 
 //=================================================================================================
-// Set the remote client backoground color and texture
+// Set the remote client background color and texture
 // Note: If no TextureID is specified, will use the default server texture
 //=================================================================================================
 void				SetBackground(const ImVec4& bgColor);

@@ -485,7 +485,7 @@ void ClientInfo::ProcessDrawData(const ImDrawData* pDearImguiData, ImGuiMouseCur
 		return;
 
 	CmdDrawFrame* pDrawFrameNew = ConvertToCmdDrawFrame(pDearImguiData, mouseCursor);
-	pDrawFrameNew->mFrameIndex	= mFrameIndex++; //SF TODO handle delta when replaced pending command
+	pDrawFrameNew->mFrameIndex	= mFrameIndex++;
 	bool useCompression			 = mClientCompressionMode == eCompressionMode::kForceEnable;
 	useCompression				|= mClientCompressionMode == eCompressionMode::kUseServerSetting && mServerCompressionEnabled;
 	if( useCompression )
