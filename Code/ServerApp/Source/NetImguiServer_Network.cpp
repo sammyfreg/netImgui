@@ -257,7 +257,7 @@ void NetworkConnectionNew(NetImgui::Internal::Network::SocketInfo* pClientSocket
 			printf("Error connecting to client '%s:%i' (%s)\n", pNewClient->mConnectHost, pNewClient->mConnectPort, zErrorMsg);
 		}
 		else
-			printf("Error connecting to client (%s)\n", zErrorMsg);		
+			printf("Error connecting to client (%s)\n", zErrorMsg);
 	}
 }
 

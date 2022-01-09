@@ -19,14 +19,6 @@ extern float	gMetric_SentDataTimeUS;
 namespace SampleClient
 {
 
-static auto sPreviousTime				= std::chrono::steady_clock::now();
-static uint64_t sStatsCompressed		= 0;
-static uint64_t sStatsUncompressed		= 0;
-static float sMetric_CompressedBps		= 0.f;
-static float sMetric_UncompressedBps	= 0.f;
-static float sMetric_RenderTimeUS		= 0.f;
-static float sMetric_FrameDrawTimeUS	= 0.f;
-
 //=================================================================================================
 //
 //=================================================================================================
@@ -70,31 +62,68 @@ void Client_Draw_ExtraWindowDraw(const char* name, const ImVec2& pos)
 }
 
 //=================================================================================================
-// ImGui drawing when there's no NetImgui connection detected
-//=================================================================================================
-void Client_Draw_LocalDraw()
-{
-	if(NetImgui::IsConnected())
-		return;
-	
-	ImGui::SetNextWindowPos(ImVec2(16,48), ImGuiCond_Always);
-	ImGui::SetNextWindowSize(ImVec2(300,100), ImGuiCond_Always);
-	if( ImGui::Begin("Warning", nullptr, ImGuiWindowFlags_NoDecoration) )
-	{
-		ImGui::TextWrapped("Please connect to the NetImgui Server to test compression.");
-	}
-	ImGui::End();
-}
-
-//=================================================================================================
 // Imgui drawing when there's a NetImgui connection detected. 
 // Draw main compression sample window
 //=================================================================================================
 void Client_Draw_RemoteDraw()
 {
-	if(!NetImgui::IsConnected())
-		return;
+	//if(!NetImgui::IsConnected())
+	//	return;
 
+	
+}
+//=================================================================================================
+// Function used by the sample, to draw all ImGui Content
+//=================================================================================================
+ImDrawData* Client_Draw()
+{
+	//---------------------------------------------------------------------------------------------
+	// (0) Update the communications statistics
+	//---------------------------------------------------------------------------------------------
+	static auto sPreviousTime				= std::chrono::steady_clock::now();
+	static uint64_t sStatsCompressed		= 0;
+	static uint64_t sStatsUncompressed		= 0;
+	static float sMetric_CompressedBps		= 0.f;
+	static float sMetric_UncompressedBps	= 0.f;
+	static float sMetric_RenderTimeUS		= 0.f;
+	static float sMetric_FrameDrawTimeUS	= 0.f;
+	auto timeDrawStart						= std::chrono::steady_clock::now();
+	auto elapsedTime						= timeDrawStart - sPreviousTime;
+
+	if (!NetImgui::IsConnected())
+	{
+		sMetric_CompressedBps	= sMetric_UncompressedBps	= 0.f;
+		sStatsCompressed		= sStatsUncompressed		= 0u;
+		gMetric_SentDataTimeUS	= 0.f;
+	}
+	else if( std::chrono::duration_cast<std::chrono::milliseconds>(elapsedTime).count() >= 250 )
+	{
+		constexpr uint64_t kHysteresis	= 20; // out of 100
+		uint64_t newDataCompressed		= gMetric_SentDataCompressed - sStatsCompressed;
+		uint64_t newDataUncompressed	= gMetric_SentDataUncompressed - sStatsUncompressed;
+		uint64_t tmMicrosS				= std::chrono::duration_cast<std::chrono::microseconds>(elapsedTime).count();
+		uint32_t newDataRcvdBps			= static_cast<uint32_t>(newDataCompressed * 1000000u / tmMicrosS);
+		uint32_t newDataSentBps			= static_cast<uint32_t>(newDataUncompressed * 1000000u / tmMicrosS);
+		sMetric_CompressedBps			= (sMetric_CompressedBps*(100u-kHysteresis) + newDataRcvdBps*kHysteresis)/100u;
+		sMetric_UncompressedBps			= (sMetric_UncompressedBps*(100u-kHysteresis) + newDataSentBps*kHysteresis)/100u;
+		sPreviousTime					= std::chrono::steady_clock::now();
+		sStatsCompressed				= gMetric_SentDataCompressed;
+		sStatsUncompressed				= gMetric_SentDataUncompressed;
+	}
+	
+	//---------------------------------------------------------------------------------------------
+	// (1) Start a new Frame.
+	// Note:	With ImGui 1.81+ NetImgui can automatically intercept Imgui::NewFrame/Render. This
+	//			sample does this. For older Imgui releases, please look at 'Client_Draw_ModeAlways'
+	//			in 'SampleNewFrame' on how to tell NetImgui directly about NewFrame/EndFrame.
+	//			Other samples also avoid the auto intercept to allow drawing only when needed.
+	//---------------------------------------------------------------------------------------------
+	ImGui::NewFrame();
+
+	//-----------------------------------------------------------------------------------------
+	// (2) Draw ImGui Content
+	//-----------------------------------------------------------------------------------------
+	ClientUtil_ImGuiContent_Common("SampleCompression"); //Note: Connection to remote server done in there
 	ImGui::SetNextWindowPos(ImVec2(32,48), ImGuiCond_Once);
 	ImGui::SetNextWindowSize(ImVec2(400,500), ImGuiCond_Once);
 	if( ImGui::Begin("Sample Compression", nullptr) )
@@ -133,8 +162,9 @@ void Client_Draw_RemoteDraw()
 		if( ImGui::IsItemHovered() ) ImGui::SetTooltip("Includes time for NetImgui to send the results to the NetImgui server (on communication thread).");
 		ImGui::NewLine();
 
+		float compressionRate = NetImgui::IsConnected() ? sMetric_UncompressedBps/sMetric_CompressedBps : 0.f;
 		ImGui::TextColored(ImVec4(0.1f, 1.0f, 0.1f, 1), "Bandwidth (Client to Server)");
-		ImGui::Text(									"Compression rate:   %7.01fx", sMetric_UncompressedBps/sMetric_CompressedBps );
+		ImGui::Text(									"Compression rate:   %7.01fx", compressionRate );
 		ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1), "  Compressed data:  %5i KB/s", static_cast<int>(sMetric_CompressedBps/1024.f) );
 		ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1), "  Unompressed data: %5i KB/s", static_cast<int>(sMetric_UncompressedBps/1024.f) );
 	}
@@ -143,47 +173,7 @@ void Client_Draw_RemoteDraw()
 	Client_Draw_ExtraWindowDraw("Extra Window 1", ImVec2(500,48));
 	Client_Draw_ExtraWindowDraw("Extra Window 2", ImVec2(600,148));
 	Client_Draw_ExtraWindowDraw("Extra Window 3", ImVec2(700,248));
-}
-//=================================================================================================
-// Function used by the sample, to draw all ImGui Content
-//=================================================================================================
-ImDrawData* Client_Draw()
-{
-	//---------------------------------------------------------------------------------------------
-	// (0) Update the communications statistics
-	//---------------------------------------------------------------------------------------------	
-	auto timeDrawStart					= std::chrono::steady_clock::now();
-	auto elapsedTime					= timeDrawStart - sPreviousTime;	
-	if( std::chrono::duration_cast<std::chrono::milliseconds>(elapsedTime).count() >= 250 ){
-		constexpr uint64_t kHysteresis	= 20; // out of 100
-		uint64_t newDataCompressed		= gMetric_SentDataCompressed - sStatsCompressed;
-		uint64_t newDataUncompressed	= gMetric_SentDataUncompressed - sStatsUncompressed;
-		uint64_t tmMicrosS				= std::chrono::duration_cast<std::chrono::microseconds>(elapsedTime).count();
-		uint32_t newDataRcvdBps			= static_cast<uint32_t>(newDataCompressed * 1000000u / tmMicrosS);
-		uint32_t newDataSentBps			= static_cast<uint32_t>(newDataUncompressed * 1000000u / tmMicrosS);
-		sMetric_CompressedBps			= (sMetric_CompressedBps*(100u-kHysteresis) + newDataRcvdBps*kHysteresis)/100u;
-		sMetric_UncompressedBps			= (sMetric_UncompressedBps*(100u-kHysteresis) + newDataSentBps*kHysteresis)/100u;
-		sPreviousTime					= std::chrono::steady_clock::now();
-		sStatsCompressed				= gMetric_SentDataCompressed;
-		sStatsUncompressed				= gMetric_SentDataUncompressed;
-	}
-
-	//---------------------------------------------------------------------------------------------
-	// (1) Start a new Frame.
-	// Note:	With ImGui 1.81+ NetImgui can automatically intercept Imgui::NewFrame/Render. This
-	//			sample does this. For older Imgui releases, please look at 'Client_Draw_ModeAlways'
-	//			in 'SampleNewFrame' on how to tell NetImgui directly about NewFrame/EndFrame.
-	//			Other samples also avoid the auto intercept to allow drawing only when needed.
-	//---------------------------------------------------------------------------------------------
-	ImGui::NewFrame();
-
-	//-----------------------------------------------------------------------------------------
-	// (2) Draw ImGui Content
-	//-----------------------------------------------------------------------------------------
-	ClientUtil_ImGuiContent_Common("SampleCompression"); //Note: Connection to remote server done in there
-	Client_Draw_LocalDraw();
-	Client_Draw_RemoteDraw();
-	
+		
 	//---------------------------------------------------------------------------------------------
 	// (3) Finish the frame
 	// Note:	Same note as in (1)
