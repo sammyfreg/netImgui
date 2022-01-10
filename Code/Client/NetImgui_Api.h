@@ -4,12 +4,12 @@
 //! @Name		: NetImgui
 //=================================================================================================
 //! @author		: Sammy Fatnassi
-//! @date		: 2022/01/09
-//!	@version	: v1.6.4
+//! @date		: 2022/01/10
+//!	@version	: v1.7.7
 //! @Details	: For integration info : https://github.com/sammyfreg/netImgui/wiki
 //=================================================================================================
-#define NETIMGUI_VERSION		"1.6.4"
-#define NETIMGUI_VERSION_NUM	10604
+#define NETIMGUI_VERSION		"1.7.0"
+#define NETIMGUI_VERSION_NUM	10700
 
 #include <stdint.h>
 #include "Private/NetImgui_WarningDisable.h"
