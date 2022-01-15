@@ -71,7 +71,7 @@ SocketInfo* Connect(const char* ServerHost, uint32_t ServerPort)
 	{
 		if( connect(ClientSocket, pResultCur->ai_addr, static_cast<int>(pResultCur->ai_addrlen)) == 0 )
 		{	
-			SetNonBlocking(ClientSocket, false);
+			SetNonBlocking(ClientSocket, true);
 			pSocketInfo = netImguiNew<SocketInfo>(ClientSocket);
 		}		
 		pResultCur = pResultCur->ai_next;
@@ -99,7 +99,7 @@ SocketInfo* ListenStart(uint32_t ListenPort)
 		if(	bind(ListenSocket, reinterpret_cast<sockaddr*>(&server), sizeof(server)) != SOCKET_ERROR &&
 			listen(ListenSocket, 0) != SOCKET_ERROR )
 		{
-			SetNonBlocking(ListenSocket, true);
+			SetNonBlocking(ListenSocket, false);
 			return netImguiNew<SocketInfo>(ListenSocket);
 		}
 		closesocket(ListenSocket);

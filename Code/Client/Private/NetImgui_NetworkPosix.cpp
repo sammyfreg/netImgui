@@ -87,7 +87,7 @@ SocketInfo* ListenStart(uint32_t ListenPort)
 		if(	bind(ListenSocket, addrInfo->ai_addr, addrInfo->ai_addrlen) != -1 &&
 			listen(ListenSocket, 0) != -1)
 		{
-			SetNonBlocking(ListenSocket, true);
+			SetNonBlocking(ListenSocket, false);
 			return netImguiNew<SocketInfo>(ListenSocket);
 		}
 		close(ListenSocket);

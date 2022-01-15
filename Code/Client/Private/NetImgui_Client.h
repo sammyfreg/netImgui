@@ -84,8 +84,10 @@ struct ClientInfo
 	std::atomic_uint32_t				mTexturesPendingSent;
 	std::atomic_uint32_t				mTexturesPendingCreated;
 	float								mMouseWheelVertPrev			= 0.f;
-	float								mMouseWheelHorizPrev		= 0.f;	
+	float								mMouseWheelHorizPrev		= 0.f;
 	bool								mbDisconnectRequest			= false;	// Waiting to Disconnect
+	bool								mbClientThreadActive		= false;
+	bool								mbListenThreadActive		= false;
 	bool								mbHasTextureUpdate			= false;
 	bool								mbIsDrawing					= false;	// We are inside a 'NetImgui::NewFrame' / 'NetImgui::EndFrame' (even if not for a remote draw)
 	bool								mbIsRemoteDrawing			= false;	// True if the rendering it meant for the remote netImgui server
@@ -97,7 +99,7 @@ struct ClientInfo
 	eCompressionMode					mClientCompressionMode		= eCompressionMode::kUseServerSetting;
 	bool								mServerCompressionEnabled	= false;	// If Server would like compression to be enabled (mClientCompressionMode value can override this value)
 	bool								mServerCompressionSkip		= false;	// Force ignore compression setting for 1 frame
-	char								PADDING[4];
+	char								PADDING[2];
 		
 	ImGuiID								mhImguiHookNewframe			= 0;
 	ImGuiID								mhImguiHookEndframe			= 0;

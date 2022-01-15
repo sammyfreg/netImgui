@@ -4,12 +4,12 @@
 //! @Name		: NetImgui
 //=================================================================================================
 //! @author		: Sammy Fatnassi
-//! @date		: 2022/01/10
-//!	@version	: v1.7.7
+//! @date		: 2022/01/15
+//!	@version	: v1.7.1
 //! @Details	: For integration info : https://github.com/sammyfreg/netImgui/wiki
 //=================================================================================================
-#define NETIMGUI_VERSION		"1.7.0"
-#define NETIMGUI_VERSION_NUM	10700
+#define NETIMGUI_VERSION		"1.7.1"
+#define NETIMGUI_VERSION_NUM	10701
 
 #include <stdint.h>
 #include "Private/NetImgui_WarningDisable.h"
@@ -67,10 +67,9 @@ bool				Startup(void);
 
 //=================================================================================================
 // Free Resources
-//-------------------------------------------------------------------------------------------------
-// bWait			: Wait until all communication threads have terminated before returning
+// Wait until all communication threads have terminated before returning
 //=================================================================================================
-void				Shutdown(bool bWait);
+void				Shutdown();
 
 //=================================================================================================
 // Try to establish a connection to NetImgui server application. 

@@ -76,7 +76,7 @@ SocketInfo* ListenStart(uint32_t ListenPort)
 	{
 		SocketInfo* pListenSocketInfo	= netImguiNew<SocketInfo>(pNewListenSocket);
 		pNewListenSocket->SetReuseAddr();
-		pNewListenSocket->SetNonBlocking(true);
+		pNewListenSocket->SetNonBlocking(false);
 		pNewListenSocket->SetRecvErr();
 		if (pNewListenSocket->Bind(*IpAddress))
 		{		
