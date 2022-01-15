@@ -38,7 +38,7 @@ bool Client_Startup()
 //=================================================================================================
 void Client_Shutdown()
 {	
-	NetImgui::Shutdown(true);
+	NetImgui::Shutdown();
 }
 
 void Client_Draw_ExtraWindowDraw(const char* name, const ImVec2& pos)

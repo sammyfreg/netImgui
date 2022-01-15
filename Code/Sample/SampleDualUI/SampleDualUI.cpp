@@ -33,7 +33,7 @@ bool Client_Startup()
 //=================================================================================================
 void Client_Shutdown()
 {			
-	NetImgui::Shutdown(true);
+	NetImgui::Shutdown();
 	ImGui::DestroyContext(gpContextSide);
 	ImGui::SetCurrentContext(gpContextMain);
 	gpContextMain	= nullptr;

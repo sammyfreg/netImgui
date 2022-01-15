@@ -235,18 +235,21 @@ bool Communications_Outgoing(ClientInfo& client)
 //=================================================================================================
 void CommunicationsClient(void* pClientVoid)
 {	
-	ClientInfo* pClient = reinterpret_cast<ClientInfo*>(pClientVoid);
+	ClientInfo* pClient				= reinterpret_cast<ClientInfo*>(pClientVoid);
+	pClient->mbClientThreadActive	= true;
+	pClient->mbDisconnectRequest	= false;
 	Communications_Initialize(*pClient);
-	bool bConnected(pClient->IsConnected());
-	while( bConnected )
+	bool bConnected					= pClient->IsConnected();
+	
+	while( bConnected && !pClient->mbDisconnectRequest )
 	{
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		//std::this_thread::yield();
-		bConnected = !pClient->mbDisconnectRequest && Communications_Outgoing(*pClient) && Communications_Incoming(*pClient);		
+		bConnected = Communications_Outgoing(*pClient) && Communications_Incoming(*pClient);
 	}
 
 	pClient->KillSocketComs();
-	pClient->mbDisconnectRequest = false; // Signal the main thread that it can continue
+	pClient->mbClientThreadActive	= false;
 }
 
 //=================================================================================================
@@ -254,26 +257,29 @@ void CommunicationsClient(void* pClientVoid)
 //=================================================================================================
 void CommunicationsHost(void* pClientVoid)
 {
-	ClientInfo* pClient		= reinterpret_cast<ClientInfo*>(pClientVoid);
-	pClient->mpSocketListen	= pClient->mpSocketPending.exchange(nullptr);
-	while( !pClient->mbDisconnectRequest && pClient->mpSocketListen.load() != nullptr )
+	ClientInfo* pClient				= reinterpret_cast<ClientInfo*>(pClientVoid);
+	pClient->mbListenThreadActive	= true;
+	pClient->mbDisconnectRequest	= false;
+	pClient->mpSocketListen			= pClient->mpSocketPending.exchange(nullptr);
+	
+	while( pClient->mpSocketListen.load() != nullptr && !pClient->mbDisconnectRequest )
 	{
-		std::this_thread::sleep_for(std::chrono::milliseconds(10));	// Prevents this thread from taking entire core, waiting on server connection
 		pClient->mpSocketPending = Network::ListenConnect(pClient->mpSocketListen);
 		if( pClient->mpSocketPending.load() != nullptr )
 		{
 			bool bConnected = Communications_Initialize(*pClient);
-			while (bConnected)
+			while (bConnected && !pClient->mbDisconnectRequest)
 			{
 				std::this_thread::sleep_for(std::chrono::milliseconds(1));
 				//std::this_thread::yield();
-				bConnected	= !pClient->mbDisconnectRequest && Communications_Outgoing(*pClient) && Communications_Incoming(*pClient);
+				bConnected	= Communications_Outgoing(*pClient) && Communications_Incoming(*pClient);
 			}
 			pClient->KillSocketComs();
 		}
+		std::this_thread::sleep_for(std::chrono::milliseconds(10));	// Prevents this thread from taking entire core, waiting on server connection
 	}
 	pClient->KillSocketListen();
-	pClient->mbDisconnectRequest = false; // Signal the main thread that it can continue
+	pClient->mbListenThreadActive	= false;
 }
 
 //=================================================================================================

@@ -27,7 +27,7 @@ bool ClientInfo::IsConnectPending()const
 
 bool ClientInfo::IsActive()const
 {
-	return IsConnected() || IsConnectPending() || mbDisconnectRequest;
+	return mbClientThreadActive || mbListenThreadActive;
 }
 
 void ClientInfo::KillSocketComs()

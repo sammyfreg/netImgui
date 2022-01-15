@@ -67,10 +67,9 @@ bool				Startup(void);
 
 //=================================================================================================
 // Free Resources
-//-------------------------------------------------------------------------------------------------
-// bWait			: Wait until all communication threads have terminated before returning
+// Wait until all communication threads have terminated before returning
 //=================================================================================================
-void				Shutdown(bool bWait);
+void				Shutdown();
 
 //=================================================================================================
 // Try to establish a connection to NetImgui server application. 

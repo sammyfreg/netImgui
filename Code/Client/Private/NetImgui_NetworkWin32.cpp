@@ -83,7 +83,7 @@ SocketInfo* ListenStart(uint32_t ListenPort)
 		if(	bind(ListenSocket, reinterpret_cast<sockaddr*>(&server), sizeof(server)) != SOCKET_ERROR &&
 			listen(ListenSocket, 0) != SOCKET_ERROR )
 		{
-			SetNonBlocking(ListenSocket, true);
+			SetNonBlocking(ListenSocket, false);
 			return netImguiNew<SocketInfo>(ListenSocket);
 		}
 		closesocket(ListenSocket);

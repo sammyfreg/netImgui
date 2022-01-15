@@ -51,7 +51,7 @@ bool Client_Startup()
 void Client_Shutdown()
 {
 	TextureDestroy(gTextureView);
-	NetImgui::Shutdown(true);
+	NetImgui::Shutdown();
 }
 
 //=================================================================================================

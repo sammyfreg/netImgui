@@ -41,7 +41,7 @@ bool ConnectToApp(const char* clientName, const char* ServerHost, uint32_t serve
 {
 	if (!gpClientInfo) return false;
 
-	Client::ClientInfo& client	= *gpClientInfo;	
+	Client::ClientInfo& client	= *gpClientInfo;
 	Disconnect();
 	
 	while (client.IsActive())
@@ -90,8 +90,8 @@ void Disconnect(void)
 	if (!gpClientInfo) return;
 	
 	Client::ClientInfo& client	= *gpClientInfo;
+	client.mbDisconnectRequest	= true;
 	client.KillSocketListen();
-	client.mbDisconnectRequest	= client.IsActive();
 }
 
 //=================================================================================================
@@ -102,7 +102,7 @@ bool IsConnected(void)
 	
 	Client::ClientInfo& client = *gpClientInfo;
 
-	// If disconnected in middle of a remote frame drawing,  
+	// If disconnected in middle of a remote frame drawing,
 	// want to behave like it is still connected to finish frame properly
 	return client.IsConnected() || IsDrawingRemote(); 
 }
@@ -420,17 +420,17 @@ bool Startup(void)
 }
 
 //=================================================================================================
-void Shutdown(bool bWait)
+void Shutdown()
 //=================================================================================================
 {
 	if (!gpClientInfo) return;
 	
 	Disconnect();
-	while(bWait && gpClientInfo->IsActive() )
+	while( gpClientInfo->IsActive() )
 		std::this_thread::yield();
 	Network::Shutdown();
 	
-	netImguiDeleteSafe(gpClientInfo);		
+	netImguiDeleteSafe(gpClientInfo);
 }
 
 
