@@ -51,7 +51,9 @@ inline void ImGui_ExtractIndices(const ImDrawList& cmdList, ImguiDrawGroup& draw
 //=================================================================================================
 inline void ImGui_ExtractVertices(const ImDrawList& cmdList, ImguiDrawGroup& drawGroupOut, ComDataType*& pDataOutput)
 {
-	drawGroupOut.mVerticeCount	= static_cast<uint32_t>(cmdList.VtxBuffer.size());
+	drawGroupOut.mVerticeCount		= static_cast<uint32_t>(cmdList.VtxBuffer.size());
+	drawGroupOut.mReferenceCoord[0] = drawGroupOut.mVerticeCount > 0 ? cmdList.VtxBuffer[0].pos.x : 0.f;
+	drawGroupOut.mReferenceCoord[1] = drawGroupOut.mVerticeCount > 0 ? cmdList.VtxBuffer[0].pos.y : 0.f;
 	SetAndIncreaseDataPointer(drawGroupOut.mpVertices, drawGroupOut.mVerticeCount*sizeof(ImguiVert), pDataOutput);
 	ImguiVert* pVertices		= drawGroupOut.mpVertices.Get();
 	for(int i(0); i<static_cast<int>(drawGroupOut.mVerticeCount); ++i)
@@ -60,8 +62,8 @@ inline void ImGui_ExtractVertices(const ImDrawList& cmdList, ImguiDrawGroup& dra
 		pVertices[i].mColor		= Vtx.col;
 		pVertices[i].mUV[0]		= static_cast<uint16_t>((Vtx.uv.x	- static_cast<float>(ImguiVert::kUvRange_Min)) * 0xFFFF / (ImguiVert::kUvRange_Max - ImguiVert::kUvRange_Min));
 		pVertices[i].mUV[1]		= static_cast<uint16_t>((Vtx.uv.y	- static_cast<float>(ImguiVert::kUvRange_Min)) * 0xFFFF / (ImguiVert::kUvRange_Max - ImguiVert::kUvRange_Min));
-		pVertices[i].mPos[0]	= static_cast<uint16_t>((Vtx.pos.x	- static_cast<float>(ImguiVert::kPosRange_Min)) * 0xFFFF / (ImguiVert::kPosRange_Max - ImguiVert::kPosRange_Min));
-		pVertices[i].mPos[1]	= static_cast<uint16_t>((Vtx.pos.y	- static_cast<float>(ImguiVert::kPosRange_Min)) * 0xFFFF / (ImguiVert::kPosRange_Max - ImguiVert::kPosRange_Min));
+		pVertices[i].mPos[0]	= static_cast<uint16_t>((Vtx.pos.x	- drawGroupOut.mReferenceCoord[0] - static_cast<float>(ImguiVert::kPosRange_Min)) * 0xFFFF / (ImguiVert::kPosRange_Max - ImguiVert::kPosRange_Min));
+		pVertices[i].mPos[1]	= static_cast<uint16_t>((Vtx.pos.y	- drawGroupOut.mReferenceCoord[1] - static_cast<float>(ImguiVert::kPosRange_Min)) * 0xFFFF / (ImguiVert::kPosRange_Max - ImguiVert::kPosRange_Min));
 	}
 }
 

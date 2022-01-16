@@ -179,7 +179,7 @@ ImDrawData* Client_Draw()
 	// Note:	Same note as in (1)
 	//---------------------------------------------------------------------------------------------
 	{
-		constexpr uint64_t kHysteresis	= 1.f; // out of 100
+		constexpr float kHysteresis	= 1.f; // out of 100
 		auto timeBeforeRender	= std::chrono::steady_clock::now();
 		ImGui::Render();
 		auto elapsedRender		= std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - timeBeforeRender);

@@ -159,7 +159,7 @@ bool DataSend(SocketInfo* pClientSocket, void* pDataOut, size_t Size)
 		gMetric_SentDataUncompressed += Size;
 	}
 
-	constexpr uint64_t kHysteresis	= 1.f; // out of 100
+	constexpr float kHysteresis	= 1.f; // out of 100
 	auto timeBeforeSend			= std::chrono::steady_clock::now();
 	//=============================================================================
 

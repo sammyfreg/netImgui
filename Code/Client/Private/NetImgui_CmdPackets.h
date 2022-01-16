@@ -39,6 +39,7 @@ struct alignas(8) CmdVersion
 		BackgroundCmd		= 5,	// Added new command to control background appearance
 		ClientName			= 6,	// Increase maximum allowed client name that a program can set
 		DataCompression		= 7,	// Adding support for data compression between client/server. Simple low cost delta compressor (only send difference from previous frame)
+		DataCompression2	= 8,	// Improvement to data compression (save corner position and use SoA for vertices data)
 		// Insert new version here
 
 		//--------------------------------
