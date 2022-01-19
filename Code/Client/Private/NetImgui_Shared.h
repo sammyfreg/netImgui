@@ -7,9 +7,13 @@
 #pragma warning (disable: 4464)		// warning C4464: relative include path contains '..'
 #endif
 
-#define NETIMGUI_INTERNAL_INCLUDE 1
-#include "../NetImgui_Api.h"
-#undef NETIMGUI_INTERNAL_INCLUDE
+#ifndef NETIMGUI_INTERNAL_INCLUDE
+	#define NETIMGUI_INTERNAL_INCLUDE 1
+	#include "../NetImgui_Api.h"
+	#undef NETIMGUI_INTERNAL_INCLUDE
+#else
+	#include "../NetImgui_Api.h"
+#endif
 
 #if NETIMGUI_ENABLED
 

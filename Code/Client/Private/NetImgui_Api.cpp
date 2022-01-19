@@ -295,7 +295,7 @@ void SendDataTexture(ImTextureID textureId, void* pData, uint16_t width, uint16_
 		pCmdTexture->mWidth					= width;
 		pCmdTexture->mHeight				= height;
 		pCmdTexture->mTextureId				= texId64;
-		pCmdTexture->mFormat				= format;
+		pCmdTexture->mFormat				= static_cast<uint8_t>(format);
 		pCmdTexture->mpTextureData.ToOffset();
 
 		// Detects when user is sending the font texture
@@ -395,7 +395,7 @@ void SetCompressionMode(eCompressionMode eMode)
 	if (!gpClientInfo) return;
 	
 	Client::ClientInfo& client		= *gpClientInfo;
-	client.mClientCompressionMode	= eMode;
+	client.mClientCompressionMode	= static_cast<uint8_t>(eMode);
 }
 //=================================================================================================
 eCompressionMode GetCompressionMode()
@@ -404,7 +404,7 @@ eCompressionMode GetCompressionMode()
 	if (!gpClientInfo) return eCompressionMode::kUseServerSetting;
 	
 	Client::ClientInfo& client	= *gpClientInfo;
-	return client.mClientCompressionMode;
+	return static_cast<eCompressionMode>(client.mClientCompressionMode);
 }
 
 //=================================================================================================

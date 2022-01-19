@@ -113,7 +113,7 @@ void Client::ProcessPendingTextures()
 				mvTextures.resize(foundIdx+1);
 			}
 			
-			NetImguiServer::App::HAL_CreateTexture(pTextureCmd->mWidth, pTextureCmd->mHeight, pTextureCmd->mFormat, pTextureCmd->mpTextureData.Get(), mvTextures[foundIdx]);
+			NetImguiServer::App::HAL_CreateTexture(pTextureCmd->mWidth, pTextureCmd->mHeight, static_cast<NetImgui::eTexFormat>(pTextureCmd->mFormat), pTextureCmd->mpTextureData.Get(), mvTextures[foundIdx]);
 			mvTextures[foundIdx].mImguiId = pTextureCmd->mTextureId;
 		}
 

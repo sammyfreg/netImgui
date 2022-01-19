@@ -96,7 +96,7 @@ struct ClientInfo
 	bool								mbInsideHook				= false;	// Currently inside ImGui hook callback
 	bool								mbInsideNewEnd				= false;	// Currently inside NetImgui::NewFrame() or NetImgui::EndFrame() (prevents recusrive hook call)
 	bool								mbValidDrawFrame			= false;	// If we should forward the drawdata to the server at the end of ImGui::Render()
-	eCompressionMode					mClientCompressionMode		= eCompressionMode::kUseServerSetting;
+	uint8_t								mClientCompressionMode		= eCompressionMode::kUseServerSetting;
 	bool								mServerCompressionEnabled	= false;	// If Server would like compression to be enabled (mClientCompressionMode value can override this value)
 	bool								mServerCompressionSkip		= false;	// Force ignore compression setting for 1 frame
 	char								PADDING[2];

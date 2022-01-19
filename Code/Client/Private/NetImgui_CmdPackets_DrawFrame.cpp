@@ -112,7 +112,7 @@ void CompressData(const ComDataType* pDataPrev, size_t dataSizePrev, const ComDa
 	static_assert(sizeof(uint32_t)*2 <= ComDataSize, "Need to adjust compression algorithm pointer calculation");
 	const size_t elemCountPrev	= static_cast<size_t>(DivUp(dataSizePrev, sizeof(uint64_t)));
 	const size_t elemCountNew	= static_cast<size_t>(DivUp(dataSizeNew, sizeof(uint64_t)));
-	const size_t elemCount		= std::min(elemCountPrev, elemCountNew);
+	const size_t elemCount		= elemCountPrev < elemCountNew ? elemCountPrev : elemCountNew;
 	size_t n					= 0;
 	
 	while(n < elemCount)
@@ -153,7 +153,7 @@ void DecompressData(const ComDataType* pDataPrev, size_t dataSizePrev, const Com
 {
 	const size_t elemCountPrev	= DivUp(dataSizePrev, ComDataSize);
 	const size_t elemCountUnpack= DivUp(dataUnpackSize, ComDataSize);
-	const size_t elemCountCopy	= std::min(elemCountPrev, elemCountUnpack);
+	const size_t elemCountCopy	= elemCountPrev < elemCountUnpack ? elemCountPrev : elemCountUnpack;
 	uint64_t* pCommandMemoryEnd	= &pCommandMemoryInOut[elemCountUnpack];
 	memcpy(pCommandMemoryInOut, pDataPrev, elemCountCopy * ComDataSize);
 	while(pCommandMemoryInOut < pCommandMemoryEnd)

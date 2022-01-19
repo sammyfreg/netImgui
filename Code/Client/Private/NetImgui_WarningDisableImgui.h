@@ -17,6 +17,7 @@
 #elif defined(_MSC_VER) 
 	#pragma warning	(push)	
 	#pragma warning (disable: 4514)		// 'xxx': unreferenced inline function has been removed
+	#pragma warning (disable: 4365)		// '=': conversion from 'ImGuiTabItemFlags' to 'ImGuiID', signed/unsigned mismatch
 	#pragma warning (disable: 4710)		// 'xxx': function not inlined
 	#pragma warning (disable: 4820)		// 'xxx': 'yyy' bytes padding added after data member 'zzz'	
 	#pragma warning (disable: 5031)		// #pragma warning(pop): likely mismatch, popping warning state pushed in different file	

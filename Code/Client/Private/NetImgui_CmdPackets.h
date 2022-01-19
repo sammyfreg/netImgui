@@ -121,7 +121,7 @@ struct alignas(8) CmdTexture
 	uint64_t						mTextureId		= 0;
 	uint16_t						mWidth			= 0;
 	uint16_t						mHeight			= 0;
-	eTexFormat						mFormat			= eTexFormat::kTexFmt_Invalid;	// eTexFormat
+	uint8_t							mFormat			= eTexFormat::kTexFmt_Invalid;	// eTexFormat
 	uint8_t							PADDING[3]		= {};
 };
 
