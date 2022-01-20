@@ -4,7 +4,7 @@
 //! @Name		: NetImgui
 //=================================================================================================
 //! @author		: Sammy Fatnassi
-//! @date		: 2022/01/19
+//! @date		: 2022/01/20
 //!	@version	: v1.7.3
 //! @Details	: For integration info : https://github.com/sammyfreg/netImgui/wiki
 //=================================================================================================
@@ -22,9 +22,13 @@
 //-------------------------------------------------------------------------------------------------
 #if defined (__clang__)
 	#pragma clang diagnostic push
+	// ImGui.h warnings(s)
 	#pragma clang diagnostic ignored "-Wc++98-compat-pedantic"
+	// NetImgui_Api.h Warning(s)
+	#pragma clang diagnostic ignored "-Wzero-as-null-pointer-constant"	// Not using nullptr in case this file is used in pre C++11
 #elif defined(_MSC_VER) 
 	#pragma warning	(push)
+	// ImGui.h warnings(s)
 	#pragma warning (disable: 4514)		// 'xxx': unreferenced inline function has been removed
 	#pragma warning (disable: 4710)		// 'xxx': function not inlined
 	#pragma warning (disable: 4820)		// 'xxx': 'yyy' bytes padding added after data member 'zzz'	
@@ -37,15 +41,6 @@
 // 'imgui_internal.h' when 'NETIMGUI_INTERNAL_INCLUDE' is defined
 //=================================================================================================
 #include "NetImgui_Config.h"
-
-//-------------------------------------------------------------------------------------------------
-// Re-Enable the Deactivated warnings
-//-------------------------------------------------------------------------------------------------
-#if defined (__clang__)
-	#pragma clang diagnostic push
-#elif defined(_MSC_VER) 
-	#pragma warning	(pop)
-#endif
 
 //-------------------------------------------------------------------------------------------------
 // If 'NETIMGUI_ENABLED' hasn't been defined yet (in project settings or NetImgui_Config.h') 
@@ -100,7 +95,6 @@ enum eCompressionMode {
 // Thread start function
 //-------------------------------------------------------------------------------------------------
 typedef void		ThreadFunctPtr(void threadedFunction(void* pClientInfo), void* pClientInfo);
-void				DefaultStartCommunicationThread(void ComFunctPtr(void*), void* pClient);
 
 //=================================================================================================
 // Initialize the Network Library
@@ -129,8 +123,8 @@ NETIMGUI_API	void				Shutdown();
 // threadFunction	: User provided function to launch new networking thread.
 //					  Use 'DefaultStartCommunicationThread' by default, relying on 'std::thread'.
 //=================================================================================================
-NETIMGUI_API	bool				ConnectToApp(const char* clientName, const char* serverHost, uint32_t serverPort=kDefaultServerPort, ThreadFunctPtr threadFunction=DefaultStartCommunicationThread);
-NETIMGUI_API	bool				ConnectFromApp(const char* clientName, uint32_t clientPort=kDefaultClientPort, ThreadFunctPtr threadFunction=DefaultStartCommunicationThread);
+NETIMGUI_API	bool				ConnectToApp(const char* clientName, const char* serverHost, uint32_t serverPort=kDefaultServerPort, ThreadFunctPtr threadFunction=0);
+NETIMGUI_API	bool				ConnectFromApp(const char* clientName, uint32_t clientPort=kDefaultClientPort, ThreadFunctPtr threadFunction=0);
 
 //=================================================================================================
 // Request a disconnect from the netImguiApp server
@@ -234,3 +228,11 @@ NETIMGUI_API	uint32_t			GetTexture_BytePerImage	(eTexFormat eFormat, uint32_t pi
 
 #endif // NETIMGUI_ENABLED
 
+//-------------------------------------------------------------------------------------------------
+// Re-Enable the Deactivated warnings
+//-------------------------------------------------------------------------------------------------
+#if defined (__clang__)
+	#pragma clang diagnostic pop
+#elif defined(_MSC_VER) 
+	#pragma warning	(pop)
+#endif
