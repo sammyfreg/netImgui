@@ -71,7 +71,7 @@ SocketInfo* Connect(const char* ServerHost, uint32_t ServerPort)
 	{
 		if( connect(ClientSocket, pResultCur->ai_addr, static_cast<int>(pResultCur->ai_addrlen)) == 0 )
 		{	
-			SetNonBlocking(ClientSocket, true);
+			SetNonBlocking(ClientSocket, false);
 			pSocketInfo = netImguiNew<SocketInfo>(ClientSocket);
 		}		
 		pResultCur = pResultCur->ai_next;

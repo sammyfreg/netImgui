@@ -4,12 +4,12 @@
 //! @Name		: NetImgui
 //=================================================================================================
 //! @author		: Sammy Fatnassi
-//! @date		: 2022/01/20
-//!	@version	: v1.7.3
+//! @date		: 2022/01/29
+//!	@version	: v1.7.4
 //! @Details	: For integration info : https://github.com/sammyfreg/netImgui/wiki
 //=================================================================================================
-#define NETIMGUI_VERSION		"1.7.3"
-#define NETIMGUI_VERSION_NUM	10703
+#define NETIMGUI_VERSION		"1.7.4"
+#define NETIMGUI_VERSION_NUM	10704
 
 
 #ifdef NETIMGUI_IMPLEMENTATION
@@ -94,7 +94,7 @@ enum eCompressionMode {
 //-------------------------------------------------------------------------------------------------
 // Thread start function
 //-------------------------------------------------------------------------------------------------
-typedef void		ThreadFunctPtr(void threadedFunction(void* pClientInfo), void* pClientInfo);
+typedef void ThreadFunctPtr(void threadedFunction(void* pClientInfo), void* pClientInfo);
 
 //=================================================================================================
 // Initialize the Network Library

@@ -287,7 +287,7 @@ ImDrawData* Client::ConvertToImguiDrawData(const NetImgui::Internal::CmdDrawFram
 		const uint16_t* pIndices = reinterpret_cast<const uint16_t*>(drawGroup.mpIndices.Get());
 		if (drawGroup.mBytePerIndex == sizeof(ImDrawIdx))
 		{
-			memcpy(&pIndexDst, pIndices, drawGroup.mIndiceCount*sizeof(ImDrawIdx));
+			memcpy(pIndexDst, pIndices, drawGroup.mIndiceCount*sizeof(ImDrawIdx));
 		}
 		else
 		{
