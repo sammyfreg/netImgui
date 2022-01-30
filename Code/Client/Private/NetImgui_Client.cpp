@@ -141,31 +141,36 @@ bool Communications_Outgoing_Frame(ClientInfo& client)
 	if( pPendingDrawFrame )
 	{
 		pPendingDrawFrame->mFrameIndex	= client.mFrameIndex++;
+		//---------------------------------------------------------------------
+		// Apply delta compression to DrawCommand, when requested
 		if( pPendingDrawFrame->mCompressed )
 		{
 			// Create a new Compressed DrawFrame Command
 			if( client.mpDrawFramePrevious && !client.mServerCompressionSkip ){
-				CmdDrawFrame* pDrawFrameCompressed = CompressCmdDrawFrame(client.mpDrawFramePrevious, pPendingDrawFrame);
-				netImguiDeleteSafe(client.mpDrawFramePrevious);
-				client.mpDrawFramePrevious	= pPendingDrawFrame;	// Keep original new command for next frame delta compression
-				pPendingDrawFrame			= pDrawFrameCompressed;	// Request compressed copy to be sent to server
-			}
-			// Create a copy that will be used next frame for delta compression
-			else
-			{
-				pPendingDrawFrame->mCompressed = false;
-				pPendingDrawFrame->ToOffsets();
-				netImguiDeleteSafe(client.mpDrawFramePrevious);
-				client.mpDrawFramePrevious = netImguiSizedNew<CmdDrawFrame>(pPendingDrawFrame->mHeader.mSize);
-				memcpy(client.mpDrawFramePrevious, pPendingDrawFrame, pPendingDrawFrame->mHeader.mSize);
 				client.mpDrawFramePrevious->ToPointers();
+				CmdDrawFrame* pDrawFrameCompressed	= CompressCmdDrawFrame(client.mpDrawFramePrevious, pPendingDrawFrame);
+				netImguiDeleteSafe(client.mpDrawFramePrevious);
+				client.mpDrawFramePrevious			= pPendingDrawFrame;	// Keep original new command for next frame delta compression
+				pPendingDrawFrame					= pDrawFrameCompressed;	// Request compressed copy to be sent to server
+			}
+			// Save DrawCmd for next frame delta compression
+			else {
+				pPendingDrawFrame->mCompressed		= false;
+				client.mpDrawFramePrevious			= pPendingDrawFrame;
 			}
 		}
-
 		client.mServerCompressionSkip = false;
+
+		//---------------------------------------------------------------------
+		// Send Command to server
 		pPendingDrawFrame->ToOffsets();
 		bSuccess = Network::DataSend(client.mpSocketComs, pPendingDrawFrame, pPendingDrawFrame->mHeader.mSize);
-		netImguiDeleteSafe(pPendingDrawFrame);
+
+		//---------------------------------------------------------------------
+		// Free created data once sent (when not used in next frame)
+		if( client.mpDrawFramePrevious != pPendingDrawFrame ){
+			netImguiDeleteSafe(pPendingDrawFrame);
+		}
 	}
 	return bSuccess;
 }
@@ -220,7 +225,7 @@ bool Communications_Incoming(ClientInfo& client)
 			{
 			case CmdHeader::eCommands::Ping:		bPingReceived = true; break;
 			case CmdHeader::eCommands::Disconnect:	bOk = false; break;
-			case CmdHeader::eCommands::Input:		Communications_Incoming_Input(client, pCmdData); break;			
+			case CmdHeader::eCommands::Input:		Communications_Incoming_Input(client, pCmdData); break;
 			// Commands not received in main loop, by Client
 			case CmdHeader::eCommands::Invalid:
 			case CmdHeader::eCommands::Version:

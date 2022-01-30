@@ -22,7 +22,16 @@ static int sServerPort				= NetImgui::kDefaultServerPort;
 static char sServerHostname[128]	= {"localhost"};
 static bool sbShowDemoWindow		= false;
 
-void ClientUtil_ImGuiContent_Common(const char* zAppName)
+//=================================================================================================
+// ClientUtil_ImGuiContent_Common
+//-------------------------------------------------------------------------------------------------
+// Function called by all samples, to display the Connection Options, and some other default
+// MainMenu entries.
+// 
+// @param zAppName:				Name displayed in the Main Menu bar
+// @param customThreadLauncher:	Optional thread launcher function to pass along NetImgui
+//=================================================================================================
+void ClientUtil_ImGuiContent_Common(const char* zAppName, NetImgui::ThreadFunctPtr customThreadLauncher)
 {
 	ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(3,6) );
 	if( ImGui::BeginMainMenuBar() )
@@ -76,7 +85,7 @@ void ClientUtil_ImGuiContent_Common(const char* zAppName)
 				ImGui::Separator();
 				if (ImGui::Button("Connect", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
 				{
-					NetImgui::ConnectToApp(zAppName, sServerHostname, sServerPort);
+					NetImgui::ConnectToApp(zAppName, sServerHostname, sServerPort, customThreadLauncher);
 				}
 				ImGui::EndMenu();
 			}
@@ -94,7 +103,7 @@ void ClientUtil_ImGuiContent_Common(const char* zAppName)
 				ImGui::Separator();
 				if (ImGui::Button("Listen", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
 				{
-					NetImgui::ConnectFromApp(zAppName, sClientPort);
+					NetImgui::ConnectFromApp(zAppName, sClientPort, customThreadLauncher);
 				}
 				ImGui::EndMenu();
 			}

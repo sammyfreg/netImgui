@@ -8,9 +8,8 @@
 #include "..\..\Client\Private\NetImgui_WarningDisableStd.h"
 #include "..\..\Client\Private\NetImgui_CmdPackets.h"
 
-uint64_t	gMetric_SentDataCompressed		= 0u;
-uint64_t	gMetric_SentDataUncompressed	= 0u;
-float		gMetric_SentDataTimeUS			= 0.f;
+uint64_t gMetric_SentDataCompressed		= 0u;
+uint64_t gMetric_SentDataUncompressed	= 0u;
 
 //#include "NetImgui_Shared.h"
 //#if NETIMGUI_ENABLED && NETIMGUI_WINSOCKET_ENABLED
@@ -146,31 +145,16 @@ bool DataReceive(SocketInfo* pClientSocket, void* pDataIn, size_t Size)
 bool DataSend(SocketInfo* pClientSocket, void* pDataOut, size_t Size)
 {
 	//=============================================================================
-	//@SAMPLE_EDIT
-	auto* pCmdHeader = reinterpret_cast<NetImgui::Internal::CmdHeader*>(pDataOut);
-	gMetric_SentDataCompressed += Size;
-	if (pCmdHeader->mType == NetImgui::Internal::CmdHeader::eCommands::DrawFrame)
-	{
-		auto* pCmdDrawFrame = reinterpret_cast<NetImgui::Internal::CmdDrawFrame*>(pDataOut);
-		gMetric_SentDataUncompressed += pCmdDrawFrame->mUncompressedSize;
-	}
-	else
-	{
-		gMetric_SentDataUncompressed += Size;
-	}
-
-	constexpr float kHysteresis	= 1.f; // out of 100
-	auto timeBeforeSend			= std::chrono::steady_clock::now();
+	//@SAMPLE_EDIT 
+	// Intercept data transmission metrics used in compression sample
+	auto* pCmdHeader				= reinterpret_cast<NetImgui::Internal::CmdHeader*>(pDataOut);
+	gMetric_SentDataCompressed		+= Size;
+	gMetric_SentDataUncompressed	+= (pCmdHeader->mType == NetImgui::Internal::CmdHeader::eCommands::DrawFrame) ?
+										reinterpret_cast<const NetImgui::Internal::CmdDrawFrame*>(pDataOut)->mUncompressedSize :
+										Size;
 	//=============================================================================
 
 	int resultSend = send(pClientSocket->mSocket, reinterpret_cast<char*>(pDataOut), static_cast<int>(Size), 0);
-
-	//=============================================================================
-	//@SAMPLE_EDIT
-	auto elapsed			= std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - timeBeforeSend);
-	gMetric_SentDataTimeUS	= (gMetric_SentDataTimeUS*(100.f-kHysteresis) + static_cast<float>(elapsed.count()) / 1000.f * kHysteresis) / 100.f;
-	//=============================================================================
-
 	return resultSend != SOCKET_ERROR && static_cast<int>(Size) == resultSend;
 }
 

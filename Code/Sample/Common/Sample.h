@@ -1,7 +1,6 @@
 #pragma once
 
-#include <stdint.h>
-struct ImDrawData;	// Forward declare
+#include <NetImgui_Api.h>
 
 namespace SampleClient
 {
@@ -15,7 +14,7 @@ ImDrawData*		Client_Draw();
 //-----------------------------------------------------------------------------
 // Utility methods available in Samples
 //-----------------------------------------------------------------------------
-void ClientUtil_ImGuiContent_Common(const char* zAppName);
+void ClientUtil_ImGuiContent_Common(const char* zAppName, NetImgui::ThreadFunctPtr customThreadLauncher=nullptr);
 
 }
 

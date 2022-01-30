@@ -14,10 +14,76 @@
 
 extern uint64_t gMetric_SentDataCompressed;
 extern uint64_t gMetric_SentDataUncompressed;
-extern float	gMetric_SentDataTimeUS;
+static float	gMetric_SentDataTimeUS = 0.f;
 
 namespace SampleClient
 {
+
+//=================================================================================================
+// Replacement of Main Communication Loop used by Communication Thread
+// Used to insert some timing metrics
+// @Note: Keep this version identical original in 'NetImgui_Client.cpp' (minus the small edits)
+//=================================================================================================
+using namespace NetImgui::Internal::Client;
+void CustomCommunicationsClient(void* pClientVoid)
+{	
+	ClientInfo* pClient				= reinterpret_cast<ClientInfo*>(pClientVoid);
+	pClient->mbClientThreadActive	= true;
+	pClient->mbDisconnectRequest	= false;
+	Communications_Initialize(*pClient);
+	bool bConnected					= pClient->IsConnected();
+	
+	while( bConnected && !pClient->mbDisconnectRequest )
+	{
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		//std::this_thread::yield();
+		
+		//=============================================================================
+		//@SAMPLE_EDIT
+		auto startComs = std::chrono::steady_clock::now();
+		//=============================================================================
+
+		bConnected = Communications_Outgoing(*pClient) && Communications_Incoming(*pClient);
+
+		//=============================================================================
+		//@SAMPLE_EDIT
+		constexpr float kHysteresis	= 1.f; // out of 100
+		auto elapsed			= std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - startComs);
+		gMetric_SentDataTimeUS	= (gMetric_SentDataTimeUS*(100.f-kHysteresis) + static_cast<float>(elapsed.count()) / 1000.f * kHysteresis) / 100.f;
+		//=============================================================================
+	}
+
+	pClient->KillSocketComs();
+	pClient->mbClientThreadActive	= false;
+}
+
+//=================================================================================================
+// Copy of 'DefaultStartCommunicationThread()' minus our small edit.
+// Sneaky method of replacing the original 'CommunicationsClient' function with our own.
+// When this thread launcher function detects that NetImgui wants to launch the original 
+// Communication function, we start a new thread with our own custum version instead.
+//=================================================================================================
+void CustomThreadLauncher(void ComFunctPtr(void*), void* pClient)
+{
+// Visual Studio 2017 generate this warning on std::thread, avoid the warning preventing build
+#if defined(_MSC_VER) && (_MSC_VER < 1920)
+	#pragma warning	(push)		
+	#pragma warning (disable: 4625)		// 'std::_LaunchPad<_Target>' : copy constructor was implicitly defined as deleted
+	#pragma warning (disable: 4626)		// 'std::_LaunchPad<_Target>' : assignment operator was implicitly defined as deleted
+#endif
+	//=========================================================================================
+	// @SAMPLE_EDIT	
+	if( ComFunctPtr == NetImgui::Internal::Client::CommunicationsClient ){
+		std::thread(CustomCommunicationsClient, pClient).detach();
+		return;
+	}
+	//=========================================================================================
+	std::thread(ComFunctPtr, pClient).detach();
+
+#if defined(_MSC_VER) && (_MSC_VER < 1920)
+	#pragma warning	(pop)
+#endif	
+}
 
 //=================================================================================================
 //
@@ -61,17 +127,6 @@ void Client_Draw_ExtraWindowDraw(const char* name, const ImVec2& pos)
 	ImGui::End();
 }
 
-//=================================================================================================
-// Imgui drawing when there's a NetImgui connection detected. 
-// Draw main compression sample window
-//=================================================================================================
-void Client_Draw_RemoteDraw()
-{
-	//if(!NetImgui::IsConnected())
-	//	return;
-
-	
-}
 //=================================================================================================
 // Function used by the sample, to draw all ImGui Content
 //=================================================================================================
@@ -123,7 +178,7 @@ ImDrawData* Client_Draw()
 	//-----------------------------------------------------------------------------------------
 	// (2) Draw ImGui Content
 	//-----------------------------------------------------------------------------------------
-	ClientUtil_ImGuiContent_Common("SampleCompression"); //Note: Connection to remote server done in there
+	ClientUtil_ImGuiContent_Common("SampleCompression", CustomThreadLauncher); //Note: Connection to remote server done in there
 	ImGui::SetNextWindowPos(ImVec2(32,48), ImGuiCond_Once);
 	ImGui::SetNextWindowSize(ImVec2(400,500), ImGuiCond_Once);
 	if( ImGui::Begin("Sample Compression", nullptr) )
@@ -157,9 +212,9 @@ ImDrawData* Client_Draw()
 		if( ImGui::IsItemHovered() ) ImGui::SetTooltip("Sample main update function with its Dear ImGui drawing. Help give a scale to the NetImgui cost.");
 		ImGui::Text(									"NetImgui process: %5.03f ms", (sMetric_RenderTimeUS+gMetric_SentDataTimeUS)/1000.f);
 		ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1), "...EndFrame:      %5.03f ms", sMetric_RenderTimeUS/1000.f);
-		if( ImGui::IsItemHovered() ) ImGui::SetTooltip("Includes time for Dear ImGui to generate rendering data, NetImgui to create draw command and compress it.");
-		ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1), "...Transmit:      %5.03f ms", gMetric_SentDataTimeUS/1000.f);
-		if( ImGui::IsItemHovered() ) ImGui::SetTooltip("Includes time for NetImgui to send the results to the NetImgui server (on communication thread).");
+		if( ImGui::IsItemHovered() ) ImGui::SetTooltip("Includes time for Dear ImGui to generate rendering data and NetImgui to create draw command.");
+		ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1), "...Comms:         %5.03f ms", gMetric_SentDataTimeUS/1000.f);
+		if( ImGui::IsItemHovered() ) ImGui::SetTooltip("Includes time for NetImgui to send/receive data with server, and data compression when in use. This is all done on the on communication thread.");
 		ImGui::NewLine();
 
 		float compressionRate = NetImgui::IsConnected() ? sMetric_UncompressedBps/sMetric_CompressedBps : 0.f;
