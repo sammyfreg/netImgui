@@ -7,7 +7,7 @@ It seems that various gaming studios are making use of this code. I would enjoy 
 # Summary
 **NetImgui** is a library to remotely display and control **[Dear ImGui](https://github.com/ocornut/imgui)** menus with an associated **NetImgui Server** application. Designed to painlessly integrate into existing codebase with few changes required. It allows any program using **Dear ImGui** to receives input from a remote PC and then forwards its UI rendering to it (*textures, vertices, indices, draw commands*).
 
-![NetImgui](https://raw.githubusercontent.com/wiki/sammyfreg/netImgui/Web/img/netImgui.png)
+![NetImgui](https://raw.githubusercontent.com/wiki/sammyfreg/netImgui/Web/img/netImgui1_7.png)
 
 # Purpose
 Initially created to assist game developers in debugging their game running on a game console or smartphone, from a PC. However, its use extends to wider applications. The only requirements are that a program is using **Dear ImGui** using C++ and available TCP/IP communications.
@@ -105,9 +105,9 @@ Related projects making use of **NetImgui**.
 ### Version 1.7.4
 (2022/01/30)
 - **API Changes**
-  - Removed the `bWait` parameter from` Shutdown()`
+  - Removed the `bWait` parameter from `Shutdown()`
       - Always wait for Shutdown completion before returning now
-      - This prevents multihread data release issues
+      - This prevents multithread data release issues
   - Added a `NETIMGUI_API` define prefix to functions exported in `NetImgui_Api.h`
       - Similar to `IMGUI_API`, allows library user to control dll import/export
       - Takes the same value as `IMGUI_API` by default
