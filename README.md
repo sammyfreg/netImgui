@@ -95,13 +95,26 @@ Related projects making use of **NetImgui**.
 # Release notes
 ### To do
 - Support of additional texture formats
-- Commands to assign custom backgrounds
 - Handle Linear/sRGB vertex color format
 - Add logging information in netImgui server application
 - Profile and optimize performances
 - Add new **Dear ImGui** multi windows support (docking branch)
+- ~~Commands to assign custom backgrounds~~
 - ~~Add compression to data between Client and Server~~
 
+### Version 1.7.4
+(2022/01/30)
+- **API Changes**
+  - Removed the `bWait` parameter from` Shutdown()`
+      - Always wait for Shutdown completion before returning now
+      - This prevents multihread data release issues
+  - Added a `NETIMGUI_API` define prefix to functions exported in `NetImgui_Api.h`
+      - Similar to `IMGUI_API`, allows library user to control dll import/export
+      - Takes the same value as `IMGUI_API` by default
+- **Bug fixes**
+  - Compression feature causing some out of sync issue with NetImgui Server
+  - 32bits index support crash
+  
 ### Version 1.7
 (2022/01/10)
 - **API Changes**
