@@ -10,7 +10,7 @@
 // Since NetImgui is disabled in this sample, hit will not include this header
 #if !NETIMGUI_ENABLED
 #include "imgui.h" 
-namespace SampleClient { void ClientUtil_ImGuiContent_Common(const char*){} }
+namespace SampleClient { void ClientUtil_ImGuiContent_Common(const char*, NetImgui::ThreadFunctPtr){} }
 
 #else
 

@@ -2,6 +2,12 @@
 
 #include <NetImgui_Api.h>
 
+// forward declares when NetImgui not enabled
+#if !NETIMGUI_ENABLED
+	struct ImDrawData;
+	namespace NetImgui { using ThreadFunctPtr = void*; }
+#endif
+
 namespace SampleClient
 {
 //-----------------------------------------------------------------------------
