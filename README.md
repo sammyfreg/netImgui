@@ -102,6 +102,19 @@ Related projects making use of **NetImgui**.
 - Add new **Dear ImGui** multi windows support (docking branch)
 - ~~Add compression to data between Client and Server~~
 
+### Version 1.7.4
+(2022/01/30)
+- **API Changes**
+  - Removed the `bWait` parameter from` Shutdown()`
+      - Always wait for Shutdown completion before returning now
+      - This prevents multihread data release issues
+  - Added a `NETIMGUI_API` define prefix to functions exported in `NetImgui_Api.h`
+      - Similar to `IMGUI_API`, allows library user to control dll import/export
+      - Takes the same value as `IMGUI_API` by default
+- **Bug fixes**
+  - Compression feature causing some out of sync issue with NetImgui Server
+  - 32bits index support crash
+  
 ### Version 1.7
 (2022/01/10)
 - **API Changes**
