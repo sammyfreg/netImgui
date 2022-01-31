@@ -8,12 +8,30 @@
 namespace NetImguiServer { namespace RemoteClient
 {
 
+//=================================================================================================
+// ImDrawData wrapper
+// 
+// Allocate a single ImDrawList and assign it to itself. 
+// 
+// This child class leave the original ImDrawData behavior intact, but add the proper 
+// memory freeing of the ImDrawList member.
+//=================================================================================================
+struct NetImguiImDrawData : ImDrawData
+{
+				NetImguiImDrawData();
+	ImDrawList	mCommandList;
+	ImDrawList*	mpCommandList = nullptr;
+};
+
+//=================================================================================================
+// All info needed by the server to communicate with a remote client, and render its content
+//=================================================================================================
 struct Client
 {	
 	static constexpr uint32_t kInvalidClient = static_cast<uint32_t>(-1);
 	using ExchPtrInput		= NetImgui::Internal::ExchangePtr<NetImgui::Internal::CmdInput>;
 	using ExchPtrBackground = NetImgui::Internal::ExchangePtr<NetImgui::Internal::CmdBackground>;
-	using ExchPtrImguiDraw	= NetImgui::Internal::ExchangePtr<ImDrawData>;
+	using ExchPtrImguiDraw	= NetImgui::Internal::ExchangePtr<NetImguiImDrawData>;
 											Client();
 											~Client();
 											Client(const Client&)	= delete;
@@ -24,8 +42,8 @@ struct Client
 
 	void									ReceiveTexture(NetImgui::Internal::CmdTexture*);
 	void									ReceiveDrawFrame(NetImgui::Internal::CmdDrawFrame*);
-	ImDrawData*								ConvertToImguiDrawData(const NetImgui::Internal::CmdDrawFrame* pCmdDrawFrame);
-	ImDrawData*								GetImguiDrawData(void* pEmtpyTextureHAL);	// Get current active Imgui draw data
+	NetImguiImDrawData*						ConvertToImguiDrawData(const NetImgui::Internal::CmdDrawFrame* pCmdDrawFrame);
+	NetImguiImDrawData*						GetImguiDrawData(void* pEmtpyTextureHAL);	// Get current active Imgui draw data
 		
 	void									CaptureImguiInput();
 	NetImgui::Internal::CmdInput*			TakePendingInput();
@@ -46,7 +64,7 @@ struct Client
 	char									mConnectHost[64]		= {};		//!< Connected Hostname of this remote client
 	int										mConnectPort			= 0;		//!< Connected Port of this remote client
 
-	ImDrawData*								mpImguiDrawData			= nullptr;	//!< Current Imgui Data that this client is the owner of
+	NetImguiImDrawData*						mpImguiDrawData			= nullptr;	//!< Current Imgui Data that this client is the owner of
 	NetImgui::Internal::CmdDrawFrame*		mpFrameDrawPrev			= nullptr;	//!< Last valid DrawDrame (used by com thread, to uncompress data)
 	std::vector<App::ServerTexture>			mvTextures;							//!< List of textures received and used by the client
 	ExchPtrImguiDraw						mPendingImguiDrawDataIn;			//!< Pending received Imgui DrawData, waiting to be taken ownership of

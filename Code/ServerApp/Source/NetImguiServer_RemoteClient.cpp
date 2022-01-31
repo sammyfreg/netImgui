@@ -11,6 +11,15 @@ namespace NetImguiServer { namespace RemoteClient
 static Client* gpClients		= nullptr;	// Table of all potentially connected clients to this server
 static uint32_t gClientCountMax = 0;
 
+NetImguiImDrawData::NetImguiImDrawData()
+: mCommandList(nullptr)
+{
+	CmdListsCount	= 1;	// All draws collapsed in same CmdList
+	mpCommandList	= &mCommandList;
+	CmdLists		= &mpCommandList;
+}
+
+
 Client::Client()
 : mPendingTextureReadIndex(0)
 , mPendingTextureWriteIndex(0)
@@ -60,8 +69,8 @@ void Client::ReceiveDrawFrame(NetImgui::Internal::CmdDrawFrame* pFrameData)
 	{
 		// Convert DrawFrame command to Dear Imgui DrawData,
 		// and make it available for main thread to use in rendering
-		mpFrameDrawPrev				= pFrameData;
-		ImDrawData*	pNewDrawData	= ConvertToImguiDrawData(pFrameData);
+		mpFrameDrawPrev						= pFrameData;
+		NetImguiImDrawData*	pNewDrawData	= ConvertToImguiDrawData(pFrameData);
 		mPendingImguiDrawDataIn.Assign(pNewDrawData);
 		
 		// Update framerate
@@ -206,10 +215,10 @@ uint32_t Client::GetFreeIndex()
 //=================================================================================================
 // Get the current Dear Imgui drawdata to use for this client rendering content
 //=================================================================================================
-ImDrawData*	Client::GetImguiDrawData(void* pEmtpyTextureHAL)
+NetImguiImDrawData*	Client::GetImguiDrawData(void* pEmtpyTextureHAL)
 {
 	// Check if a new frame has been added. If yes, then take ownership of it.
-	ImDrawData* pPendingDrawData = mPendingImguiDrawDataIn.Release();
+	NetImguiImDrawData* pPendingDrawData = mPendingImguiDrawDataIn.Release();
 	if( pPendingDrawData )
 	{
 		NetImgui::Internal::netImguiDeleteSafe( mpImguiDrawData );
@@ -244,7 +253,7 @@ ImDrawData*	Client::GetImguiDrawData(void* pEmtpyTextureHAL)
 //=================================================================================================
 // Create a new Dear Imgui DrawData ready to be submitted for rendering
 //=================================================================================================
-ImDrawData* Client::ConvertToImguiDrawData(const NetImgui::Internal::CmdDrawFrame* pCmdDrawFrame)
+NetImguiImDrawData* Client::ConvertToImguiDrawData(const NetImgui::Internal::CmdDrawFrame* pCmdDrawFrame)
 {
 	constexpr float kPosRangeMin	= static_cast<float>(NetImgui::Internal::ImguiVert::kPosRange_Min);
 	constexpr float kPosRangeMax	= static_cast<float>(NetImgui::Internal::ImguiVert::kPosRange_Max);
@@ -256,9 +265,9 @@ ImDrawData* Client::ConvertToImguiDrawData(const NetImgui::Internal::CmdDrawFram
 	}
 	mMouseCursor					= static_cast<ImGuiMouseCursor>(pCmdDrawFrame->mMouseCursor);
 
-	ImDrawData* pDrawData			= NetImgui::Internal::netImguiNew<ImDrawData>();
+	NetImguiImDrawData* pDrawData	= NetImgui::Internal::netImguiNew<NetImguiImDrawData>();
+	ImDrawList* pCmdList			= pDrawData->CmdLists[0];
 	pDrawData->Valid				= true;
-    pDrawData->CmdListsCount		= 1; // All draws collapsed in same CmdList	
     pDrawData->TotalVtxCount		= static_cast<int>(pCmdDrawFrame->mTotalVerticeCount);
 	pDrawData->TotalIdxCount		= static_cast<int>(pCmdDrawFrame->mTotalIndiceCount);
     pDrawData->DisplayPos.x			= pCmdDrawFrame->mDisplayArea[0];
@@ -267,9 +276,6 @@ ImDrawData* Client::ConvertToImguiDrawData(const NetImgui::Internal::CmdDrawFram
 	pDrawData->DisplaySize.y		= pCmdDrawFrame->mDisplayArea[3] - pCmdDrawFrame->mDisplayArea[1];
     pDrawData->FramebufferScale		= ImVec2(1,1); //! @sammyfreg Currently untested, so force set to 1
     pDrawData->OwnerViewport		= nullptr;
-	pDrawData->CmdLists				= NetImgui::Internal::netImguiNew<ImDrawList*>();
-	pDrawData->CmdLists[0]			= NetImgui::Internal::netImguiNew<ImDrawList>(nullptr);
-	ImDrawList* pCmdList			= pDrawData->CmdLists[0];
 
 	uint32_t indexOffset(0), vertexOffset(0);
 	pCmdList->IdxBuffer.resize(pCmdDrawFrame->mTotalIndiceCount);

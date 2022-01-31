@@ -102,6 +102,13 @@ Related projects making use of **NetImgui**.
 - ~~Commands to assign custom backgrounds~~
 - ~~Add compression to data between Client and Server~~
 
+### Version 1.7.5
+(2022/01/31)
+- **API Changes**
+  - None
+- **Bug fixes**
+  - NetImgui Server memory leak fix
+  
 ### Version 1.7.4
 (2022/01/30)
 - **API Changes**
