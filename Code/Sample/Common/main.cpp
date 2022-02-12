@@ -378,7 +378,7 @@ void TextureDestroy(void*& pTextureView)
     }
 }
 
-int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)
 {
 	IM_UNUSED(hInstance);
 	IM_UNUSED(hPrevInstance);

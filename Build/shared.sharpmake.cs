@@ -33,7 +33,7 @@ namespace NetImgui
 		public NetImguiTarget()
 		{
 			DevEnv = DevEnv.vs2019;
-			Platform = Platform.win64;
+			Platform = Platform.win64 | Platform.win32;
 			Optimization = Optimization.Debug | Optimization.Release;
 			Compiler = Compiler.MSBuild | Compiler.Clang;
 		}
@@ -202,6 +202,12 @@ namespace NetImgui
 			EnabledImguiIndex32Bits(conf);
 		}
 	
+		public void AddDependencyImguiServer(Configuration conf, NetImguiTarget target)
+		{
+			conf.AddPublicDependency<ProjectImguiServer>(target);			
+			EnabledImguiIndex32Bits(conf);
+		}
+		
 		public void EnabledImguiIndex16Bits(Configuration conf)
 		{
 		}
@@ -252,6 +258,20 @@ namespace NetImgui
 		public override void ConfigureAll(Configuration conf, NetImguiTarget target)
         {
 			base.ConfigureAll(conf, target);
+			EnabledImguiIndex32Bits(conf);
+		}
+	}
+	
+	// Dear ImGui Library, 32bits index & 64 bits textureID
+	[Sharpmake.Generate] 
+	public class ProjectImguiServer : ProjectImgui 
+	{ 
+		public ProjectImguiServer() { Name = "DearImguiServerLib"; }
+		
+		public override void ConfigureAll(Configuration conf, NetImguiTarget target)
+        {
+			base.ConfigureAll(conf, target);
+			conf.Defines.Add("ImTextureID=ImU64");		// Server must absolutly use at minimum 64bits texture id, even when compiled in 32 bits			
 			EnabledImguiIndex32Bits(conf);
 		}
 	}

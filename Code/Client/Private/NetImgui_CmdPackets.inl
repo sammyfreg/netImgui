@@ -51,8 +51,8 @@ bool CmdInput::IsKeyDown(eVirtualKeys vkKey)const
 
 void CmdInput::SetKeyDown(eVirtualKeys vkKey, bool isDown)
 {
-	const size_t keyEntryIndex	= static_cast<uint64_t>(vkKey) / 64;
-	const uint64_t keyBitMask	= static_cast<uint64_t>(1) << static_cast<uint64_t>(vkKey) % 64;	
+	const uint64_t keyEntryIndex	= static_cast<uint64_t>(vkKey) / 64;
+	const uint64_t keyBitMask		= static_cast<uint64_t>(1) << static_cast<uint64_t>(vkKey) % 64;	
 	mKeysDownMask[keyEntryIndex]= isDown ?	mKeysDownMask[keyEntryIndex] | keyBitMask : 
 											mKeysDownMask[keyEntryIndex] & ~keyBitMask;
 }

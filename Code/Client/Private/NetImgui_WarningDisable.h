@@ -24,6 +24,8 @@
 	#pragma warning (disable: 4577)		// 'noexcept' used with no exception handling mode specified; termination on exception is not guaranteed. Specify
 	#pragma warning (disable: 4710)		// 'xxx': function not inlined
 	#pragma warning (disable: 4711)		// function 'xxx' selected for automatic inline expansion
+	#pragma warning (disable: 4826)		// Conversion from 'TType *' to 'uint64_t' is sign-extended. This may cause unexpected runtime behavior.
 	#pragma warning (disable: 5031)		// #pragma warning(pop): likely mismatch, popping warning state pushed in different file		
 	#pragma warning (disable: 5045)		// Compiler will insert Spectre mitigation for memory load if / Qspectre switch specified
+
 #endif

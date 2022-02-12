@@ -223,10 +223,10 @@ bool Communications_InitializeClient(NetImgui::Internal::Network::SocketInfo* pC
 
 		NetImguiServer::Config::Client clientConfig;		
 		if( NetImguiServer::Config::Client::GetConfigByID(pClient->mClientConfigID, clientConfig) ){
-			NetImgui::Internal::StringFormat(pClient->mWindowID, "%s (%s)###%i", pClient->mInfoName, clientConfig.mClientName, clientConfig.mHostPort); // Using HostPort as a window unique ID
+			NetImgui::Internal::StringFormat(pClient->mWindowID, "%s (%s)##%i", pClient->mInfoName, clientConfig.mClientName, static_cast<int>(pClient->mClientIndex)); // Using ClientIndex as a window unique ID
 		}
 		else{
-			NetImgui::Internal::StringFormat(pClient->mWindowID, "%s##%i", pClient->mInfoName, static_cast<int>(pClient->mClientIndex)); // Using HostPort as a window unique ID
+			NetImgui::Internal::StringFormat(pClient->mWindowID, "%s##%i", pClient->mInfoName, static_cast<int>(pClient->mClientIndex)); // Using ClientIndex as a window unique ID
 		}
 		
 		return true;

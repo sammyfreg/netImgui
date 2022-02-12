@@ -235,12 +235,12 @@ NetImguiImDrawData*	Client::GetImguiDrawData(void* pEmtpyTextureHAL)
 			for(int drawIdx(0), drawCount(pCmdList->CmdBuffer.size()); drawIdx<drawCount; ++drawIdx)
 			{
 				uint64_t wantedTexID					= NetImgui::Internal::TextureCastHelper(pCmdList->CmdBuffer[drawIdx].TextureId);
-				pCmdList->CmdBuffer[drawIdx].TextureId	= pEmtpyTextureHAL; // Default to empty texture
+				pCmdList->CmdBuffer[drawIdx].TextureId	= NetImgui::Internal::TextureCastHelper(pEmtpyTextureHAL); // Default to empty texture
 				for(size_t texIdx=0; texIdx<clientTexCount; ++texIdx)
 				{
 					if( mvTextures[texIdx].mImguiId == wantedTexID )
 					{
-						pCmdList->CmdBuffer[drawIdx].TextureId	= mvTextures[texIdx].mpHAL_Texture;
+						pCmdList->CmdBuffer[drawIdx].TextureId	= NetImgui::Internal::TextureCastHelper(mvTextures[texIdx].mpHAL_Texture);
 						break;
 					}
 				}
@@ -266,7 +266,6 @@ NetImguiImDrawData* Client::ConvertToImguiDrawData(const NetImgui::Internal::Cmd
 	mMouseCursor					= static_cast<ImGuiMouseCursor>(pCmdDrawFrame->mMouseCursor);
 
 	NetImguiImDrawData* pDrawData	= NetImgui::Internal::netImguiNew<NetImguiImDrawData>();
-	ImDrawList* pCmdList			= pDrawData->CmdLists[0];
 	pDrawData->Valid				= true;
     pDrawData->TotalVtxCount		= static_cast<int>(pCmdDrawFrame->mTotalVerticeCount);
 	pDrawData->TotalIdxCount		= static_cast<int>(pCmdDrawFrame->mTotalIndiceCount);
@@ -277,11 +276,17 @@ NetImguiImDrawData* Client::ConvertToImguiDrawData(const NetImgui::Internal::Cmd
     pDrawData->FramebufferScale		= ImVec2(1,1); //! @sammyfreg Currently untested, so force set to 1
     pDrawData->OwnerViewport		= nullptr;
 
-	uint32_t indexOffset(0), vertexOffset(0);
+	ImDrawList* pCmdList			= pDrawData->CmdLists[0];
 	pCmdList->IdxBuffer.resize(pCmdDrawFrame->mTotalIndiceCount);
 	pCmdList->VtxBuffer.resize(pCmdDrawFrame->mTotalVerticeCount);
 	pCmdList->CmdBuffer.resize(pCmdDrawFrame->mTotalDrawCount);
 	pCmdList->Flags					= ImDrawListFlags_AllowVtxOffset|ImDrawListFlags_AntiAliasedLines|ImDrawListFlags_AntiAliasedFill|ImDrawListFlags_AntiAliasedLinesUseTex;
+
+	if( pCmdDrawFrame->mTotalDrawCount == 0 ){
+		return pDrawData;
+	}
+
+	uint32_t indexOffset(0), vertexOffset(0);
 	ImDrawIdx* pIndexDst			= &pCmdList->IdxBuffer[0];
 	ImDrawVert* pVertexDst			= &pCmdList->VtxBuffer[0];
 	ImDrawCmd* pCommandDst			= &pCmdList->CmdBuffer[0];

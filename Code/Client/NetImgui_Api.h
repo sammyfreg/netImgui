@@ -161,8 +161,8 @@ NETIMGUI_API	bool				IsDrawingRemote(void);
 NETIMGUI_API	void				SendDataTexture(ImTextureID textureId, void* pData, uint16_t width, uint16_t height, eTexFormat format);
 
 //=================================================================================================
-// Start a new Imgui Frame and wait for Draws commands, using a ImGui created internally
-// for remote drawing. Returns true if we are awaiting a new ImGui frame. 
+// Start a new Imgui Frame and wait for Draws commands, using ImContext that was active on connect.
+// Returns true if we are awaiting a new ImGui frame. 
 //
 // All ImGui drawing should be skipped when return is false.
 //

@@ -36,6 +36,7 @@ void netImguiDeleteSafe(TType*& pData)
 }
 
 //=============================================================================
+// Acquire ownership of the resource
 //=============================================================================
 template <typename TType>
 TType* ExchangePtr<TType>::Release()
@@ -92,7 +93,8 @@ OffsetPointer<TType>::OffsetPointer(uint64_t offset)
 template <typename TType>
 void OffsetPointer<TType>::SetPtr(TType* pPointer)
 {
-	mPointer = pPointer;
+	mOffset		= 0; // Remove 'offset flag' that can be left active on non 64bits pointer
+	mPointer	= pPointer;
 }
 
 template <typename TType>
@@ -286,20 +288,32 @@ union TextureCastHelperUnion
 {
 	ImTextureID TextureID;
 	uint64_t	TextureUint;
+	const void*	TexturePtr;
 };
 
 uint64_t TextureCastHelper(ImTextureID textureID)
 {
 	TextureCastHelperUnion textureUnion;
-	textureUnion.TextureID = textureID;
+	textureUnion.TextureUint	= 0;
+	textureUnion.TextureID		= textureID;
 	return textureUnion.TextureUint;
 }
 
+ImTextureID TextureCastHelper(const void* pTexture)
+{
+	TextureCastHelperUnion textureUnion;
+	textureUnion.TextureUint	= 0;
+	textureUnion.TexturePtr		= pTexture;
+	return textureUnion.TextureID;
+}
+
+#ifndef IS_NETIMGUISERVER
 ImTextureID TextureCastHelper(uint64_t textureID)
 {
 	TextureCastHelperUnion textureUnion;
 	textureUnion.TextureUint = textureID;
 	return textureUnion.TextureID;
 }
+#endif
 
 }} //namespace NetImgui::Internal

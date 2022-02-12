@@ -169,7 +169,7 @@ bool NewFrame(bool bSupportFrameSkip)
 		{
 			uint8_t* pPixelData(nullptr); int width(0), height(0);
 			ImGui::GetIO().Fonts->GetTexDataAsAlpha8(&pPixelData, &width, &height);
-			SendDataTexture(ImGui::GetIO().Fonts->TexID, pPixelData, static_cast<uint16_t>(width), static_cast<uint16_t>(height), eTexFormat::kTexFmtA8);
+			SendDataTexture(pFonts->TexID, pPixelData, static_cast<uint16_t>(width), static_cast<uint16_t>(height), eTexFormat::kTexFmtA8);
 		}
 
 		// No font texture has been sent to the netImgui server, you can either 
