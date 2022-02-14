@@ -84,9 +84,10 @@ bool AddClientConfigFromString(const char* string, bool transient)
 	while( *zEntryCur != 0 )
 	{
 		zEntryCur++;
-		if (*zEntryCur == ' ')
+		// Skip commandline preamble holding path to executable
+		if (*zEntryCur == ' ' && *(zEntryCur+1) != 0)
 		{
-			zEntryStart = zEntryCur;
+			zEntryStart = zEntryCur + 1;
 		}
 		if( (*zEntryCur == ';' || *zEntryCur == 0) )
 		{
