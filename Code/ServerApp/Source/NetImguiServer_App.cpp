@@ -84,6 +84,10 @@ bool AddClientConfigFromString(const char* string, bool transient)
 	while( *zEntryCur != 0 )
 	{
 		zEntryCur++;
+		if (*zEntryCur == ' ')
+		{
+			zEntryStart = zEntryCur;
+		}
 		if( (*zEntryCur == ';' || *zEntryCur == 0) )
 		{
 			if (paramIndex == 0)
