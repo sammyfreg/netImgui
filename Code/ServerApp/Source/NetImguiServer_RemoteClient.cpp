@@ -132,6 +132,7 @@ void Client::ProcessPendingTextures()
 
 void Client::Reset()
 {
+	NetImguiServer::App::HAL_DestroyRenderTarget(mpHAL_AreaRT, mpHAL_AreaTexture);
 	for(auto& texEntry : mvTextures )
 	{
 		NetImguiServer::App::HAL_DestroyTexture(texEntry);

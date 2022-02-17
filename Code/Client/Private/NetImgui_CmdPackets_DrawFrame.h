@@ -35,7 +35,7 @@ struct alignas(8) ImguiDrawGroup
 	uint32_t					mDrawGroupIdxPrev	= kInvalidDrawGroup;// Group index in previous DrawFrame (kInvalidDrawGroup when not using delta compression)
 	uint8_t						mBytePerIndex		= 2;				// 2, 4 bytes
 	uint8_t						PADDING[7];
-	float						mReferenceCoord[2]	= {};				// Reference position for the encoded vertices offsets
+	float						mReferenceCoord[2]	= {};				// Reference position for the encoded vertices offsets (1st vertice top/left position)
 	OffsetPointer<uint8_t>		mpIndices;
 	OffsetPointer<ImguiVert>	mpVertices;
 	OffsetPointer<ImguiDraw>	mpDraws;

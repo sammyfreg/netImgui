@@ -166,7 +166,7 @@ void UpdateRemoteContent()
 			client.ProcessPendingTextures();
 
 			// Update the RenderTarget destination of each client, of size was updated
-			if (client.mAreaSizeX > 0 && client.mAreaSizeY > 0 && (client.mAreaRTSizeX != client.mAreaSizeX || client.mAreaRTSizeY != client.mAreaSizeY))
+			if (client.mAreaSizeX > 0 && client.mAreaSizeY > 0 && (!client.mpHAL_AreaRT || client.mAreaRTSizeX != client.mAreaSizeX || client.mAreaRTSizeY != client.mAreaSizeY))
 			{
 				if (HAL_CreateRenderTarget(client.mAreaSizeX, client.mAreaSizeY, client.mpHAL_AreaRT, client.mpHAL_AreaTexture))
 				{
