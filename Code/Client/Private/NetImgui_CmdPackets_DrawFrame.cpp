@@ -115,22 +115,24 @@ void CompressData(const ComDataType* pDataPrev, size_t dataSizePrev, const ComDa
 	const size_t elemCount		= elemCountPrev < elemCountNew ? elemCountPrev : elemCountNew;
 	size_t n					= 0;
 	
-	while(n < elemCount)
-	{
-		uint32_t* pBlockInfo = reinterpret_cast<uint32_t*>(pCommandMemoryInOut++); // Add a new block info to output
+	if( pDataPrev ){
+		while(n < elemCount)
+		{
+			uint32_t* pBlockInfo = reinterpret_cast<uint32_t*>(pCommandMemoryInOut++); // Add a new block info to output
 
-		// Find number of elements with same value as last frame
-		size_t startN = n;
-		while( n < elemCount && pDataPrev[n] == pDataNew[n] )
-			++n;
-		pBlockInfo[0] = static_cast<uint32_t>(n - startN);
+			// Find number of elements with same value as last frame
+			size_t startN = n;
+			while( n < elemCount && pDataPrev[n] == pDataNew[n] )
+				++n;
+			pBlockInfo[0] = static_cast<uint32_t>(n - startN);
 
-		// Find number of elements with different value as last frame, and save new value
-		while (n < elemCount && pDataPrev[n] != pDataNew[n]) {
-			*pCommandMemoryInOut = pDataNew[n++];
-			++pCommandMemoryInOut;
+			// Find number of elements with different value as last frame, and save new value
+			while (n < elemCount && pDataPrev[n] != pDataNew[n]) {
+				*pCommandMemoryInOut = pDataNew[n++];
+				++pCommandMemoryInOut;
+			}
+			pBlockInfo[1] = static_cast<uint32_t>(pCommandMemoryInOut - reinterpret_cast<ComDataType*>(pBlockInfo)) - 1;
 		}
-		pBlockInfo[1] = static_cast<uint32_t>(pCommandMemoryInOut - reinterpret_cast<ComDataType*>(pBlockInfo)) - 1;
 	}
 
 	// New frame has more element than previous frame, add the remaining entries
@@ -151,18 +153,20 @@ void CompressData(const ComDataType* pDataPrev, size_t dataSizePrev, const ComDa
 //=================================================================================================
 void DecompressData(const ComDataType* pDataPrev, size_t dataSizePrev, const ComDataType* pDataPack, size_t dataUnpackSize, ComDataType*& pCommandMemoryInOut)
 {
-	const size_t elemCountPrev	= DivUp(dataSizePrev, ComDataSize);
-	const size_t elemCountUnpack= DivUp(dataUnpackSize, ComDataSize);
-	const size_t elemCountCopy	= elemCountPrev < elemCountUnpack ? elemCountPrev : elemCountUnpack;
-	uint64_t* pCommandMemoryEnd	= &pCommandMemoryInOut[elemCountUnpack];
-	memcpy(pCommandMemoryInOut, pDataPrev, elemCountCopy * ComDataSize);
-	while(pCommandMemoryInOut < pCommandMemoryEnd)
-	{
-		const uint32_t* pBlockInfo	= reinterpret_cast<const uint32_t*>(pDataPack++); // Add a new block info to output
-		pCommandMemoryInOut			+= pBlockInfo[0];
-		memcpy(pCommandMemoryInOut, pDataPack, pBlockInfo[1] * sizeof(uint64_t));
-		pCommandMemoryInOut			+= pBlockInfo[1];
-		pDataPack					+= pBlockInfo[1];
+	if( pDataPrev ){
+		const size_t elemCountPrev	= DivUp(dataSizePrev, ComDataSize);
+		const size_t elemCountUnpack= DivUp(dataUnpackSize, ComDataSize);
+		const size_t elemCountCopy	= elemCountPrev < elemCountUnpack ? elemCountPrev : elemCountUnpack;
+		uint64_t* pCommandMemoryEnd	= &pCommandMemoryInOut[elemCountUnpack];
+		memcpy(pCommandMemoryInOut, pDataPrev, elemCountCopy * ComDataSize);
+		while(pCommandMemoryInOut < pCommandMemoryEnd)
+		{
+			const uint32_t* pBlockInfo	= reinterpret_cast<const uint32_t*>(pDataPack++); // Add a new block info to output
+			pCommandMemoryInOut			+= pBlockInfo[0];
+			memcpy(pCommandMemoryInOut, pDataPack, pBlockInfo[1] * sizeof(uint64_t));
+			pCommandMemoryInOut			+= pBlockInfo[1];
+			pDataPack					+= pBlockInfo[1];
+		}
 	}
 }
 
@@ -217,13 +221,13 @@ CmdDrawFrame* CompressCmdDrawFrame(const CmdDrawFrame* pDrawFramePrev, const Cmd
 			pIndicePrev							= reinterpret_cast<const uint64_t*>(drawGroupPrev.mpIndices.Get());
 			pDrawsPrev							= reinterpret_cast<const uint64_t*>(drawGroupPrev.mpDraws.Get());
 			verticeSizePrev						= drawGroupPrev.mVerticeCount * sizeof(ImguiVert);
-			indiceSizePrev						= drawGroupPrev.mIndiceCount*drawGroupPrev.mBytePerIndex;
+			indiceSizePrev						= drawGroupPrev.mIndiceCount*static_cast<size_t>(drawGroupPrev.mBytePerIndex);
 			drawSizePrev						= drawGroupPrev.mDrawCount*sizeof(ImguiDraw);
 		}
 
 		drawGroup.mpIndices.SetComDataPtr(pDataOutput);
 		CompressData(	pIndicePrev,							indiceSizePrev,	
-						drawGroupNew.mpIndices.GetComData(),	drawGroupNew.mIndiceCount*drawGroupNew.mBytePerIndex,
+						drawGroupNew.mpIndices.GetComData(),	drawGroupNew.mIndiceCount*static_cast<size_t>(drawGroupNew.mBytePerIndex),
 						pDataOutput);
 
 		drawGroup.mpVertices.SetComDataPtr(pDataOutput);
@@ -273,13 +277,13 @@ CmdDrawFrame* DecompressCmdDrawFrame(const CmdDrawFrame* pDrawFramePrev, const C
 			pIndicePrev						= reinterpret_cast<const ComDataType*>(drawGroupPrev.mpIndices.Get());
 			pDrawsPrev						= reinterpret_cast<const ComDataType*>(drawGroupPrev.mpDraws.Get());
 			verticeSizePrev					= drawGroupPrev.mVerticeCount * sizeof(ImguiVert);
-			indiceSizePrev					= drawGroupPrev.mIndiceCount*drawGroupPrev.mBytePerIndex;
+			indiceSizePrev					= drawGroupPrev.mIndiceCount*static_cast<size_t>(drawGroupPrev.mBytePerIndex);
 			drawSizePrev					= drawGroupPrev.mDrawCount*sizeof(ImguiDraw);
 		}
 		
 		drawGroup.mpIndices.SetComDataPtr(pDataOutput);
 		DecompressData( pIndicePrev,							indiceSizePrev,
-						drawGroupPack.mpIndices.GetComData(),	drawGroupPack.mIndiceCount*drawGroupPack.mBytePerIndex,
+						drawGroupPack.mpIndices.GetComData(),	drawGroupPack.mIndiceCount*static_cast<size_t>(drawGroupPack.mBytePerIndex),
 						pDataOutput);
 
 		drawGroup.mpVertices.SetComDataPtr(pDataOutput);
