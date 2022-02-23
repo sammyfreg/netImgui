@@ -4,12 +4,12 @@
 //! @Name		: NetImgui
 //=================================================================================================
 //! @author		: Sammy Fatnassi
-//! @date		: 2022/01/31
-//!	@version	: v1.7.5
+//! @date		: 2022/02/23
+//!	@version	: v1.7.6
 //! @Details	: For integration info : https://github.com/sammyfreg/netImgui/wiki
 //=================================================================================================
-#define NETIMGUI_VERSION		"1.7.5"
-#define NETIMGUI_VERSION_NUM	10705
+#define NETIMGUI_VERSION		"1.7.6"
+#define NETIMGUI_VERSION_NUM	10706
 
 
 

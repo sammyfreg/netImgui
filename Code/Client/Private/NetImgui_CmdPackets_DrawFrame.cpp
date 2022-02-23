@@ -115,7 +115,8 @@ void CompressData(const ComDataType* pDataPrev, size_t dataSizePrev, const ComDa
 	const size_t elemCount		= elemCountPrev < elemCountNew ? elemCountPrev : elemCountNew;
 	size_t n					= 0;
 	
-	if( pDataPrev ){
+	if( pDataPrev )
+	{
 		while(n < elemCount)
 		{
 			uint32_t* pBlockInfo = reinterpret_cast<uint32_t*>(pCommandMemoryInOut++); // Add a new block info to output
@@ -153,21 +154,21 @@ void CompressData(const ComDataType* pDataPrev, size_t dataSizePrev, const ComDa
 //=================================================================================================
 void DecompressData(const ComDataType* pDataPrev, size_t dataSizePrev, const ComDataType* pDataPack, size_t dataUnpackSize, ComDataType*& pCommandMemoryInOut)
 {
+	const size_t elemCountPrev		= DivUp(dataSizePrev, ComDataSize);
+	const size_t elemCountUnpack	= DivUp(dataUnpackSize, ComDataSize);
+	const size_t elemCountCopy		= elemCountPrev < elemCountUnpack ? elemCountPrev : elemCountUnpack;
+	uint64_t* pCommandMemoryEnd		= &pCommandMemoryInOut[elemCountUnpack];
 	if( pDataPrev ){
-		const size_t elemCountPrev	= DivUp(dataSizePrev, ComDataSize);
-		const size_t elemCountUnpack= DivUp(dataUnpackSize, ComDataSize);
-		const size_t elemCountCopy	= elemCountPrev < elemCountUnpack ? elemCountPrev : elemCountUnpack;
-		uint64_t* pCommandMemoryEnd	= &pCommandMemoryInOut[elemCountUnpack];
 		memcpy(pCommandMemoryInOut, pDataPrev, elemCountCopy * ComDataSize);
-		while(pCommandMemoryInOut < pCommandMemoryEnd)
-		{
-			const uint32_t* pBlockInfo	= reinterpret_cast<const uint32_t*>(pDataPack++); // Add a new block info to output
-			pCommandMemoryInOut			+= pBlockInfo[0];
-			memcpy(pCommandMemoryInOut, pDataPack, pBlockInfo[1] * sizeof(uint64_t));
-			pCommandMemoryInOut			+= pBlockInfo[1];
-			pDataPack					+= pBlockInfo[1];
-		}
 	}
+	while(pCommandMemoryInOut < pCommandMemoryEnd)
+	{
+		const uint32_t* pBlockInfo	= reinterpret_cast<const uint32_t*>(pDataPack++); // Add a new block info to output
+		pCommandMemoryInOut			+= pBlockInfo[0];
+		memcpy(pCommandMemoryInOut, pDataPack, pBlockInfo[1] * sizeof(uint64_t));
+		pCommandMemoryInOut			+= pBlockInfo[1];
+		pDataPack					+= pBlockInfo[1];
+	}	
 }
 
 //=================================================================================================

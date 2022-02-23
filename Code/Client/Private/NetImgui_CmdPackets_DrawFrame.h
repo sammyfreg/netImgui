@@ -8,7 +8,7 @@ namespace NetImgui { namespace Internal
 struct ImguiVert
 {
 	//Note: If updating this, increase 'CmdVersion::eVersion'
-	enum Constants{ kUvRange_Min=-2, kUvRange_Max=2, kPosRange_Min=-8096, kPosRange_Max=8096};
+	enum Constants{ kUvRange_Min=0, kUvRange_Max=1, kPosRange_Min=-8192, kPosRange_Max=8192};
 	uint16_t	mPos[2];
 	uint16_t	mUV[2];
 	uint32_t	mColor;

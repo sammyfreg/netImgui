@@ -40,6 +40,7 @@ struct alignas(8) CmdVersion
 		ClientName			= 6,	// Increase maximum allowed client name that a program can set
 		DataCompression		= 7,	// Adding support for data compression between client/server. Simple low cost delta compressor (only send difference from previous frame)
 		DataCompression2	= 8,	// Improvement to data compression (save corner position and use SoA for vertices data)
+		VertexUVRange		= 9,	// Changed vertices UV value range to [0,1] for increased precision on large font texture
 		// Insert new version here
 
 		//--------------------------------
