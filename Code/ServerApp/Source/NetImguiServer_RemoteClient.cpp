@@ -21,9 +21,7 @@ NetImguiImDrawData::NetImguiImDrawData()
 
 
 Client::Client()
-: mPendingTextureReadIndex(0)
-, mPendingTextureWriteIndex(0)
-, mbIsVisible(false)
+: mbIsVisible(false)
 , mbIsFree(true)
 , mbIsConnected(false)
 , mbDisconnectPending(false)
@@ -85,19 +83,44 @@ void Client::ReceiveDrawFrame(NetImgui::Internal::CmdDrawFrame* pFrameData)
 
 void Client::ReceiveTexture(NetImgui::Internal::CmdTexture* pTextureCmd)
 {
-	if( pTextureCmd )
-	{
-		// Wait for a free spot in the ring buffer
-		while ( mPendingTextureWriteIndex-mPendingTextureReadIndex > IM_ARRAYSIZE(mpPendingTextures) );
-		mpPendingTextures[(mPendingTextureWriteIndex++) % IM_ARRAYSIZE(mpPendingTextures)] = pTextureCmd;
+	if (!pTextureCmd) {
+		return;
 	}
+
+	std::unique_lock<std::mutex> lock(mPendingTextureMutex);
+
+	// Wait for a free spot in the ring buffer
+	if (mPendingTextures.size() >= mPendingTexturesMaxCount) {
+		mPendigTextureCV.wait(lock, [this] {
+			return mPendingTextures.size() < mPendingTexturesMaxCount;
+			});
+	}
+
+	mPendingTextures.push(pTextureCmd);
 }
 
 void Client::ProcessPendingTextures()
 {
-	while( mPendingTextureReadIndex < mPendingTextureWriteIndex )
+	if (mPendingTextures.empty()) {
+		return;
+	}
+
+	while( true )
 	{
-		NetImgui::Internal::CmdTexture* pTextureCmd = mpPendingTextures[(mPendingTextureReadIndex++) % IM_ARRAYSIZE(mpPendingTextures)];
+		NetImgui::Internal::CmdTexture* pTextureCmd = nullptr;
+		{
+			std::unique_lock<std::mutex> lock(mPendingTextureMutex);
+			if (mPendingTextures.empty()) {
+				break;
+			}
+			pTextureCmd = mPendingTextures.front();
+			mPendingTextures.pop();
+			mPendigTextureCV.notify_one();
+		}
+
+		if (!pTextureCmd) {
+			return;
+		}
 		size_t foundIdx								= static_cast<size_t>(-1);
 		bool isRemoval								= pTextureCmd->mFormat == NetImgui::eTexFormat::kTexFmt_Invalid;
 		for(size_t i=0; foundIdx == static_cast<size_t>(-1) && i<mvTextures.size(); i++)

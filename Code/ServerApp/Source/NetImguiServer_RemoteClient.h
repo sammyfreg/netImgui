@@ -2,6 +2,9 @@
 
 #include <vector>
 #include <chrono>
+#include <mutex>
+#include <queue>
+
 #include <Private/NetImgui_CmdPackets.h>
 #include "NetImguiServer_App.h"
 
@@ -71,9 +74,6 @@ struct Client
 	ExchPtrBackground						mPendingBackgroundIn;				//!< Background settings received and waiting to update client setting
 	ExchPtrInput							mPendingInputOut;					//!< Input command waiting to be sent out to client
 	std::vector<ImWchar>					mPendingInputChars;					//!< Captured Imgui characters input waiting to be added to new InputCmd
-	NetImgui::Internal::CmdTexture*			mpPendingTextures[64]	= {};		//!< Textures commands waiting to be processed in main update loop
-	std::atomic_uint64_t					mPendingTextureReadIndex;
-	std::atomic_uint64_t					mPendingTextureWriteIndex;
 	bool									mbIsVisible				= false;	//!< If currently shown
 	bool									mbIsActive				= false;	//!< Is the current active window (will receive input, only one is true at a time)	
 	std::atomic_bool						mbIsFree;							//!< If available to use for a new connected client
@@ -106,6 +106,12 @@ struct Client
 	static uint32_t							GetCountMax();
 	static uint32_t							GetFreeIndex();
 	static Client&							Get(uint32_t index);
+
+private:
+	std::mutex mPendingTextureMutex;
+	std::queue<NetImgui::Internal::CmdTexture*> mPendingTextures;
+	std::condition_variable mPendigTextureCV;
+	const size_t mPendingTexturesMaxCount = 64;
 };
 
 }} // namespace NetImguiServer { namespace Client
