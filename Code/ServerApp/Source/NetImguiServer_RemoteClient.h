@@ -2,8 +2,13 @@
 
 #include <vector>
 #include <chrono>
+#include <mutex>
+#include <queue>
+
 #include <Private/NetImgui_CmdPackets.h>
 #include "NetImguiServer_App.h"
+
+namespace NetImguiServer { class RenderDelegate; }
 
 namespace NetImguiServer { namespace RemoteClient
 {
@@ -39,6 +44,7 @@ struct Client
 	void									operator=(const Client&) = delete;
 	void									Initialize();
 	void									Reset();
+	void									SetRenderBackend(const RenderDelegate* renderBackend);
 
 	void									ReceiveTexture(NetImgui::Internal::CmdTexture*);
 	void									ReceiveDrawFrame(NetImgui::Internal::CmdDrawFrame*);
@@ -48,6 +54,7 @@ struct Client
 	void									CaptureImguiInput();
 	NetImgui::Internal::CmdInput*			TakePendingInput();
 	void									ProcessPendingTextures();
+	void									DrawContext();
 
 	void*									mpHAL_AreaRT			= nullptr;
 	void*									mpHAL_AreaTexture		= nullptr;
@@ -71,7 +78,7 @@ struct Client
 	ExchPtrBackground						mPendingBackgroundIn;				//!< Background settings received and waiting to update client setting
 	ExchPtrInput							mPendingInputOut;					//!< Input command waiting to be sent out to client
 	std::vector<ImWchar>					mPendingInputChars;					//!< Captured Imgui characters input waiting to be added to new InputCmd
-	NetImgui::Internal::CmdTexture*			mpPendingTextures[64]	= {};		//!< Textures commands waiting to be processed in main update loop
+	NetImgui::Internal::CmdTexture*			mpPendingTextures[64] = {};		//!< Textures commands waiting to be processed in main update loop
 	std::atomic_uint64_t					mPendingTextureReadIndex;
 	std::atomic_uint64_t					mPendingTextureWriteIndex;
 	bool									mbIsVisible				= false;	//!< If currently shown
@@ -101,11 +108,14 @@ struct Client
 	bool									mBGNeedUpdate				= true;						// Let engine know that we should regenerate the background draw commands
 	NetImgui::Internal::CmdBackground		mBGSettings;											// Settings for client background drawing settings
 	
-	static bool								Startup(uint32_t clientCountMax);
+	static bool								Startup(uint32_t clientCountMax, const RenderDelegate* renderDelegate);
 	static void								Shutdown();
 	static uint32_t							GetCountMax();
 	static uint32_t							GetFreeIndex();
 	static Client&							Get(uint32_t index);
+
+private:
+	const RenderDelegate* mRenderDelegate = nullptr;
 };
 
 }} // namespace NetImguiServer { namespace Client

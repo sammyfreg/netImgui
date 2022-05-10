@@ -3,8 +3,13 @@
 #include "NetImguiServer_Network.h"
 #include "NetImguiServer_UI.h"
 #include "NetImguiServer_RemoteClient.h"
+#include "NetImguiServer_RenderDelegate.h"
 #include "Fonts/Roboto_Medium.cpp"
 #include <algorithm>
+
+namespace {
+	std::unique_ptr<NetImguiServer::RenderDelegate> mRenderDelegate;
+}
 
 namespace NetImguiServer { namespace App
 {
@@ -12,8 +17,9 @@ namespace NetImguiServer { namespace App
 constexpr uint32_t		kClientCountMax			= 32;	//! @sammyfreg todo: support unlimited client count
 static ServerTexture	gEmptyTexture;
 
-bool Startup(const char* CmdLine)
+bool Startup(std::unique_ptr<RenderDelegate> renderDelegate, const char* CmdLine)
 {	
+	mRenderDelegate = std::move(renderDelegate);
 	//---------------------------------------------------------------------------------------------
 	// Load Settings savefile and parse for auto connect commandline option
 	//---------------------------------------------------------------------------------------------	
@@ -23,13 +29,13 @@ bool Startup(const char* CmdLine)
 	//---------------------------------------------------------------------------------------------
     // Perform application initialization:
 	//---------------------------------------------------------------------------------------------
-	if (RemoteClient::Client::Startup(kClientCountMax) &&
+	if (RemoteClient::Client::Startup(kClientCountMax, mRenderDelegate.get()) &&
 		NetImguiServer::Network::Startup() &&
-		NetImguiServer::UI::Startup())
+		NetImguiServer::UI::Startup(mRenderDelegate.get()))
 	{
 		uint8_t EmptyPixels[8*8];
 		memset(EmptyPixels, 0, sizeof(EmptyPixels));
-		NetImguiServer::App::HAL_CreateTexture(8, 8, NetImgui::eTexFormat::kTexFmtA8, EmptyPixels, gEmptyTexture);
+		mRenderDelegate->CreateTexture(8, 8, NetImgui::eTexFormat::kTexFmtA8, EmptyPixels, gEmptyTexture);
 	
 		//-----------------------------------------------------------------------------------------
 		// Using a different default font (provided with Dear ImGui)
@@ -48,7 +54,7 @@ void Shutdown()
 {
 	NetImguiServer::Network::Shutdown();
 	NetImguiServer::UI::Shutdown();
-	NetImguiServer::App::HAL_DestroyTexture(gEmptyTexture);
+	mRenderDelegate->DestroyTexture(gEmptyTexture);
 	NetImguiServer::Config::Client::Clear();
 	RemoteClient::Client::Shutdown();
 	HAL_Shutdown();
@@ -173,7 +179,7 @@ void UpdateRemoteContent()
 			// Update the RenderTarget destination of each client, of size was updated
 			if (client.mAreaSizeX > 0 && client.mAreaSizeY > 0 && (!client.mpHAL_AreaRT || client.mAreaRTSizeX != client.mAreaSizeX || client.mAreaRTSizeY != client.mAreaSizeY))
 			{
-				if (HAL_CreateRenderTarget(client.mAreaSizeX, client.mAreaSizeY, client.mpHAL_AreaRT, client.mpHAL_AreaTexture))
+				if (mRenderDelegate->CreateRenderTarget(client.mAreaSizeX, client.mAreaSizeY, client.mpHAL_AreaRT, client.mpHAL_AreaTexture))
 				{
 					client.mAreaRTSizeX		= client.mAreaSizeX;
 					client.mAreaRTSizeY		= client.mAreaSizeY;
@@ -187,7 +193,7 @@ void UpdateRemoteContent()
 			if( pDrawData )
 			{
 				DrawClientBackground(client);
-				HAL_RenderDrawData(client, pDrawData);
+				mRenderDelegate->RenderDrawData(client, pDrawData);
 			}
 		}
 	}

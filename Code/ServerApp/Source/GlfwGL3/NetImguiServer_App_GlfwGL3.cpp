@@ -41,6 +41,7 @@
 #include <GLES2/gl2.h>
 #endif
 #include <GLFW/glfw3.h> // Will drag system OpenGL headers
+#include "NetImguiServer_RenderDelegateGL3.h"
 
 // [Win32] Our example includes a copy of glfw3.lib pre-compiled with VS2010 to maximize ease of testing and compatibility with old VS compilers.
 // To link with VS2010-era libraries, VS2015+ requires linking with legacy_stdio_definitions.lib, which we do using this pragma.
@@ -141,7 +142,7 @@ int main(int, char**)
     // Main loop
 	//=========================================================================================
     // @SAMPLE_EDIT (Start our own initialisation)
-    bool ok = NetImguiServer::App::Startup( GetCommandLineA() );
+    bool ok = NetImguiServer::App::Startup(std::make_unique<NetImguiServer::RenderDelegateGL3>(), GetCommandLineA() );
     while (ok && !glfwWindowShouldClose(window))
 	//=========================================================================================
     {

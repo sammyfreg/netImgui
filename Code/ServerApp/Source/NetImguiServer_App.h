@@ -8,9 +8,9 @@
 //=============================================================================================
 #define HAL_API_PLATFORM_WIN32_DX11		1
 #define HAL_API_PLATFORM_GLFW_GL3		0							// Currently only compiles in release (library include compatibility)
-#define HAL_API_RENDERTARGET_INVERT_Y	(HAL_API_PLATFORM_GLFW_GL3)	// Invert client render target Y axis (since OpenGL start texture UV from BottomLeft instead of DirectX TopLeft)
 //=============================================================================================
 
+namespace NetImguiServer { class RenderDelegate; }
 
 namespace NetImguiServer { namespace RemoteClient { struct Client; } } // Forward declare
 
@@ -20,7 +20,7 @@ namespace NetImguiServer { namespace App
 	// Code specific to 'NetImgui Server' application and needed inside platform specific code
 	//=============================================================================================
 	// Additional initialisation needed by 'NetImGui Server' and not part of default ImGui sample code
-	bool	Startup(const char* CmdLine);
+	bool	Startup(std::unique_ptr<RenderDelegate> renderDelegate, const char* CmdLine);
 	// Prepare for shutdown of application
 	void	Shutdown();
 	// Receive rendering request of each Remote client and output it to their own RenderTarget
@@ -54,16 +54,4 @@ namespace NetImguiServer { namespace App
 	bool	HAL_GetSocketInfo(NetImgui::Internal::Network::SocketInfo* pClientSocket, char* pOutHostname, size_t HostNameLen, int& outPort);
 	// Receive a command to execute by the OS. Used to open our weblink to the NetImgui Github
 	void	HAL_ShellCommand(const char* aCommandline);
-	
-	// Receive a ImDrawData drawlist and request Dear ImGui's backend to output it into a texture
-	void	HAL_RenderDrawData(RemoteClient::Client& client, ImDrawData* pDrawData);
-	// Allocate a texture resource
-	bool	HAL_CreateTexture(uint16_t Width, uint16_t Height, NetImgui::eTexFormat Format, const uint8_t* pPixelData, ServerTexture& OutTexture);
-	// Free a Texture resource
-	void	HAL_DestroyTexture( ServerTexture& OutTexture );
-	// Allocate a RenderTarget that each client will use to output their ImGui drawing into.
-	bool	HAL_CreateRenderTarget(uint16_t Width, uint16_t Height, void*& pOutRT, void*& pOutTexture );
-	// Free a RenderTarget resource
-	void	HAL_DestroyRenderTarget(void*& pOutRT, void*& pOutTexture );
-
 }}

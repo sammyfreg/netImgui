@@ -2,6 +2,7 @@
 #include "NetImguiServer_RemoteClient.h"
 #include "NetImguiServer_Config.h"
 #include "NetImguiServer_UI.h"
+#include "NetImguiServer_RenderDelegate.h"
 #include <Private/NetImgui_CmdPackets.h>
 #include <algorithm>
 
@@ -107,8 +108,12 @@ void Client::ProcessPendingTextures()
 			if( mvTextures[i].mImguiId == pTextureCmd->mTextureId )
 			{
 				foundIdx = i;
-				NetImguiServer::App::HAL_DestroyTexture(mvTextures[foundIdx]);
-				if( isRemoval )
+
+				if (mRenderDelegate) {
+					mRenderDelegate->DestroyTexture(mvTextures[foundIdx]);
+				}
+
+				if (isRemoval)
 				{
 					mvTextures[foundIdx] = mvTextures.back();
 					mvTextures.pop_back();
@@ -123,21 +128,39 @@ void Client::ProcessPendingTextures()
 				foundIdx = mvTextures.size();
 				mvTextures.resize(foundIdx+1);
 			}
-			
-			NetImguiServer::App::HAL_CreateTexture(pTextureCmd->mWidth, pTextureCmd->mHeight, static_cast<NetImgui::eTexFormat>(pTextureCmd->mFormat), pTextureCmd->mpTextureData.Get(), mvTextures[foundIdx]);
-			mvTextures[foundIdx].mImguiId = pTextureCmd->mTextureId;
+
+			if (mRenderDelegate) {
+				mRenderDelegate->CreateTexture(pTextureCmd->mWidth, pTextureCmd->mHeight, static_cast<NetImgui::eTexFormat>(pTextureCmd->mFormat), pTextureCmd->mpTextureData.Get(), mvTextures[foundIdx]);
+				mvTextures[foundIdx].mImguiId = pTextureCmd->mTextureId;
+			}
 		}
 
 		NetImgui::Internal::netImguiDeleteSafe(pTextureCmd);
 	}
 }
 
+void Client::DrawContext()
+{
+	const ImVec2 areaSize = ImVec2(mAreaSizeX, mAreaSizeY);
+	const ImVec4 tint_col = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
+	const ImVec4 border_col = ImVec4(1.0f, 1.0f, 1.0f, 0.0f);
+	const ImVec2 uv0 = ImVec2(0, mRenderDelegate->IsRenderTargetInverted() ? 1.f : 0);
+	const ImVec2 uv1 = ImVec2(1.f, mRenderDelegate->IsRenderTargetInverted() ? 0 : 1.f);
+
+	ImGui::Image(reinterpret_cast<ImTextureID>(mpHAL_AreaTexture), areaSize, uv0, uv1, tint_col, border_col);
+	if (ImGui::IsItemHovered()) {
+		ImGui::SetMouseCursor(mMouseCursor);
+	}
+}
+
 void Client::Reset()
 {
-	NetImguiServer::App::HAL_DestroyRenderTarget(mpHAL_AreaRT, mpHAL_AreaTexture);
-	for(auto& texEntry : mvTextures )
-	{
-		NetImguiServer::App::HAL_DestroyTexture(texEntry);
+	if (mRenderDelegate) {
+		mRenderDelegate->DestroyRenderTarget(mpHAL_AreaRT, mpHAL_AreaTexture);
+		for (auto& texEntry : mvTextures)
+		{
+			mRenderDelegate->DestroyTexture(texEntry);
+		}
 	}
 	mvTextures.clear();
 
@@ -154,6 +177,11 @@ void Client::Reset()
 	mbIsFree						= true;
 	mBGNeedUpdate					= true;
 
+}
+
+void Client::SetRenderBackend(const NetImguiServer::RenderDelegate* renderBackend)
+{
+	mRenderDelegate = renderBackend;
 }
 
 void Client::Initialize()
@@ -175,10 +203,15 @@ void Client::Initialize()
 	NetImgui::Internal::netImguiDeleteSafe(mpFrameDrawPrev);
 }
 
-bool Client::Startup(uint32_t clientCountMax)
+bool Client::Startup(uint32_t clientCountMax, const RenderDelegate* renderDelegate)
 {
 	gClientCountMax = clientCountMax;
 	gpClients		= new Client[clientCountMax];
+	if (!gpClients) {
+		for (uint32_t i = 0; i < clientCountMax; ++i) {
+			gpClients[i].SetRenderBackend(renderDelegate);
+		}
+	}
 	return gpClients != nullptr;
 }
 

@@ -8,6 +8,7 @@
 #include "NetImguiServer_RemoteClient.h"
 #include "NetImguiServer_Config.h"
 #include "NetImguiServer_Network.h"
+#include "NetImguiServer_RenderDelegate.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "../ThirdParty/stb_image.h"
@@ -33,6 +34,7 @@ static uint32_t							gPopup_ConfirmDelete_ConfigIdx		= NetImguiServer::Config::
 static bool								gPopup_AboutNetImgui_Show			= false;
 static bool								gPopup_ServerConfig_Show			= false;
 static NetImguiServer::Config::Client*	gPopup_ClientConfig_pConfig			= nullptr;
+static const RenderDelegate* renderDelegate = nullptr;
 
 //=================================================================================================
 // Convert a memory size to a displayable value
@@ -464,17 +466,11 @@ void DrawImguiContent_Clients()
 				if (client.mpHAL_AreaTexture && areaSize.x > 0 && areaSize.y > 0) 
 				{					
 					// Add fake button to discard mouse input (prevent window moving when draging inside client area)
-					ImVec2 savedPos			= ImGui::GetCursorPos();
-					const ImVec4 tint_col	= ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
-					const ImVec4 border_col = ImVec4(1.0f, 1.0f, 1.0f, 0.0f);					
+					ImVec2 savedPos			= ImGui::GetCursorPos();				
 					ImGui::InvisibleButton("canvas", areaSize, ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight | ImGuiButtonFlags_MouseButtonMiddle);
 					ImGui::SetCursorPos(savedPos);
 
-					// Display Client Context
-					ImGui::Image(reinterpret_cast<ImTextureID>(client.mpHAL_AreaTexture), areaSize, ImVec2(0, HAL_API_RENDERTARGET_INVERT_Y ? 1 : 0), ImVec2(1, HAL_API_RENDERTARGET_INVERT_Y ? 0 : 1), tint_col, border_col);
-					if( ImGui::IsItemHovered() ){
-						ImGui::SetMouseCursor(client.mMouseCursor);
-					}
+					client.DrawContext();
 				}
 			}
 			ImGui::End();
@@ -783,14 +779,15 @@ ImVec4 DrawImguiContent()
 //=================================================================================================
 // Startup : Initialize resources used by out server UI
 //=================================================================================================
-bool Startup()
+bool Startup(const RenderDelegate* renderDelegate_)
 {
+	renderDelegate = renderDelegate_;
 	int Width(0), Height(0), Channel(0);
 	stbi_uc* pBGPixels = stbi_load("Background.png", &Width, &Height, &Channel, 0);
 	if( pBGPixels )
 	{		
 		// @Sammyfreg TODO : Support multiple format for Background
-		NetImguiServer::App::HAL_CreateTexture(uint16_t(Width), uint16_t(Height), NetImgui::eTexFormat::kTexFmtRGBA8, pBGPixels, gBackgroundTexture);
+		renderDelegate->CreateTexture(uint16_t(Width), uint16_t(Height), NetImgui::eTexFormat::kTexFmtRGBA8, pBGPixels, gBackgroundTexture);
 		stbi_image_free(pBGPixels);
 	}
 
@@ -804,7 +801,7 @@ bool Startup()
 //=================================================================================================
 void Shutdown()
 {
-	NetImguiServer::App::HAL_DestroyTexture(gBackgroundTexture);	
+	renderDelegate->DestroyTexture(gBackgroundTexture);
 }
 
 //=================================================================================================

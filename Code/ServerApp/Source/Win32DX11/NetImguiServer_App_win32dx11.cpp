@@ -9,6 +9,7 @@
 #include "backends/imgui_impl_dx11.cpp"
 #include "backends/imgui_impl_win32.cpp"
 #include "NetImguiServer_UI.h"
+#include "NetImguiServer_RenderDelegateDX11.h"
 //=================================================================================================
 
 // Dear ImGui: standalone example application for DirectX 11
@@ -114,7 +115,7 @@ int main(int, char**)
     bool done = false;
 	//=========================================================================================
     // @SAMPLE_EDIT (Start our own initialisation)
-    done = !NetImguiServer::App::Startup( GetCommandLineA() );
+    done = !NetImguiServer::App::Startup(std::make_unique<NetImguiServer::RenderDelegateDX11>(), GetCommandLineA() );
     //=========================================================================================
     while (!done)
     {
