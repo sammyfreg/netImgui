@@ -88,14 +88,16 @@ void Client::ReceiveTexture(NetImgui::Internal::CmdTexture* pTextureCmd)
 	if( pTextureCmd )
 	{
 		// Wait for a free spot in the ring buffer
-		while ( mPendingTextureWriteIndex-mPendingTextureReadIndex > IM_ARRAYSIZE(mpPendingTextures) );
+		while (mPendingTextureWriteIndex - mPendingTextureReadIndex >= IM_ARRAYSIZE(mpPendingTextures)) {
+			std::this_thread::yield();
+		}
 		mpPendingTextures[(mPendingTextureWriteIndex++) % IM_ARRAYSIZE(mpPendingTextures)] = pTextureCmd;
 	}
 }
 
 void Client::ProcessPendingTextures()
 {
-	while( mPendingTextureReadIndex < mPendingTextureWriteIndex )
+	while( mPendingTextureReadIndex != mPendingTextureWriteIndex )
 	{
 		NetImgui::Internal::CmdTexture* pTextureCmd = mpPendingTextures[(mPendingTextureReadIndex++) % IM_ARRAYSIZE(mpPendingTextures)];
 		size_t foundIdx								= static_cast<size_t>(-1);
