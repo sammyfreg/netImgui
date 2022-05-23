@@ -19,7 +19,10 @@ void SavedImguiContext::Save(ImGuiContext* copyFrom)
 	ScopedImguiContext scopedContext(copyFrom);
 	ImGuiIO& sourceIO		= ImGui::GetIO();
 
+#if IMGUI_VERSION_NUM < 18700
 	memcpy(mKeyMap, sourceIO.KeyMap, sizeof(mKeyMap));
+#endif
+
 	mSavedContext			= true;
 	mConfigFlags			= sourceIO.ConfigFlags;
 	mBackendFlags			= sourceIO.BackendFlags;
@@ -34,7 +37,10 @@ void SavedImguiContext::Restore(ImGuiContext* copyTo)
 	ScopedImguiContext scopedContext(copyTo);
 	ImGuiIO& destIO				= ImGui::GetIO();
 
+#if IMGUI_VERSION_NUM < 18700
 	memcpy(destIO.KeyMap, mKeyMap, sizeof(destIO.KeyMap));
+#endif
+
 	mSavedContext				= false;
 	destIO.ConfigFlags			= mConfigFlags;
 	destIO.BackendFlags			= mBackendFlags;
@@ -408,6 +414,8 @@ void ClientInfo::ContextOverride()
 	// Note: Make sure every setting overwritten here, are handled in 'SavedImguiContext::Save(...)'
 	{
 		ImGuiIO& newIO						= ImGui::GetIO();
+
+#if IMGUI_VERSION_NUM < 18700
 		newIO.KeyMap[ImGuiKey_Tab]			= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardTab);
 		newIO.KeyMap[ImGuiKey_LeftArrow]	= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardLeft);
 		newIO.KeyMap[ImGuiKey_RightArrow]	= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardRight);
@@ -423,15 +431,17 @@ void ClientInfo::ContextOverride()
 		newIO.KeyMap[ImGuiKey_Space]		= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardSpace);
 		newIO.KeyMap[ImGuiKey_Enter]		= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardEnter);
 		newIO.KeyMap[ImGuiKey_Escape]		= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardEscape);
-#if IMGUI_VERSION_NUM >= 17102 && IMGUI_VERSION_NUM < 18700
-		newIO.KeyMap[ImGuiKey_KeyPadEnter]	= 0;//static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardKeypadEnter);
-#endif
 		newIO.KeyMap[ImGuiKey_A]			= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardA);
 		newIO.KeyMap[ImGuiKey_C]			= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardA) - 'A' + 'C';
 		newIO.KeyMap[ImGuiKey_V]			= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardA) - 'A' + 'V';
 		newIO.KeyMap[ImGuiKey_X]			= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardA) - 'A' + 'X';
 		newIO.KeyMap[ImGuiKey_Y]			= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardA) - 'A' + 'Y';
 		newIO.KeyMap[ImGuiKey_Z]			= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardA) - 'A' + 'Z';
+
+#if IMGUI_VERSION_NUM >= 17102 && IMGUI_VERSION_NUM < 18700
+		newIO.KeyMap[ImGuiKey_KeyPadEnter] = 0;//static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardKeypadEnter);
+#endif
+#endif
 
 		newIO.MouseDrawCursor				= false;
 		newIO.ClipboardUserData				= nullptr;

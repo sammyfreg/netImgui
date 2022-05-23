@@ -415,6 +415,7 @@ void Client::CaptureImguiInput()
 
 	if( ImGui::IsWindowFocused() )
 	{
+#if IMGUI_VERSION_NUM < 18700
 		NetImguiServer::App::HAL_ConvertKeyDown(io.KeysDown, pNewInput->mKeysDownMask);
 		pNewInput->SetKeyDown(NetImgui::Internal::CmdInput::eVirtualKeys::vkMouseBtnLeft,	io.MouseDown[0]);
 		pNewInput->SetKeyDown(NetImgui::Internal::CmdInput::eVirtualKeys::vkMouseBtnRight,	io.MouseDown[1]);
@@ -427,6 +428,18 @@ void Client::CaptureImguiInput()
 		pNewInput->SetKeyDown(NetImgui::Internal::CmdInput::eVirtualKeys::vkKeyboardSuper1, io.KeySuper);
 
 		//! @sammyfreg: ToDo Add support for gamepad
+#else
+		for (ImGuiKey key = ImGuiKey_NamedKey_BEGIN; key < ImGuiKey_COUNT; ++key) {
+			pNewInput->SetKeyDown(key, ImGui::IsKeyDown(key));
+		}
+
+		pNewInput->SetMouseButtonDown(ImGuiMouseButton_Left, ImGui::IsMouseDown(ImGuiMouseButton_Left));
+		pNewInput->SetMouseButtonDown(ImGuiMouseButton_Right, ImGui::IsMouseDown(ImGuiMouseButton_Right));
+		pNewInput->SetMouseButtonDown(ImGuiMouseButton_Middle, ImGui::IsMouseDown(ImGuiMouseButton_Middle));
+		pNewInput->SetMouseButtonDown(ImGuiMouseButton(3), ImGui::IsMouseDown(ImGuiMouseButton(3)));
+		pNewInput->SetMouseButtonDown(ImGuiMouseButton(4), ImGui::IsMouseDown(ImGuiMouseButton(4)));
+#endif
+
 	}
 
 	// Copy waiting characters inputs

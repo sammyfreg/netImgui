@@ -57,13 +57,12 @@ namespace NetImgui
 			// Want the Dear Imgui Backend source files listed in the project, but not compiled
 			// (we selectively include them in the build, based on the HAL)
 			AdditionalSourceRootPaths.Add(NetImguiTarget.GetPath(ProjectImgui.sDefaultPath) + @"\backends");
-			SourceFilesBuildExcludeRegex.Add(@"backends\\");
 			
 			//---------------------------------------------
 			// For the OpenGL Server build
-			AdditionalSourceRootPaths.Add(NetImguiTarget.GetPath(@"\Code\ThirdParty\gl3w"));
-			AdditionalSourceRootPaths.Add(NetImguiTarget.GetPath(@"\Code\ThirdParty\glfw\include"));			
-			SourceFilesBuildExcludeRegex.Add(@"ThirdParty\\gl3w\\");
+			AdditionalSourceRootPaths.Add(NetImguiTarget.GetPath(@"\Code\ThirdParty\glfw\include"));
+			AdditionalSourceRootPaths.Add(NetImguiTarget.GetPath(@"\Code\ThirdParty\glad30core\include"));
+			AdditionalSourceRootPaths.Add(NetImguiTarget.GetPath(@"\Code\ThirdParty\glad30core\src"));			
 			SourceFilesBuildExcludeRegex.Add(@"ThirdParty\\glfw\\");
 			//---------------------------------------------
 		}
@@ -84,8 +83,8 @@ namespace NetImgui
 			
 			//---------------------------------------------
 			// For the OpenGL Server build
-			conf.IncludePaths.Add(NetImguiTarget.GetPath(@"\Code\ThirdParty\gl3w"));
 			conf.IncludePaths.Add(NetImguiTarget.GetPath(@"\Code\ThirdParty\glfw\include"));
+			conf.IncludePaths.Add(NetImguiTarget.GetPath(@"\Code\ThirdParty\glad30core\include"));
 			if( target.DevEnv == DevEnv.vs2019 )		conf.LibraryPaths.Add(NetImguiTarget.GetPath(@"\Code\ThirdParty\glfw\lib-vc2019-64"));
 			else if( target.DevEnv == DevEnv.vs2017 )	conf.LibraryPaths.Add(NetImguiTarget.GetPath(@"\Code\ThirdParty\glfw\lib-vc2017-64"));
 			//---------------------------------------------

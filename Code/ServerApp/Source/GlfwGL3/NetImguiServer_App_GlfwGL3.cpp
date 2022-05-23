@@ -8,6 +8,7 @@
 #if HAL_API_PLATFORM_GLFW_GL3
 
 #ifdef _MSC_VER
+#include <Windows.h>
 	#pragma warning (disable: 4996)									// 'This function or variable may be unsafe': strcpy, strdup, sprintf, vsnprintf, sscanf, fopen
 	#pragma comment(lib, "opengl32.lib")
 	#pragma comment(lib, "glfw3_mt.lib")
@@ -17,9 +18,9 @@
 	#pragma clang diagnostic ignored "-Wmicrosoft-cast"				// gl3w.c(28,8): error : implicit conversion between pointer-to-function and pointer-to-object is a Microsoft extension
 #endif
 
+#include <glad/glad.h>
+
 #include "NetImguiServer_UI.h"
-#include <backends/imgui_impl_opengl3.cpp>
-#include <backends/imgui_impl_glfw.cpp>
 
 // @SAMPLE_EDIT
 // Note: We fetch a special 'imgui_impl_opengl3_loader.h' file without stripped symbol, 
@@ -90,6 +91,11 @@ int main(int, char**)
         return 1;
     glfwMakeContextCurrent(window);
     glfwSwapInterval(1); // Enable vsync
+
+    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
+    {
+        return 1;
+    }
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();

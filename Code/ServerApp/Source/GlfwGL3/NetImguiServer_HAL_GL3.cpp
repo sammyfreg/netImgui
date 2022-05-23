@@ -10,8 +10,8 @@
 
 #include <array>
 #include "NetImguiServer_RemoteClient.h"
+#include <glad/glad.h>
 #include <imgui_impl_opengl3.h>
-#include "imgui_impl_opengl3_loader.h"
 
 namespace NetImguiServer { namespace App
 {

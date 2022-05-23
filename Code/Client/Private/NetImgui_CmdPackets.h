@@ -98,8 +98,15 @@ struct alignas(8) CmdInput
 		vkNumpadDiv			= 0x6F,
 		vkNumpadDecimal		= 0x6E,
 	};
+#if IMGUI_VERSION_NUM < 18700
 	inline bool IsKeyDown(eVirtualKeys vkKey)const;
 	inline void SetKeyDown(eVirtualKeys vkKey, bool isDown);
+#else
+	inline bool IsKeyDown(ImGuiKey vkKey)const;
+	inline void SetKeyDown(ImGuiKey vkKey, bool isDown);
+	inline bool IsMouseButtonDown(ImGuiMouseButton button)const;
+	inline void SetMouseButtonDown(ImGuiMouseButton button, bool isDown);
+#endif
 
 	CmdHeader						mHeader				= CmdHeader(CmdHeader::eCommands::Input, sizeof(CmdInput));
 	uint16_t						mScreenSize[2]		= {};
@@ -112,6 +119,11 @@ struct alignas(8) CmdInput
 	bool							mCompressionUse		= false;	// Server would like client to compress the communication data
 	bool							mCompressionSkip	= false;	// Server forcing next client's frame data to be uncompressed
 	uint8_t							PADDING[4]			= {};
+
+#if IMGUI_VERSION_NUM >= 18700
+private:
+	uint64_t						mPressedMouseButtonsMask = 0;
+#endif
 };
 
 struct alignas(8) CmdTexture

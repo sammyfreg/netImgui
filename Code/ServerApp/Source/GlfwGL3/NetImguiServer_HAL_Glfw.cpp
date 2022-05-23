@@ -69,6 +69,7 @@ void HAL_Shutdown()
 
 }
 
+#if IMGUI_VERSION_NUM < 18700
 //=================================================================================================
 // HAL CONVERT KEY DOWN
 // Receive platform specific 'key down' status from ImGui, and convert them to 'Windows' specific
@@ -90,6 +91,7 @@ void HAL_ConvertKeyDown(const bool ImguiKeysDown[512], uint64_t outKeysDownMask[
 	// Do platform specific key code covnersion to Window virtual keys, here.
 #endif
 }
+#endif
 
 //=================================================================================================
 // HAL SHELL COMMAND

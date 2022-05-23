@@ -149,6 +149,7 @@ void HAL_Shutdown()
 
 }
 
+#if IMGUI_VERSION_NUM < 18700
 //=================================================================================================
 // HAL CONVERT KEY DOWN
 // Receive platform specific 'key down' status from ImGui, and convert them to 'Windows' specific
@@ -162,10 +163,11 @@ void HAL_ConvertKeyDown(const bool ImguiKeysDown[512], uint64_t outKeysDownMask[
     {
         const uint64_t keyEntryIndex	= static_cast<uint64_t>(i) / 64;
 	    const uint64_t keyBitMask	    = static_cast<uint64_t>(1) << static_cast<uint64_t>(i) % 64;	
-        outKeysDownMask[keyEntryIndex]  = ImguiKeysDown[i] ?    outKeysDownMask[keyEntryIndex] | keyBitMask :
+        outKeysDownMask[keyEntryIndex]  = ImguiKeysDown[i] ? outKeysDownMask[keyEntryIndex] | keyBitMask :
                                                                 outKeysDownMask[keyEntryIndex] & ~keyBitMask;
     }
 }
+#endif
 
 //=================================================================================================
 // HAL SHELL COMMAND
