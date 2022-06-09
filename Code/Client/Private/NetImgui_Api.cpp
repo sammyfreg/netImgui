@@ -510,19 +510,19 @@ bool ProcessInputData(Client::ClientInfo& client)
 		io.MousePos = ImVec2(pCmdInput->mMousePos[0], pCmdInput->mMousePos[1]);
 		io.MouseWheel = wheelY;
 		io.MouseWheelH = wheelX;
-		io.MouseDown[0] = pCmdInput->IsKeyDown(CmdInput::eVirtualKeys::vkMouseBtnLeft);
-		io.MouseDown[1] = pCmdInput->IsKeyDown(CmdInput::eVirtualKeys::vkMouseBtnRight);
-		io.MouseDown[2] = pCmdInput->IsKeyDown(CmdInput::eVirtualKeys::vkMouseBtnMid);
-		io.MouseDown[3] = pCmdInput->IsKeyDown(CmdInput::eVirtualKeys::vkMouseBtnExtra1);
-		io.MouseDown[4] = pCmdInput->IsKeyDown(CmdInput::eVirtualKeys::vkMouseBtnExtra2);
-		io.KeyShift = pCmdInput->IsKeyDown(CmdInput::eVirtualKeys::vkKeyboardShift);
-		io.KeyCtrl = pCmdInput->IsKeyDown(CmdInput::eVirtualKeys::vkKeyboardCtrl);
-		io.KeyAlt = pCmdInput->IsKeyDown(CmdInput::eVirtualKeys::vkKeyboardAlt);
-		io.KeySuper = pCmdInput->IsKeyDown(CmdInput::eVirtualKeys::vkKeyboardSuper1) || pCmdInput->IsKeyDown(CmdInput::eVirtualKeys::vkKeyboardSuper2);
 
-		memset(io.KeysDown, 0, sizeof(io.KeysDown));
-		for (uint32_t i(0); i < ArrayCount(pCmdInput->mKeysDownMask) * 64; ++i)
-			io.KeysDown[i] = (pCmdInput->mKeysDownMask[i / 64] & (static_cast<uint64_t>(1) << (i % 64))) != 0;
+		io.MouseDown[ImGuiMouseButton_Left] = pCmdInput->IsMouseButtonDown(ImGuiMouseButton_Left);
+		io.MouseDown[ImGuiMouseButton_Right] = pCmdInput->IsMouseButtonDown(ImGuiMouseButton_Right);
+		io.MouseDown[ImGuiMouseButton_Middle] = pCmdInput->IsMouseButtonDown(ImGuiMouseButton_Middle);
+		io.MouseDown[ImGuiMouseButton(3)] = pCmdInput->IsMouseButtonDown(ImGuiMouseButton(3));
+		io.MouseDown[ImGuiMouseButton(4)] = pCmdInput->IsMouseButtonDown(ImGuiMouseButton(4));
+
+		io.KeyShift = pCmdInput->checkShiftModifier();
+		io.KeyCtrl = pCmdInput->checkCtrlModifier();
+		io.KeyAlt = pCmdInput->checkAltModifier();
+		io.KeySuper = pCmdInput->checkSuperModifier();
+
+		pCmdInput->getKeyDownLegacy(io.KeysDown, ArrayCount(io.KeysDown));
 #else
 
 		io.AddMouseWheelEvent(wheelX, wheelY);

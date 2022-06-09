@@ -60,53 +60,19 @@ struct alignas(8) CmdVersion
 
 struct alignas(8) CmdInput
 {
-	// From Windows Virtual Keys Code
-	// https://docs.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes
-	enum class eVirtualKeys{ 
-		vkMouseBtnLeft		= 0x01,
-		vkMouseBtnRight		= 0x02,
-		vkMouseBtnMid		= 0x04,
-		vkMouseBtnExtra1	= 0x05, // VK_XBUTTON1
-		vkMouseBtnExtra2	= 0x06, // VK_XBUTTON2
-		vkKeyboardShift		= 0x10,
-		vkKeyboardCtrl		= 0x11,
-		vkKeyboardAlt		= 0x12,
-		vkKeyboardTab		= 0x09,
-		vkKeyboardLeft		= 0x25,
-		vkKeyboardRight		= 0x27,
-		vkKeyboardUp		= 0x26,
-		vkKeyboardDown		= 0x28,
-		vkKeyboardPageUp	= 0x21,
-		vkKeyboardPageDown	= 0x22,
-		vkKeyboardHome		= 0x24,
-		vkKeyboardEnd		= 0x23,
-		vkKeyboardInsert	= 0x2D,
-		vkKeyboardDelete	= 0x2E,
-		vkKeyboardBackspace	= 0x08,
-		vkKeyboardSpace		= 0x20,
-		vkKeyboardEnter		= 0x0D,
-		vkKeyboardEscape	= 0x1B,
-		vkKeyboardSuper1	= 0x5B, // VK_LWIN
-		vkKeyboardSuper2	= 0x5C, // VK_LWIN
-		vkKeyboardSuperF1	= 0x70, // F1 ... F24
-		vkKeyboardA			= 0x41, // A ... Z
-		vkKeyboard0			= 0x30,	// 0 ... 9
-		vkNumpad0			= 0x60, // 0 ... 9
-		vkNumpadAdd			= 0x6B,
-		vkNumpadSub			= 0x6D,
-		vkNumpadMul			= 0x6A,
-		vkNumpadDiv			= 0x6F,
-		vkNumpadDecimal		= 0x6E,
-	};
-#if IMGUI_VERSION_NUM < 18700
-	inline bool IsKeyDown(eVirtualKeys vkKey)const;
-	inline void SetKeyDown(eVirtualKeys vkKey, bool isDown);
-#else
-	inline bool IsKeyDown(ImGuiKey vkKey)const;
-	inline void SetKeyDown(ImGuiKey vkKey, bool isDown);
-	inline bool IsMouseButtonDown(ImGuiMouseButton button)const;
+	static void setupKeyMap(int *keyMap);
+	inline bool IsMouseButtonDown(ImGuiMouseButton button) const;
 	inline void SetMouseButtonDown(ImGuiMouseButton button, bool isDown);
-#endif
+
+	inline bool checkShiftModifier() const;
+	inline bool checkCtrlModifier() const;
+	inline bool checkAltModifier() const;
+	inline bool checkSuperModifier() const;
+
+	inline bool getKeyDownLegacy(bool* keysArray, size_t arraySize) const; // for version before 1.87
+
+	inline bool IsKeyDown(ImGuiKey gKey) const; // for version starts from 1.87
+	inline void SetKeyDown(ImGuiKey gKey, bool isDown); // for version starts from 1.87
 
 	CmdHeader						mHeader				= CmdHeader(CmdHeader::eCommands::Input, sizeof(CmdInput));
 	uint16_t						mScreenSize[2]		= {};
@@ -114,16 +80,16 @@ struct alignas(8) CmdInput
 	float							mMouseWheelVert		= 0.f;
 	float							mMouseWheelHoriz	= 0.f;
 	ImWchar							mKeyChars[256];					// Input characters	
-	uint64_t						mKeysDownMask[512/64];			// List of keys currently pressed (follow Windows Virtual-Key codes)
 	uint16_t						mKeyCharCount		= 0;		// Number of valid input characters
 	bool							mCompressionUse		= false;	// Server would like client to compress the communication data
 	bool							mCompressionSkip	= false;	// Server forcing next client's frame data to be uncompressed
 	uint8_t							PADDING[4]			= {};
 
-#if IMGUI_VERSION_NUM >= 18700
 private:
+	bool checkKeyDown(ImGuiKey gKey, ImGuiKey namedKeyBegin) const;
+
 	uint64_t						mPressedMouseButtonsMask = 0;
-#endif
+	uint64_t						mKeysDownMask[512 / 64];	// List of keys currently pressed (follow GuiKey or ImGuiKey (from 1.87 version))
 };
 
 struct alignas(8) CmdTexture

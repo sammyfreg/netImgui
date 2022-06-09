@@ -69,30 +69,6 @@ void HAL_Shutdown()
 
 }
 
-#if IMGUI_VERSION_NUM < 18700
-//=================================================================================================
-// HAL CONVERT KEY DOWN
-// Receive platform specific 'key down' status from ImGui, and convert them to 'Windows' specific
-// key code and store them has bitmask entry that InputCmd in forwardit it to remote client.
-//=================================================================================================
-void HAL_ConvertKeyDown(const bool ImguiKeysDown[512], uint64_t outKeysDownMask[512/64] )
-{
-#if _WIN32
-    // NetImgui is relying on Windows key code and this function is evaluated under windows, 
-    // so no conversion key code needed, can just store they keys as bitmask directly
-    for (uint64_t i(0); i < 512; ++i)
-    {
-        const uint64_t keyEntryIndex	= static_cast<uint64_t>(i) / 64;
-	    const uint64_t keyBitMask	    = static_cast<uint64_t>(1) << static_cast<uint64_t>(i) % 64;	
-        outKeysDownMask[keyEntryIndex]  = ImguiKeysDown[i] ?    outKeysDownMask[keyEntryIndex] | keyBitMask :
-                                                                outKeysDownMask[keyEntryIndex] & ~keyBitMask;
-    }
-#else
-	// Do platform specific key code covnersion to Window virtual keys, here.
-#endif
-}
-#endif
-
 //=================================================================================================
 // HAL SHELL COMMAND
 // Receive a command to execute by the OS. Used to open our weblink to the NetImgui Github

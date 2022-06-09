@@ -8,7 +8,6 @@
 #if HAL_API_PLATFORM_GLFW_GL3
 
 #ifdef _MSC_VER
-#include <Windows.h>
 	#pragma warning (disable: 4996)									// 'This function or variable may be unsafe': strcpy, strdup, sprintf, vsnprintf, sscanf, fopen
 	#pragma comment(lib, "opengl32.lib")
 	#pragma comment(lib, "glfw3_mt.lib")
@@ -18,6 +17,7 @@
 	#pragma clang diagnostic ignored "-Wmicrosoft-cast"				// gl3w.c(28,8): error : implicit conversion between pointer-to-function and pointer-to-object is a Microsoft extension
 #endif
 
+#include <string>
 #include <glad/glad.h>
 
 #include "NetImguiServer_UI.h"
@@ -55,7 +55,7 @@ static void glfw_error_callback(int error, const char* description)
     fprintf(stderr, "Glfw Error %d: %s\n", error, description);
 }
 
-int main(int, char**)
+int main(int argc, char **argv)
 {
     // Setup window
     glfwSetErrorCallback(glfw_error_callback);
@@ -147,7 +147,17 @@ int main(int, char**)
     // Main loop
 	//=========================================================================================
     // @SAMPLE_EDIT (Start our own initialisation)
-    bool ok = NetImguiServer::App::Startup( GetCommandLineA() );
+    std::string cmdArgs;
+    for (size_t i = 0; i < argc; ++i) {
+        std::string arg(argv[i]);
+        cmdArgs += arg + " ";
+    }
+
+    if (!cmdArgs.empty()) {
+        cmdArgs.pop_back();
+    }
+
+    bool ok = NetImguiServer::App::Startup(cmdArgs.c_str());
     while (ok && !glfwWindowShouldClose(window))
 	//=========================================================================================
     {
