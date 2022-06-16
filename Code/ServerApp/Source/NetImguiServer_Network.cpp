@@ -212,7 +212,7 @@ bool Communications_InitializeClient(NetImgui::Internal::Network::SocketInfo* pC
 	if(	NetImgui::Internal::Network::DataSend(pClientSocket, reinterpret_cast<void*>(&cmdVersionSend), cmdVersionSend.mHeader.mSize) && 
 		NetImgui::Internal::Network::DataReceive(pClientSocket, reinterpret_cast<void*>(&cmdVersionRcv), cmdVersionRcv.mHeader.mSize) &&
 		cmdVersionRcv.mHeader.mType == NetImgui::Internal::CmdHeader::eCommands::Version && 
-		cmdVersionRcv.mVersion == NetImgui::Internal::CmdVersion::eVersion::_Current )
+		cmdVersionRcv.mVersion == NetImgui::Internal::CmdVersion::eVersion::_current )
 	{			
 		pClient->Initialize();
 		pClient->mInfoImguiVerID	= cmdVersionRcv.mImguiVerID;

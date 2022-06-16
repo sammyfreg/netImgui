@@ -21,7 +21,9 @@
 #if defined (__clang__)
 	#pragma clang diagnostic push
 	// ImGui.h warnings(s)
+	#pragma clang diagnostic ignored "-Wunknown-warning-option"
 	#pragma clang diagnostic ignored "-Wc++98-compat-pedantic"
+	#pragma clang diagnostic ignored "-Wreserved-identifier"			// Enuma values using '__' or member starting with '_' in imgui.h
 	// NetImgui_Api.h Warning(s)
 	#pragma clang diagnostic ignored "-Wzero-as-null-pointer-constant"	// Not using nullptr in case this file is used in pre C++11
 #elif defined(_MSC_VER) 

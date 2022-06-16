@@ -44,12 +44,12 @@ struct alignas(8) CmdVersion
 		// Insert new version here
 
 		//--------------------------------
-		_Count,
-		_Current			= _Count -1
+		_count,
+		_current			= _count -1
 	};
 
 	CmdHeader	mHeader					= CmdHeader(CmdHeader::eCommands::Version, sizeof(CmdVersion));
-	eVersion	mVersion				= eVersion::_Current;
+	eVersion	mVersion				= eVersion::_current;
 	char		mClientName[64]			= {};
 	char		mImguiVerName[16]		= {IMGUI_VERSION};
 	char		mNetImguiVerName[16]	= {NETIMGUI_VERSION};
