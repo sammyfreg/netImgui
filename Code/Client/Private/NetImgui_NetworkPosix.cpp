@@ -115,6 +115,7 @@ void Disconnect(SocketInfo* pClientSocket)
 {
 	if( pClientSocket )
 	{
+		shutdown(pClientSocket->mSocket, SHUT_RDWR);
 		close(pClientSocket->mSocket);
 		netImguiDelete(pClientSocket);
 	}
