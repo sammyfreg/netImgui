@@ -511,11 +511,11 @@ bool ProcessInputData(Client::ClientInfo& client)
 		io.MouseWheel = wheelY;
 		io.MouseWheelH = wheelX;
 
-		io.MouseDown[ImGuiMouseButton_Left] = pCmdInput->IsMouseButtonDown(ImGuiMouseButton_Left);
-		io.MouseDown[ImGuiMouseButton_Right] = pCmdInput->IsMouseButtonDown(ImGuiMouseButton_Right);
-		io.MouseDown[ImGuiMouseButton_Middle] = pCmdInput->IsMouseButtonDown(ImGuiMouseButton_Middle);
-		io.MouseDown[ImGuiMouseButton(3)] = pCmdInput->IsMouseButtonDown(ImGuiMouseButton(3));
-		io.MouseDown[ImGuiMouseButton(4)] = pCmdInput->IsMouseButtonDown(ImGuiMouseButton(4));
+		io.MouseDown[CmdInput::MouseButton_Left] = pCmdInput->IsMouseButtonDown(CmdInput::MouseButton_Left);
+		io.MouseDown[CmdInput::MouseButton_Right] = pCmdInput->IsMouseButtonDown(CmdInput::MouseButton_Right);
+		io.MouseDown[CmdInput::MouseButton_Middle] = pCmdInput->IsMouseButtonDown(CmdInput::MouseButton_Middle);
+		io.MouseDown[CmdInput::MouseButton(3)] = pCmdInput->IsMouseButtonDown(CmdInput::MouseButton(3));
+		io.MouseDown[CmdInput::MouseButton(4)] = pCmdInput->IsMouseButtonDown(CmdInput::MouseButton(4));
 
 		io.KeyShift = pCmdInput->checkShiftModifier();
 		io.KeyCtrl = pCmdInput->checkCtrlModifier();
@@ -527,11 +527,11 @@ bool ProcessInputData(Client::ClientInfo& client)
 
 		io.AddMouseWheelEvent(wheelX, wheelY);
 		io.AddMousePosEvent(pCmdInput->mMousePos[0], pCmdInput->mMousePos[1]);
-		io.AddMouseButtonEvent(ImGuiMouseButton_Left, pCmdInput->IsMouseButtonDown(ImGuiMouseButton_Left));
-		io.AddMouseButtonEvent(ImGuiMouseButton_Right, pCmdInput->IsMouseButtonDown(ImGuiMouseButton_Right));
-		io.AddMouseButtonEvent(ImGuiMouseButton_Middle, pCmdInput->IsMouseButtonDown(ImGuiMouseButton_Middle));
-		io.AddMouseButtonEvent(ImGuiMouseButton(3), pCmdInput->IsMouseButtonDown(ImGuiMouseButton(3)));
-		io.AddMouseButtonEvent(ImGuiMouseButton(4), pCmdInput->IsMouseButtonDown(ImGuiMouseButton(4)));
+		io.AddMouseButtonEvent(ImGuiMouseButton_Left, pCmdInput->IsMouseButtonDown(CmdInput::MouseButton(ImGuiMouseButton_Left)));
+		io.AddMouseButtonEvent(ImGuiMouseButton_Right, pCmdInput->IsMouseButtonDown(CmdInput::MouseButton(ImGuiMouseButton_Right)));
+		io.AddMouseButtonEvent(ImGuiMouseButton_Middle, pCmdInput->IsMouseButtonDown(CmdInput::MouseButton(ImGuiMouseButton_Middle)));
+		io.AddMouseButtonEvent(ImGuiMouseButton(3), pCmdInput->IsMouseButtonDown(CmdInput::MouseButton(ImGuiMouseButton(3))));
+		io.AddMouseButtonEvent(ImGuiMouseButton(4), pCmdInput->IsMouseButtonDown(CmdInput::MouseButton(ImGuiMouseButton(4))));
 
 		for (ImGuiKey key = ImGuiKey_NamedKey_BEGIN; key < ImGuiKey_COUNT; ++key) {
 			io.AddKeyEvent(key, pCmdInput->IsKeyDown(key));

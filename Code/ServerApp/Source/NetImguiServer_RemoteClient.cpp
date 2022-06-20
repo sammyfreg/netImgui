@@ -415,11 +415,11 @@ void Client::CaptureImguiInput()
 
 	if( ImGui::IsWindowFocused() )
 	{
-		pNewInput->SetMouseButtonDown(ImGuiMouseButton_Left, ImGui::IsMouseDown(ImGuiMouseButton_Left));
-		pNewInput->SetMouseButtonDown(ImGuiMouseButton_Right, ImGui::IsMouseDown(ImGuiMouseButton_Right));
-		pNewInput->SetMouseButtonDown(ImGuiMouseButton_Middle, ImGui::IsMouseDown(ImGuiMouseButton_Middle));
-		pNewInput->SetMouseButtonDown(ImGuiMouseButton(3), ImGui::IsMouseDown(ImGuiMouseButton(3)));
-		pNewInput->SetMouseButtonDown(ImGuiMouseButton(4), ImGui::IsMouseDown(ImGuiMouseButton(4)));
+		pNewInput->SetMouseButtonDown(NetImgui::Internal::CmdInput::MouseButton(ImGuiMouseButton_Left), ImGui::IsMouseDown(ImGuiMouseButton_Left));
+		pNewInput->SetMouseButtonDown(NetImgui::Internal::CmdInput::MouseButton(ImGuiMouseButton_Right), ImGui::IsMouseDown(ImGuiMouseButton_Right));
+		pNewInput->SetMouseButtonDown(NetImgui::Internal::CmdInput::MouseButton(ImGuiMouseButton_Middle), ImGui::IsMouseDown(ImGuiMouseButton_Middle));
+		pNewInput->SetMouseButtonDown(NetImgui::Internal::CmdInput::MouseButton(ImGuiMouseButton(3)), ImGui::IsMouseDown(ImGuiMouseButton(3)));
+		pNewInput->SetMouseButtonDown(NetImgui::Internal::CmdInput::MouseButton(ImGuiMouseButton(4)), ImGui::IsMouseDown(ImGuiMouseButton(4)));
 
 		for (ImGuiKey key = ImGuiKey_NamedKey_BEGIN; key < ImGuiKey_NamedKey_END; ++key) {
 			pNewInput->SetKeyDown(key, ImGui::IsKeyDown(key));

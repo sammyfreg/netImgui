@@ -60,9 +60,17 @@ struct alignas(8) CmdVersion
 
 struct alignas(8) CmdInput
 {
+	enum MouseButton // copy of ImGuiMouseButton_ from imgui.h
+	{
+		MouseButton_Left = 0,
+		MouseButton_Right = 1,
+		MouseButton_Middle = 2,
+		MouseButton_COUNT = 5
+	};
+
 	static void setupKeyMap(int *keyMap);
-	inline bool IsMouseButtonDown(ImGuiMouseButton button) const;
-	inline void SetMouseButtonDown(ImGuiMouseButton button, bool isDown);
+	inline bool IsMouseButtonDown(MouseButton button) const;
+	inline void SetMouseButtonDown(MouseButton button, bool isDown);
 
 	inline bool checkShiftModifier() const;
 	inline bool checkCtrlModifier() const;

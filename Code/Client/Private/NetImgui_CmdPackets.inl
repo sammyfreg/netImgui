@@ -183,18 +183,18 @@ inline void CmdInput::setupKeyMap(int* keyMap)
 	keyMap[ImGuiKey_Z] = static_cast<int>(Key_Z);
 }
 
-bool CmdInput::IsMouseButtonDown(ImGuiMouseButton button)const
+bool CmdInput::IsMouseButtonDown(MouseButton button)const
 {
-	if (button >= ImGuiMouseButton_COUNT) {
+	if (button >= MouseButton_COUNT) {
 		return false;
 	}
 
 	return mPressedMouseButtonsMask & (uint64_t(1) << button);
 }
 
-void CmdInput::SetMouseButtonDown(ImGuiMouseButton button, bool isDown)
+void CmdInput::SetMouseButtonDown(MouseButton button, bool isDown)
 {
-	if (button >= ImGuiMouseButton_COUNT) {
+	if (button >= MouseButton_COUNT) {
 		return;
 	}
 
@@ -267,7 +267,7 @@ void CmdInput::SetKeyDown(ImGuiKey gKey, bool isDown)
 
 inline bool CmdInput::checkKeyDown(ImGuiKey gKey, ImGuiKey namedKeyBegin) const
 {
-	const uint64_t relateIndex = uint64_t(gKey) - namedKeyBegin;
+	const uint64_t relateIndex = uint64_t(gKey) - uint64_t(namedKeyBegin);
 	const uint64_t keyEntryIndex = static_cast<uint64_t>(relateIndex) / 64;
 
 	if (keyEntryIndex >= 512 / 64) {
