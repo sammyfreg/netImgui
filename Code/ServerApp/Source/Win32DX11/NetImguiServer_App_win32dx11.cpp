@@ -7,6 +7,8 @@
 
 #if HAL_API_PLATFORM_WIN32_DX11
 #include "NetImguiServer_UI.h"
+#include "backends/imgui_impl_dx11.cpp"
+#include "backends/imgui_impl_win32.cpp"
 //=================================================================================================
 
 // Dear ImGui: standalone example application for DirectX 11
@@ -110,17 +112,14 @@ int main(int, char**)
 
     // Main loop
     bool done = false;
-	//=========================================================================================
+    //=========================================================================================
     // @SAMPLE_EDIT (Start our own initialisation)
     done = !NetImguiServer::App::Startup( GetCommandLineA() );
     //=========================================================================================
     while (!done)
     {
         // Poll and handle messages (inputs, window resize, etc.)
-        // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
-        // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application.
-        // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application.
-        // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
+        // See the WndProc() function below for our to dispatch events to the Win32 backend.
         MSG msg;
         while (::PeekMessage(&msg, NULL, 0U, 0U, PM_REMOVE))
         {
@@ -288,6 +287,10 @@ void CleanupRenderTarget()
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 // Win32 message handler
+// You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
+// - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application, or clear/overwrite your copy of the mouse data.
+// - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application, or clear/overwrite your copy of the keyboard data.
+// Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
     if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam))

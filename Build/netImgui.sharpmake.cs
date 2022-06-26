@@ -1,3 +1,4 @@
+// NetImgui.sharpmake.cs
 using Sharpmake;
 using System;
 using System.Collections.Generic;
@@ -53,7 +54,10 @@ namespace NetImgui
 			ResourceFiles.Add(NetImguiTarget.GetPath(@"\Code\ServerApp\Background.png"));
 			SourceFilesBuildExcludeRegex.Add(@".*Code\\ServerApp\\Source\\Fonts\\.*");
 			
+			// Want the Dear Imgui Backend source files listed in the project, but not compiled
+			// (we selectively include them in the build, based on the HAL)
 			AdditionalSourceRootPaths.Add(NetImguiTarget.GetPath(ProjectImgui.sDefaultPath) + @"\backends");
+			SourceFilesBuildExcludeRegex.Add(@"backends\\");
 			
 			//---------------------------------------------
 			// For the OpenGL Server build
@@ -81,8 +85,8 @@ namespace NetImgui
 			//---------------------------------------------
 			// For the OpenGL Server build
 			conf.IncludePaths.Add(NetImguiTarget.GetPath(@"\Code\ThirdParty\glfw\include"));
-			conf.IncludePaths.Add(NetImguiTarget.GetPath(@"\Code\ThirdParty\glad30core\include"));
             conf.LibraryPaths.Add(NetImguiTarget.GetPath(@"\Code\ThirdParty\glfw\" + getGlfwLibName(target.Platform, target.DevEnv)));
+			conf.Options.Add(new Options.Vc.Linker.DisableSpecificWarnings("4099")); //Prevents: warning LNK4099: PDB '' was not found with 'glfw3_mtd.lib(context.c.obj)' or at ''; linking object as if no debug info
 			//---------------------------------------------
 			
 			conf.EventPostBuild.Add(@"xcopy " + NetImguiTarget.GetPath(@"\Code\ServerApp\Background.png") + " " + conf.TargetPath + " /D /Y");
