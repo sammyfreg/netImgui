@@ -1,4 +1,3 @@
-// NetImgui.sharpmake.cs
 using Sharpmake;
 using System;
 using System.Collections.Generic;
@@ -54,16 +53,13 @@ namespace NetImgui
 			ResourceFiles.Add(NetImguiTarget.GetPath(@"\Code\ServerApp\Background.png"));
 			SourceFilesBuildExcludeRegex.Add(@".*Code\\ServerApp\\Source\\Fonts\\.*");
 			
-			// Want the Dear Imgui Backend source files listed in the project, but not compiled
-			// (we selectively include them in the build, based on the HAL)
 			AdditionalSourceRootPaths.Add(NetImguiTarget.GetPath(ProjectImgui.sDefaultPath) + @"\backends");
-			SourceFilesBuildExcludeRegex.Add(@"backends\\");
 			
 			//---------------------------------------------
 			// For the OpenGL Server build
-			AdditionalSourceRootPaths.Add(NetImguiTarget.GetPath(@"\Code\ThirdParty\gl3w"));
-			AdditionalSourceRootPaths.Add(NetImguiTarget.GetPath(@"\Code\ThirdParty\glfw\include"));			
-			SourceFilesBuildExcludeRegex.Add(@"ThirdParty\\gl3w\\");
+			AdditionalSourceRootPaths.Add(NetImguiTarget.GetPath(@"\Code\ThirdParty\glfw\include"));
+			AdditionalSourceRootPaths.Add(NetImguiTarget.GetPath(@"\Code\ThirdParty\glad30core\include"));
+			AdditionalSourceRootPaths.Add(NetImguiTarget.GetPath(@"\Code\ThirdParty\glad30core\src"));			
 			SourceFilesBuildExcludeRegex.Add(@"ThirdParty\\glfw\\");
 			//---------------------------------------------
 		}
@@ -84,13 +80,32 @@ namespace NetImgui
 			
 			//---------------------------------------------
 			// For the OpenGL Server build
-			conf.IncludePaths.Add(NetImguiTarget.GetPath(@"\Code\ThirdParty\gl3w"));
 			conf.IncludePaths.Add(NetImguiTarget.GetPath(@"\Code\ThirdParty\glfw\include"));
-			if( target.DevEnv == DevEnv.vs2019 )		conf.LibraryPaths.Add(NetImguiTarget.GetPath(@"\Code\ThirdParty\glfw\lib-vc2019-64"));
-			else if( target.DevEnv == DevEnv.vs2017 )	conf.LibraryPaths.Add(NetImguiTarget.GetPath(@"\Code\ThirdParty\glfw\lib-vc2017-64"));
+			conf.IncludePaths.Add(NetImguiTarget.GetPath(@"\Code\ThirdParty\glad30core\include"));
+            conf.LibraryPaths.Add(NetImguiTarget.GetPath(@"\Code\ThirdParty\glfw\" + getGlfwLibName(target.Platform, target.DevEnv)));
 			//---------------------------------------------
 			
 			conf.EventPostBuild.Add(@"xcopy " + NetImguiTarget.GetPath(@"\Code\ServerApp\Background.png") + " " + conf.TargetPath + " /D /Y");
+		}
+
+		private string getGlfwLibName(Platform platform, DevEnv developerEnv)
+		{
+			string libName = "lib";
+			if( developerEnv == DevEnv.vs2022 ){
+			   libName += "-vc2022";
+			} else if( developerEnv == DevEnv.vs2019 ) {
+                libName += "-vc2019";
+			} else if( developerEnv == DevEnv.vs2017 ) {
+                libName += "-vc2017";
+			}
+
+            if (platform == Platform.win64) {
+                libName += "-64";
+            } else if (platform == Platform.win32) {
+                libName += "-32";
+            }
+
+            return libName;
 		}
     }
 	

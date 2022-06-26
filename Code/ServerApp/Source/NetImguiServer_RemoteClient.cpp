@@ -415,18 +415,15 @@ void Client::CaptureImguiInput()
 
 	if( ImGui::IsWindowFocused() )
 	{
-		NetImguiServer::App::HAL_ConvertKeyDown(io.KeysDown, pNewInput->mKeysDownMask);
-		pNewInput->SetKeyDown(NetImgui::Internal::CmdInput::eVirtualKeys::vkMouseBtnLeft,	io.MouseDown[0]);
-		pNewInput->SetKeyDown(NetImgui::Internal::CmdInput::eVirtualKeys::vkMouseBtnRight,	io.MouseDown[1]);
-		pNewInput->SetKeyDown(NetImgui::Internal::CmdInput::eVirtualKeys::vkMouseBtnMid,	io.MouseDown[2]);
-		pNewInput->SetKeyDown(NetImgui::Internal::CmdInput::eVirtualKeys::vkMouseBtnExtra1, io.MouseDown[3]);
-		pNewInput->SetKeyDown(NetImgui::Internal::CmdInput::eVirtualKeys::vkMouseBtnExtra2, io.MouseDown[4]);
-		pNewInput->SetKeyDown(NetImgui::Internal::CmdInput::eVirtualKeys::vkKeyboardShift,	io.KeyShift);
-		pNewInput->SetKeyDown(NetImgui::Internal::CmdInput::eVirtualKeys::vkKeyboardCtrl,	io.KeyCtrl);
-		pNewInput->SetKeyDown(NetImgui::Internal::CmdInput::eVirtualKeys::vkKeyboardAlt,	io.KeyAlt);
-		pNewInput->SetKeyDown(NetImgui::Internal::CmdInput::eVirtualKeys::vkKeyboardSuper1, io.KeySuper);
+		pNewInput->SetMouseButtonDown(NetImgui::Internal::CmdInput::MouseButton(ImGuiMouseButton_Left), ImGui::IsMouseDown(ImGuiMouseButton_Left));
+		pNewInput->SetMouseButtonDown(NetImgui::Internal::CmdInput::MouseButton(ImGuiMouseButton_Right), ImGui::IsMouseDown(ImGuiMouseButton_Right));
+		pNewInput->SetMouseButtonDown(NetImgui::Internal::CmdInput::MouseButton(ImGuiMouseButton_Middle), ImGui::IsMouseDown(ImGuiMouseButton_Middle));
+		pNewInput->SetMouseButtonDown(NetImgui::Internal::CmdInput::MouseButton(ImGuiMouseButton(3)), ImGui::IsMouseDown(ImGuiMouseButton(3)));
+		pNewInput->SetMouseButtonDown(NetImgui::Internal::CmdInput::MouseButton(ImGuiMouseButton(4)), ImGui::IsMouseDown(ImGuiMouseButton(4)));
 
-		//! @sammyfreg: ToDo Add support for gamepad
+		for (ImGuiKey key = ImGuiKey_NamedKey_BEGIN; key < ImGuiKey_NamedKey_END; ++key) {
+			pNewInput->SetKeyDown(key, ImGui::IsKeyDown(key));
+		}
 	}
 
 	// Copy waiting characters inputs

@@ -116,7 +116,7 @@ void Popup_ConfirmDisconnect()
 	{
 		
 		RemoteClient::Client& client			= RemoteClient::Client::Get(gPopup_ConfirmDisconnect_ClientIdx);
-		bool wantExit							= ImGui::IsKeyPressed(static_cast<int>(NetImgui::Internal::CmdInput::eVirtualKeys::vkKeyboardEscape), false);
+		bool wantExit							= ImGui::IsKeyPressed(ImGuiKey_Escape);
 		ImGuiWindowClass windowClass;
 		windowClass.ViewportFlagsOverrideSet	= ImGuiViewportFlags_TopMost;		
 		ImGui::SetNextWindowClass(&windowClass);
@@ -190,8 +190,8 @@ void Popup_AboutNetImgui()
 			ImGui::NewLine();
 			ImGui::Separator();
 
-			bool wantExit	 = ImGui::IsKeyPressed(static_cast<int>(NetImgui::Internal::CmdInput::eVirtualKeys::vkKeyboardEscape), false);
-			wantExit		|= ImGui::IsKeyPressed(static_cast<int>(NetImgui::Internal::CmdInput::eVirtualKeys::vkKeyboardEnter), false);
+			bool wantExit	 = ImGui::IsKeyPressed(ImGuiKey_Escape);
+			wantExit		|= ImGui::IsKeyPressed(ImGuiKey_Enter);
 			if( ImGui::Button("Close", ImVec2(ImGui::GetContentRegionAvail().x, 0)) || wantExit) 
 				gPopup_AboutNetImgui_Show = false;
 			ImGui::EndPopup();
@@ -256,7 +256,7 @@ void Popup_ServerConfig()
 			// --- Save/Cancel ---
 			ImGui::NewLine();
 			ImGui::Separator();
-			bool wantExit				= ImGui::IsKeyPressed(static_cast<int>(NetImgui::Internal::CmdInput::eVirtualKeys::vkKeyboardEscape), false);
+			bool wantExit				= ImGui::IsKeyPressed(ImGuiKey_Escape);
 			gPopup_ServerConfig_Show	&= !ImGui::Button("Cancel", ImVec2(ImGui::GetContentRegionAvail().x / 2.f, 0)) && !wantExit;
 			ImGui::SetItemDefaultFocus();
 			ImGui::SameLine();
@@ -330,7 +330,7 @@ void Popup_ClientConfigEdit()
 			ImGui::EndPopup();
 		}
 
-		bool wantExit = ImGui::IsKeyPressed(static_cast<int>(NetImgui::Internal::CmdInput::eVirtualKeys::vkKeyboardEscape), false);
+		bool wantExit = ImGui::IsKeyPressed(ImGuiKey_Escape);
 		bOpenEdit &= !wantExit;
 	}	
 
@@ -378,7 +378,7 @@ void Popup_ClientConfigDelete()
 			ImGui::EndPopup();
 		}
 
-		bool wantExit	= ImGui::IsKeyPressed(static_cast<int>(NetImgui::Internal::CmdInput::eVirtualKeys::vkKeyboardEscape), false);
+		bool wantExit	= ImGui::IsKeyPressed(ImGuiKey_Escape);
 		bOpenDelConfirm &= !wantExit;
 		if( !bOpenDelConfirm ){
 			gPopup_ConfirmDelete_ConfigIdx = NetImguiServer::Config::Client::kInvalidRuntimeID;

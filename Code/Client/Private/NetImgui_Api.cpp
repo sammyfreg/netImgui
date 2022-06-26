@@ -500,24 +500,43 @@ bool ProcessInputData(Client::ClientInfo& client)
 
 	if (pCmdInput)
 	{
+		const float wheelY = pCmdInput->mMouseWheelVert - client.mMouseWheelVertPrev;
+		const float wheelX = pCmdInput->mMouseWheelHoriz - client.mMouseWheelHorizPrev;
+
 		io.DisplaySize	= ImVec2(pCmdInput->mScreenSize[0], pCmdInput->mScreenSize[1]);
-		io.MousePos		= ImVec2(pCmdInput->mMousePos[0], pCmdInput->mMousePos[1]);
-		io.MouseWheel	= pCmdInput->mMouseWheelVert - client.mMouseWheelVertPrev;
-		io.MouseWheelH	= pCmdInput->mMouseWheelHoriz - client.mMouseWheelHorizPrev;
-		io.MouseDown[0] = pCmdInput->IsKeyDown(CmdInput::eVirtualKeys::vkMouseBtnLeft);
-		io.MouseDown[1] = pCmdInput->IsKeyDown(CmdInput::eVirtualKeys::vkMouseBtnRight);
-		io.MouseDown[2] = pCmdInput->IsKeyDown(CmdInput::eVirtualKeys::vkMouseBtnMid);
-		io.MouseDown[3] = pCmdInput->IsKeyDown(CmdInput::eVirtualKeys::vkMouseBtnExtra1);
-		io.MouseDown[4] = pCmdInput->IsKeyDown(CmdInput::eVirtualKeys::vkMouseBtnExtra2);
-		io.KeyShift		= pCmdInput->IsKeyDown(CmdInput::eVirtualKeys::vkKeyboardShift);
-		io.KeyCtrl		= pCmdInput->IsKeyDown(CmdInput::eVirtualKeys::vkKeyboardCtrl);
-		io.KeyAlt		= pCmdInput->IsKeyDown(CmdInput::eVirtualKeys::vkKeyboardAlt);
-		io.KeySuper		= pCmdInput->IsKeyDown(CmdInput::eVirtualKeys::vkKeyboardSuper1) || pCmdInput->IsKeyDown(CmdInput::eVirtualKeys::vkKeyboardSuper2);
 		//io.NavInputs // @sammyfreg TODO: Handle Gamepad
 
-		memset(io.KeysDown, 0, sizeof(io.KeysDown));
-		for (uint32_t i(0); i < ArrayCount(pCmdInput->mKeysDownMask) * 64; ++i)
-			io.KeysDown[i] = (pCmdInput->mKeysDownMask[i / 64] & (static_cast<uint64_t>(1) << (i % 64))) != 0;
+#if IMGUI_VERSION_NUM < 18700
+		io.MousePos = ImVec2(pCmdInput->mMousePos[0], pCmdInput->mMousePos[1]);
+		io.MouseWheel = wheelY;
+		io.MouseWheelH = wheelX;
+
+		io.MouseDown[CmdInput::MouseButton_Left] = pCmdInput->IsMouseButtonDown(CmdInput::MouseButton_Left);
+		io.MouseDown[CmdInput::MouseButton_Right] = pCmdInput->IsMouseButtonDown(CmdInput::MouseButton_Right);
+		io.MouseDown[CmdInput::MouseButton_Middle] = pCmdInput->IsMouseButtonDown(CmdInput::MouseButton_Middle);
+		io.MouseDown[CmdInput::MouseButton(3)] = pCmdInput->IsMouseButtonDown(CmdInput::MouseButton(3));
+		io.MouseDown[CmdInput::MouseButton(4)] = pCmdInput->IsMouseButtonDown(CmdInput::MouseButton(4));
+
+		io.KeyShift = pCmdInput->checkShiftModifier();
+		io.KeyCtrl = pCmdInput->checkCtrlModifier();
+		io.KeyAlt = pCmdInput->checkAltModifier();
+		io.KeySuper = pCmdInput->checkSuperModifier();
+
+		pCmdInput->getKeyDownLegacy(io.KeysDown, ArrayCount(io.KeysDown));
+#else
+
+		io.AddMouseWheelEvent(wheelX, wheelY);
+		io.AddMousePosEvent(pCmdInput->mMousePos[0], pCmdInput->mMousePos[1]);
+		io.AddMouseButtonEvent(ImGuiMouseButton_Left, pCmdInput->IsMouseButtonDown(CmdInput::MouseButton(ImGuiMouseButton_Left)));
+		io.AddMouseButtonEvent(ImGuiMouseButton_Right, pCmdInput->IsMouseButtonDown(CmdInput::MouseButton(ImGuiMouseButton_Right)));
+		io.AddMouseButtonEvent(ImGuiMouseButton_Middle, pCmdInput->IsMouseButtonDown(CmdInput::MouseButton(ImGuiMouseButton_Middle)));
+		io.AddMouseButtonEvent(ImGuiMouseButton(3), pCmdInput->IsMouseButtonDown(CmdInput::MouseButton(ImGuiMouseButton(3))));
+		io.AddMouseButtonEvent(ImGuiMouseButton(4), pCmdInput->IsMouseButtonDown(CmdInput::MouseButton(ImGuiMouseButton(4))));
+
+		for (ImGuiKey key = ImGuiKey_NamedKey_BEGIN; key < ImGuiKey_COUNT; ++key) {
+			io.AddKeyEvent(key, pCmdInput->IsKeyDown(key));
+		}
+#endif
 
 		// @sammyfreg TODO: Optimize this
 		io.ClearInputCharacters();

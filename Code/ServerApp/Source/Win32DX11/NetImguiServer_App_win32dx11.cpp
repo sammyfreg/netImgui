@@ -6,8 +6,6 @@
 #include "NetImguiServer_App.h"
 
 #if HAL_API_PLATFORM_WIN32_DX11
-#include "backends/imgui_impl_dx11.cpp"
-#include "backends/imgui_impl_win32.cpp"
 #include "NetImguiServer_UI.h"
 //=================================================================================================
 
