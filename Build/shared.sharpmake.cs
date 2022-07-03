@@ -285,10 +285,10 @@ namespace NetImgui
 		public ProjectNetImgui(string imguiFullPath)
 		: base(false)
         {
-			mVersion = Path.GetFileName(imguiFullPath);
-			mImguiPath = imguiFullPath;
-			Name = "NetImguiLib (" + mVersion + ")";
-            SourceRootPath = NetImguiTarget.GetPath(@"\Code\Client");
+			mVersion 		= Path.GetFileName(imguiFullPath);
+			mImguiPath 		= imguiFullPath;
+			Name 			= "NetImguiLib (" + mVersion + ")";
+            SourceRootPath 	= NetImguiTarget.GetPath(@"\Code\Client");
 			SourceFiles.Add(mImguiPath + @"\imgui.h");
         }
 
@@ -328,11 +328,47 @@ namespace NetImgui
 				AddDependencyImguiIndex32(conf, target);
 				conf.AddPublicDependency<ProjectNetImgui32_Default>(target);
 			}
-			conf.IncludePaths.Add(ProjectImgui.sDefaultPath);
+			conf.IncludePaths.Add(NetImguiTarget.GetPath(ProjectImgui.sDefaultPath));
 			conf.IncludePaths.Add(NetImguiTarget.GetPath(@"\Code\Client"));
 		}
 		bool mUseIndex32;
     }
+	
+	// Compile a console program, with Dear ImGui and NetImgui sources 
+	// included directly. The Dear ImGui code does not include any backend,
+	// only try connecting the the NetImgui Server to draw its content remotely.
+	[Sharpmake.Generate] 
+	public class ProjectNoBackend : ProjectBase 
+	{
+		public ProjectNoBackend(string inName, string inImguiFullPath)
+		: base(true)
+		{
+			mImguiFullPath	= string.IsNullOrEmpty(inImguiFullPath) ? NetImguiTarget.GetPath(ProjectImgui.sDefaultPath) : inImguiFullPath;
+			Name			= inName;
+            SourceRootPath	= NetImguiTarget.GetPath(@"\Code\Sample\SampleNoBackend");
+			
+			// Find the Dear Imgui Sources files
+			string[] sourceExtensions = new string[]{".h",".cpp"};
+			var files = Directory.EnumerateFiles(mImguiFullPath, "*.*", SearchOption.TopDirectoryOnly);
+			foreach (var file in files)
+			{				
+				if (sourceExtensions.Contains(Path.GetExtension(file), StringComparer.OrdinalIgnoreCase)){
+					//Console.WriteLine("File Added: {0}", Path.GetFullPath(file));
+					SourceFiles.Add(Path.GetFullPath(file));
+				}
+			};
+		}
+		
+		public override void ConfigureAll(Configuration conf, NetImguiTarget target)
+		{
+			base.ConfigureAll(conf, target);
+			conf.IncludePaths.Add(mImguiFullPath);
+			conf.IncludePaths.Add(NetImguiTarget.GetPath(@"\Code\Client"));
+			conf.Options.Add(Options.Vc.Linker.SubSystem.Console);
+			conf.LibraryFiles.Add("ws2_32.lib");
+		}
+		string mImguiFullPath;
+	}
 	
 	//=============================================================================================
 	// SOLUTIONS

@@ -6,7 +6,7 @@ cls
 :: SETTINGS 
 ::-----------------------------------------------------------------------------------
 :: List of offical Dear ImGui (from official depot)
-set VERSIONS=(v1.70 v1.71 v1.72 v1.73 v1.74 v1.75 v1.76 v1.77 v1.78 v1.79, v1.80, v1.81, v1.82, v1.83, v1.84, v1.85, v1.86, v1.87)
+set VERSIONS=(v1.70 v1.71 v1.72 v1.73 v1.74 v1.75 v1.76 v1.77 v1.78 v1.79, v1.80, v1.81, v1.82, v1.83, v1.84, v1.85, v1.86, v1.87, v1.88)
 
 :: List of custom Dear ImGui releases (from own depot)
 set EXTRA_VERSIONS=(dock-1-76, dock-1-80)
@@ -49,7 +49,7 @@ for %%v in %VERSIONS% do (
 	echo !IMGUI_FILEPATH!		
 	curl -LJ !IMGUI_FILEPATH! --output !IMGUI_FILE!
 	tar -xzf !IMGUI_FILE!
-	del !IMGUI_FILE!
+	::del !IMGUI_FILE!
 	echo.
 )
 for %%v in %EXTRA_VERSIONS% do (	
@@ -71,7 +71,7 @@ type compatibility.sharpmake.cs.1 > %COMPAT_FILE%
 :: Declare each compatibility project (1 per Imgui version)
 for /D %%d IN (%IMGUI_DIR%\*) DO (
 	call :GenerateProjectName %%d	
-	echo     [Sharpmake.Generate] public class !NetImguiName! : ProjectNetImgui { public !NetImguiName!^(^): base^(@"%%d"^){} } >> %COMPAT_FILE%
+	echo     [Sharpmake.Generate] public class !NetImguiName! : ProjectNoBackend { public !NetImguiName!^(^): base^("!NetImguiName!", @"%%d"^){} } >> %COMPAT_FILE%
 )
 
 type compatibility.sharpmake.cs.2 >> %COMPAT_FILE%
@@ -92,10 +92,10 @@ pause
 exit /b %errorlevel%
 
 :: Take a Imgui install path, and make it into a NetImgui project name
-:: By keeping only the last direcotory name and removing '-' and '.'
+:: By keeping only the last directory name and removing '-' and '.'
 :GenerateProjectName
 	set NetImguiName=%~nx1
 	set NetImguiName=%NetImguiName:-=_%
 	set NetImguiName=%NetImguiName:.=_%
-	set NetImguiName=ProjectNetImgui_%NetImguiName%
+	set NetImguiName=ProjectCompatibility_%NetImguiName%
 exit /b 0

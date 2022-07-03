@@ -174,6 +174,23 @@ namespace NetImgui
 		}
     }
 	
+	//-------------------------------------------------------------------------
+	// This sample does not have a UI Window, only show a console and wait 
+	// for a connection to NetImguiServer. when connected, Display its
+	// Dear ImGui content normally, on the remote server. 
+	// Usefull to demonstrate being able to use NetImgui without even needing to 
+	// implement a Backend support (windows / renderer / input) on the client.
+	// It also compiles the Dear ImGui/NetImgui sources directly
+	//-------------------------------------------------------------------------
+	[Sharpmake.Generate]
+    public class ProjectSample_NoBackend : ProjectNoBackend
+    {
+        public ProjectSample_NoBackend()
+		: base("SampleNoBackend","")
+		{
+        }
+    }
+	
 	//
 	[Sharpmake.Generate] 
 	public class ProjectSample_Compression : ProjectBase 
@@ -205,6 +222,33 @@ namespace NetImgui
 		}
 	}
 	
+	//
+	[Sharpmake.Generate] 
+	public class ProjectSample_SampleCompatibility : ProjectBase 
+	{
+		// This sample does not includes the Dear Imgui or NetImgui Library included.
+		// They are instead compiled inside this project. This allows to test various
+		// older version of Dear ImGui against our NetImgui Server compiled 
+		// with latest version
+		public ProjectSample_SampleCompatibility()
+		: base(true)
+		{
+			Name			= "Compatibility";
+            SourceRootPath	= NetImguiTarget.GetPath(@"\Code\Sample\SampleCompatibility");
+			SourceFiles.Add(@"C:\GitHub\NetImguiDev\Build\..\_generated\imgui\imgui-1.88\*.cpp");
+			SourceFiles.Add(@"C:\GitHub\NetImguiDev\Build\..\_generated\imgui\imgui-1.88\*.h");
+		}
+		
+		public override void ConfigureAll(Configuration conf, NetImguiTarget target)
+		{
+			base.ConfigureAll(conf, target);
+			conf.IncludePaths.Add(@"C:\GitHub\NetImguiDev\Build\..\_generated\imgui\imgui-1.88\");
+			conf.IncludePaths.Add(NetImguiTarget.GetPath(@"\Code\Client"));
+			
+			conf.Options.Add(Options.Vc.Linker.SubSystem.Console); 
+			
+		}
+	}
 	
 	//=============================================================================================
 	// SOLUTIONS
@@ -233,7 +277,9 @@ namespace NetImgui
 			conf.AddProject<ProjectSample_Index32Bits>(target, false, SolutionFolder);
 			conf.AddProject<ProjectSample_Disabled>(target, false, SolutionFolder);
 			conf.AddProject<ProjectSample_SingleInclude>(target, false, SolutionFolder);
-			// Adding an already auto included dependcy, so it can be moved to more appropriate folder
+			conf.AddProject<ProjectSample_NoBackend>(target, false, SolutionFolder);
+			
+			// Adding an already auto included dependency, so it can be moved to more appropriate folder
 			conf.AddProject<ProjectNetImgui_Disabled>(target, false, "CompatibilityTest");
 		}
 	}
