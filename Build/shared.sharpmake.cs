@@ -366,6 +366,17 @@ namespace NetImgui
 			conf.IncludePaths.Add(NetImguiTarget.GetPath(@"\Code\Client"));
 			conf.Options.Add(Options.Vc.Linker.SubSystem.Console);
 			conf.LibraryFiles.Add("ws2_32.lib");
+			
+			// Remove a some Dear ImGui sources compile warning
+			if( target.Compiler == Compiler.MSBuild ){
+				conf.Options.Add(new Options.Vc.Compiler.DisableSpecificWarnings("4100")); // warning C4100: xxx: unreferenced formal parameter
+				conf.Options.Add(new Options.Vc.Compiler.DisableSpecificWarnings("4189")); // warning C4189: xxx: unused local variable
+			}
+			else if ( target.Compiler == Compiler.Clang ){
+				conf.Options.Add(Options.Vc.General.PlatformToolset.ClangCL);
+				conf.AdditionalCompilerOptions.Add("-Wno-unused-parameter");
+				conf.AdditionalCompilerOptions.Add("-Wno-unused-variable");
+			}
 		}
 		string mImguiFullPath;
 	}

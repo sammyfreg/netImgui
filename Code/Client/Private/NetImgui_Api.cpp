@@ -489,6 +489,21 @@ uint32_t GetTexture_BytePerImage(eTexFormat eFormat, uint32_t pixelWidth, uint32
 	//Note: If adding support to BC compression format, have to take into account 4x4 size alignement
 }
 
+static inline void AddKeyEvent(const Client::ClientInfo& client, const CmdInput* pCmdInput, CmdInput::NetImguiKeys netimguiKey, ImGuiKey_ imguiKey)
+{
+	uint32_t valIndex	= netimguiKey/64;
+	uint64_t valMask	= 0x0000000000000001ull << (netimguiKey%64);
+#if IMGUI_VERSION_NUM < 18700
+	IM_UNUSED(client);
+	ImGui::GetIO().KeysDown[imguiKey] = (pCmdInput->mInputDownMask[valIndex] & valMask) != 0;
+#else	
+	if((pCmdInput->mInputDownMask[valIndex] ^ client.mPreviousInputState.mInputDownMask[valIndex]) & valMask){
+		ImGui::GetIO().AddKeyEvent(imguiKey, pCmdInput->mInputDownMask[valIndex] & valMask );
+	}
+#endif
+}
+
+
 //=================================================================================================
 bool ProcessInputData(Client::ClientInfo& client)
 //=================================================================================================
@@ -500,59 +515,126 @@ bool ProcessInputData(Client::ClientInfo& client)
 
 	if (pCmdInput)
 	{
-		const float wheelY = pCmdInput->mMouseWheelVert - client.mMouseWheelVertPrev;
-		const float wheelX = pCmdInput->mMouseWheelHoriz - client.mMouseWheelHorizPrev;
-
-		io.DisplaySize	= ImVec2(pCmdInput->mScreenSize[0], pCmdInput->mScreenSize[1]);
-		//io.NavInputs // @sammyfreg TODO: Handle Gamepad
-
+		const float wheelY	= pCmdInput->mMouseWheelVert - client.mPreviousInputState.mMouseWheelVertPrev;
+		const float wheelX	= pCmdInput->mMouseWheelHoriz - client.mPreviousInputState.mMouseWheelHorizPrev;
+		io.DisplaySize		= ImVec2(pCmdInput->mScreenSize[0], pCmdInput->mScreenSize[1]);
+		
 #if IMGUI_VERSION_NUM < 18700
-		io.MousePos = ImVec2(pCmdInput->mMousePos[0], pCmdInput->mMousePos[1]);
-		io.MouseWheel = wheelY;
-		io.MouseWheelH = wheelX;
+		io.MousePos									= ImVec2(pCmdInput->mMousePos[0], pCmdInput->mMousePos[1]);
+		io.MouseWheel								= wheelY;
+		io.MouseWheelH								= wheelX;
+		for (uint32_t i(0); i < CmdInput::NetImguiMouseButton::ImGuiMouseButton_COUNT; ++i) {
+			io.MouseDown[i] = (pCmdInput->mMouseDownMask & (0x0000000000000001ull << i)) != 0;
+		}
 
-		io.MouseDown[CmdInput::MouseButton_Left] = pCmdInput->IsMouseButtonDown(CmdInput::MouseButton_Left);
-		io.MouseDown[CmdInput::MouseButton_Right] = pCmdInput->IsMouseButtonDown(CmdInput::MouseButton_Right);
-		io.MouseDown[CmdInput::MouseButton_Middle] = pCmdInput->IsMouseButtonDown(CmdInput::MouseButton_Middle);
-		io.MouseDown[CmdInput::MouseButton(3)] = pCmdInput->IsMouseButtonDown(CmdInput::MouseButton(3));
-		io.MouseDown[CmdInput::MouseButton(4)] = pCmdInput->IsMouseButtonDown(CmdInput::MouseButton(4));
-
-		io.KeyShift = pCmdInput->checkShiftModifier();
-		io.KeyCtrl = pCmdInput->checkCtrlModifier();
-		io.KeyAlt = pCmdInput->checkAltModifier();
-		io.KeySuper = pCmdInput->checkSuperModifier();
-
-		pCmdInput->getKeyDownLegacy(io.KeysDown, ArrayCount(io.KeysDown));
+		#define AddInputDown(KEYNAME)	AddKeyEvent(client, pCmdInput, CmdInput::KEYNAME, ImGuiKey_::KEYNAME);
+		AddInputDown(ImGuiKey_Tab)
+		AddInputDown(ImGuiKey_LeftArrow)
+		AddInputDown(ImGuiKey_RightArrow)
+		AddInputDown(ImGuiKey_UpArrow)
+		AddInputDown(ImGuiKey_DownArrow)
+		AddInputDown(ImGuiKey_PageUp)
+		AddInputDown(ImGuiKey_PageDown)
+		AddInputDown(ImGuiKey_Home)
+		AddInputDown(ImGuiKey_End)
+		AddInputDown(ImGuiKey_Insert)
+		AddInputDown(ImGuiKey_Delete)
+		AddInputDown(ImGuiKey_Backspace)
+		AddInputDown(ImGuiKey_Space)
+		AddInputDown(ImGuiKey_Enter)
+		AddInputDown(ImGuiKey_Escape)
+		AddInputDown(ImGuiKey_A)         // for text edit CTRL+A: select all
+		AddInputDown(ImGuiKey_C)         // for text edit CTRL+C: copy
+		AddInputDown(ImGuiKey_V)         // for text edit CTRL+V: paste
+		AddInputDown(ImGuiKey_X)         // for text edit CTRL+X: cut
+		AddInputDown(ImGuiKey_Y)         // for text edit CTRL+Y: redo
+		AddInputDown(ImGuiKey_Z)         // for text edit CTRL+Z: undo
 #else
+		// At the moment All Dear Imgui version share the same ImGuiKey_ enum (with a 512 value offset), 
+		// but could change in the future, so convert from our own enum version, to Dear ImGui.
+		#define AddInputDown(KEYNAME)	AddKeyEvent(client, pCmdInput, CmdInput::KEYNAME, ImGuiKey_::KEYNAME);
+		AddInputDown(ImGuiKey_Tab)
+		AddInputDown(ImGuiKey_LeftArrow)
+		AddInputDown(ImGuiKey_RightArrow)
+		AddInputDown(ImGuiKey_UpArrow)
+		AddInputDown(ImGuiKey_DownArrow)
+		AddInputDown(ImGuiKey_PageUp)
+		AddInputDown(ImGuiKey_PageDown)
+		AddInputDown(ImGuiKey_Home)
+		AddInputDown(ImGuiKey_End)
+		AddInputDown(ImGuiKey_Insert)
+		AddInputDown(ImGuiKey_Delete)
+		AddInputDown(ImGuiKey_Backspace)
+		AddInputDown(ImGuiKey_Space)
+		AddInputDown(ImGuiKey_Enter)
+		AddInputDown(ImGuiKey_Escape)
+		
+		AddInputDown(ImGuiKey_LeftCtrl) AddInputDown(ImGuiKey_LeftShift) AddInputDown(ImGuiKey_LeftAlt)	AddInputDown(ImGuiKey_LeftSuper)
+		AddInputDown(ImGuiKey_RightCtrl) AddInputDown(ImGuiKey_RightShift) AddInputDown(ImGuiKey_RightAlt) AddInputDown(ImGuiKey_RightSuper)
+		AddInputDown(ImGuiKey_Menu)
+		AddInputDown(ImGuiKey_0) AddInputDown(ImGuiKey_1) AddInputDown(ImGuiKey_2) AddInputDown(ImGuiKey_3) AddInputDown(ImGuiKey_4) AddInputDown(ImGuiKey_5) AddInputDown(ImGuiKey_6) AddInputDown(ImGuiKey_7) AddInputDown(ImGuiKey_8) AddInputDown(ImGuiKey_9)
+		AddInputDown(ImGuiKey_A) AddInputDown(ImGuiKey_B) AddInputDown(ImGuiKey_C) AddInputDown(ImGuiKey_D) AddInputDown(ImGuiKey_E) AddInputDown(ImGuiKey_F) AddInputDown(ImGuiKey_G) AddInputDown(ImGuiKey_H) AddInputDown(ImGuiKey_I) AddInputDown(ImGuiKey_J)
+		AddInputDown(ImGuiKey_K) AddInputDown(ImGuiKey_L) AddInputDown(ImGuiKey_M) AddInputDown(ImGuiKey_N) AddInputDown(ImGuiKey_O) AddInputDown(ImGuiKey_P) AddInputDown(ImGuiKey_Q) AddInputDown(ImGuiKey_R) AddInputDown(ImGuiKey_S) AddInputDown(ImGuiKey_T)
+		AddInputDown(ImGuiKey_U) AddInputDown(ImGuiKey_V) AddInputDown(ImGuiKey_W) AddInputDown(ImGuiKey_X) AddInputDown(ImGuiKey_Y) AddInputDown(ImGuiKey_Z)
+		AddInputDown(ImGuiKey_F1) AddInputDown(ImGuiKey_F2) AddInputDown(ImGuiKey_F3) AddInputDown(ImGuiKey_F4) AddInputDown(ImGuiKey_F5) AddInputDown(ImGuiKey_F6)
+		AddInputDown(ImGuiKey_F7) AddInputDown(ImGuiKey_F8) AddInputDown(ImGuiKey_F9) AddInputDown(ImGuiKey_F10) AddInputDown(ImGuiKey_F11) AddInputDown(ImGuiKey_F12)
+		AddInputDown(ImGuiKey_Apostrophe)
+		AddInputDown(ImGuiKey_Comma)
+		AddInputDown(ImGuiKey_Minus)
+		AddInputDown(ImGuiKey_Period)
+		AddInputDown(ImGuiKey_Slash)
+		AddInputDown(ImGuiKey_Semicolon)
+		AddInputDown(ImGuiKey_Equal)
+		AddInputDown(ImGuiKey_LeftBracket)
+		AddInputDown(ImGuiKey_Backslash)
+		AddInputDown(ImGuiKey_RightBracket)
+		AddInputDown(ImGuiKey_GraveAccent)
+		AddInputDown(ImGuiKey_CapsLock)
+		AddInputDown(ImGuiKey_ScrollLock)
+		AddInputDown(ImGuiKey_NumLock)
+		AddInputDown(ImGuiKey_PrintScreen)
+		AddInputDown(ImGuiKey_Pause)
+		AddInputDown(ImGuiKey_Keypad0) AddInputDown(ImGuiKey_Keypad1) AddInputDown(ImGuiKey_Keypad2) AddInputDown(ImGuiKey_Keypad3) AddInputDown(ImGuiKey_Keypad4)
+		AddInputDown(ImGuiKey_Keypad5) AddInputDown(ImGuiKey_Keypad6) AddInputDown(ImGuiKey_Keypad7) AddInputDown(ImGuiKey_Keypad8) AddInputDown(ImGuiKey_Keypad9)
+		AddInputDown(ImGuiKey_KeypadDecimal)
+		AddInputDown(ImGuiKey_KeypadDivide)
+		AddInputDown(ImGuiKey_KeypadMultiply)
+		AddInputDown(ImGuiKey_KeypadSubtract)
+		AddInputDown(ImGuiKey_KeypadAdd)
+		AddInputDown(ImGuiKey_KeypadEnter)
+		AddInputDown(ImGuiKey_KeypadEqual)
+		#undef AddInputDown
 
 		io.AddMouseWheelEvent(wheelX, wheelY);
-		io.AddMousePosEvent(pCmdInput->mMousePos[0], pCmdInput->mMousePos[1]);
-		io.AddMouseButtonEvent(ImGuiMouseButton_Left, pCmdInput->IsMouseButtonDown(CmdInput::MouseButton(ImGuiMouseButton_Left)));
-		io.AddMouseButtonEvent(ImGuiMouseButton_Right, pCmdInput->IsMouseButtonDown(CmdInput::MouseButton(ImGuiMouseButton_Right)));
-		io.AddMouseButtonEvent(ImGuiMouseButton_Middle, pCmdInput->IsMouseButtonDown(CmdInput::MouseButton(ImGuiMouseButton_Middle)));
-		io.AddMouseButtonEvent(ImGuiMouseButton(3), pCmdInput->IsMouseButtonDown(CmdInput::MouseButton(ImGuiMouseButton(3))));
-		io.AddMouseButtonEvent(ImGuiMouseButton(4), pCmdInput->IsMouseButtonDown(CmdInput::MouseButton(ImGuiMouseButton(4))));
-
-		for (ImGuiKey key = ImGuiKey_NamedKey_BEGIN; key < ImGuiKey_COUNT; ++key) {
-			io.AddKeyEvent(key, pCmdInput->IsKeyDown(key));
+		io.AddMousePosEvent(pCmdInput->mMousePos[0],	pCmdInput->mMousePos[1]);
+		for(int i(0); i<CmdInput::NetImguiMouseButton::ImGuiMouseButton_COUNT; ++i){
+			uint64_t valMask = 0x0000000000000001ull << i;
+			if((pCmdInput->mMouseDownMask ^ client.mPreviousInputState.mMouseDownMask) & valMask){
+				io.AddMouseButtonEvent(i, pCmdInput->mMouseDownMask & valMask);
+			}
 		}
 #endif
-
-		// @sammyfreg TODO: Optimize this
-		io.ClearInputCharacters();
+		io.KeyShift		= pCmdInput->IsKeyDown(CmdInput::NetImguiKeys::ImGuiKey_ModShift);
+		io.KeyCtrl		= pCmdInput->IsKeyDown(CmdInput::NetImguiKeys::ImGuiKey_ModCtrl);
+		io.KeyAlt		= pCmdInput->IsKeyDown(CmdInput::NetImguiKeys::ImGuiKey_ModAlt);
+		io.KeySuper		= pCmdInput->IsKeyDown(CmdInput::NetImguiKeys::ImGuiKey_ModSuper);
+		
 		size_t keyCount(1);
 		uint16_t character;
+		io.ClearInputCharacters();
 		client.mPendingKeyIn.ReadData(&character, keyCount);
-		while (keyCount > 0)
-		{
+		while (keyCount > 0){
 			io.AddInputCharacter(character);
 			client.mPendingKeyIn.ReadData(&character, keyCount);
 		}
 
-		client.mMouseWheelVertPrev			= pCmdInput->mMouseWheelVert;
-		client.mMouseWheelHorizPrev			= pCmdInput->mMouseWheelHoriz;
-		client.mServerCompressionEnabled	= pCmdInput->mCompressionUse;
-		client.mServerCompressionSkip		|= pCmdInput->mCompressionSkip;
+		static_assert(sizeof(client.mPreviousInputState.mInputDownMask) == sizeof(pCmdInput->mInputDownMask), "Array size should match");
+		memcpy(client.mPreviousInputState.mInputDownMask, pCmdInput->mInputDownMask, sizeof(client.mPreviousInputState.mInputDownMask));
+		client.mPreviousInputState.mMouseDownMask		= pCmdInput->mMouseDownMask;
+		client.mPreviousInputState.mMouseWheelVertPrev	= pCmdInput->mMouseWheelVert;
+		client.mPreviousInputState.mMouseWheelHorizPrev	= pCmdInput->mMouseWheelHoriz;
+		client.mServerCompressionEnabled				= pCmdInput->mCompressionUse;
+		client.mServerCompressionSkip					|= pCmdInput->mCompressionSkip;
 	}
 
 	if( hasNewInput ){

@@ -18,29 +18,22 @@ void SavedImguiContext::Save(ImGuiContext* copyFrom)
 {
 	ScopedImguiContext scopedContext(copyFrom);
 	ImGuiIO& sourceIO		= ImGui::GetIO();
-
-#if IMGUI_VERSION_NUM < 18700
-	memcpy(mKeyMap, sourceIO.KeyMap, sizeof(mKeyMap));
-#endif
-
 	mSavedContext			= true;
 	mConfigFlags			= sourceIO.ConfigFlags;
 	mBackendFlags			= sourceIO.BackendFlags;
 	mBackendPlatformName	= sourceIO.BackendPlatformName;
 	mBackendRendererName	= sourceIO.BackendRendererName;
-	mDrawMouse				= sourceIO.MouseDrawCursor;	
-	mClipboardUserData		= sourceIO.ClipboardUserData;	
+	mDrawMouse				= sourceIO.MouseDrawCursor;
+	mClipboardUserData		= sourceIO.ClipboardUserData;
+#if IMGUI_VERSION_NUM < 18700
+	memcpy(mKeyMap, sourceIO.KeyMap, sizeof(mKeyMap));
+#endif
 }
 
 void SavedImguiContext::Restore(ImGuiContext* copyTo)
 {	
 	ScopedImguiContext scopedContext(copyTo);
 	ImGuiIO& destIO				= ImGui::GetIO();
-
-#if IMGUI_VERSION_NUM < 18700
-	memcpy(destIO.KeyMap, mKeyMap, sizeof(destIO.KeyMap));
-#endif
-
 	mSavedContext				= false;
 	destIO.ConfigFlags			= mConfigFlags;
 	destIO.BackendFlags			= mBackendFlags;
@@ -48,6 +41,9 @@ void SavedImguiContext::Restore(ImGuiContext* copyTo)
 	destIO.BackendRendererName	= mBackendRendererName;
 	destIO.MouseDrawCursor		= mDrawMouse;
 	destIO.ClipboardUserData	= mClipboardUserData;
+#if IMGUI_VERSION_NUM < 18700
+	memcpy(destIO.KeyMap, mKeyMap, sizeof(destIO.KeyMap));
+#endif
 }
 
 //=================================================================================================
@@ -414,20 +410,15 @@ void ClientInfo::ContextOverride()
 	// Note: Make sure every setting overwritten here, are handled in 'SavedImguiContext::Save(...)'
 	{
 		ImGuiIO& newIO						= ImGui::GetIO();
-
-#if IMGUI_VERSION_NUM < 18700
-		CmdInput::setupKeyMap(newIO.KeyMap);
-
-#if IMGUI_VERSION_NUM >= 17102
-		newIO.KeyMap[ImGuiKey_KeyPadEnter] = 0;//static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardKeypadEnter);
-#endif
-#endif
-
 		newIO.MouseDrawCursor				= false;
 		newIO.ClipboardUserData				= nullptr;
 		newIO.BackendPlatformName			= "NetImgui";
 		newIO.BackendRendererName			= "DirectX11";
-
+#if IMGUI_VERSION_NUM < 18700
+		for (uint32_t i(0); i < ImGuiKey_COUNT; ++i) {
+			newIO.KeyMap[i] = i;
+		}
+#endif
 #if defined(IMGUI_HAS_VIEWPORT)
 		newIO.ConfigFlags					&= ~(ImGuiConfigFlags_ViewportsEnable); // Viewport unsupported at the moment
 #endif

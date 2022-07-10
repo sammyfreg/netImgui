@@ -380,7 +380,7 @@ void Client::CaptureImguiInput()
 	// Update persistent mouse status	
 	if( ImGui::IsMousePosValid(&io.MousePos)){
 		mMousePos[0] = io.MousePos.x - ImGui::GetCursorScreenPos().x;
-		mMousePos[1] = io.MousePos.y - ImGui::GetCursorScreenPos().y;		
+		mMousePos[1] = io.MousePos.y - ImGui::GetCursorScreenPos().y;
 	}
 
 	// This method is tied to the Server VSync setting, which might not match our client desired refresh setting
@@ -415,14 +415,43 @@ void Client::CaptureImguiInput()
 
 	if( ImGui::IsWindowFocused() )
 	{
-		pNewInput->SetMouseButtonDown(NetImgui::Internal::CmdInput::MouseButton(ImGuiMouseButton_Left), ImGui::IsMouseDown(ImGuiMouseButton_Left));
-		pNewInput->SetMouseButtonDown(NetImgui::Internal::CmdInput::MouseButton(ImGuiMouseButton_Right), ImGui::IsMouseDown(ImGuiMouseButton_Right));
-		pNewInput->SetMouseButtonDown(NetImgui::Internal::CmdInput::MouseButton(ImGuiMouseButton_Middle), ImGui::IsMouseDown(ImGuiMouseButton_Middle));
-		pNewInput->SetMouseButtonDown(NetImgui::Internal::CmdInput::MouseButton(ImGuiMouseButton(3)), ImGui::IsMouseDown(ImGuiMouseButton(3)));
-		pNewInput->SetMouseButtonDown(NetImgui::Internal::CmdInput::MouseButton(ImGuiMouseButton(4)), ImGui::IsMouseDown(ImGuiMouseButton(4)));
+		// Mouse Buttons Inputs
+		// If Dear ImGui Update this enum, must also adjust our enum copy
+		static_assert(	static_cast<int>(NetImgui::Internal::CmdInput::NetImguiMouseButton::ImGuiMouseButton_COUNT) == 
+						static_cast<int>(ImGuiMouseButton_::ImGuiMouseButton_COUNT), "Update the NetImgui enum to match the updated Dear ImGui enum");
+		pNewInput->mMouseDownMask = 0;
+		pNewInput->mMouseDownMask |= ImGui::IsMouseDown(ImGuiMouseButton_::ImGuiMouseButton_Left)	? 1<<NetImgui::Internal::CmdInput::ImGuiMouseButton_Left : 0;
+		pNewInput->mMouseDownMask |= ImGui::IsMouseDown(ImGuiMouseButton_::ImGuiMouseButton_Right)	? 1<<NetImgui::Internal::CmdInput::ImGuiMouseButton_Right : 0;
+		pNewInput->mMouseDownMask |= ImGui::IsMouseDown(ImGuiMouseButton_::ImGuiMouseButton_Middle)	? 1<<NetImgui::Internal::CmdInput::ImGuiMouseButton_Middle : 0;
+		pNewInput->mMouseDownMask |= ImGui::IsMouseDown(3)											? 1<<NetImgui::Internal::CmdInput::ImGuiMouseButton_Extra1 : 0;
+		pNewInput->mMouseDownMask |= ImGui::IsMouseDown(4)											? 1<<NetImgui::Internal::CmdInput::ImGuiMouseButton_Extra2 : 0;
 
-		for (ImGuiKey key = ImGuiKey_NamedKey_BEGIN; key < ImGuiKey_NamedKey_END; ++key) {
-			pNewInput->SetKeyDown(key, ImGui::IsKeyDown(key));
+		// Keyboard / Gamepads Inputs
+		// If Dear ImGui Update their enum, must also adjust our enum copy, 
+		// so adding a few check to detect a change
+		#define EnumKeynameTest(KEYNAME) static_cast<int>(NetImgui::Internal::CmdInput::NetImguiKeys::KEYNAME) == static_cast<int>(ImGuiKey_::KEYNAME-ImGuiKey_::ImGuiKey_NamedKey_BEGIN), "Update the NetImgui enum to match the updated Dear ImGui enum"
+		static_assert(EnumKeynameTest(ImGuiKey_COUNT));
+		static_assert(EnumKeynameTest(ImGuiKey_Tab));
+		static_assert(EnumKeynameTest(ImGuiKey_Escape));
+		static_assert(EnumKeynameTest(ImGuiKey_RightSuper));
+		static_assert(EnumKeynameTest(ImGuiKey_Apostrophe));
+		static_assert(EnumKeynameTest(ImGuiKey_Keypad0));
+		static_assert(EnumKeynameTest(ImGuiKey_CapsLock));
+		static_assert(EnumKeynameTest(ImGuiKey_GamepadStart));
+		static_assert(EnumKeynameTest(ImGuiKey_GamepadLStickUp));
+		static_assert(EnumKeynameTest(ImGuiKey_ModCtrl));
+		static_assert(EnumKeynameTest(ImGuiKey_ModShift));
+		static_assert(EnumKeynameTest(ImGuiKey_ModAlt));
+		static_assert(EnumKeynameTest(ImGuiKey_ModSuper));
+
+		// Save every keydown status to out bitmask
+		uint64_t valueMask(0);
+		for (uint32_t i(0); i < ImGuiKey_::ImGuiKey_NamedKey_COUNT; ++i) {
+			valueMask |= ImGui::IsKeyDown(ImGuiKey_NamedKey_BEGIN+i) ? 0x0000000000000001ull << (i%64) : 0;
+			if( ((i % 64) == 63) || i == (ImGuiKey_::ImGuiKey_NamedKey_COUNT-1)){
+				pNewInput->mInputDownMask[i/64] = valueMask;
+				valueMask						= 0;
+			}
 		}
 	}
 

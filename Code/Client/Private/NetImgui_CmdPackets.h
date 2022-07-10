@@ -41,6 +41,7 @@ struct alignas(8) CmdVersion
 		DataCompression		= 7,	// Adding support for data compression between client/server. Simple low cost delta compressor (only send difference from previous frame)
 		DataCompression2	= 8,	// Improvement to data compression (save corner position and use SoA for vertices data)
 		VertexUVRange		= 9,	// Changed vertices UV value range to [0,1] for increased precision on large font texture
+		Imgui_1_87			= 10,	// Added Dear ImGui Input refactor
 		// Insert new version here
 
 		//--------------------------------
@@ -61,27 +62,112 @@ struct alignas(8) CmdVersion
 
 struct alignas(8) CmdInput
 {
-	enum MouseButton // copy of ImGuiMouseButton_ from imgui.h
+	// Identify a mouse button.
+	// Those values are guaranteed to be stable and we frequently use 0/1 directly. Named enums provided for convenience.
+	enum NetImguiMouseButton
 	{
-		MouseButton_Left = 0,
-		MouseButton_Right = 1,
-		MouseButton_Middle = 2,
-		MouseButton_COUNT = 5
+		ImGuiMouseButton_Left = 0,
+		ImGuiMouseButton_Right = 1,
+		ImGuiMouseButton_Middle = 2,
+		ImGuiMouseButton_Extra1 = 3,    // Additional entry
+		ImGuiMouseButton_Extra2 = 4,    // Additional entry 
+		ImGuiMouseButton_COUNT = 5
 	};
 
-	static void setupKeyMap(int *keyMap);
-	inline bool IsMouseButtonDown(MouseButton button) const;
-	inline void SetMouseButtonDown(MouseButton button, bool isDown);
+	// Copy of Dear ImGui key enum
+	// We keep our own internal version, to make sure Client key is the same as Server Key (since they can have different Imgui version)
+	enum NetImguiKeys
+	{
+		// Keyboard
+		ImGuiKey_Tab,
+		ImGuiKey_LeftArrow,
+		ImGuiKey_RightArrow,
+		ImGuiKey_UpArrow,
+		ImGuiKey_DownArrow,
+		ImGuiKey_PageUp,
+		ImGuiKey_PageDown,
+		ImGuiKey_Home,
+		ImGuiKey_End,
+		ImGuiKey_Insert,
+		ImGuiKey_Delete,
+		ImGuiKey_Backspace,
+		ImGuiKey_Space,
+		ImGuiKey_Enter,
+		ImGuiKey_Escape,
+		ImGuiKey_LeftCtrl, ImGuiKey_LeftShift, ImGuiKey_LeftAlt, ImGuiKey_LeftSuper,
+		ImGuiKey_RightCtrl, ImGuiKey_RightShift, ImGuiKey_RightAlt, ImGuiKey_RightSuper,
+		ImGuiKey_Menu,
+		ImGuiKey_0, ImGuiKey_1, ImGuiKey_2, ImGuiKey_3, ImGuiKey_4, ImGuiKey_5, ImGuiKey_6, ImGuiKey_7, ImGuiKey_8, ImGuiKey_9,
+		ImGuiKey_A, ImGuiKey_B, ImGuiKey_C, ImGuiKey_D, ImGuiKey_E, ImGuiKey_F, ImGuiKey_G, ImGuiKey_H, ImGuiKey_I, ImGuiKey_J,
+		ImGuiKey_K, ImGuiKey_L, ImGuiKey_M, ImGuiKey_N, ImGuiKey_O, ImGuiKey_P, ImGuiKey_Q, ImGuiKey_R, ImGuiKey_S, ImGuiKey_T,
+		ImGuiKey_U, ImGuiKey_V, ImGuiKey_W, ImGuiKey_X, ImGuiKey_Y, ImGuiKey_Z,
+		ImGuiKey_F1, ImGuiKey_F2, ImGuiKey_F3, ImGuiKey_F4, ImGuiKey_F5, ImGuiKey_F6,
+		ImGuiKey_F7, ImGuiKey_F8, ImGuiKey_F9, ImGuiKey_F10, ImGuiKey_F11, ImGuiKey_F12,
+		ImGuiKey_Apostrophe,        // '
+		ImGuiKey_Comma,             // ,
+		ImGuiKey_Minus,             // -
+		ImGuiKey_Period,            // .
+		ImGuiKey_Slash,             // /
+		ImGuiKey_Semicolon,         // ;
+		ImGuiKey_Equal,             // =
+		ImGuiKey_LeftBracket,       // [
+		ImGuiKey_Backslash,         // \ (this text inhibit multiline comment caused by backslash)
+		ImGuiKey_RightBracket,      // ]
+		ImGuiKey_GraveAccent,       // `
+		ImGuiKey_CapsLock,
+		ImGuiKey_ScrollLock,
+		ImGuiKey_NumLock,
+		ImGuiKey_PrintScreen,
+		ImGuiKey_Pause,
+		ImGuiKey_Keypad0, ImGuiKey_Keypad1, ImGuiKey_Keypad2, ImGuiKey_Keypad3, ImGuiKey_Keypad4,
+		ImGuiKey_Keypad5, ImGuiKey_Keypad6, ImGuiKey_Keypad7, ImGuiKey_Keypad8, ImGuiKey_Keypad9,
+		ImGuiKey_KeypadDecimal,
+		ImGuiKey_KeypadDivide,
+		ImGuiKey_KeypadMultiply,
+		ImGuiKey_KeypadSubtract,
+		ImGuiKey_KeypadAdd,
+		ImGuiKey_KeypadEnter,
+		ImGuiKey_KeypadEqual,
 
-	inline bool checkShiftModifier() const;
-	inline bool checkCtrlModifier() const;
-	inline bool checkAltModifier() const;
-	inline bool checkSuperModifier() const;
+		// Gamepad (some of those are analog values, 0.0f to 1.0f)                              // NAVIGATION action
+		ImGuiKey_GamepadStart,          // Menu (Xbox)          + (Switch)   Start/Options (PS) // --
+		ImGuiKey_GamepadBack,           // View (Xbox)          - (Switch)   Share (PS)         // --
+		ImGuiKey_GamepadFaceUp,         // Y (Xbox)             X (Switch)   Triangle (PS)      // -> ImGuiNavInput_Input
+		ImGuiKey_GamepadFaceDown,       // A (Xbox)             B (Switch)   Cross (PS)         // -> ImGuiNavInput_Activate
+		ImGuiKey_GamepadFaceLeft,       // X (Xbox)             Y (Switch)   Square (PS)        // -> ImGuiNavInput_Menu
+		ImGuiKey_GamepadFaceRight,      // B (Xbox)             A (Switch)   Circle (PS)        // -> ImGuiNavInput_Cancel
+		ImGuiKey_GamepadDpadUp,         // D-pad Up                                             // -> ImGuiNavInput_DpadUp
+		ImGuiKey_GamepadDpadDown,       // D-pad Down                                           // -> ImGuiNavInput_DpadDown
+		ImGuiKey_GamepadDpadLeft,       // D-pad Left                                           // -> ImGuiNavInput_DpadLeft
+		ImGuiKey_GamepadDpadRight,      // D-pad Right                                          // -> ImGuiNavInput_DpadRight
+		ImGuiKey_GamepadL1,             // L Bumper (Xbox)      L (Switch)   L1 (PS)            // -> ImGuiNavInput_FocusPrev + ImGuiNavInput_TweakSlow
+		ImGuiKey_GamepadR1,             // R Bumper (Xbox)      R (Switch)   R1 (PS)            // -> ImGuiNavInput_FocusNext + ImGuiNavInput_TweakFast
+		ImGuiKey_GamepadL2,             // L Trigger (Xbox)     ZL (Switch)  L2 (PS) [Analog]
+		ImGuiKey_GamepadR2,             // R Trigger (Xbox)     ZR (Switch)  R2 (PS) [Analog]
+		ImGuiKey_GamepadL3,             // L Thumbstick (Xbox)  L3 (Switch)  L3 (PS)
+		ImGuiKey_GamepadR3,             // R Thumbstick (Xbox)  R3 (Switch)  R3 (PS)
+		ImGuiKey_GamepadLStickUp,       // [Analog]                                             // -> ImGuiNavInput_LStickUp
+		ImGuiKey_GamepadLStickDown,     // [Analog]                                             // -> ImGuiNavInput_LStickDown
+		ImGuiKey_GamepadLStickLeft,     // [Analog]                                             // -> ImGuiNavInput_LStickLeft
+		ImGuiKey_GamepadLStickRight,    // [Analog]                                             // -> ImGuiNavInput_LStickRight
+		ImGuiKey_GamepadRStickUp,       // [Analog]
+		ImGuiKey_GamepadRStickDown,     // [Analog]
+		ImGuiKey_GamepadRStickLeft,     // [Analog]
+		ImGuiKey_GamepadRStickRight,    // [Analog]
 
-	inline bool getKeyDownLegacy(bool* keysArray, size_t arraySize) const; // for version before 1.87
+		// Keyboard Modifiers (explicitly submitted by backend via AddKeyEvent() calls)
+		// - This is mirroring the data also written to io.KeyCtrl, io.KeyShift, io.KeyAlt, io.KeySuper, in a format allowing
+		//   them to be accessed via standard key API, allowing calls such as IsKeyPressed(), IsKeyReleased(), querying duration etc.
+		// - Code polling every keys (e.g. an interface to detect a key press for input mapping) might want to ignore those
+		//   and prefer using the real keys (e.g. ImGuiKey_LeftCtrl, ImGuiKey_RightCtrl instead of ImGuiKey_ModCtrl).
+		// - In theory the value of keyboard modifiers should be roughly equivalent to a logical or of the equivalent left/right keys.
+		//   In practice: it's complicated; mods are often provided from different sources. Keyboard layout, IME, sticky keys and
+		//   backends tend to interfere and break that equivalence. The safer decision is to relay that ambiguity down to the end-user...
+		ImGuiKey_ModCtrl, ImGuiKey_ModShift, ImGuiKey_ModAlt, ImGuiKey_ModSuper,
 
-	inline bool IsKeyDown(ImGuiKey gKey) const; // for version starts from 1.87
-	inline void SetKeyDown(ImGuiKey gKey, bool isDown); // for version starts from 1.87
+		// End of list
+		ImGuiKey_COUNT,                 // No valid ImGuiKey is ever greater than this value
+	};
 
 	CmdHeader						mHeader				= CmdHeader(CmdHeader::eCommands::Input, sizeof(CmdInput));
 	uint16_t						mScreenSize[2]		= {};
@@ -92,13 +178,11 @@ struct alignas(8) CmdInput
 	uint16_t						mKeyCharCount		= 0;		// Number of valid input characters
 	bool							mCompressionUse		= false;	// Server would like client to compress the communication data
 	bool							mCompressionSkip	= false;	// Server forcing next client's frame data to be uncompressed
-	uint8_t							PADDING[4]			= {};
+	uint8_t							PADDING[4]			= {};	
+	uint64_t						mMouseDownMask		= 0;
+	uint64_t						mInputDownMask[(ImGuiKey_COUNT+63)/64];
 
-private:
-	bool checkKeyDown(ImGuiKey gKey, ImGuiKey namedKeyBegin) const;
-
-	uint64_t						mPressedMouseButtonsMask = 0;
-	uint64_t						mKeysDownMask[512 / 64];	// List of keys currently pressed (follow GuiKey or ImGuiKey (from 1.87 version))
+	inline bool						IsKeyDown(NetImguiKeys netimguiKey) const;
 };
 
 struct alignas(8) CmdTexture

@@ -52,6 +52,13 @@ struct ClientInfo
 	using BufferKeys	= Ringbuffer<uint16_t, 1024>;
 	using Time			= std::chrono::time_point<std::chrono::high_resolution_clock>;
 
+	struct InputState
+	{
+		uint64_t						mInputDownMask[(CmdInput::ImGuiKey_COUNT+63)/64] = {};
+		uint64_t						mMouseDownMask				= 0;
+		float							mMouseWheelVertPrev			= 0.f;
+		float							mMouseWheelHorizPrev		= 0.f;
+	};
 										ClientInfo();
 										~ClientInfo();
 	void								ContextInitialize();
@@ -75,7 +82,7 @@ struct ClientInfo
 	CmdDrawFrame*						mpDrawFramePrevious			= nullptr;	// Last sent Draw Command. Used by data compression, to generate delta between previous and current frame
 	CmdBackground						mBGSetting;								// Current value assigned to background appearance by user
 	CmdBackground						mBGSettingSent;							// Last sent value to remote server
-	BufferKeys							mPendingKeyIn;	
+	BufferKeys							mPendingKeyIn;							// Keys pressed received. Results of 2 CmdInputs are concatenated if received before being processed
 	ImVec2								mSavedDisplaySize			= {0, 0};	// Save original display size on 'NewFrame' and restore it on 'EndFrame' (making sure size is still valid after a disconnect)
 	const void*							mpFontTextureData			= nullptr;	// Last font texture data send to server (used to detect if font was changed)
 	ImTextureID							mFontTextureID;
@@ -83,8 +90,7 @@ struct ClientInfo
 	Time								mTimeTracking;							// Used to update Dear ImGui time delta on remote context
 	std::atomic_uint32_t				mTexturesPendingSent;
 	std::atomic_uint32_t				mTexturesPendingCreated;
-	float								mMouseWheelVertPrev			= 0.f;
-	float								mMouseWheelHorizPrev		= 0.f;
+	
 	bool								mbDisconnectRequest			= false;	// Waiting to Disconnect
 	bool								mbClientThreadActive		= false;
 	bool								mbListenThreadActive		= false;
@@ -100,7 +106,7 @@ struct ClientInfo
 	bool								mServerCompressionEnabled	= false;	// If Server would like compression to be enabled (mClientCompressionMode value can override this value)
 	bool								mServerCompressionSkip		= false;	// Force ignore compression setting for 1 frame
 	char								PADDING[2];
-		
+	InputState							mPreviousInputState;					// Keeping track of last keyboard/mouse state
 	ImGuiID								mhImguiHookNewframe			= 0;
 	ImGuiID								mhImguiHookEndframe			= 0;
 	
