@@ -443,6 +443,10 @@ void Client::CaptureImguiInput()
 		static_assert(EnumKeynameTest(ImGuiKey_ModShift));
 		static_assert(EnumKeynameTest(ImGuiKey_ModAlt));
 		static_assert(EnumKeynameTest(ImGuiKey_ModSuper));
+		static_assert(EnumKeynameTest(ImGuiKey_GamepadStart));
+		static_assert(EnumKeynameTest(ImGuiKey_GamepadR3));
+		static_assert(EnumKeynameTest(ImGuiKey_GamepadLStickUp));
+		static_assert(EnumKeynameTest(ImGuiKey_GamepadRStickRight));
 
 		// Save every keydown status to out bitmask
 		uint64_t valueMask(0);
@@ -452,6 +456,10 @@ void Client::CaptureImguiInput()
 				pNewInput->mInputDownMask[i/64] = valueMask;
 				valueMask						= 0;
 			}
+		}
+		// Save analog keys (gamepad)
+		for (uint32_t i(0); i < NetImgui::Internal::CmdInput::kAnalog_Count; ++i) {
+			pNewInput->mInputAnalog[i] = ImGui::GetIO().KeysData[NetImgui::Internal::CmdInput::kAnalog_First+i].AnalogValue;
 		}
 	}
 

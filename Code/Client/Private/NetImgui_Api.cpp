@@ -496,13 +496,30 @@ static inline void AddKeyEvent(const Client::ClientInfo& client, const CmdInput*
 #if IMGUI_VERSION_NUM < 18700
 	IM_UNUSED(client);
 	ImGui::GetIO().KeysDown[imguiKey] = (pCmdInput->mInputDownMask[valIndex] & valMask) != 0;
-#else	
-	if((pCmdInput->mInputDownMask[valIndex] ^ client.mPreviousInputState.mInputDownMask[valIndex]) & valMask){
+#else
+	bool bChanged = (pCmdInput->mInputDownMask[valIndex] ^ client.mPreviousInputState.mInputDownMask[valIndex]) & valMask;
+	if( bChanged ){
 		ImGui::GetIO().AddKeyEvent(imguiKey, pCmdInput->mInputDownMask[valIndex] & valMask );
 	}
 #endif
 }
 
+static inline void AddKeyAnalogEvent(const Client::ClientInfo& client, const CmdInput* pCmdInput, CmdInput::NetImguiKeys netimguiKey, ImGuiKey_ imguiKey)
+{
+	uint32_t valIndex	= netimguiKey/64;
+	uint64_t valMask	= 0x0000000000000001ull << (netimguiKey%64);
+	assert(CmdInput::kAnalog_First <= static_cast<uint32_t>(netimguiKey) && static_cast<uint32_t>(netimguiKey) <= CmdInput::kAnalog_Last);
+#if IMGUI_VERSION_NUM < 18700
+	IM_UNUSED(client); IM_UNUSED(pCmdInput); IM_UNUSED(netimguiKey); IM_UNUSED(imguiKey);
+#else
+	float analogValue	= pCmdInput->mInputAnalog[netimguiKey-CmdInput::kAnalog_First];
+	bool bChanged		= (pCmdInput->mInputDownMask[valIndex] ^ client.mPreviousInputState.mInputDownMask[valIndex]) & valMask;
+	bChanged			|= abs(client.mPreviousInputState.mInputAnalog[netimguiKey-CmdInput::kAnalog_First] - analogValue) > 0.001f;
+	if(bChanged){
+		ImGui::GetIO().AddKeyAnalogEvent(imguiKey, pCmdInput->mInputDownMask[valIndex] & valMask, analogValue);
+	}
+#endif
+}
 
 //=================================================================================================
 bool ProcessInputData(Client::ClientInfo& client)
@@ -552,7 +569,8 @@ bool ProcessInputData(Client::ClientInfo& client)
 #else
 		// At the moment All Dear Imgui version share the same ImGuiKey_ enum (with a 512 value offset), 
 		// but could change in the future, so convert from our own enum version, to Dear ImGui.
-		#define AddInputDown(KEYNAME)	AddKeyEvent(client, pCmdInput, CmdInput::KEYNAME, ImGuiKey_::KEYNAME);
+		#define AddInputDown(KEYNAME)		AddKeyEvent(client, pCmdInput, CmdInput::KEYNAME, ImGuiKey_::KEYNAME);
+		#define AddAnalogInputDown(KEYNAME)	AddKeyAnalogEvent(client, pCmdInput, CmdInput::KEYNAME, ImGuiKey_::KEYNAME);
 		AddInputDown(ImGuiKey_Tab)
 		AddInputDown(ImGuiKey_LeftArrow)
 		AddInputDown(ImGuiKey_RightArrow)
@@ -603,8 +621,37 @@ bool ProcessInputData(Client::ClientInfo& client)
 		AddInputDown(ImGuiKey_KeypadAdd)
 		AddInputDown(ImGuiKey_KeypadEnter)
 		AddInputDown(ImGuiKey_KeypadEqual)
-		#undef AddInputDown
 
+		// Gamepad
+		AddInputDown(ImGuiKey_GamepadStart)
+		AddInputDown(ImGuiKey_GamepadBack)
+		AddInputDown(ImGuiKey_GamepadFaceUp)
+		AddInputDown(ImGuiKey_GamepadFaceDown)
+		AddInputDown(ImGuiKey_GamepadFaceLeft)
+		AddInputDown(ImGuiKey_GamepadFaceRight)
+		AddInputDown(ImGuiKey_GamepadDpadUp)
+		AddInputDown(ImGuiKey_GamepadDpadDown)
+		AddInputDown(ImGuiKey_GamepadDpadLeft)
+		AddInputDown(ImGuiKey_GamepadDpadRight)
+		AddInputDown(ImGuiKey_GamepadL1)
+		AddInputDown(ImGuiKey_GamepadR1)
+		AddInputDown(ImGuiKey_GamepadL2)
+		AddInputDown(ImGuiKey_GamepadR2)
+		AddInputDown(ImGuiKey_GamepadL3)
+		AddInputDown(ImGuiKey_GamepadR3)
+		AddAnalogInputDown(ImGuiKey_GamepadLStickUp)
+		AddAnalogInputDown(ImGuiKey_GamepadLStickDown)
+		AddAnalogInputDown(ImGuiKey_GamepadLStickLeft)
+		AddAnalogInputDown(ImGuiKey_GamepadLStickRight)
+		AddAnalogInputDown(ImGuiKey_GamepadRStickUp)
+		AddAnalogInputDown(ImGuiKey_GamepadRStickDown)
+		AddAnalogInputDown(ImGuiKey_GamepadRStickLeft)
+		AddAnalogInputDown(ImGuiKey_GamepadRStickRight)
+
+		#undef AddInputDown
+		#undef AddAnalogInputDown
+
+		// Mouse
 		io.AddMouseWheelEvent(wheelX, wheelY);
 		io.AddMousePosEvent(pCmdInput->mMousePos[0],	pCmdInput->mMousePos[1]);
 		for(int i(0); i<CmdInput::NetImguiMouseButton::ImGuiMouseButton_COUNT; ++i){
@@ -629,7 +676,9 @@ bool ProcessInputData(Client::ClientInfo& client)
 		}
 
 		static_assert(sizeof(client.mPreviousInputState.mInputDownMask) == sizeof(pCmdInput->mInputDownMask), "Array size should match");
+		static_assert(sizeof(client.mPreviousInputState.mInputAnalog) == sizeof(pCmdInput->mInputAnalog), "Array size should match");
 		memcpy(client.mPreviousInputState.mInputDownMask, pCmdInput->mInputDownMask, sizeof(client.mPreviousInputState.mInputDownMask));
+		memcpy(client.mPreviousInputState.mInputAnalog, pCmdInput->mInputAnalog, sizeof(client.mPreviousInputState.mInputAnalog));
 		client.mPreviousInputState.mMouseDownMask		= pCmdInput->mMouseDownMask;
 		client.mPreviousInputState.mMouseWheelVertPrev	= pCmdInput->mMouseWheelVert;
 		client.mPreviousInputState.mMouseWheelHorizPrev	= pCmdInput->mMouseWheelHoriz;

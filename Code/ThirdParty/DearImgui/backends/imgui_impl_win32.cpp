@@ -97,6 +97,7 @@ struct ImGui_ImplWin32_Data
     bool                        WantUpdateMonitors;
 
 #ifndef IMGUI_IMPL_WIN32_DISABLE_GAMEPAD
+    int                         GamepadID;  // @SAMPLE_EDIT Keeping track of which gamepad to use
     HMODULE                     XInputDLL;
     PFN_XInputGetCapabilities   XInputGetCapabilities;
     PFN_XInputGetState          XInputGetState;
@@ -327,15 +328,29 @@ static void ImGui_ImplWin32_UpdateGamepads()
     // Instead we refresh gamepad availability by calling XInputGetCapabilities() _only_ after receiving WM_DEVICECHANGE.
     if (bd->WantUpdateHasGamepad)
     {
+#if 1 // @SAMPLE_EDIT Trying to only read gamepad 0 doesn't always work. Iterate until a valid one is found
+        bd->GamepadID = -1;
+        for (DWORD i=0; bd->XInputGetCapabilities && i< XUSER_MAX_COUNT && bd->GamepadID == -1; i++ )
+        {
+            XINPUT_CAPABILITIES caps = {};
+            auto dwResult = bd->XInputGetCapabilities( i, XINPUT_FLAG_GAMEPAD, &caps );
+            if( dwResult == ERROR_SUCCESS ){
+                bd->GamepadID = static_cast<int>(i);
+            }
+        }
+        bd->HasGamepad              = bd->GamepadID != -1;
+        bd->WantUpdateHasGamepad    = false;
+#else
         XINPUT_CAPABILITIES caps = {};
         bd->HasGamepad = bd->XInputGetCapabilities ? (bd->XInputGetCapabilities(0, XINPUT_FLAG_GAMEPAD, &caps) == ERROR_SUCCESS) : false;
         bd->WantUpdateHasGamepad = false;
+#endif
     }
 
     io.BackendFlags &= ~ImGuiBackendFlags_HasGamepad;
     XINPUT_STATE xinput_state;
     XINPUT_GAMEPAD& gamepad = xinput_state.Gamepad;
-    if (!bd->HasGamepad || bd->XInputGetState == NULL || bd->XInputGetState(0, &xinput_state) != ERROR_SUCCESS)
+    if (!bd->HasGamepad || bd->XInputGetState == NULL || bd->XInputGetState(bd->GamepadID, &xinput_state) != ERROR_SUCCESS) // @SAMPLE_EDIT Using 'GamepadID' instead of '0'
         return;
     io.BackendFlags |= ImGuiBackendFlags_HasGamepad;
 

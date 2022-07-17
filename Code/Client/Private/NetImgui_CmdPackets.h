@@ -146,6 +146,7 @@ struct alignas(8) CmdInput
 		ImGuiKey_GamepadR2,             // R Trigger (Xbox)     ZR (Switch)  R2 (PS) [Analog]
 		ImGuiKey_GamepadL3,             // L Thumbstick (Xbox)  L3 (Switch)  L3 (PS)
 		ImGuiKey_GamepadR3,             // R Thumbstick (Xbox)  R3 (Switch)  R3 (PS)
+		
 		ImGuiKey_GamepadLStickUp,       // [Analog]                                             // -> ImGuiNavInput_LStickUp
 		ImGuiKey_GamepadLStickDown,     // [Analog]                                             // -> ImGuiNavInput_LStickDown
 		ImGuiKey_GamepadLStickLeft,     // [Analog]                                             // -> ImGuiNavInput_LStickLeft
@@ -169,19 +170,24 @@ struct alignas(8) CmdInput
 		ImGuiKey_COUNT,                 // No valid ImGuiKey is ever greater than this value
 	};
 
-	CmdHeader						mHeader				= CmdHeader(CmdHeader::eCommands::Input, sizeof(CmdInput));
-	uint16_t						mScreenSize[2]		= {};
-	int16_t							mMousePos[2]		= {};
-	float							mMouseWheelVert		= 0.f;
-	float							mMouseWheelHoriz	= 0.f;
-	ImWchar							mKeyChars[256];					// Input characters	
-	uint16_t						mKeyCharCount		= 0;		// Number of valid input characters
-	bool							mCompressionUse		= false;	// Server would like client to compress the communication data
-	bool							mCompressionSkip	= false;	// Server forcing next client's frame data to be uncompressed
-	uint8_t							PADDING[4]			= {};	
-	uint64_t						mMouseDownMask		= 0;
-	uint64_t						mInputDownMask[(ImGuiKey_COUNT+63)/64];
+	
+	static constexpr uint32_t kAnalog_First	= ImGuiKey_GamepadLStickUp;
+	static constexpr uint32_t kAnalog_Last	= ImGuiKey_GamepadRStickRight;
+	static constexpr uint32_t kAnalog_Count	= kAnalog_Last - kAnalog_First + 1;
 
+	CmdHeader						mHeader							= CmdHeader(CmdHeader::eCommands::Input, sizeof(CmdInput));
+	uint16_t						mScreenSize[2]					= {};
+	int16_t							mMousePos[2]					= {};
+	float							mMouseWheelVert					= 0.f;
+	float							mMouseWheelHoriz				= 0.f;
+	ImWchar							mKeyChars[256]					= {};		// Input characters		
+	uint16_t						mKeyCharCount					= 0;		// Number of valid input characters
+	bool							mCompressionUse					= false;	// Server would like client to compress the communication data
+	bool							mCompressionSkip				= false;	// Server forcing next client's frame data to be uncompressed
+	uint8_t							PADDING[4]						= {};
+	uint64_t						mMouseDownMask					= 0;
+	uint64_t						mInputDownMask[(ImGuiKey_COUNT+63)/64]={};
+	float							mInputAnalog[kAnalog_Count]		= {};
 	inline bool						IsKeyDown(NetImguiKeys netimguiKey) const;
 };
 

@@ -55,6 +55,7 @@ struct ClientInfo
 	struct InputState
 	{
 		uint64_t						mInputDownMask[(CmdInput::ImGuiKey_COUNT+63)/64] = {};
+		float							mInputAnalog[CmdInput::kAnalog_Count] = {};
 		uint64_t						mMouseDownMask				= 0;
 		float							mMouseWheelVertPrev			= 0.f;
 		float							mMouseWheelHorizPrev		= 0.f;
