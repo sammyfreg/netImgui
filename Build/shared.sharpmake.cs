@@ -39,7 +39,7 @@ namespace NetImgui
 		}
 		
 		// Generates a solution for each Visual Studio version found
-		// Note: Add a Clang target when detected isntalled for that Visual Studio version
+		// Note: Add a Clang target when detected installed for that Visual Studio version
 		static public NetImguiTarget[] CreateTargets()
 		{		
 			List<NetImguiTarget> targets = new List<NetImguiTarget>();
@@ -174,6 +174,11 @@ namespace NetImgui
 			
 			conf.Defines.Add("_HAS_EXCEPTIONS=0"); 					// Prevents error in VisualStudio c++ library with NoExcept, like xlocale
 			conf.Defines.Add("IMGUI_DISABLE_OBSOLETE_FUNCTIONS");	// Enforce using up to date Dear ImGui Api (In Server, Compatibility tests and Samples)
+			
+			if (target.Optimization == Optimization.Debug)
+                conf.Options.Add(Options.Vc.Compiler.RuntimeLibrary.MultiThreadedDebugDLL);
+            else
+                conf.Options.Add(Options.Vc.Compiler.RuntimeLibrary.MultiThreadedDLL);
 			
 			if( target.Compiler == Compiler.MSBuild ){
 				conf.Options.Add(new Options.Vc.Compiler.DisableSpecificWarnings(""));
@@ -373,9 +378,11 @@ namespace NetImgui
 				conf.Options.Add(new Options.Vc.Compiler.DisableSpecificWarnings("4189")); // warning C4189: xxx: unused local variable
 			}
 			else if ( target.Compiler == Compiler.Clang ){
-				conf.Options.Add(Options.Vc.General.PlatformToolset.ClangCL);
+				conf.Options.Add(Options.Vc.General.PlatformToolset.ClangCL);				
+				conf.AdditionalCompilerOptions.Add("-Wno-unknown-warning-option");
 				conf.AdditionalCompilerOptions.Add("-Wno-unused-parameter");
 				conf.AdditionalCompilerOptions.Add("-Wno-unused-variable");
+				conf.AdditionalCompilerOptions.Add("-Wno-unused-but-set-variable");
 			}
 		}
 		string mImguiFullPath;
