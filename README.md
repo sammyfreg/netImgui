@@ -1,7 +1,7 @@
  <p align="center"><img src="https://raw.githubusercontent.com/wiki/sammyfreg/netImgui/Web/img/netImguiLogo.png" width=128 height=128></p>
 
 # Contact
-It seems that various gaming studios are making use of this code. I would enjoy hearing back from library users, for general comments and feedbacks. Always interested in learning of people usercase. I can be reached through my  [**GitHub profile**](https://github.com/sammyfreg) (email or twitter) or a opening a [**GitHub Issue**](https://github.com/sammyfreg/netImgui/issues "GitHub Issues"). 
+It seems that various gaming studios are making use of this code. I would enjoy hearing back from library users, for general comments and feedbacks. Always interested in learning of people usercase. I can be reached through my  [**GitHub profile**](https://github.com/sammyfreg) (email or twitter) or creating a new entry in [**GitHub Issue**](https://github.com/sammyfreg/netImgui/issues "GitHub Issues"). 
 
 
 # Summary
@@ -12,13 +12,13 @@ It seems that various gaming studios are making use of this code. I would enjoy 
 # Purpose
 Initially created to assist game developers in debugging their game running on a game console or smartphone, from a PC. However, its use extends to wider applications. The only requirements are that a program is using **Dear ImGui** using C++ and available TCP/IP communications.
 
-#### 1. UI access with applications without display or input.
-Some applications lack display and inputs access, preventing feedbacks and easy control. It could be a program running on a [Raspberry Pie](https://www.raspberrypi.org/products/ "Raspberry Pie") device, or [Unreal 4](https://www.unrealengine.com "Unreal4") running in server mode, etc. . Using **NetImgui** allows the display of a user interface with full control on your PC while the logic remains on the client application itself.
+#### 1. UI for devices without display/input.
+Some applications lack display and inputs access, preventing feedbacks and easy control. It could be a program running on a [Raspberry Pie](https://www.raspberrypi.org/products/ "Raspberry Pie") device, or [Unreal 4](https://www.unrealengine.com "Unreal4") running in server mode, etc . . . Using **NetImgui** allows the display of a user interface with full control on your PC while the logic remains on the client application itself.
 
+**Note**: *SampleNoBackend demonstrate using Dear ImGui without any backend implementation. It is a simple console application connecting to the NetImguiServer to draw its Imgui content. There is no rendering/input backend that's usually require by Dear ImGui*
 
 #### 2. Ease of use
-While inputs might be available on a particular device (keyboard, gamepad, ...), it might still not be convenient for certain aspect. For example, text input is still more comfortable on a physical keyboard than on a smartphone. Idem for gaming consoles with gamepads control or VR development.
-
+While inputs might be available on a particular device (keyboard, gamepad, . . .), it might still not be convenient for certain aspect. For example, text input is still more comfortable on a physical keyboard than on a smartphone. Idem for gaming consoles with gamepads control or VR development.
 
 #### 3. Declutter display
 **Dear ImGui** is often used to display relevant debug information during development, but UI elements can obscure the regular content. **NetImgui** sends the UI content to a remote window, leaving the original display clutter-free and with the freedom to use the entire screen for more elaborate content.
@@ -44,7 +44,7 @@ Here is a quick overview of the logic behind using the **NetImgui Server** and o
 
 **5.** *(NetImgui Server)* **Receives the drawing result and display them**
 
-**6. Repeat the process**
+**6. Go back to 1**
 
 #### Note
 The NetImgui Server application currently compiles under Windows, but few changes are required to properly have it running under other Operating Systems.
@@ -82,7 +82,7 @@ The NetImgui Server application currently compiles under Windows, but few change
 - `NetImgui::IsConnected()` and `NetImgui::IsDrawingRemote()` can be used during Dear ImGui drawing, helping to make selective decisions on the content to draw based on where it will be displayed.
 
 #### Dear Imgui versions
-- Tested against **Dear ImGui** versions: **1.74, 1.75, 1.76, 1.76** (docking)**, 1.77, 1.78, 1.79, 1.80, 1.80** (docking)**, 1.81, 1.82, 1.83, 1.84, 1.85, 1.86**.
+- Tested against **Dear ImGui** versions: **1.71, 1.72, 1.73, 1.74, 1.75, 1.76, 1.76** (docking)**, 1.77, 1.78, 1.79, 1.80, 1.80** (docking)**, 1.81, 1.82, 1.83, 1.84, 1.85, 1.86, 1.87, 1.87**.
 - *Note*: Should support other versions without too much difficulties.
 
 # Related
@@ -102,46 +102,21 @@ Related projects making use of **NetImgui**.
 - ~~Commands to assign custom backgrounds~~
 - ~~Add compression to data between Client and Server~~
 
-### Version 1.7.5
-(2022/01/31)
+### Version 1.8
+(2022/07/18)
 - **API Changes**
   - None
-- **Bug fixes**
-  - NetImgui Server memory leak fix
-  
-### Version 1.7.4
-(2022/01/30)
-- **API Changes**
-  - Removed the `bWait` parameter from `Shutdown()`
-      - Always wait for Shutdown completion before returning now
-      - This prevents multithread data release issues
-  - Added a `NETIMGUI_API` define prefix to functions exported in `NetImgui_Api.h`
-      - Similar to `IMGUI_API`, allows library user to control dll import/export
-      - Takes the same value as `IMGUI_API` by default
-- **Bug fixes**
-  - Compression feature causing some out of sync issue with NetImgui Server
-  - 32bits index support crash
-  
-### Version 1.7
-(2022/01/10)
-- **API Changes**
-  - Added `SetCompressionMode(...)` / `GetCompressionMode()`, allow library user to manage the data compression feature
-    - By default, Client relies on Server Setting
-- **Data Compressions Support**
-  - Drawing data generated by the Client can now be compressed before being sent to Server
-    - Greatly reduce the bandwidth between Client/Server at a negligible cost on the Client
-    - Using Delta Compression. The draw data usually vary little from previous frame. Sending only the changed bytes produce great results at low overhead
-  - Highly dynamic UI content lower improvements
-  - A new sample (**SampleCompression**) demonstrate the use of data compression and its metrics
-    - At 30 Fps, data rate send from client goes from ~ **3400 KB/s** to ~ **22 KB/s** (~ **160x improvement !**)
-    - Since it depends on static content, moving around a Window reduce the benefits
+- **Dear ImGui 1.87 input event support**
+  - Input handling refactored to handle new Dear ImGui input event system (thanks to @lemantisee)
+  - Added gamepad support
+- **Compatibility tests**
+  - Now compile simple compatibility app for each Dear ImGui version supported
+  - Allows to make sure the NetImgui Server works properly against any Dear ImGui version
 - **Other Changes**
-  - Added OpenGL3 support to NetImgui Server
-    - Still DirectX11 by default
-    - OpenGL3 support helps with the Server Application port to non Windows OS
-    - To enable, set `HAL_API_PLATFORM_GLFW_GL3` define to 1 and `HAL_API_PLATFORM_WIN32_DX11` to 0
-  - Added support for Visual Studio 2021
-  - Support up to **Dear ImGui 1.86** has been tested
+  - 32bits support bugs fix in client code
+  - NetImgui server popup now centered on main window
+  - Some OpenGL fixes
+  - Visual Studio 2022 LLVM support fix
 
 ### Older
 [Release Notes](https://github.com/sammyfreg/netImgui/wiki/Release-notes)
