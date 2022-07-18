@@ -88,14 +88,16 @@ void Client::ReceiveTexture(NetImgui::Internal::CmdTexture* pTextureCmd)
 	if( pTextureCmd )
 	{
 		// Wait for a free spot in the ring buffer
-		while ( mPendingTextureWriteIndex-mPendingTextureReadIndex > IM_ARRAYSIZE(mpPendingTextures) );
+		while (mPendingTextureWriteIndex - mPendingTextureReadIndex >= IM_ARRAYSIZE(mpPendingTextures)) {
+			std::this_thread::yield();
+		}
 		mpPendingTextures[(mPendingTextureWriteIndex++) % IM_ARRAYSIZE(mpPendingTextures)] = pTextureCmd;
 	}
 }
 
 void Client::ProcessPendingTextures()
 {
-	while( mPendingTextureReadIndex < mPendingTextureWriteIndex )
+	while( mPendingTextureReadIndex != mPendingTextureWriteIndex )
 	{
 		NetImgui::Internal::CmdTexture* pTextureCmd = mpPendingTextures[(mPendingTextureReadIndex++) % IM_ARRAYSIZE(mpPendingTextures)];
 		size_t foundIdx								= static_cast<size_t>(-1);
@@ -132,6 +134,7 @@ void Client::ProcessPendingTextures()
 
 void Client::Reset()
 {
+	NetImguiServer::App::HAL_DestroyRenderTarget(mpHAL_AreaRT, mpHAL_AreaTexture);
 	for(auto& texEntry : mvTextures )
 	{
 		NetImguiServer::App::HAL_DestroyTexture(texEntry);
@@ -235,12 +238,12 @@ NetImguiImDrawData*	Client::GetImguiDrawData(void* pEmtpyTextureHAL)
 			for(int drawIdx(0), drawCount(pCmdList->CmdBuffer.size()); drawIdx<drawCount; ++drawIdx)
 			{
 				uint64_t wantedTexID					= NetImgui::Internal::TextureCastHelper(pCmdList->CmdBuffer[drawIdx].TextureId);
-				pCmdList->CmdBuffer[drawIdx].TextureId	= pEmtpyTextureHAL; // Default to empty texture
+				pCmdList->CmdBuffer[drawIdx].TextureId	= NetImgui::Internal::TextureCastHelper(pEmtpyTextureHAL); // Default to empty texture
 				for(size_t texIdx=0; texIdx<clientTexCount; ++texIdx)
 				{
 					if( mvTextures[texIdx].mImguiId == wantedTexID )
 					{
-						pCmdList->CmdBuffer[drawIdx].TextureId	= mvTextures[texIdx].mpHAL_Texture;
+						pCmdList->CmdBuffer[drawIdx].TextureId	= NetImgui::Internal::TextureCastHelper(mvTextures[texIdx].mpHAL_Texture);
 						break;
 					}
 				}
@@ -266,7 +269,6 @@ NetImguiImDrawData* Client::ConvertToImguiDrawData(const NetImgui::Internal::Cmd
 	mMouseCursor					= static_cast<ImGuiMouseCursor>(pCmdDrawFrame->mMouseCursor);
 
 	NetImguiImDrawData* pDrawData	= NetImgui::Internal::netImguiNew<NetImguiImDrawData>();
-	ImDrawList* pCmdList			= pDrawData->CmdLists[0];
 	pDrawData->Valid				= true;
     pDrawData->TotalVtxCount		= static_cast<int>(pCmdDrawFrame->mTotalVerticeCount);
 	pDrawData->TotalIdxCount		= static_cast<int>(pCmdDrawFrame->mTotalIndiceCount);
@@ -277,11 +279,17 @@ NetImguiImDrawData* Client::ConvertToImguiDrawData(const NetImgui::Internal::Cmd
     pDrawData->FramebufferScale		= ImVec2(1,1); //! @sammyfreg Currently untested, so force set to 1
     pDrawData->OwnerViewport		= nullptr;
 
-	uint32_t indexOffset(0), vertexOffset(0);
+	ImDrawList* pCmdList			= pDrawData->CmdLists[0];
 	pCmdList->IdxBuffer.resize(pCmdDrawFrame->mTotalIndiceCount);
 	pCmdList->VtxBuffer.resize(pCmdDrawFrame->mTotalVerticeCount);
 	pCmdList->CmdBuffer.resize(pCmdDrawFrame->mTotalDrawCount);
 	pCmdList->Flags					= ImDrawListFlags_AllowVtxOffset|ImDrawListFlags_AntiAliasedLines|ImDrawListFlags_AntiAliasedFill|ImDrawListFlags_AntiAliasedLinesUseTex;
+
+	if( pCmdDrawFrame->mTotalDrawCount == 0 ){
+		return pDrawData;
+	}
+
+	uint32_t indexOffset(0), vertexOffset(0);
 	ImDrawIdx* pIndexDst			= &pCmdList->IdxBuffer[0];
 	ImDrawVert* pVertexDst			= &pCmdList->VtxBuffer[0];
 	ImDrawCmd* pCommandDst			= &pCmdList->CmdBuffer[0];
@@ -372,7 +380,7 @@ void Client::CaptureImguiInput()
 	// Update persistent mouse status	
 	if( ImGui::IsMousePosValid(&io.MousePos)){
 		mMousePos[0] = io.MousePos.x - ImGui::GetCursorScreenPos().x;
-		mMousePos[1] = io.MousePos.y - ImGui::GetCursorScreenPos().y;		
+		mMousePos[1] = io.MousePos.y - ImGui::GetCursorScreenPos().y;
 	}
 
 	// This method is tied to the Server VSync setting, which might not match our client desired refresh setting
@@ -407,18 +415,52 @@ void Client::CaptureImguiInput()
 
 	if( ImGui::IsWindowFocused() )
 	{
-		NetImguiServer::App::HAL_ConvertKeyDown(io.KeysDown, pNewInput->mKeysDownMask);
-		pNewInput->SetKeyDown(NetImgui::Internal::CmdInput::eVirtualKeys::vkMouseBtnLeft,	io.MouseDown[0]);
-		pNewInput->SetKeyDown(NetImgui::Internal::CmdInput::eVirtualKeys::vkMouseBtnRight,	io.MouseDown[1]);
-		pNewInput->SetKeyDown(NetImgui::Internal::CmdInput::eVirtualKeys::vkMouseBtnMid,	io.MouseDown[2]);
-		pNewInput->SetKeyDown(NetImgui::Internal::CmdInput::eVirtualKeys::vkMouseBtnExtra1, io.MouseDown[3]);
-		pNewInput->SetKeyDown(NetImgui::Internal::CmdInput::eVirtualKeys::vkMouseBtnExtra2, io.MouseDown[4]);
-		pNewInput->SetKeyDown(NetImgui::Internal::CmdInput::eVirtualKeys::vkKeyboardShift,	io.KeyShift);
-		pNewInput->SetKeyDown(NetImgui::Internal::CmdInput::eVirtualKeys::vkKeyboardCtrl,	io.KeyCtrl);
-		pNewInput->SetKeyDown(NetImgui::Internal::CmdInput::eVirtualKeys::vkKeyboardAlt,	io.KeyAlt);
-		pNewInput->SetKeyDown(NetImgui::Internal::CmdInput::eVirtualKeys::vkKeyboardSuper1, io.KeySuper);
+		// Mouse Buttons Inputs
+		// If Dear ImGui Update this enum, must also adjust our enum copy
+		static_assert(	static_cast<int>(NetImgui::Internal::CmdInput::NetImguiMouseButton::ImGuiMouseButton_COUNT) == 
+						static_cast<int>(ImGuiMouseButton_::ImGuiMouseButton_COUNT), "Update the NetImgui enum to match the updated Dear ImGui enum");
+		pNewInput->mMouseDownMask = 0;
+		pNewInput->mMouseDownMask |= ImGui::IsMouseDown(ImGuiMouseButton_::ImGuiMouseButton_Left)	? 1<<NetImgui::Internal::CmdInput::ImGuiMouseButton_Left : 0;
+		pNewInput->mMouseDownMask |= ImGui::IsMouseDown(ImGuiMouseButton_::ImGuiMouseButton_Right)	? 1<<NetImgui::Internal::CmdInput::ImGuiMouseButton_Right : 0;
+		pNewInput->mMouseDownMask |= ImGui::IsMouseDown(ImGuiMouseButton_::ImGuiMouseButton_Middle)	? 1<<NetImgui::Internal::CmdInput::ImGuiMouseButton_Middle : 0;
+		pNewInput->mMouseDownMask |= ImGui::IsMouseDown(3)											? 1<<NetImgui::Internal::CmdInput::ImGuiMouseButton_Extra1 : 0;
+		pNewInput->mMouseDownMask |= ImGui::IsMouseDown(4)											? 1<<NetImgui::Internal::CmdInput::ImGuiMouseButton_Extra2 : 0;
 
-		//! @sammyfreg: ToDo Add support for gamepad
+		// Keyboard / Gamepads Inputs
+		// If Dear ImGui Update their enum, must also adjust our enum copy, 
+		// so adding a few check to detect a change
+		#define EnumKeynameTest(KEYNAME) static_cast<int>(NetImgui::Internal::CmdInput::NetImguiKeys::KEYNAME) == static_cast<int>(ImGuiKey_::KEYNAME-ImGuiKey_::ImGuiKey_NamedKey_BEGIN), "Update the NetImgui enum to match the updated Dear ImGui enum"
+		static_assert(EnumKeynameTest(ImGuiKey_COUNT));
+		static_assert(EnumKeynameTest(ImGuiKey_Tab));
+		static_assert(EnumKeynameTest(ImGuiKey_Escape));
+		static_assert(EnumKeynameTest(ImGuiKey_RightSuper));
+		static_assert(EnumKeynameTest(ImGuiKey_Apostrophe));
+		static_assert(EnumKeynameTest(ImGuiKey_Keypad0));
+		static_assert(EnumKeynameTest(ImGuiKey_CapsLock));
+		static_assert(EnumKeynameTest(ImGuiKey_GamepadStart));
+		static_assert(EnumKeynameTest(ImGuiKey_GamepadLStickUp));
+		static_assert(EnumKeynameTest(ImGuiKey_ModCtrl));
+		static_assert(EnumKeynameTest(ImGuiKey_ModShift));
+		static_assert(EnumKeynameTest(ImGuiKey_ModAlt));
+		static_assert(EnumKeynameTest(ImGuiKey_ModSuper));
+		static_assert(EnumKeynameTest(ImGuiKey_GamepadStart));
+		static_assert(EnumKeynameTest(ImGuiKey_GamepadR3));
+		static_assert(EnumKeynameTest(ImGuiKey_GamepadLStickUp));
+		static_assert(EnumKeynameTest(ImGuiKey_GamepadRStickRight));
+
+		// Save every keydown status to out bitmask
+		uint64_t valueMask(0);
+		for (uint32_t i(0); i < ImGuiKey_::ImGuiKey_NamedKey_COUNT; ++i) {
+			valueMask |= ImGui::IsKeyDown(ImGuiKey_NamedKey_BEGIN+i) ? 0x0000000000000001ull << (i%64) : 0;
+			if( ((i % 64) == 63) || i == (ImGuiKey_::ImGuiKey_NamedKey_COUNT-1)){
+				pNewInput->mInputDownMask[i/64] = valueMask;
+				valueMask						= 0;
+			}
+		}
+		// Save analog keys (gamepad)
+		for (uint32_t i(0); i < NetImgui::Internal::CmdInput::kAnalog_Count; ++i) {
+			pNewInput->mInputAnalog[i] = ImGui::GetIO().KeysData[NetImgui::Internal::CmdInput::kAnalog_First+i].AnalogValue;
+		}
 	}
 
 	// Copy waiting characters inputs

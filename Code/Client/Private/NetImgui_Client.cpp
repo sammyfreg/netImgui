@@ -18,23 +18,22 @@ void SavedImguiContext::Save(ImGuiContext* copyFrom)
 {
 	ScopedImguiContext scopedContext(copyFrom);
 	ImGuiIO& sourceIO		= ImGui::GetIO();
-
-	memcpy(mKeyMap, sourceIO.KeyMap, sizeof(mKeyMap));
 	mSavedContext			= true;
 	mConfigFlags			= sourceIO.ConfigFlags;
 	mBackendFlags			= sourceIO.BackendFlags;
 	mBackendPlatformName	= sourceIO.BackendPlatformName;
 	mBackendRendererName	= sourceIO.BackendRendererName;
-	mDrawMouse				= sourceIO.MouseDrawCursor;	
-	mClipboardUserData		= sourceIO.ClipboardUserData;	
+	mDrawMouse				= sourceIO.MouseDrawCursor;
+	mClipboardUserData		= sourceIO.ClipboardUserData;
+#if IMGUI_VERSION_NUM < 18700
+	memcpy(mKeyMap, sourceIO.KeyMap, sizeof(mKeyMap));
+#endif
 }
 
 void SavedImguiContext::Restore(ImGuiContext* copyTo)
 {	
 	ScopedImguiContext scopedContext(copyTo);
 	ImGuiIO& destIO				= ImGui::GetIO();
-
-	memcpy(destIO.KeyMap, mKeyMap, sizeof(destIO.KeyMap));
 	mSavedContext				= false;
 	destIO.ConfigFlags			= mConfigFlags;
 	destIO.BackendFlags			= mBackendFlags;
@@ -42,6 +41,9 @@ void SavedImguiContext::Restore(ImGuiContext* copyTo)
 	destIO.BackendRendererName	= mBackendRendererName;
 	destIO.MouseDrawCursor		= mDrawMouse;
 	destIO.ClipboardUserData	= mClipboardUserData;
+#if IMGUI_VERSION_NUM < 18700
+	memcpy(destIO.KeyMap, mKeyMap, sizeof(destIO.KeyMap));
+#endif
 }
 
 //=================================================================================================
@@ -408,36 +410,15 @@ void ClientInfo::ContextOverride()
 	// Note: Make sure every setting overwritten here, are handled in 'SavedImguiContext::Save(...)'
 	{
 		ImGuiIO& newIO						= ImGui::GetIO();
-		newIO.KeyMap[ImGuiKey_Tab]			= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardTab);
-		newIO.KeyMap[ImGuiKey_LeftArrow]	= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardLeft);
-		newIO.KeyMap[ImGuiKey_RightArrow]	= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardRight);
-		newIO.KeyMap[ImGuiKey_UpArrow]		= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardUp);
-		newIO.KeyMap[ImGuiKey_DownArrow]	= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardDown);
-		newIO.KeyMap[ImGuiKey_PageUp]		= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardPageUp);
-		newIO.KeyMap[ImGuiKey_PageDown]		= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardPageDown);
-		newIO.KeyMap[ImGuiKey_Home]			= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardHome);
-		newIO.KeyMap[ImGuiKey_End]			= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardEnd);
-		newIO.KeyMap[ImGuiKey_Insert]		= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardInsert);
-		newIO.KeyMap[ImGuiKey_Delete]		= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardDelete);
-		newIO.KeyMap[ImGuiKey_Backspace]	= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardBackspace);
-		newIO.KeyMap[ImGuiKey_Space]		= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardSpace);
-		newIO.KeyMap[ImGuiKey_Enter]		= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardEnter);
-		newIO.KeyMap[ImGuiKey_Escape]		= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardEscape);
-#if IMGUI_VERSION_NUM >= 17102
-		newIO.KeyMap[ImGuiKey_KeyPadEnter]	= 0;//static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardKeypadEnter);
-#endif
-		newIO.KeyMap[ImGuiKey_A]			= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardA);
-		newIO.KeyMap[ImGuiKey_C]			= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardA) - 'A' + 'C';
-		newIO.KeyMap[ImGuiKey_V]			= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardA) - 'A' + 'V';
-		newIO.KeyMap[ImGuiKey_X]			= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardA) - 'A' + 'X';
-		newIO.KeyMap[ImGuiKey_Y]			= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardA) - 'A' + 'Y';
-		newIO.KeyMap[ImGuiKey_Z]			= static_cast<int>(CmdInput::eVirtualKeys::vkKeyboardA) - 'A' + 'Z';
-
 		newIO.MouseDrawCursor				= false;
 		newIO.ClipboardUserData				= nullptr;
 		newIO.BackendPlatformName			= "NetImgui";
 		newIO.BackendRendererName			= "DirectX11";
-
+#if IMGUI_VERSION_NUM < 18700
+		for (uint32_t i(0); i < ImGuiKey_COUNT; ++i) {
+			newIO.KeyMap[i] = i;
+		}
+#endif
 #if defined(IMGUI_HAS_VIEWPORT)
 		newIO.ConfigFlags					&= ~(ImGuiConfigFlags_ViewportsEnable); // Viewport unsupported at the moment
 #endif

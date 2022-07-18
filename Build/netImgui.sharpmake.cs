@@ -61,9 +61,9 @@ namespace NetImgui
 			
 			//---------------------------------------------
 			// For the OpenGL Server build
-			AdditionalSourceRootPaths.Add(NetImguiTarget.GetPath(@"\Code\ThirdParty\gl3w"));
-			AdditionalSourceRootPaths.Add(NetImguiTarget.GetPath(@"\Code\ThirdParty\glfw\include"));			
-			SourceFilesBuildExcludeRegex.Add(@"ThirdParty\\gl3w\\");
+			AdditionalSourceRootPaths.Add(NetImguiTarget.GetPath(@"\Code\ThirdParty\glfw\include"));
+			AdditionalSourceRootPaths.Add(NetImguiTarget.GetPath(@"\Code\ThirdParty\glad30core\include"));
+			AdditionalSourceRootPaths.Add(NetImguiTarget.GetPath(@"\Code\ThirdParty\glad30core\src"));			
 			SourceFilesBuildExcludeRegex.Add(@"ThirdParty\\glfw\\");
 			//---------------------------------------------
 		}
@@ -72,8 +72,11 @@ namespace NetImgui
         {
 			base.ConfigureAll(conf, target);
 			
-			AddDependencyImguiIndex32(conf, target);
+			AddDependencyImguiServer(conf, target);
 			conf.AddPublicDependency<ProjectNetImgui32_Default>(target);
+			
+			conf.Defines.Add("IS_NETIMGUISERVER=1");	// 
+			conf.Defines.Add("ImTextureID=ImU64");		// Server must absolutly use at minimum 64bits texture id, even when compiled in 32 bits			
 			
 			conf.IncludePaths.Add(SourceRootPath + @"\Source");
 			conf.IncludePaths.Add(NetImguiTarget.GetPath(ProjectImgui.sDefaultPath));
@@ -81,13 +84,32 @@ namespace NetImgui
 			
 			//---------------------------------------------
 			// For the OpenGL Server build
-			conf.IncludePaths.Add(NetImguiTarget.GetPath(@"\Code\ThirdParty\gl3w"));
 			conf.IncludePaths.Add(NetImguiTarget.GetPath(@"\Code\ThirdParty\glfw\include"));
-			if( target.DevEnv == DevEnv.vs2019 )		conf.LibraryPaths.Add(NetImguiTarget.GetPath(@"\Code\ThirdParty\glfw\lib-vc2019-64"));
-			else if( target.DevEnv == DevEnv.vs2017 )	conf.LibraryPaths.Add(NetImguiTarget.GetPath(@"\Code\ThirdParty\glfw\lib-vc2017-64"));
+            conf.LibraryPaths.Add(NetImguiTarget.GetPath(@"\Code\ThirdParty\glfw\" + getGlfwLibName(target.Platform, target.DevEnv)));
+			conf.Options.Add(new Options.Vc.Linker.DisableSpecificWarnings("4099")); //Prevents: warning LNK4099: PDB '' was not found with 'glfw3_mtd.lib(context.c.obj)' or at ''; linking object as if no debug info
 			//---------------------------------------------
 			
-			conf.EventPostBuild.Add(@"xcopy " + NetImguiTarget.GetPath(@"\Code\ServerApp\Background.png") + " " + conf.TargetPath + " /D /Y");
+			conf.EventPostBuild.Add("xcopy \"" + NetImguiTarget.GetPath(@"\Code\ServerApp\Background.png") + "\" \"" + conf.TargetPath + "\" /D /Y");
+		}
+
+		private string getGlfwLibName(Platform platform, DevEnv developerEnv)
+		{
+			string libName = "lib";
+			if( developerEnv == DevEnv.vs2022 ){
+			   libName += "-vc2022";
+			} else if( developerEnv == DevEnv.vs2019 ) {
+                libName += "-vc2019";
+			} else if( developerEnv == DevEnv.vs2017 ) {
+                libName += "-vc2017";
+			}
+
+            if (platform == Platform.win64) {
+                libName += "-64";
+            } else if (platform == Platform.win32) {
+                libName += "-32";
+            }
+
+            return libName;
 		}
     }
 	
@@ -152,6 +174,23 @@ namespace NetImgui
 		}
     }
 	
+	//-------------------------------------------------------------------------
+	// This sample does not have a UI Window, only show a console and wait 
+	// for a connection to NetImguiServer. when connected, Display its
+	// Dear ImGui content normally, on the remote server. 
+	// Usefull to demonstrate being able to use NetImgui without even needing to 
+	// implement a Backend support (windows / renderer / input) on the client.
+	// It also compiles the Dear ImGui/NetImgui sources directly
+	//-------------------------------------------------------------------------
+	[Sharpmake.Generate]
+    public class ProjectSample_NoBackend : ProjectNoBackend
+    {
+        public ProjectSample_NoBackend()
+		: base("SampleNoBackend","")
+		{
+        }
+    }
+	
 	//
 	[Sharpmake.Generate] 
 	public class ProjectSample_Compression : ProjectBase 
@@ -183,6 +222,33 @@ namespace NetImgui
 		}
 	}
 	
+	//
+	[Sharpmake.Generate] 
+	public class ProjectSample_SampleCompatibility : ProjectBase 
+	{
+		// This sample does not includes the Dear Imgui or NetImgui Library included.
+		// They are instead compiled inside this project. This allows to test various
+		// older version of Dear ImGui against our NetImgui Server compiled 
+		// with latest version
+		public ProjectSample_SampleCompatibility()
+		: base(true)
+		{
+			Name			= "Compatibility";
+            SourceRootPath	= NetImguiTarget.GetPath(@"\Code\Sample\SampleCompatibility");
+			SourceFiles.Add(@"C:\GitHub\NetImguiDev\Build\..\_generated\imgui\imgui-1.88\*.cpp");
+			SourceFiles.Add(@"C:\GitHub\NetImguiDev\Build\..\_generated\imgui\imgui-1.88\*.h");
+		}
+		
+		public override void ConfigureAll(Configuration conf, NetImguiTarget target)
+		{
+			base.ConfigureAll(conf, target);
+			conf.IncludePaths.Add(@"C:\GitHub\NetImguiDev\Build\..\_generated\imgui\imgui-1.88\");
+			conf.IncludePaths.Add(NetImguiTarget.GetPath(@"\Code\Client"));
+			
+			conf.Options.Add(Options.Vc.Linker.SubSystem.Console); 
+			
+		}
+	}
 	
 	//=============================================================================================
 	// SOLUTIONS
@@ -211,7 +277,9 @@ namespace NetImgui
 			conf.AddProject<ProjectSample_Index32Bits>(target, false, SolutionFolder);
 			conf.AddProject<ProjectSample_Disabled>(target, false, SolutionFolder);
 			conf.AddProject<ProjectSample_SingleInclude>(target, false, SolutionFolder);
-			// Adding an already auto included dependcy, so it can be moved to more appropriate folder
+			conf.AddProject<ProjectSample_NoBackend>(target, false, SolutionFolder);
+			
+			// Adding an already auto included dependency, so it can be moved to more appropriate folder
 			conf.AddProject<ProjectNetImgui_Disabled>(target, false, "CompatibilityTest");
 		}
 	}
