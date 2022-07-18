@@ -89,7 +89,7 @@ namespace NetImgui
 			conf.Options.Add(new Options.Vc.Linker.DisableSpecificWarnings("4099")); //Prevents: warning LNK4099: PDB '' was not found with 'glfw3_mtd.lib(context.c.obj)' or at ''; linking object as if no debug info
 			//---------------------------------------------
 			
-			conf.EventPostBuild.Add(@"xcopy " + NetImguiTarget.GetPath(@"\Code\ServerApp\Background.png") + " " + conf.TargetPath + " /D /Y");
+			conf.EventPostBuild.Add("xcopy \"" + NetImguiTarget.GetPath(@"\Code\ServerApp\Background.png") + "\" \"" + conf.TargetPath + "\" /D /Y");
 		}
 
 		private string getGlfwLibName(Platform platform, DevEnv developerEnv)

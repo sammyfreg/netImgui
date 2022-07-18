@@ -110,16 +110,23 @@ void ClientInfoTooltip(const RemoteClient::Client& Client)
 // When a Remote Client request is made, first makes sure to confirm with user
 //=================================================================================================
 void Popup_ConfirmDisconnect()
-{	
+{
 	bool pendingDisconnectOpen(gPopup_ConfirmDisconnect_ClientIdx != kClientRemoteInvalid);
 	if (pendingDisconnectOpen)
-	{
-		
+	{		
 		RemoteClient::Client& client			= RemoteClient::Client::Get(gPopup_ConfirmDisconnect_ClientIdx);
 		bool wantExit							= ImGui::IsKeyPressed(ImGuiKey_Escape);
 		ImGuiWindowClass windowClass;
-		windowClass.ViewportFlagsOverrideSet	= ImGuiViewportFlags_TopMost;		
+		windowClass.ViewportFlagsOverrideSet	= ImGuiViewportFlags_TopMost;
 		ImGui::SetNextWindowClass(&windowClass);
+
+		static ImVec2 sPopupSize				= ImVec2(250.f,200.f);
+		ImGuiViewport* pViewport				= ImGui::GetWindowViewport();
+		ImVec2 popupPos							= pViewport->Pos;
+		popupPos.x								+= pViewport->Size.x/2.f - sPopupSize.x/2.f;
+		popupPos.y								+= pViewport->Size.y/2.f - sPopupSize.y/2.f;
+		ImGui::SetNextWindowPos(popupPos, ImGuiCond_Appearing);
+		
 		ImGui::OpenPopup("Confirmation##DEL");
 		if (ImGui::BeginPopupModal("Confirmation##DEL", &pendingDisconnectOpen, ImGuiWindowFlags_AlwaysAutoResize))
 		{
@@ -134,7 +141,7 @@ void Popup_ConfirmDisconnect()
 			}
 
 			ImGui::NewLine();
-			ImGui::Separator();			
+			ImGui::Separator();
 			if (ImGui::Button("Cancel", ImVec2(ImGui::GetContentRegionAvail().x / 2.f, 0)) || wantExit ) 
 			{
 				pendingDisconnectOpen		= false;
@@ -148,6 +155,7 @@ void Popup_ConfirmDisconnect()
 				pendingDisconnectOpen		= false;
 							
 			}
+			sPopupSize = ImGui::GetWindowSize();
 			ImGui::EndPopup();
 		}		
 	}
@@ -168,6 +176,14 @@ void Popup_AboutNetImgui()
 		ImGuiWindowClass windowClass;
 		windowClass.ViewportFlagsOverrideSet = ImGuiViewportFlags_TopMost;
 		ImGui::SetNextWindowClass(&windowClass);
+
+		static ImVec2 sPopupSize				= ImVec2(250.f,200.f);
+		ImGuiViewport* pViewport				= ImGui::GetWindowViewport();
+		ImVec2 popupPos							= pViewport->Pos;
+		popupPos.x								+= pViewport->Size.x/2.f - sPopupSize.x/2.f;
+		popupPos.y								+= pViewport->Size.y/2.f - sPopupSize.y/2.f;
+		ImGui::SetNextWindowPos(popupPos, ImGuiCond_Appearing);
+
 		ImGui::OpenPopup("About NetImgui...");
 		if (ImGui::BeginPopupModal("About NetImgui...", &gPopup_AboutNetImgui_Show, ImGuiWindowFlags_AlwaysAutoResize))
 		{			
@@ -194,6 +210,7 @@ void Popup_AboutNetImgui()
 			wantExit		|= ImGui::IsKeyPressed(ImGuiKey_Enter);
 			if( ImGui::Button("Close", ImVec2(ImGui::GetContentRegionAvail().x, 0)) || wantExit) 
 				gPopup_AboutNetImgui_Show = false;
+			sPopupSize = ImGui::GetWindowSize();
 			ImGui::EndPopup();
 		}
 	}
@@ -219,6 +236,14 @@ void Popup_ServerConfig()
 		ImGuiWindowClass windowClass;
 		windowClass.ViewportFlagsOverrideSet = ImGuiViewportFlags_TopMost;
 		ImGui::SetNextWindowClass(&windowClass);
+
+		static ImVec2 sPopupSize				= ImVec2(250.f,200.f);
+		ImGuiViewport* pViewport				= ImGui::GetWindowViewport();
+		ImVec2 popupPos							= pViewport->Pos;
+		popupPos.x								+= pViewport->Size.x/2.f - sPopupSize.x/2.f;
+		popupPos.y								+= pViewport->Size.y/2.f - sPopupSize.y/2.f;
+		ImGui::SetNextWindowPos(popupPos, ImGuiCond_Appearing);
+
 		ImGui::OpenPopup("Server Configuration");
 		if (ImGui::BeginPopupModal("Server Configuration", &gPopup_ServerConfig_Show, ImGuiWindowFlags_AlwaysAutoResize))
 		{
@@ -268,6 +293,8 @@ void Popup_ServerConfig()
 				NetImguiServer::Config::Client::SaveAll();
 				gPopup_ServerConfig_Show = false;
 			}
+
+			sPopupSize = ImGui::GetWindowSize();
 			ImGui::EndPopup();
 		}
 	}
@@ -282,13 +309,21 @@ void Popup_ServerConfig()
 // Edit a new or existing client settings
 //=================================================================================================
 void Popup_ClientConfigEdit()
-{	
+{
 	bool bOpenEdit(gPopup_ClientConfig_pConfig != nullptr);
 	if (bOpenEdit)
 	{
 		ImGuiWindowClass windowClass;
 		windowClass.ViewportFlagsOverrideSet = ImGuiViewportFlags_TopMost;
 		ImGui::SetNextWindowClass(&windowClass);
+
+		static ImVec2 sPopupSize				= ImVec2(250.f,200.f);
+		ImGuiViewport* pViewport				= ImGui::GetWindowViewport();
+		ImVec2 popupPos							= pViewport->Pos;
+		popupPos.x								+= pViewport->Size.x/2.f - sPopupSize.x/2.f;
+		popupPos.y								+= pViewport->Size.y/2.f - sPopupSize.y/2.f;
+		ImGui::SetNextWindowPos(popupPos, ImGuiCond_Appearing);
+
 		ImGui::OpenPopup("Edit Client Info");
 		if (ImGui::BeginPopupModal("Edit Client Info", &bOpenEdit, ImGuiWindowFlags_AlwaysAutoResize))
 		{
@@ -327,6 +362,7 @@ void Popup_ClientConfigEdit()
 				NetImguiServer::Config::Client::SaveAll();
 				bOpenEdit = false;
 			}
+			sPopupSize = ImGui::GetWindowSize();
 			ImGui::EndPopup();
 		}
 
@@ -352,6 +388,14 @@ void Popup_ClientConfigDelete()
 		ImGuiWindowClass windowClass;
 		windowClass.ViewportFlagsOverrideSet = ImGuiViewportFlags_TopMost;
 		ImGui::SetNextWindowClass(&windowClass);
+
+		static ImVec2 sPopupSize				= ImVec2(250.f,200.f);
+		ImGuiViewport* pViewport				= ImGui::GetWindowViewport();
+		ImVec2 popupPos							= pViewport->Pos;
+		popupPos.x								+= pViewport->Size.x/2.f - sPopupSize.x/2.f;
+		popupPos.y								+= pViewport->Size.y/2.f - sPopupSize.y/2.f;
+		ImGui::SetNextWindowPos(popupPos, ImGuiCond_Appearing);
+
 		ImGui::OpenPopup("Confirmation##DEL");
 		if (ImGui::BeginPopupModal("Confirmation##DEL", &bOpenDelConfirm, ImGuiWindowFlags_AlwaysAutoResize))
 		{
@@ -375,6 +419,7 @@ void Popup_ClientConfigDelete()
 				NetImguiServer::Config::Client::SaveAll();
 				bOpenDelConfirm = false;
 			}
+			sPopupSize = ImGui::GetWindowSize();
 			ImGui::EndPopup();
 		}
 
@@ -705,7 +750,7 @@ void DrawImguiContent_MainMenu_Clients()
 // Display some relevenant stats in the MainMenu bar
 //=================================================================================================
 void DrawImguiContent_MainMenu_Stats()
-{	
+{
 	constexpr float width(100.f);
 	uint32_t txKBs(0), rxKBs(0), connected(0);	
 	for(uint32_t i(0); i<RemoteClient::Client::GetCountMax(); ++i)
@@ -738,7 +783,7 @@ void DrawImguiContent_MainMenu_Stats()
 // Generate the entries for the main menubar
 //=================================================================================================
 void DrawImguiContent_MainMenu()
-{	
+{
 	if( ImGui::BeginMainMenuBar() )
 	{		
 		ImGui::SetNextWindowSize(ImVec2(ImGui::GetContentRegionAvail().x,0)); // Will let Menu popup content fill the screen width
@@ -759,7 +804,7 @@ void DrawImguiContent_MainMenu()
 // Main entry point for rendering all of our NetImguiServer UI
 //=================================================================================================
 ImVec4 DrawImguiContent()
-{   		
+{
 	constexpr float kHysteresis = 0.05f;
 	float elapsedMicroS			= static_cast<float>(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - gLastUIUpdate).count());
 	gLastUIUpdate				= std::chrono::steady_clock::now();
