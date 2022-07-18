@@ -33,13 +33,13 @@ namespace NetImgui
 		public NetImguiTarget()
 		{
 			DevEnv = DevEnv.vs2019;
-			Platform = Platform.win64;
+			Platform = Platform.win64 | Platform.win32;
 			Optimization = Optimization.Debug | Optimization.Release;
 			Compiler = Compiler.MSBuild | Compiler.Clang;
 		}
 		
 		// Generates a solution for each Visual Studio version found
-		// Note: Add a Clang target when detected isntalled for that Visual Studio version
+		// Note: Add a Clang target when detected installed for that Visual Studio version
 		static public NetImguiTarget[] CreateTargets()
 		{		
 			List<NetImguiTarget> targets = new List<NetImguiTarget>();
@@ -175,6 +175,11 @@ namespace NetImgui
 			conf.Defines.Add("_HAS_EXCEPTIONS=0"); 					// Prevents error in VisualStudio c++ library with NoExcept, like xlocale
 			conf.Defines.Add("IMGUI_DISABLE_OBSOLETE_FUNCTIONS");	// Enforce using up to date Dear ImGui Api (In Server, Compatibility tests and Samples)
 			
+			if (target.Optimization == Optimization.Debug)
+                conf.Options.Add(Options.Vc.Compiler.RuntimeLibrary.MultiThreadedDebugDLL);
+            else
+                conf.Options.Add(Options.Vc.Compiler.RuntimeLibrary.MultiThreadedDLL);
+			
 			if( target.Compiler == Compiler.MSBuild ){
 				conf.Options.Add(new Options.Vc.Compiler.DisableSpecificWarnings(""));
 				conf.Options.Add(Options.Vc.Librarian.TreatLibWarningAsErrors.Enable);	//Note: Clang VS2019 doesn't support this option properly
@@ -202,6 +207,12 @@ namespace NetImgui
 			EnabledImguiIndex32Bits(conf);
 		}
 	
+		public void AddDependencyImguiServer(Configuration conf, NetImguiTarget target)
+		{
+			conf.AddPublicDependency<ProjectImguiServer>(target);			
+			EnabledImguiIndex32Bits(conf);
+		}
+		
 		public void EnabledImguiIndex16Bits(Configuration conf)
 		{
 		}
@@ -256,6 +267,20 @@ namespace NetImgui
 		}
 	}
 	
+	// Dear ImGui Library, 32bits index & 64 bits textureID
+	[Sharpmake.Generate] 
+	public class ProjectImguiServer : ProjectImgui 
+	{ 
+		public ProjectImguiServer() { Name = "DearImguiServerLib"; }
+		
+		public override void ConfigureAll(Configuration conf, NetImguiTarget target)
+        {
+			base.ConfigureAll(conf, target);
+			conf.Defines.Add("ImTextureID=ImU64");		// Server must absolutly use at minimum 64bits texture id, even when compiled in 32 bits			
+			EnabledImguiIndex32Bits(conf);
+		}
+	}
+	
 	//---------------------------------------------------------------------------------------------
 	// NETIMGUI Project
 	//---------------------------------------------------------------------------------------------
@@ -265,10 +290,10 @@ namespace NetImgui
 		public ProjectNetImgui(string imguiFullPath)
 		: base(false)
         {
-			mVersion = Path.GetFileName(imguiFullPath);
-			mImguiPath = imguiFullPath;
-			Name = "NetImguiLib (" + mVersion + ")";
-            SourceRootPath = NetImguiTarget.GetPath(@"\Code\Client");
+			mVersion 		= Path.GetFileName(imguiFullPath);
+			mImguiPath 		= imguiFullPath;
+			Name 			= "NetImguiLib (" + mVersion + ")";
+            SourceRootPath 	= NetImguiTarget.GetPath(@"\Code\Client");
 			SourceFiles.Add(mImguiPath + @"\imgui.h");
         }
 
@@ -308,11 +333,60 @@ namespace NetImgui
 				AddDependencyImguiIndex32(conf, target);
 				conf.AddPublicDependency<ProjectNetImgui32_Default>(target);
 			}
-			conf.IncludePaths.Add(ProjectImgui.sDefaultPath);
+			conf.IncludePaths.Add(NetImguiTarget.GetPath(ProjectImgui.sDefaultPath));
 			conf.IncludePaths.Add(NetImguiTarget.GetPath(@"\Code\Client"));
 		}
 		bool mUseIndex32;
     }
+	
+	// Compile a console program, with Dear ImGui and NetImgui sources 
+	// included directly. The Dear ImGui code does not include any backend,
+	// only try connecting the the NetImgui Server to draw its content remotely.
+	[Sharpmake.Generate] 
+	public class ProjectNoBackend : ProjectBase 
+	{
+		public ProjectNoBackend(string inName, string inImguiFullPath)
+		: base(true)
+		{
+			mImguiFullPath	= string.IsNullOrEmpty(inImguiFullPath) ? NetImguiTarget.GetPath(ProjectImgui.sDefaultPath) : inImguiFullPath;
+			Name			= inName;
+            SourceRootPath	= NetImguiTarget.GetPath(@"\Code\Sample\SampleNoBackend");
+			
+			// Find the Dear Imgui Sources files
+			string[] sourceExtensions = new string[]{".h",".cpp"};
+			var files = Directory.EnumerateFiles(mImguiFullPath, "*.*", SearchOption.TopDirectoryOnly);
+			foreach (var file in files)
+			{				
+				if (sourceExtensions.Contains(Path.GetExtension(file), StringComparer.OrdinalIgnoreCase)){
+					//Console.WriteLine("File Added: {0}", Path.GetFullPath(file));
+					SourceFiles.Add(Path.GetFullPath(file));
+				}
+			};
+		}
+		
+		public override void ConfigureAll(Configuration conf, NetImguiTarget target)
+		{
+			base.ConfigureAll(conf, target);
+			conf.IncludePaths.Add(mImguiFullPath);
+			conf.IncludePaths.Add(NetImguiTarget.GetPath(@"\Code\Client"));
+			conf.Options.Add(Options.Vc.Linker.SubSystem.Console);
+			conf.LibraryFiles.Add("ws2_32.lib");
+			
+			// Remove a some Dear ImGui sources compile warning
+			if( target.Compiler == Compiler.MSBuild ){
+				conf.Options.Add(new Options.Vc.Compiler.DisableSpecificWarnings("4100")); // warning C4100: xxx: unreferenced formal parameter
+				conf.Options.Add(new Options.Vc.Compiler.DisableSpecificWarnings("4189")); // warning C4189: xxx: unused local variable
+			}
+			else if ( target.Compiler == Compiler.Clang ){
+				conf.Options.Add(Options.Vc.General.PlatformToolset.ClangCL);				
+				conf.AdditionalCompilerOptions.Add("-Wno-unknown-warning-option");
+				conf.AdditionalCompilerOptions.Add("-Wno-unused-parameter");
+				conf.AdditionalCompilerOptions.Add("-Wno-unused-variable");
+				conf.AdditionalCompilerOptions.Add("-Wno-unused-but-set-variable");
+			}
+		}
+		string mImguiFullPath;
+	}
 	
 	//=============================================================================================
 	// SOLUTIONS

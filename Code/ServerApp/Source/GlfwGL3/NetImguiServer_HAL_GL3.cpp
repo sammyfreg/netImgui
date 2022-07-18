@@ -8,10 +8,9 @@
 
 #if HAL_API_PLATFORM_GLFW_GL3
 
-#include <array>
 #include "NetImguiServer_RemoteClient.h"
 #include <imgui_impl_opengl3.h>
-#include "imgui_impl_opengl3_loader.h"
+#include <imgui_impl_opengl3_loader.h>
 
 namespace NetImguiServer { namespace App
 {

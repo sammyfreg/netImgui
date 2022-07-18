@@ -84,6 +84,11 @@ bool AddClientConfigFromString(const char* string, bool transient)
 	while( *zEntryCur != 0 )
 	{
 		zEntryCur++;
+		// Skip commandline preamble holding path to executable
+		if (*zEntryCur == ' ' && *(zEntryCur+1) != 0)
+		{
+			zEntryStart = zEntryCur + 1;
+		}
 		if( (*zEntryCur == ';' || *zEntryCur == 0) )
 		{
 			if (paramIndex == 0)
@@ -166,7 +171,7 @@ void UpdateRemoteContent()
 			client.ProcessPendingTextures();
 
 			// Update the RenderTarget destination of each client, of size was updated
-			if (client.mAreaSizeX > 0 && client.mAreaSizeY > 0 && (client.mAreaRTSizeX != client.mAreaSizeX || client.mAreaRTSizeY != client.mAreaSizeY))
+			if (client.mAreaSizeX > 0 && client.mAreaSizeY > 0 && (!client.mpHAL_AreaRT || client.mAreaRTSizeX != client.mAreaSizeX || client.mAreaRTSizeY != client.mAreaSizeY))
 			{
 				if (HAL_CreateRenderTarget(client.mAreaSizeX, client.mAreaSizeY, client.mpHAL_AreaRT, client.mpHAL_AreaTexture))
 				{

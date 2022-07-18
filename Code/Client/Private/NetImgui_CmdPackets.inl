@@ -1,3 +1,5 @@
+#include "NetImgui_CmdPackets.h"
+
 namespace NetImgui { namespace Internal
 {
 // @sammyfreg TODO: Make Offset/Pointer test safer
@@ -43,18 +45,11 @@ void ImguiDrawGroup::ToOffsets()
 	}
 }
 
-bool CmdInput::IsKeyDown(eVirtualKeys vkKey)const
+bool CmdInput::IsKeyDown( CmdInput::NetImguiKeys netimguiKey) const
 {
-	const uint64_t key = static_cast<uint64_t>(vkKey);
-	return (mKeysDownMask[key/64] & (static_cast<uint64_t>(1)<<(key%64))) != 0;
-}
-
-void CmdInput::SetKeyDown(eVirtualKeys vkKey, bool isDown)
-{
-	const size_t keyEntryIndex	= static_cast<uint64_t>(vkKey) / 64;
-	const uint64_t keyBitMask	= static_cast<uint64_t>(1) << static_cast<uint64_t>(vkKey) % 64;	
-	mKeysDownMask[keyEntryIndex]= isDown ?	mKeysDownMask[keyEntryIndex] | keyBitMask : 
-											mKeysDownMask[keyEntryIndex] & ~keyBitMask;
+	uint32_t valIndex	= netimguiKey/64;
+	uint64_t valMask	= 0x0000000000000001ull << (netimguiKey%64);
+	return mInputDownMask[valIndex] & valMask;
 }
 
 bool CmdBackground::operator==(const CmdBackground& cmp)const

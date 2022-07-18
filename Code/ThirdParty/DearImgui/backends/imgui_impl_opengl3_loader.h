@@ -1,3 +1,9 @@
+// @SAMPLE_EDIT
+// Note: The 'imgui_impl_opengl3_loader.h' included by Dear Imgui Backend has been replaced 
+// with our own version without stripped symbol. The server App needs a few extra 
+// function that are not shipped with Dear ImGui.
+// The unstripped version comes from : https://github.com/dearimgui/gl3w_stripped/releases
+
 /*
  * This file was generated with gl3w_gen.py, part of imgl3w
  * (hosted at https://github.com/dearimgui/gl3w_stripped)

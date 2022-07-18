@@ -196,6 +196,7 @@ template <typename IntType>
 IntType RoundUp(IntType Value, IntType Round);
 
 inline uint64_t TextureCastHelper(ImTextureID textureID);
+inline ImTextureID TextureCastHelper(const void* pTexture);
 inline ImTextureID TextureCastHelper(uint64_t textureID);
 
 }} //namespace NetImgui::Internal

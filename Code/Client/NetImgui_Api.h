@@ -4,17 +4,15 @@
 //! @Name		: NetImgui
 //=================================================================================================
 //! @author		: Sammy Fatnassi
-//! @date		: 2022/01/31
-//!	@version	: v1.7.5
+//! @date		: 2022/07/18
+//!	@version	: v1.8.0
 //! @Details	: For integration info : https://github.com/sammyfreg/netImgui/wiki
 //=================================================================================================
-#define NETIMGUI_VERSION		"1.7.5"
-#define NETIMGUI_VERSION_NUM	10705
+#define NETIMGUI_VERSION		"1.8.0"
+#define NETIMGUI_VERSION_NUM	10800
 
 
-#ifdef NETIMGUI_IMPLEMENTATION
-	#define NETIMGUI_INTERNAL_INCLUDE
-#endif
+
 
 //-------------------------------------------------------------------------------------------------
 // Deactivate a few warnings to allow Imgui header include
@@ -23,7 +21,9 @@
 #if defined (__clang__)
 	#pragma clang diagnostic push
 	// ImGui.h warnings(s)
+	#pragma clang diagnostic ignored "-Wunknown-warning-option"
 	#pragma clang diagnostic ignored "-Wc++98-compat-pedantic"
+	#pragma clang diagnostic ignored "-Wreserved-identifier"			// Enuma values using '__' or member starting with '_' in imgui.h
 	// NetImgui_Api.h Warning(s)
 	#pragma clang diagnostic ignored "-Wzero-as-null-pointer-constant"	// Not using nullptr in case this file is used in pre C++11
 #elif defined(_MSC_VER) 
@@ -40,7 +40,14 @@
 // 'imgui.h' : always
 // 'imgui_internal.h' when 'NETIMGUI_INTERNAL_INCLUDE' is defined
 //=================================================================================================
-#include "NetImgui_Config.h"
+#ifdef NETIMGUI_IMPLEMENTATION
+	#define NETIMGUI_INTERNAL_INCLUDE
+	#include "NetImgui_Config.h"
+	#undef NETIMGUI_INTERNAL_INCLUDE
+#else
+	#include "NetImgui_Config.h"
+#endif
+
 
 //-------------------------------------------------------------------------------------------------
 // If 'NETIMGUI_ENABLED' hasn't been defined yet (in project settings or NetImgui_Config.h') 
@@ -161,8 +168,8 @@ NETIMGUI_API	bool				IsDrawingRemote(void);
 NETIMGUI_API	void				SendDataTexture(ImTextureID textureId, void* pData, uint16_t width, uint16_t height, eTexFormat format);
 
 //=================================================================================================
-// Start a new Imgui Frame and wait for Draws commands, using a ImGui created internally
-// for remote drawing. Returns true if we are awaiting a new ImGui frame. 
+// Start a new Imgui Frame and wait for Draws commands, using ImContext that was active on connect.
+// Returns true if we are awaiting a new ImGui frame. 
 //
 // All ImGui drawing should be skipped when return is false.
 //
@@ -223,7 +230,6 @@ NETIMGUI_API	uint32_t			GetTexture_BytePerImage	(eTexFormat eFormat, uint32_t pi
 	#include "Private/NetImgui_NetworkPosix.cpp"
 	#include "Private/NetImgui_NetworkUE4.cpp"
 	#include "Private/NetImgui_NetworkWin32.cpp"
-	#undef NETIMGUI_INTERNAL_INCLUDE
 #endif
 
 #endif // NETIMGUI_ENABLED

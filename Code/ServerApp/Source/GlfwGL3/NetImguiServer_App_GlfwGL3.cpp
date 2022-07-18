@@ -8,24 +8,33 @@
 #if HAL_API_PLATFORM_GLFW_GL3
 
 #ifdef _MSC_VER
-	#pragma warning (disable: 4996)									// 'This function or variable may be unsafe': strcpy, strdup, sprintf, vsnprintf, sscanf, fopen
-	#pragma comment(lib, "opengl32.lib")
-	#pragma comment(lib, "glfw3_mt.lib")
+#pragma warning (disable: 4996)									// 'This function or variable may be unsafe': strcpy, strdup, sprintf, vsnprintf, sscanf, fopen
+
+
+#pragma comment(lib, "opengl32.lib")
+#ifdef _DEBUG
+#pragma comment(lib, "glfw3_mtd.lib")
+#else
+#pragma comment(lib, "glfw3_mt.lib")
 #endif
+#endif
+
 #if defined (__clang__)	
 	#pragma clang diagnostic ignored "-Wdeprecated-declarations"	// imgui_impl_opengl3.cpp(171,9): error : 'sscanf' is deprecated: This function or variable may be unsafe. 
 	#pragma clang diagnostic ignored "-Wmicrosoft-cast"				// gl3w.c(28,8): error : implicit conversion between pointer-to-function and pointer-to-object is a Microsoft extension
 #endif
 
-#include "NetImguiServer_UI.h"
-#include <backends/imgui_impl_opengl3.cpp>
-#include <backends/imgui_impl_glfw.cpp>
-
 // @SAMPLE_EDIT
-// Note: We fetch a special 'imgui_impl_opengl3_loader.h' file without stripped symbol, 
-// instead of using the one provided in the Dear Imgui depot. The server App needs a few extra 
+// Note: The 'imgui_impl_opengl3_loader.h' included by Dear Imgui Backend has been replaced 
+// with our own version without stripped symbol. The server App needs a few extra 
 // function that are not shipped with Dear ImGui.
 // The unstripped version comes from : https://github.com/dearimgui/gl3w_stripped/releases 
+
+#include <string>
+#include "NetImguiServer_UI.h"
+#include "backends/imgui_impl_opengl3.cpp"
+#include "backends/imgui_impl_glfw.cpp"
+#include "backends/imgui_impl_win32.cpp"
 //=================================================================================================
 
 // Dear ImGui: standalone example application for GLFW + OpenGL 3, using programmable pipeline
@@ -54,7 +63,7 @@ static void glfw_error_callback(int error, const char* description)
     fprintf(stderr, "Glfw Error %d: %s\n", error, description);
 }
 
-int main(int, char**)
+int main(int argc, char **argv)
 {
     // Setup window
     glfwSetErrorCallback(glfw_error_callback);
@@ -91,6 +100,7 @@ int main(int, char**)
     glfwMakeContextCurrent(window);
     glfwSwapInterval(1); // Enable vsync
 
+    
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -141,7 +151,17 @@ int main(int, char**)
     // Main loop
 	//=========================================================================================
     // @SAMPLE_EDIT (Start our own initialisation)
-    bool ok = NetImguiServer::App::Startup( GetCommandLineA() );
+    std::string cmdArgs;
+    for (size_t i = 0; i < size_t(argc); ++i) {
+        std::string arg(argv[i]);
+        cmdArgs += arg + " ";
+    }
+
+    if (!cmdArgs.empty()) {
+        cmdArgs.pop_back();
+    }
+
+    bool ok = NetImguiServer::App::Startup(cmdArgs.c_str());
     while (ok && !glfwWindowShouldClose(window))
 	//=========================================================================================
     {
