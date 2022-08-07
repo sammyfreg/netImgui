@@ -5,11 +5,11 @@
 //=================================================================================================
 //! @author		: Sammy Fatnassi
 //! @date		: 2022/07/18
-//!	@version	: v1.8.0
+//!	@version	: v1.8.1
 //! @Details	: For integration info : https://github.com/sammyfreg/netImgui/wiki
 //=================================================================================================
-#define NETIMGUI_VERSION		"1.8.0"
-#define NETIMGUI_VERSION_NUM	10800
+#define NETIMGUI_VERSION		"1.8.1 WIP"
+#define NETIMGUI_VERSION_NUM	10801
 
 
 
