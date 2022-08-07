@@ -175,10 +175,17 @@ namespace NetImgui
 			conf.Defines.Add("_HAS_EXCEPTIONS=0"); 					// Prevents error in VisualStudio c++ library with NoExcept, like xlocale
 			conf.Defines.Add("IMGUI_DISABLE_OBSOLETE_FUNCTIONS");	// Enforce using up to date Dear ImGui Api (In Server, Compatibility tests and Samples)
 			
-			if (target.Optimization == Optimization.Debug)
-                conf.Options.Add(Options.Vc.Compiler.RuntimeLibrary.MultiThreadedDebugDLL);
-            else
+			if (target.Optimization == Optimization.Debug){
+				conf.Options.Add(Options.Vc.Compiler.RuntimeLibrary.MultiThreadedDebugDLL);				
+				// Note: Once Clang debug library link error is fixed (in new clang release),
+				// try removing 'MultiThreadedDebugDLL' and enabling asan for clang too
+				if( target.DevEnv > DevEnv.vs2017 && target.Compiler == Compiler.MSBuild ){
+					conf.Options.Add(Options.Vc.Compiler.EnableAsan.Enable);
+				}
+			}
+            else{
                 conf.Options.Add(Options.Vc.Compiler.RuntimeLibrary.MultiThreadedDLL);
+			}
 			
 			if( target.Compiler == Compiler.MSBuild ){
 				conf.Options.Add(new Options.Vc.Compiler.DisableSpecificWarnings(""));
