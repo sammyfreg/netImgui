@@ -30,7 +30,7 @@ jobs:
     
     - name: Generate Solutions
       working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: TestBuild/GenerateProject.bat 1
+      run: GenerateProject.bat 1
       
     - name: Restore NuGet packages
       working-directory: ${{env.GITHUB_WORKSPACE}}
