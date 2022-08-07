@@ -1,10 +1,12 @@
-name: MSBuild_VS2022
+# Using 2 similars yml files, to get unique name displayed in build tag
+# (Can't seem to use variable object to retrieve branch name when setting action name)
+name: (Build VS2022 Main) 
 
 on:
   push:
-    branches: [ "master", "dev" ]
+    branches: [ "master" ]
   pull_request:
-    branches: [ "master", "dev" ]
+    branches: [ "master" ]
 
 env:
   # Path to the solution file relative to the root of the project.

@@ -2,8 +2,8 @@
 
 
 # Summary
-[![Build Branch: Master](https://github.com/sammyfreg/netImgui/actions/workflows/msbuild_vs2022.yml/badge.svg?branch=master)](https://github.com/sammyfreg/netImgui/actions/workflows/msbuild_vs2022.yml))
-[![Build Branch: Dev](https://github.com/sammyfreg/netImgui/actions/workflows/msbuild_vs2022.yml/badge.svg?branch=dev)](https://github.com/sammyfreg/netImgui/actions/workflows/msbuild_vs2022.yml))
+[![Build Branch: Main](https://github.com/sammyfreg/netImgui/actions/workflows/msbuild_vs2022_main.yml/badge.svg?branch=master)](https://github.com/sammyfreg/netImgui/actions/workflows/msbuild_vs2022_main.yml))
+[![Build Branch: Dev](https://github.com/sammyfreg/netImgui/actions/workflows/msbuild_vs2022_dev.yml/badge.svg?branch=dev)](https://github.com/sammyfreg/netImgui/actions/workflows/msbuild_vs2022_dev.yml))
 [![Git Version](https://img.shields.io/github/release/sammyfreg/netImgui.svg](https://github.com/sammyfreg/netImgui/releases/)
 ![Forks](https://img.shields.io/github/forks/sammyfreg/netImgui)
 ![Stars](https://img.shields.io/github/stars//sammyfreg/netImgui)
