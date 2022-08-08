@@ -4,10 +4,13 @@
 # Summary
 [![(Build VS2022 Main)](https://github.com/sammyfreg/netImgui/actions/workflows/msbuild_vs2022_main.yml/badge.svg?branch=master)](https://github.com/sammyfreg/netImgui/actions/workflows/msbuild_vs2022_main.yml)
 [![(Build VS2022 Dev)](https://github.com/sammyfreg/netImgui/actions/workflows/msbuild_vs2022_dev.yml/badge.svg?branch=dev)](https://github.com/sammyfreg/netImgui/actions/workflows/msbuild_vs2022_dev.yml)
-[![Git Version](https://img.shields.io/github/release/sammyfreg/netImgui.svg)](https://github.com/sammyfreg/netImgui/releases)
-![Forks](https://img.shields.io/github/forks/sammyfreg/netImgui)
+
+[![Release Version](https://img.shields.io/github/release/sammyfreg/netImgui.svg)](https://github.com/sammyfreg/netImgui/releases)
+![Release Date](https://shields.io/github/release-date/sammyfreg/netImgui)
+[![Downloads](https://shields.io/github/downloads/sammyfreg/netImgui/latest/total)]((https://github.com/sammyfreg/netImgui/releases))
+[![Forks](https://img.shields.io/github/forks/sammyfreg/netImgui)](https://github.com/sammyfreg/netImgui/network/members)
 ![Stars](https://img.shields.io/github/stars/sammyfreg/netImgui)
-![License](https://img.shields.io/github/license/sammyfreg/netImgui)
+[![License](https://img.shields.io/github/license/sammyfreg/netImgui)](https://github.com/sammyfreg/netImgui/blob/master/LICENSE.txt)
 
 **NetImgui** is a library to remotely display and control **[Dear ImGui](https://github.com/ocornut/imgui)** menus with an associated **NetImgui Server** application. Designed to painlessly integrate into existing codebase with few changes required. It allows any program using **Dear ImGui** to receives input from a remote PC and then forwards its UI rendering to it (*textures, vertices, indices, draw commands*).
 
