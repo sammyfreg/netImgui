@@ -382,6 +382,7 @@ void ClientInfo::ContextInitialize()
 
 #if NETIMGUI_IMGUI_CALLBACK_ENABLED
 	ImGuiContextHook hookNewframe, hookEndframe;
+	ContextRemoveHooks();
 	hookNewframe.HookId		= 0;
 	hookNewframe.Type		= ImGuiContextHookType_NewFramePre;
 	hookNewframe.Callback	= HookBeginFrame;

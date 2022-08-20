@@ -47,6 +47,9 @@ bool ConnectToApp(const char* clientName, const char* ServerHost, uint32_t serve
 	while (client.IsActive())
 		std::this_thread::yield();
 
+	client.ContextRestore();		// Restore context setting override, after a disconnect
+	client.ContextRemoveHooks();	// Remove hooks callback only when completly disconnected
+
 	StringCopy(client.mName, (clientName == nullptr || clientName[0] == 0 ? "Unnamed" : clientName));
 	client.mpSocketPending	= Network::Connect(ServerHost, serverPort);	
 	if (client.mpSocketPending.load() != nullptr)
@@ -70,7 +73,10 @@ bool ConnectFromApp(const char* clientName, uint32_t serverPort, ThreadFunctPtr 
 
 	while (client.IsActive())
 		std::this_thread::yield();
-
+	
+	client.ContextRestore();		// Restore context setting override, after a disconnect
+	client.ContextRemoveHooks();	// Remove hooks callback only when completly disconnected
+	
 	StringCopy(client.mName, (clientName == nullptr || clientName[0] == 0 ? "Unnamed" : clientName));
 	client.mpSocketPending = Network::ListenStart(serverPort);
 	if (client.mpSocketPending.load() != nullptr)
@@ -192,7 +198,7 @@ bool NewFrame(bool bSupportFrameSkip)
 	// Regular Imgui NewFrame
 	else
 	{
-		// Restore context setting override, after a disconnect 		
+		// Restore context setting override, after a disconnect
 		client.ContextRestore();
 		
 		// Remove hooks callback only when completly disconnected
