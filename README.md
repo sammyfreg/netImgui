@@ -7,7 +7,8 @@
 
 [![Release Version](https://img.shields.io/github/release/sammyfreg/netImgui.svg)](https://github.com/sammyfreg/netImgui/releases)
 ![Release Date](https://shields.io/github/release-date/sammyfreg/netImgui)
-[![Downloads](https://shields.io/github/downloads/sammyfreg/netImgui/latest/total)]((https://github.com/sammyfreg/netImgui/releases))
+[![Downloads](https://shields.io/github/downloads/sammyfreg/netImgui/total)]((https://github.com/sammyfreg/netImgui/releases))
+
 [![Forks](https://img.shields.io/github/forks/sammyfreg/netImgui)](https://github.com/sammyfreg/netImgui/network/members)
 ![Stars](https://img.shields.io/github/stars/sammyfreg/netImgui)
 [![License](https://img.shields.io/github/license/sammyfreg/netImgui)](https://github.com/sammyfreg/netImgui/blob/master/LICENSE.txt)
