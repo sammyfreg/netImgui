@@ -39,6 +39,9 @@ bool Startup(const char* CmdLine)
 		if( !ImGui::GetIO().Fonts->AddFontFromMemoryCompressedTTF(Roboto_Medium_compressed_data, Roboto_Medium_compressed_size, 16.f, &Config) ){
 			ImGui::GetIO().Fonts->AddFontDefault();
 		}
+
+		ImGui::GetIO().IniFilename	= nullptr;	// Disable server ImGui ini settings (not really needed, and avoid imgui.ini filename conflicts)
+		ImGui::GetIO().LogFilename	= nullptr; 
 		return HAL_Startup(CmdLine);
 	}
 	return false;
@@ -130,6 +133,8 @@ void DrawClientBackground(RemoteClient::Client& client)
 		{
 			client.mpBGContext					= ImGui::CreateContext(ImGui::GetIO().Fonts);
 			client.mpBGContext->IO.DeltaTime	= 1/30.f;
+			client.mpBGContext->IO.IniFilename	= nullptr;	// Disable server ImGui ini settings (not really needed, and avoid imgui.ini filename conflicts)
+			client.mpBGContext->IO.LogFilename	= nullptr; 
 		}
 
 		NetImgui::Internal::ScopedImguiContext scopedCtx(client.mpBGContext);
