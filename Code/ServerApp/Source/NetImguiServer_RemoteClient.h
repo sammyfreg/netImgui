@@ -38,12 +38,14 @@ struct Client
 											Client(const Client&&)	= delete;
 	void									operator=(const Client&) = delete;
 	void									Initialize();
-	void									Reset();
+	void									Uninitialize();
+	void									Release();
+	bool									IsValid()const;
 
 	void									ReceiveTexture(NetImgui::Internal::CmdTexture*);
 	void									ReceiveDrawFrame(NetImgui::Internal::CmdDrawFrame*);
 	NetImguiImDrawData*						ConvertToImguiDrawData(const NetImgui::Internal::CmdDrawFrame* pCmdDrawFrame);
-	NetImguiImDrawData*						GetImguiDrawData(void* pEmtpyTextureHAL);	// Get current active Imgui draw data
+	NetImguiImDrawData*						GetImguiDrawData(const void* pEmtpyTextureHAL);	// Get current active Imgui draw data
 		
 	void									CaptureImguiInput();
 	NetImgui::Internal::CmdInput*			TakePendingInput();
@@ -75,7 +77,8 @@ struct Client
 	std::atomic_uint64_t					mPendingTextureReadIndex;
 	std::atomic_uint64_t					mPendingTextureWriteIndex;
 	bool									mbIsVisible				= false;	//!< If currently shown
-	bool									mbIsActive				= false;	//!< Is the current active window (will receive input, only one is true at a time)	
+	bool									mbIsActive				= false;	//!< Is the current active window (will receive input, only one is true at a time)
+	bool									mbIsReleased			= false;	//!< If released in com thread and main thread should delete resources
 	std::atomic_bool						mbIsFree;							//!< If available to use for a new connected client
 	std::atomic_bool						mbIsConnected;						//!< If connected to a remote client
 	std::atomic_bool						mbDisconnectPending;				//!< Server requested a disconnect on this item

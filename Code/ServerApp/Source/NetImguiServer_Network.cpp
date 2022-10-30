@@ -195,7 +195,7 @@ void Communications_ClientExchangeLoop(NetImgui::Internal::Network::SocketInfo* 
 	NetImguiServer::Config::Client::SetProperty_Connected(pClient->mClientConfigID, false);
 	NetImgui::Internal::Network::Disconnect(pClientSocket);
 	
-	pClient->Reset();	
+	pClient->Release();
 	gActiveClientThreadCount--;
 }
 
@@ -221,7 +221,7 @@ bool Communications_InitializeClient(NetImgui::Internal::Network::SocketInfo* pC
 		NetImgui::Internal::StringCopy(pClient->mInfoImguiVerName,		cmdVersionRcv.mImguiVerName);
 		NetImgui::Internal::StringCopy(pClient->mInfoNetImguiVerName,	cmdVersionRcv.mNetImguiVerName);
 
-		NetImguiServer::Config::Client clientConfig;		
+		NetImguiServer::Config::Client clientConfig;
 		if( NetImguiServer::Config::Client::GetConfigByID(pClient->mClientConfigID, clientConfig) ){
 			NetImgui::Internal::StringFormat(pClient->mWindowID, "%s (%s)##%i", pClient->mInfoName, clientConfig.mClientName, static_cast<int>(pClient->mClientIndex)); // Using ClientIndex as a window unique ID
 		}
@@ -245,7 +245,7 @@ void NetworkConnectionNew(NetImgui::Internal::Network::SocketInfo* pClientSocket
 
 	if (zErrorMsg == nullptr)
 	{
-		pNewClient->mbIsConnected	= true;		
+		pNewClient->mbIsConnected	= true;
 		std::thread(Communications_ClientExchangeLoop, pClientSocket, pNewClient).detach();
 	}
 	else
@@ -343,7 +343,7 @@ void NetworkConnectRequest_Send()
 				{
 					NetImgui::Internal::StringCopy(newClient.mInfoName, clientConfig.mClientName);
 					newClient.mConnectPort		= clientConfig.mHostPort;
-					newClient.mClientConfigID	= clientConfigID;					
+					newClient.mClientConfigID	= clientConfigID;
 					newClient.mClientIndex		= freeIndex;
 				}
 				NetImguiServer::App::HAL_GetSocketInfo(pClientSocket, newClient.mConnectHost, sizeof(newClient.mConnectHost), newClient.mConnectPort);

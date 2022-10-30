@@ -34,16 +34,7 @@ Client::Client()
 
 Client::~Client()
 {
-	Reset();
-	
-	//Note: Reset is usually called from com thread, can't destroy ImGui Context in it, 
-	//		or drawing data that could be currently in use by server to draw client results
-	NetImgui::Internal::netImguiDeleteSafe(mpImguiDrawData);
-	NetImgui::Internal::netImguiDeleteSafe(mpFrameDrawPrev);
-	if (mpBGContext) {
-		ImGui::DestroyContext(mpBGContext);
-		mpBGContext	= nullptr;
-	}
+	Uninitialize();
 }
 
 void Client::ReceiveDrawFrame(NetImgui::Internal::CmdDrawFrame* pFrameData)
@@ -132,30 +123,6 @@ void Client::ProcessPendingTextures()
 	}
 }
 
-void Client::Reset()
-{
-	NetImguiServer::App::HAL_DestroyRenderTarget(mpHAL_AreaRT, mpHAL_AreaTexture);
-	for(auto& texEntry : mvTextures )
-	{
-		NetImguiServer::App::HAL_DestroyTexture(texEntry);
-	}
-	mvTextures.clear();
-
-	mPendingImguiDrawDataIn.Free();
-	mPendingBackgroundIn.Free();
-	mPendingInputOut.Free();
-
-	mInfoName[0]					= 0;
-	mClientConfigID					= NetImguiServer::Config::Client::kInvalidRuntimeID;
-	mClientIndex					= 0;
-	mbCompressionSkipOncePending	= false;
-	mbDisconnectPending				= false;
-	mbIsConnected					= false;
-	mbIsFree						= true;
-	mBGNeedUpdate					= true;
-
-}
-
 void Client::Initialize()
 {
 	mConnectedTime		= std::chrono::steady_clock::now();
@@ -169,10 +136,47 @@ void Client::Initialize()
 	mStatsDataSent		= 0;
 	mStatsDataRcvdPrev	= 0;
 	mStatsDataSentPrev	= 0;
+	mbIsReleased		= false;
 	mStatsTime			= std::chrono::steady_clock::now();
 	mBGSettings			= NetImgui::Internal::CmdBackground();	// Assign background default value, until we receive first update from client
 	NetImgui::Internal::netImguiDeleteSafe(mpImguiDrawData);
 	NetImgui::Internal::netImguiDeleteSafe(mpFrameDrawPrev);
+}
+
+void Client::Uninitialize()
+{
+	NetImguiServer::App::HAL_DestroyRenderTarget(mpHAL_AreaRT, mpHAL_AreaTexture);
+	for(auto& texEntry : mvTextures )
+	{
+		NetImguiServer::App::HAL_DestroyTexture(texEntry);
+	}
+	mvTextures.clear();
+
+	mPendingImguiDrawDataIn.Free();
+	mPendingBackgroundIn.Free();
+	mPendingInputOut.Free();
+
+	NetImgui::Internal::netImguiDeleteSafe(mpImguiDrawData);
+	NetImgui::Internal::netImguiDeleteSafe(mpFrameDrawPrev);
+	if (mpBGContext) {
+		ImGui::DestroyContext(mpBGContext);
+		mpBGContext	= nullptr;
+	}
+
+	mInfoName[0]					= 0;
+	mClientIndex					= 0;
+	mClientConfigID					= NetImguiServer::Config::Client::kInvalidRuntimeID;
+	mbCompressionSkipOncePending	= false;
+	mbDisconnectPending				= false;
+	mbIsConnected					= false;
+	mbIsFree						= true;
+	mBGNeedUpdate					= true;
+}
+
+// Used on communication thread to let main thread know this client resources should be deleted
+void Client::Release()
+{
+	mbIsReleased = true;
 }
 
 bool Client::Startup(uint32_t clientCountMax)
@@ -218,7 +222,7 @@ uint32_t Client::GetFreeIndex()
 //=================================================================================================
 // Get the current Dear Imgui drawdata to use for this client rendering content
 //=================================================================================================
-NetImguiImDrawData*	Client::GetImguiDrawData(void* pEmtpyTextureHAL)
+NetImguiImDrawData*	Client::GetImguiDrawData(const void* pEmtpyTextureHAL)
 {
 	// Check if a new frame has been added. If yes, then take ownership of it.
 	NetImguiImDrawData* pPendingDrawData = mPendingImguiDrawDataIn.Release();

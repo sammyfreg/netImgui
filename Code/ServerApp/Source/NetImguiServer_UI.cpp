@@ -511,7 +511,7 @@ void DrawImguiContent_Clients()
 					// Add fake button to discard mouse input (prevent window moving when draging inside client area)
 					ImVec2 savedPos			= ImGui::GetCursorPos();
 					const ImVec4 tint_col	= ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
-					const ImVec4 border_col = ImVec4(1.0f, 1.0f, 1.0f, 0.0f);					
+					const ImVec4 border_col = ImVec4(1.0f, 1.0f, 1.0f, 0.0f);
 					ImGui::InvisibleButton("canvas", areaSize, ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight | ImGuiButtonFlags_MouseButtonMiddle);
 					ImGui::SetCursorPos(savedPos);
 

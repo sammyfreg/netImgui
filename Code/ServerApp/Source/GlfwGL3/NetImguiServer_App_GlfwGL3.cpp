@@ -34,7 +34,6 @@
 #include "NetImguiServer_UI.h"
 #include "backends/imgui_impl_opengl3.cpp"
 #include "backends/imgui_impl_glfw.cpp"
-#include "backends/imgui_impl_win32.cpp"
 //=================================================================================================
 
 // Dear ImGui: standalone example application for GLFW + OpenGL 3, using programmable pipeline
