@@ -195,9 +195,9 @@ IntType DivUp(IntType Value, IntType Denominator);
 template <typename IntType>
 IntType RoundUp(IntType Value, IntType Round);
 
-inline uint64_t TextureCastHelper(ImTextureID textureID);
-inline ImTextureID TextureCastHelper(const void* pTexture);
-inline ImTextureID TextureCastHelper(uint64_t textureID);
+inline uint64_t TextureCastFromID(ImTextureID textureID);
+inline ImTextureID TextureCastFromPtr(void* pTexture);
+inline ImTextureID TextureCastFromUInt(uint64_t textureID);
 
 }} //namespace NetImgui::Internal
 

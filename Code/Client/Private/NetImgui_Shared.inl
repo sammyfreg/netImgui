@@ -291,7 +291,7 @@ union TextureCastHelperUnion
 	const void*	TexturePtr;
 };
 
-uint64_t TextureCastHelper(ImTextureID textureID)
+uint64_t TextureCastFromID(ImTextureID textureID)
 {
 	TextureCastHelperUnion textureUnion;
 	textureUnion.TextureUint	= 0;
@@ -299,7 +299,7 @@ uint64_t TextureCastHelper(ImTextureID textureID)
 	return textureUnion.TextureUint;
 }
 
-ImTextureID TextureCastHelper(const void* pTexture)
+ImTextureID TextureCastFromPtr(void* pTexture)
 {
 	TextureCastHelperUnion textureUnion;
 	textureUnion.TextureUint	= 0;
@@ -308,7 +308,7 @@ ImTextureID TextureCastHelper(const void* pTexture)
 }
 
 #ifndef IS_NETIMGUISERVER
-ImTextureID TextureCastHelper(uint64_t textureID)
+ImTextureID TextureCastFromUInt(uint64_t textureID)
 {
 	TextureCastHelperUnion textureUnion;
 	textureUnion.TextureUint = textureID;

@@ -222,7 +222,7 @@ uint32_t Client::GetFreeIndex()
 //=================================================================================================
 // Get the current Dear Imgui drawdata to use for this client rendering content
 //=================================================================================================
-NetImguiImDrawData*	Client::GetImguiDrawData(const void* pEmtpyTextureHAL)
+NetImguiImDrawData*	Client::GetImguiDrawData(void* pEmtpyTextureHAL)
 {
 	// Check if a new frame has been added. If yes, then take ownership of it.
 	NetImguiImDrawData* pPendingDrawData = mPendingImguiDrawDataIn.Release();
@@ -241,13 +241,13 @@ NetImguiImDrawData*	Client::GetImguiDrawData(const void* pEmtpyTextureHAL)
 			ImDrawList* pCmdList = pPendingDrawData->CmdLists[i];
 			for(int drawIdx(0), drawCount(pCmdList->CmdBuffer.size()); drawIdx<drawCount; ++drawIdx)
 			{
-				uint64_t wantedTexID					= NetImgui::Internal::TextureCastHelper(pCmdList->CmdBuffer[drawIdx].TextureId);
-				pCmdList->CmdBuffer[drawIdx].TextureId	= NetImgui::Internal::TextureCastHelper(pEmtpyTextureHAL); // Default to empty texture
+				uint64_t wantedTexID					= NetImgui::Internal::TextureCastFromID(pCmdList->CmdBuffer[drawIdx].TextureId);
+				pCmdList->CmdBuffer[drawIdx].TextureId	= NetImgui::Internal::TextureCastFromPtr(pEmtpyTextureHAL); // Default to empty texture
 				for(size_t texIdx=0; texIdx<clientTexCount; ++texIdx)
 				{
 					if( mvTextures[texIdx].mImguiId == wantedTexID )
 					{
-						pCmdList->CmdBuffer[drawIdx].TextureId	= NetImgui::Internal::TextureCastHelper(mvTextures[texIdx].mpHAL_Texture);
+						pCmdList->CmdBuffer[drawIdx].TextureId	= NetImgui::Internal::TextureCastFromPtr(mvTextures[texIdx].mpHAL_Texture);
 						break;
 					}
 				}
@@ -338,7 +338,7 @@ NetImguiImDrawData* Client::ConvertToImguiDrawData(const NetImgui::Internal::Cmd
 			pCommandDst[drawIdx].ElemCount			= pDrawSrc[drawIdx].mIdxCount;
 			pCommandDst[drawIdx].UserCallback		= nullptr;
 			pCommandDst[drawIdx].UserCallbackData	= nullptr;
-			pCommandDst[drawIdx].TextureId			= NetImgui::Internal::TextureCastHelper(pDrawSrc[drawIdx].mTextureId);
+			pCommandDst[drawIdx].TextureId			= NetImgui::Internal::TextureCastFromID(pDrawSrc[drawIdx].mTextureId);
 		}
 	
 		pIndexDst		+= drawGroup.mIndiceCount;

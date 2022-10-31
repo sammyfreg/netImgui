@@ -347,7 +347,7 @@ ClientInfo::ClientInfo()
 : mpSocketPending(nullptr)
 , mpSocketComs(nullptr)
 , mpSocketListen(nullptr)
-, mFontTextureID(TextureCastHelper(uint64_t(0u)))
+, mFontTextureID(TextureCastFromUInt(uint64_t(0u)))
 , mTexturesPendingSent(0)
 , mTexturesPendingCreated(0)
 {
