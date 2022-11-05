@@ -4,12 +4,12 @@
 //! @Name		: NetImgui
 //=================================================================================================
 //! @author		: Sammy Fatnassi
-//! @date		: 2022/07/18
-//!	@version	: v1.8.1
+//! @date		: 2022/11/05
+//!	@version	: v1.8.2
 //! @Details	: For integration info : https://github.com/sammyfreg/netImgui/wiki
 //=================================================================================================
-#define NETIMGUI_VERSION		"1.8.1 WIP"
-#define NETIMGUI_VERSION_NUM	10801
+#define NETIMGUI_VERSION		"1.8.2 WIP"
+#define NETIMGUI_VERSION_NUM	10802
 
 
 
@@ -23,7 +23,7 @@
 	// ImGui.h warnings(s)
 	#pragma clang diagnostic ignored "-Wunknown-warning-option"
 	#pragma clang diagnostic ignored "-Wc++98-compat-pedantic"
-	#pragma clang diagnostic ignored "-Wreserved-identifier"			// Enuma values using '__' or member starting with '_' in imgui.h
+	#pragma clang diagnostic ignored "-Wreserved-identifier"			// Enum values using '__' or member starting with '_' in imgui.h
 	// NetImgui_Api.h Warning(s)
 	#pragma clang diagnostic ignored "-Wzero-as-null-pointer-constant"	// Not using nullptr in case this file is used in pre C++11
 #elif defined(_MSC_VER) 
@@ -69,12 +69,38 @@
 
 #include <stdint.h>
 
+//=================================================================================================
+// Default Build settings defines values
+// Assign default values when not set in user NetImgui_Config.h
+//=================================================================================================
+
 //-------------------------------------------------------------------------------------------------
 // Prepended to functions signature, for dll export/import
 //-------------------------------------------------------------------------------------------------
 #ifndef NETIMGUI_API
-	#define NETIMGUI_API IMGUI_API	// Use same value as defined by Dear ImGui by default 
+	#define NETIMGUI_API						IMGUI_API						// Use same value as defined by Dear ImGui by default 
 #endif
+
+//-------------------------------------------------------------------------------------------------
+// Enable TCP socket 'reuse port' option when opening it as a 'listener'.
+// Note:	Can help when unable to open a socket because it wasn't properly released after a crash.
+//-------------------------------------------------------------------------------------------------
+#ifndef NETIMGUI_FORCE_TCP_LISTEN_BINDING
+	#define NETIMGUI_FORCE_TCP_LISTEN_BINDING	0								// Doesn't seem to be needed on Window/Linux
+#endif
+
+//-------------------------------------------------------------------------------------------------
+// Enable Dear ImGui Callbacks support for BeginFrame/Render automatic interception.
+// Note:	Avoid having to replace ImGui::BeginFrame/ImGui::Render with in library user code, by
+//			'NetImgui::NewFrame/NetImgui::EndFrame'. But prevent benefit of skipping frame draw 
+//			when unneeded, that 'NetImgui::NewFrame' can provide. 
+//			For more info, consult 'SampleNewFrame.cpp'.
+//			Needs Dear ImGui 1.81+
+//-------------------------------------------------------------------------------------------------
+#ifndef NETIMGUI_IMGUI_CALLBACK_ENABLED
+	#define NETIMGUI_IMGUI_CALLBACK_ENABLED		(IMGUI_VERSION_NUM >= 18100)	// Not supported pre Dear ImGui 1.81
+#endif
+
 
 namespace NetImgui 
 { 
@@ -115,31 +141,31 @@ NETIMGUI_API	bool				Startup(void);
 NETIMGUI_API	void				Shutdown();
 
 //=================================================================================================
-// Try to establish a connection to NetImgui server application. 
+// Establish a connection between the NetImgui server application and this client. 
 //
-// Can establish connection with netImgui Server application by either reaching it directly
+// Can connect with NetImgui Server application by either reaching it directly
 // using 'ConnectToApp' or waiting for Server to reach us after Client called 'ConnectFromApp'.
 //
 // Note:	Start a new communication thread using std::Thread by default, but can receive custom 
 //			thread start function instead (Look at ClientExample 'CustomCommunicationThread').
 //-------------------------------------------------------------------------------------------------
-// clientName		: Named that will be displayed on the Server, for this Client
-// serverHost		: Address of the netImgui Server application (Ex1: 127.0.0.2, Ex2: localhost)
-// serverPort		: PortID of the netImgui Server application to connect to
+// clientName		: Client name displayed in the Server's clients list
+// serverHost		: Address of the NetImgui Server application (Ex1: 127.0.0.2, Ex2: localhost)
+// serverPort		: PortID of the NetImgui Server application to connect to
 // clientPort		: PortID this Client should wait for connection from Server application
 // threadFunction	: User provided function to launch new networking thread.
-//					  Use 'DefaultStartCommunicationThread' by default, relying on 'std::thread'.
+//					  Use 'DefaultStartCommunicationThread' by default (relying on 'std::thread').
 //=================================================================================================
 NETIMGUI_API	bool				ConnectToApp(const char* clientName, const char* serverHost, uint32_t serverPort=kDefaultServerPort, ThreadFunctPtr threadFunction=0);
 NETIMGUI_API	bool				ConnectFromApp(const char* clientName, uint32_t clientPort=kDefaultClientPort, ThreadFunctPtr threadFunction=0);
 
 //=================================================================================================
-// Request a disconnect from the netImguiApp server
+// Request a disconnect from the NetImguiServer application
 //=================================================================================================
 NETIMGUI_API	void				Disconnect(void);
 
 //=================================================================================================
-// True if connected to netImguiApp server
+// True if connected to the NetImguiServer application
 //=================================================================================================
 NETIMGUI_API	bool				IsConnected(void);
 
@@ -156,13 +182,13 @@ NETIMGUI_API	bool				IsConnectionPending(void);
 NETIMGUI_API	bool				IsDrawing(void);
 
 //=================================================================================================
-// True when Dear ImGui is currently expecting draw commands *sent to remote netImgui app*.
-// This means that we are between NewFrame() and EndFrame() of drawing for remote application
+// True when we are currently drawinf on the NetImguiServer application
+// Means that we are between NewFrame() and EndFrame() of drawing for remote application
 //=================================================================================================
 NETIMGUI_API	bool				IsDrawingRemote(void);
 
 //=================================================================================================
-// Send an updated texture used by imgui, to netImguiApp server
+// Send an updated texture used by imgui, to the NetImguiServer application
 // Note: To remove a texture, set pData to nullptr
 //=================================================================================================
 NETIMGUI_API	void				SendDataTexture(ImTextureID textureId, void* pData, uint16_t width, uint16_t height, eTexFormat format);
@@ -210,7 +236,7 @@ NETIMGUI_API	void				SetCompressionMode(eCompressionMode eMode);
 NETIMGUI_API	eCompressionMode	GetCompressionMode();
 
 //=================================================================================================
-// Helper function to quickly create a context duplicate (sames settings/font/styles)
+// Helper functions
 //=================================================================================================
 NETIMGUI_API	uint8_t				GetTexture_BitsPerPixel	(eTexFormat eFormat);
 NETIMGUI_API	uint32_t			GetTexture_BytePerLine	(eTexFormat eFormat, uint32_t pixelWidth);
@@ -219,9 +245,9 @@ NETIMGUI_API	uint32_t			GetTexture_BytePerImage	(eTexFormat eFormat, uint32_t pi
 
 //=================================================================================================
 // Optional single include compiling option
-// Note: User that do not wish adding the few NetImgui cpp files to their project,
+// Note: User wanting to avoid adding the few NetImgui sources files to their project,
 //		 can instead define 'NETIMGUI_IMPLEMENTATION' *once* before including 'NetImgui_Api.h'
-//		 and this will load the required cpp files alongside
+//		 to pull all the needed cpp files alongside for compilation
 //=================================================================================================
 #if defined(NETIMGUI_IMPLEMENTATION)
 	#include "Private/NetImgui_Api.cpp"

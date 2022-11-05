@@ -280,6 +280,7 @@ void NetworkConnectRequest_Receive()
 			if( !gbValidListenSocket )
 			{
 				printf("Failed to start connection listen on port : %i", serverPort);
+				std::this_thread::sleep_for(std::chrono::milliseconds(500)); // Reduce Server listening socket open attempt frequency
 			}
 		}
 
@@ -302,8 +303,10 @@ void NetworkConnectRequest_Receive()
 					NetImgui::Internal::Network::Disconnect(pClientSocket);
 			}
 		}
-		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		std::this_thread::sleep_for(std::chrono::milliseconds(16));
 	}
+
+	NetImgui::Internal::Network::Disconnect(pListenSocket);
 }
 
 //=================================================================================================

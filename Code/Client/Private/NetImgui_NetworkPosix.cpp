@@ -81,9 +81,11 @@ SocketInfo* ListenStart(uint32_t ListenPort)
 	int ListenSocket = socket(addrInfo->ai_family, addrInfo->ai_socktype, addrInfo->ai_protocol);
 	if( ListenSocket != -1 )
 	{
-		int flag = 1;  
+	#if NETIMGUI_FORCE_TCP_LISTEN_BINDING
+		int flag = 1;
 		setsockopt(ListenSocket, SOL_SOCKET, SO_REUSEADDR, &flag, sizeof(flag));
 		setsockopt(ListenSocket, SOL_SOCKET, SO_REUSEPORT, &flag, sizeof(flag));
+	#endif
 		if(	bind(ListenSocket, addrInfo->ai_addr, addrInfo->ai_addrlen) != -1 &&
 			listen(ListenSocket, 0) != -1)
 		{
