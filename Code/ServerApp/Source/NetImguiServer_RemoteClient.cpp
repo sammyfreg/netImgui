@@ -433,7 +433,7 @@ void Client::CaptureImguiInput()
 		// Keyboard / Gamepads Inputs
 		// If Dear ImGui Update their enum, must also adjust our enum copy, 
 		// so adding a few check to detect a change
-		#define EnumKeynameTest(KEYNAME) static_cast<int>(NetImgui::Internal::CmdInput::NetImguiKeys::KEYNAME) == static_cast<int>(ImGuiKey_::KEYNAME-ImGuiKey_::ImGuiKey_NamedKey_BEGIN), "Update the NetImgui enum to match the updated Dear ImGui enum"
+		#define EnumKeynameTest(KEYNAME) static_cast<int>(NetImgui::Internal::CmdInput::NetImguiKeys::KEYNAME) == static_cast<int>(ImGuiKey::KEYNAME-ImGuiKey::ImGuiKey_NamedKey_BEGIN), "Update the NetImgui enum to match the updated Dear ImGui enum"
 		static_assert(EnumKeynameTest(ImGuiKey_COUNT));
 		static_assert(EnumKeynameTest(ImGuiKey_Tab));
 		static_assert(EnumKeynameTest(ImGuiKey_Escape));
@@ -443,10 +443,10 @@ void Client::CaptureImguiInput()
 		static_assert(EnumKeynameTest(ImGuiKey_CapsLock));
 		static_assert(EnumKeynameTest(ImGuiKey_GamepadStart));
 		static_assert(EnumKeynameTest(ImGuiKey_GamepadLStickUp));
-		static_assert(EnumKeynameTest(ImGuiKey_ModCtrl));
-		static_assert(EnumKeynameTest(ImGuiKey_ModShift));
-		static_assert(EnumKeynameTest(ImGuiKey_ModAlt));
-		static_assert(EnumKeynameTest(ImGuiKey_ModSuper));
+		static_assert(EnumKeynameTest(ImGuiKey_ReservedForModCtrl));
+		static_assert(EnumKeynameTest(ImGuiKey_ReservedForModShift));
+		static_assert(EnumKeynameTest(ImGuiKey_ReservedForModAlt));
+		static_assert(EnumKeynameTest(ImGuiKey_ReservedForModSuper));
 		static_assert(EnumKeynameTest(ImGuiKey_GamepadStart));
 		static_assert(EnumKeynameTest(ImGuiKey_GamepadR3));
 		static_assert(EnumKeynameTest(ImGuiKey_GamepadLStickUp));
@@ -454,9 +454,9 @@ void Client::CaptureImguiInput()
 
 		// Save every keydown status to out bitmask
 		uint64_t valueMask(0);
-		for (uint32_t i(0); i < ImGuiKey_::ImGuiKey_NamedKey_COUNT; ++i) {
-			valueMask |= ImGui::IsKeyDown(ImGuiKey_NamedKey_BEGIN+i) ? 0x0000000000000001ull << (i%64) : 0;
-			if( ((i % 64) == 63) || i == (ImGuiKey_::ImGuiKey_NamedKey_COUNT-1)){
+		for (uint32_t i(0); i < ImGuiKey::ImGuiKey_NamedKey_COUNT; ++i) {
+			valueMask |= ImGui::IsKeyDown(static_cast<ImGuiKey>(ImGuiKey_NamedKey_BEGIN+i)) ? 0x0000000000000001ull << (i%64) : 0;
+			if( ((i % 64) == 63) || i == (ImGuiKey::ImGuiKey_NamedKey_COUNT-1)){
 				pNewInput->mInputDownMask[i/64] = valueMask;
 				valueMask						= 0;
 			}

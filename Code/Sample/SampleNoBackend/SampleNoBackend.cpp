@@ -52,6 +52,7 @@ bool Client_Startup()
 	io.Fonts->Build();
 	io.Fonts->SetTexID(0);
 	io.DisplaySize = ImVec2(8,8);
+	io.BackendFlags |= ImGuiBackendFlags_HasGamepad;	// Enable NetImgui Gamepad support
 	ImGui::StyleColorsDark();
 
 	if( !NetImgui::Startup() )

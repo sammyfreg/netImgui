@@ -495,7 +495,7 @@ uint32_t GetTexture_BytePerImage(eTexFormat eFormat, uint32_t pixelWidth, uint32
 	//Note: If adding support to BC compression format, have to take into account 4x4 size alignement
 }
 
-static inline void AddKeyEvent(const Client::ClientInfo& client, const CmdInput* pCmdInput, CmdInput::NetImguiKeys netimguiKey, ImGuiKey_ imguiKey)
+static inline void AddKeyEvent(const Client::ClientInfo& client, const CmdInput* pCmdInput, CmdInput::NetImguiKeys netimguiKey, ImGuiKey imguiKey)
 {
 	uint32_t valIndex	= netimguiKey/64;
 	uint64_t valMask	= 0x0000000000000001ull << (netimguiKey%64);
@@ -510,7 +510,7 @@ static inline void AddKeyEvent(const Client::ClientInfo& client, const CmdInput*
 #endif
 }
 
-static inline void AddKeyAnalogEvent(const Client::ClientInfo& client, const CmdInput* pCmdInput, CmdInput::NetImguiKeys netimguiKey, ImGuiKey_ imguiKey)
+static inline void AddKeyAnalogEvent(const Client::ClientInfo& client, const CmdInput* pCmdInput, CmdInput::NetImguiKeys netimguiKey, ImGuiKey imguiKey)
 {
 	uint32_t valIndex	= netimguiKey/64;
 	uint64_t valMask	= 0x0000000000000001ull << (netimguiKey%64);
@@ -573,10 +573,13 @@ bool ProcessInputData(Client::ClientInfo& client)
 		AddInputDown(ImGuiKey_Y)         // for text edit CTRL+Y: redo
 		AddInputDown(ImGuiKey_Z)         // for text edit CTRL+Z: undo
 #else
+	#if IMGUI_VERSION_NUM < 18837
+		#define ImGuiKey ImGuiKey_
+	#endif
 		// At the moment All Dear Imgui version share the same ImGuiKey_ enum (with a 512 value offset), 
 		// but could change in the future, so convert from our own enum version, to Dear ImGui.
-		#define AddInputDown(KEYNAME)		AddKeyEvent(client, pCmdInput, CmdInput::KEYNAME, ImGuiKey_::KEYNAME);
-		#define AddAnalogInputDown(KEYNAME)	AddKeyAnalogEvent(client, pCmdInput, CmdInput::KEYNAME, ImGuiKey_::KEYNAME);
+		#define AddInputDown(KEYNAME)		AddKeyEvent(client, pCmdInput, CmdInput::KEYNAME, ImGuiKey::KEYNAME);
+		#define AddAnalogInputDown(KEYNAME)	AddKeyAnalogEvent(client, pCmdInput, CmdInput::KEYNAME, ImGuiKey::KEYNAME);
 		AddInputDown(ImGuiKey_Tab)
 		AddInputDown(ImGuiKey_LeftArrow)
 		AddInputDown(ImGuiKey_RightArrow)
@@ -656,6 +659,9 @@ bool ProcessInputData(Client::ClientInfo& client)
 
 		#undef AddInputDown
 		#undef AddAnalogInputDown
+	#if IMGUI_VERSION_NUM < 18837
+		#undef ImGuiKey
+	#endif
 
 		// Mouse
 		io.AddMouseWheelEvent(wheelX, wheelY);
@@ -667,10 +673,10 @@ bool ProcessInputData(Client::ClientInfo& client)
 			}
 		}
 #endif
-		io.KeyShift		= pCmdInput->IsKeyDown(CmdInput::NetImguiKeys::ImGuiKey_ModShift);
-		io.KeyCtrl		= pCmdInput->IsKeyDown(CmdInput::NetImguiKeys::ImGuiKey_ModCtrl);
-		io.KeyAlt		= pCmdInput->IsKeyDown(CmdInput::NetImguiKeys::ImGuiKey_ModAlt);
-		io.KeySuper		= pCmdInput->IsKeyDown(CmdInput::NetImguiKeys::ImGuiKey_ModSuper);
+		io.KeyShift		= pCmdInput->IsKeyDown(CmdInput::NetImguiKeys::ImGuiKey_ReservedForModShift);
+		io.KeyCtrl		= pCmdInput->IsKeyDown(CmdInput::NetImguiKeys::ImGuiKey_ReservedForModCtrl);
+		io.KeyAlt		= pCmdInput->IsKeyDown(CmdInput::NetImguiKeys::ImGuiKey_ReservedForModAlt);
+		io.KeySuper		= pCmdInput->IsKeyDown(CmdInput::NetImguiKeys::ImGuiKey_ReservedForModSuper);
 		
 		size_t keyCount(1);
 		uint16_t character;

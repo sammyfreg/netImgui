@@ -4,12 +4,12 @@
 //! @Name		: NetImgui
 //=================================================================================================
 //! @author		: Sammy Fatnassi
-//! @date		: 2022/11/05
-//!	@version	: v1.8.2
+//! @date		: 2022/11/13
+//!	@version	: v1.8.3
 //! @Details	: For integration info : https://github.com/sammyfreg/netImgui/wiki
 //=================================================================================================
-#define NETIMGUI_VERSION		"1.8.2 WIP"
-#define NETIMGUI_VERSION_NUM	10802
+#define NETIMGUI_VERSION		"1.8.3 WIP"	// Update to Dear Imgui 1.8837 (1.89 wip)
+#define NETIMGUI_VERSION_NUM	10803
 
 
 
