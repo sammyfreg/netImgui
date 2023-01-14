@@ -106,19 +106,19 @@ void OffsetPointer<TType>::SetComDataPtr(ComDataType* pPointer)
 template <typename TType>
 void OffsetPointer<TType>::SetOff(uint64_t offset)
 {
-	mOffset = offset | 0x8000000000000000;
+	mOffset = offset | 0x0000000000000001u;
 }
 
 template <typename TType>
 uint64_t OffsetPointer<TType>::GetOff()const
 {
-	return mOffset & ~0x8000000000000000;
+	return mOffset & ~0x0000000000000001u;
 }
 
 template <typename TType>
 bool OffsetPointer<TType>::IsOffset()const
 {
-	return (mOffset & 0x8000000000000000) != 0;
+	return (mOffset & 0x0000000000000001u) != 0;
 }
 
 template <typename TType>

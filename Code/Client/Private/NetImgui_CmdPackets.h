@@ -42,6 +42,7 @@ struct alignas(8) CmdVersion
 		DataCompression2	= 8,	// Improvement to data compression (save corner position and use SoA for vertices data)
 		VertexUVRange		= 9,	// Changed vertices UV value range to [0,1] for increased precision on large font texture
 		Imgui_1_87			= 10,	// Added Dear ImGui Input refactor
+		OffetPointer		= 11,	// Updated the handling of OffsetPoint. Moved flag bit from last bit to first bit. Addresses and data are always at least 4 bytes aligned, so should never conflict with potential address space
 		// Insert new version here
 
 		//--------------------------------

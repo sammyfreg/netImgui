@@ -4,12 +4,12 @@
 //! @Name		: NetImgui
 //=================================================================================================
 //! @author		: Sammy Fatnassi
-//! @date		: 2022/11/13
-//!	@version	: v1.8.3
+//! @date		: 2023/01/14
+//!	@version	: v1.8.4
 //! @Details	: For integration info : https://github.com/sammyfreg/netImgui/wiki
 //=================================================================================================
-#define NETIMGUI_VERSION		"1.8.3 WIP"	// Update to Dear Imgui 1.8837 (1.89 wip)
-#define NETIMGUI_VERSION_NUM	10803
+#define NETIMGUI_VERSION		"1.8.4 WIP"	// Fix OffsetPointer class
+#define NETIMGUI_VERSION_NUM	10804
 
 
 
