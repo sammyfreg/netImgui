@@ -27,5 +27,6 @@
 	#pragma warning (disable: 4826)		// Conversion from 'TType *' to 'uint64_t' is sign-extended. This may cause unexpected runtime behavior.
 	#pragma warning (disable: 5031)		// #pragma warning(pop): likely mismatch, popping warning state pushed in different file		
 	#pragma warning (disable: 5045)		// Compiler will insert Spectre mitigation for memory load if / Qspectre switch specified
+	#pragma warning (disable: 5264)		// 'xxx': 'const' variable is not used
 
 #endif
