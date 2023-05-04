@@ -30,6 +30,11 @@ jobs:
     - name: Add MSBuild to PATH
       uses: microsoft/setup-msbuild@v1.1
     
+    - name: Setup dotnet
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: '5.0.101' # Check for latest at link at .NET 5 download page
+          
     - name: Generate Solutions
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: ./GenerateProject.bat 1
