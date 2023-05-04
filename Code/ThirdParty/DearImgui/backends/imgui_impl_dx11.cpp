@@ -3,8 +3,8 @@
 
 // Implemented features:
 //  [X] Renderer: User texture binding. Use 'ID3D11ShaderResourceView*' as ImTextureID. Read the FAQ about ImTextureID!
-//  [X] Renderer: Multi-viewport support (multiple windows). Enable with 'io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable'.
 //  [X] Renderer: Large meshes support (64k+ vertices) with 16-bit indices.
+//  [X] Renderer: Multi-viewport support (multiple windows). Enable with 'io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable'.
 
 // You can use unmodified imgui_impl_* files in your project. See examples/ folder for examples of using this.
 // Prefer including the entire imgui/ repository into your project (either as a copy or as a submodule), and only build the backends you need.
@@ -13,7 +13,7 @@
 
 // CHANGELOG
 // (minor and older changes stripped away, please see git history for details)
-//  2022-XX-XX: Platform: Added support for multiple windows via the ImGuiPlatformIO interface.
+//  2023-XX-XX: Platform: Added support for multiple windows via the ImGuiPlatformIO interface.
 //  2022-10-11: Using 'nullptr' instead of 'NULL' as per our switch to C++11.
 //  2021-06-29: Reorganized backend to pull data from a single structure to facilitate usage with multiple-contexts (all g_XXXX access changed to bd->XXXX).
 //  2021-05-19: DirectX11: Replaced direct access to ImDrawCmd::TextureId with a call to ImDrawCmd::GetTexID(). (will become a requirement)
@@ -594,6 +594,7 @@ void ImGui_ImplDX11_Shutdown()
     if (bd->pd3dDeviceContext)    { bd->pd3dDeviceContext->Release(); }
     io.BackendRendererName = nullptr;
     io.BackendRendererUserData = nullptr;
+    io.BackendFlags &= ~(ImGuiBackendFlags_RendererHasVtxOffset | ImGuiBackendFlags_RendererHasViewports);
     IM_DELETE(bd);
 }
 
@@ -612,7 +613,7 @@ void ImGui_ImplDX11_NewFrame()
 // If you are new to dear imgui or creating a new binding for dear imgui, it is recommended that you completely ignore this section first..
 //--------------------------------------------------------------------------------------------------------
 
-// Helper structure we store in the void* RenderUserData field of each ImGuiViewport to easily retrieve our backend data.
+// Helper structure we store in the void* RendererUserData field of each ImGuiViewport to easily retrieve our backend data.
 struct ImGui_ImplDX11_ViewportData
 {
     IDXGISwapChain*                 SwapChain;
@@ -629,7 +630,7 @@ static void ImGui_ImplDX11_CreateWindow(ImGuiViewport* viewport)
     viewport->RendererUserData = vd;
 
     // PlatformHandleRaw should always be a HWND, whereas PlatformHandle might be a higher-level handle (e.g. GLFWWindow*, SDL_Window*).
-    // Some backends will leave PlatformHandleRaw NULL, in which case we assume PlatformHandle will contain the HWND.
+    // Some backends will leave PlatformHandleRaw == 0, in which case we assume PlatformHandle will contain the HWND.
     HWND hwnd = viewport->PlatformHandleRaw ? (HWND)viewport->PlatformHandleRaw : (HWND)viewport->PlatformHandle;
     IM_ASSERT(hwnd != 0);
 
