@@ -27,13 +27,6 @@
 #include "NetImgui_WarningReenable.h"
 //=================================================================================================
 
-//=================================================================================================
-// Enable using Dear ImGui Callbacks support to automatically intercept BeginFrame/Render.
-// Needs Dear ImGui 1.81+
-//=================================================================================================
-#ifndef NETIMGUI_IMGUI_CALLBACK_ENABLED
-	#define NETIMGUI_IMGUI_CALLBACK_ENABLED (IMGUI_VERSION_NUM >= 18100)
-#endif
 
 //=================================================================================================
 #include "NetImgui_WarningDisable.h"
@@ -195,9 +188,9 @@ IntType DivUp(IntType Value, IntType Denominator);
 template <typename IntType>
 IntType RoundUp(IntType Value, IntType Round);
 
-inline uint64_t TextureCastHelper(ImTextureID textureID);
-inline ImTextureID TextureCastHelper(const void* pTexture);
-inline ImTextureID TextureCastHelper(uint64_t textureID);
+inline uint64_t TextureCastFromID(ImTextureID textureID);
+inline ImTextureID TextureCastFromPtr(void* pTexture);
+inline ImTextureID TextureCastFromUInt(uint64_t textureID);
 
 }} //namespace NetImgui::Internal
 

@@ -39,6 +39,9 @@ bool Startup(const char* CmdLine)
 		if( !ImGui::GetIO().Fonts->AddFontFromMemoryCompressedTTF(Roboto_Medium_compressed_data, Roboto_Medium_compressed_size, 16.f, &Config) ){
 			ImGui::GetIO().Fonts->AddFontDefault();
 		}
+
+		ImGui::GetIO().IniFilename	= nullptr;	// Disable server ImGui ini settings (not really needed, and avoid imgui.ini filename conflicts)
+		ImGui::GetIO().LogFilename	= nullptr; 
 		return HAL_Startup(CmdLine);
 	}
 	return false;
@@ -130,6 +133,8 @@ void DrawClientBackground(RemoteClient::Client& client)
 		{
 			client.mpBGContext					= ImGui::CreateContext(ImGui::GetIO().Fonts);
 			client.mpBGContext->IO.DeltaTime	= 1/30.f;
+			client.mpBGContext->IO.IniFilename	= nullptr;	// Disable server ImGui ini settings (not really needed, and avoid imgui.ini filename conflicts)
+			client.mpBGContext->IO.LogFilename	= nullptr; 
 		}
 
 		NetImgui::Internal::ScopedImguiContext scopedCtx(client.mpBGContext);
@@ -166,28 +171,33 @@ void UpdateRemoteContent()
 	for (uint32_t i(0); i < RemoteClient::Client::GetCountMax(); ++i)
 	{
 		RemoteClient::Client& client = RemoteClient::Client::Get(i);
-		if( client.mbIsConnected && client.mbIsVisible )
+		if( client.mbIsConnected )
 		{
-			client.ProcessPendingTextures();
-
-			// Update the RenderTarget destination of each client, of size was updated
-			if (client.mAreaSizeX > 0 && client.mAreaSizeY > 0 && (!client.mpHAL_AreaRT || client.mAreaRTSizeX != client.mAreaSizeX || client.mAreaRTSizeY != client.mAreaSizeY))
-			{
-				if (HAL_CreateRenderTarget(client.mAreaSizeX, client.mAreaSizeY, client.mpHAL_AreaRT, client.mpHAL_AreaTexture))
-				{
-					client.mAreaRTSizeX		= client.mAreaSizeX;
-					client.mAreaRTSizeY		= client.mAreaSizeY;
-					client.mLastUpdateTime	= std::chrono::steady_clock::now() - std::chrono::hours(1); // Will redraw the client
-					client.mBGNeedUpdate	= true;
-				}
+			if (client.mbIsReleased) {
+				client.Uninitialize();
 			}
+			else if( client.mbIsVisible ){
+				client.ProcessPendingTextures();
 
-			// Render the remote results
-			ImDrawData* pDrawData = client.GetImguiDrawData(gEmptyTexture.mpHAL_Texture);
-			if( pDrawData )
-			{
-				DrawClientBackground(client);
-				HAL_RenderDrawData(client, pDrawData);
+				// Update the RenderTarget destination of each client, of size was updated
+				if (client.mAreaSizeX > 0 && client.mAreaSizeY > 0 && (!client.mpHAL_AreaRT || client.mAreaRTSizeX != client.mAreaSizeX || client.mAreaRTSizeY != client.mAreaSizeY))
+				{
+					if (HAL_CreateRenderTarget(client.mAreaSizeX, client.mAreaSizeY, client.mpHAL_AreaRT, client.mpHAL_AreaTexture))
+					{
+						client.mAreaRTSizeX		= client.mAreaSizeX;
+						client.mAreaRTSizeY		= client.mAreaSizeY;
+						client.mLastUpdateTime	= std::chrono::steady_clock::now() - std::chrono::hours(1); // Will redraw the client
+						client.mBGNeedUpdate	= true;
+					}
+				}
+
+				// Render the remote results
+				ImDrawData* pDrawData = client.GetImguiDrawData(gEmptyTexture.mpHAL_Texture);
+				if( pDrawData )
+				{
+					DrawClientBackground(client);
+					HAL_RenderDrawData(client, pDrawData);
+				}
 			}
 		}
 	}

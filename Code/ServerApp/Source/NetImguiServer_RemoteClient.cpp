@@ -34,16 +34,7 @@ Client::Client()
 
 Client::~Client()
 {
-	Reset();
-	
-	//Note: Reset is usually called from com thread, can't destroy ImGui Context in it, 
-	//		or drawing data that could be currently in use by server to draw client results
-	NetImgui::Internal::netImguiDeleteSafe(mpImguiDrawData);
-	NetImgui::Internal::netImguiDeleteSafe(mpFrameDrawPrev);
-	if (mpBGContext) {
-		ImGui::DestroyContext(mpBGContext);
-		mpBGContext	= nullptr;
-	}
+	Uninitialize();
 }
 
 void Client::ReceiveDrawFrame(NetImgui::Internal::CmdDrawFrame* pFrameData)
@@ -132,30 +123,6 @@ void Client::ProcessPendingTextures()
 	}
 }
 
-void Client::Reset()
-{
-	NetImguiServer::App::HAL_DestroyRenderTarget(mpHAL_AreaRT, mpHAL_AreaTexture);
-	for(auto& texEntry : mvTextures )
-	{
-		NetImguiServer::App::HAL_DestroyTexture(texEntry);
-	}
-	mvTextures.clear();
-
-	mPendingImguiDrawDataIn.Free();
-	mPendingBackgroundIn.Free();
-	mPendingInputOut.Free();
-
-	mInfoName[0]					= 0;
-	mClientConfigID					= NetImguiServer::Config::Client::kInvalidRuntimeID;
-	mClientIndex					= 0;
-	mbCompressionSkipOncePending	= false;
-	mbDisconnectPending				= false;
-	mbIsConnected					= false;
-	mbIsFree						= true;
-	mBGNeedUpdate					= true;
-
-}
-
 void Client::Initialize()
 {
 	mConnectedTime		= std::chrono::steady_clock::now();
@@ -169,10 +136,47 @@ void Client::Initialize()
 	mStatsDataSent		= 0;
 	mStatsDataRcvdPrev	= 0;
 	mStatsDataSentPrev	= 0;
+	mbIsReleased		= false;
 	mStatsTime			= std::chrono::steady_clock::now();
 	mBGSettings			= NetImgui::Internal::CmdBackground();	// Assign background default value, until we receive first update from client
 	NetImgui::Internal::netImguiDeleteSafe(mpImguiDrawData);
 	NetImgui::Internal::netImguiDeleteSafe(mpFrameDrawPrev);
+}
+
+void Client::Uninitialize()
+{
+	NetImguiServer::App::HAL_DestroyRenderTarget(mpHAL_AreaRT, mpHAL_AreaTexture);
+	for(auto& texEntry : mvTextures )
+	{
+		NetImguiServer::App::HAL_DestroyTexture(texEntry);
+	}
+	mvTextures.clear();
+
+	mPendingImguiDrawDataIn.Free();
+	mPendingBackgroundIn.Free();
+	mPendingInputOut.Free();
+
+	NetImgui::Internal::netImguiDeleteSafe(mpImguiDrawData);
+	NetImgui::Internal::netImguiDeleteSafe(mpFrameDrawPrev);
+	if (mpBGContext) {
+		ImGui::DestroyContext(mpBGContext);
+		mpBGContext	= nullptr;
+	}
+
+	mInfoName[0]					= 0;
+	mClientIndex					= 0;
+	mClientConfigID					= NetImguiServer::Config::Client::kInvalidRuntimeID;
+	mbCompressionSkipOncePending	= false;
+	mbDisconnectPending				= false;
+	mbIsConnected					= false;
+	mbIsFree						= true;
+	mBGNeedUpdate					= true;
+}
+
+// Used on communication thread to let main thread know this client resources should be deleted
+void Client::Release()
+{
+	mbIsReleased = true;
 }
 
 bool Client::Startup(uint32_t clientCountMax)
@@ -237,13 +241,13 @@ NetImguiImDrawData*	Client::GetImguiDrawData(void* pEmtpyTextureHAL)
 			ImDrawList* pCmdList = pPendingDrawData->CmdLists[i];
 			for(int drawIdx(0), drawCount(pCmdList->CmdBuffer.size()); drawIdx<drawCount; ++drawIdx)
 			{
-				uint64_t wantedTexID					= NetImgui::Internal::TextureCastHelper(pCmdList->CmdBuffer[drawIdx].TextureId);
-				pCmdList->CmdBuffer[drawIdx].TextureId	= NetImgui::Internal::TextureCastHelper(pEmtpyTextureHAL); // Default to empty texture
+				uint64_t wantedTexID					= NetImgui::Internal::TextureCastFromID(pCmdList->CmdBuffer[drawIdx].TextureId);
+				pCmdList->CmdBuffer[drawIdx].TextureId	= NetImgui::Internal::TextureCastFromPtr(pEmtpyTextureHAL); // Default to empty texture
 				for(size_t texIdx=0; texIdx<clientTexCount; ++texIdx)
 				{
 					if( mvTextures[texIdx].mImguiId == wantedTexID )
 					{
-						pCmdList->CmdBuffer[drawIdx].TextureId	= NetImgui::Internal::TextureCastHelper(mvTextures[texIdx].mpHAL_Texture);
+						pCmdList->CmdBuffer[drawIdx].TextureId	= NetImgui::Internal::TextureCastFromPtr(mvTextures[texIdx].mpHAL_Texture);
 						break;
 					}
 				}
@@ -334,7 +338,7 @@ NetImguiImDrawData* Client::ConvertToImguiDrawData(const NetImgui::Internal::Cmd
 			pCommandDst[drawIdx].ElemCount			= pDrawSrc[drawIdx].mIdxCount;
 			pCommandDst[drawIdx].UserCallback		= nullptr;
 			pCommandDst[drawIdx].UserCallbackData	= nullptr;
-			pCommandDst[drawIdx].TextureId			= NetImgui::Internal::TextureCastHelper(pDrawSrc[drawIdx].mTextureId);
+			pCommandDst[drawIdx].TextureId			= NetImgui::Internal::TextureCastFromID(pDrawSrc[drawIdx].mTextureId);
 		}
 	
 		pIndexDst		+= drawGroup.mIndiceCount;
@@ -429,7 +433,7 @@ void Client::CaptureImguiInput()
 		// Keyboard / Gamepads Inputs
 		// If Dear ImGui Update their enum, must also adjust our enum copy, 
 		// so adding a few check to detect a change
-		#define EnumKeynameTest(KEYNAME) static_cast<int>(NetImgui::Internal::CmdInput::NetImguiKeys::KEYNAME) == static_cast<int>(ImGuiKey_::KEYNAME-ImGuiKey_::ImGuiKey_NamedKey_BEGIN), "Update the NetImgui enum to match the updated Dear ImGui enum"
+		#define EnumKeynameTest(KEYNAME) static_cast<int>(NetImgui::Internal::CmdInput::NetImguiKeys::KEYNAME) == static_cast<int>(ImGuiKey::KEYNAME-ImGuiKey::ImGuiKey_NamedKey_BEGIN), "Update the NetImgui enum to match the updated Dear ImGui enum"
 		static_assert(EnumKeynameTest(ImGuiKey_COUNT));
 		static_assert(EnumKeynameTest(ImGuiKey_Tab));
 		static_assert(EnumKeynameTest(ImGuiKey_Escape));
@@ -439,10 +443,10 @@ void Client::CaptureImguiInput()
 		static_assert(EnumKeynameTest(ImGuiKey_CapsLock));
 		static_assert(EnumKeynameTest(ImGuiKey_GamepadStart));
 		static_assert(EnumKeynameTest(ImGuiKey_GamepadLStickUp));
-		static_assert(EnumKeynameTest(ImGuiKey_ModCtrl));
-		static_assert(EnumKeynameTest(ImGuiKey_ModShift));
-		static_assert(EnumKeynameTest(ImGuiKey_ModAlt));
-		static_assert(EnumKeynameTest(ImGuiKey_ModSuper));
+		static_assert(EnumKeynameTest(ImGuiKey_ReservedForModCtrl));
+		static_assert(EnumKeynameTest(ImGuiKey_ReservedForModShift));
+		static_assert(EnumKeynameTest(ImGuiKey_ReservedForModAlt));
+		static_assert(EnumKeynameTest(ImGuiKey_ReservedForModSuper));
 		static_assert(EnumKeynameTest(ImGuiKey_GamepadStart));
 		static_assert(EnumKeynameTest(ImGuiKey_GamepadR3));
 		static_assert(EnumKeynameTest(ImGuiKey_GamepadLStickUp));
@@ -450,9 +454,9 @@ void Client::CaptureImguiInput()
 
 		// Save every keydown status to out bitmask
 		uint64_t valueMask(0);
-		for (uint32_t i(0); i < ImGuiKey_::ImGuiKey_NamedKey_COUNT; ++i) {
-			valueMask |= ImGui::IsKeyDown(ImGuiKey_NamedKey_BEGIN+i) ? 0x0000000000000001ull << (i%64) : 0;
-			if( ((i % 64) == 63) || i == (ImGuiKey_::ImGuiKey_NamedKey_COUNT-1)){
+		for (uint32_t i(0); i < ImGuiKey::ImGuiKey_NamedKey_COUNT; ++i) {
+			valueMask |= ImGui::IsKeyDown(static_cast<ImGuiKey>(ImGuiKey_NamedKey_BEGIN+i)) ? 0x0000000000000001ull << (i%64) : 0;
+			if( ((i % 64) == 63) || i == (ImGuiKey::ImGuiKey_NamedKey_COUNT-1)){
 				pNewInput->mInputDownMask[i/64] = valueMask;
 				valueMask						= 0;
 			}

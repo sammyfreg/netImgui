@@ -106,19 +106,19 @@ void OffsetPointer<TType>::SetComDataPtr(ComDataType* pPointer)
 template <typename TType>
 void OffsetPointer<TType>::SetOff(uint64_t offset)
 {
-	mOffset = offset | 0x8000000000000000;
+	mOffset = offset | 0x0000000000000001u;
 }
 
 template <typename TType>
 uint64_t OffsetPointer<TType>::GetOff()const
 {
-	return mOffset & ~0x8000000000000000;
+	return mOffset & ~0x0000000000000001u;
 }
 
 template <typename TType>
 bool OffsetPointer<TType>::IsOffset()const
 {
-	return (mOffset & 0x8000000000000000) != 0;
+	return (mOffset & 0x0000000000000001u) != 0;
 }
 
 template <typename TType>
@@ -291,7 +291,7 @@ union TextureCastHelperUnion
 	const void*	TexturePtr;
 };
 
-uint64_t TextureCastHelper(ImTextureID textureID)
+uint64_t TextureCastFromID(ImTextureID textureID)
 {
 	TextureCastHelperUnion textureUnion;
 	textureUnion.TextureUint	= 0;
@@ -299,7 +299,7 @@ uint64_t TextureCastHelper(ImTextureID textureID)
 	return textureUnion.TextureUint;
 }
 
-ImTextureID TextureCastHelper(const void* pTexture)
+ImTextureID TextureCastFromPtr(void* pTexture)
 {
 	TextureCastHelperUnion textureUnion;
 	textureUnion.TextureUint	= 0;
@@ -308,7 +308,7 @@ ImTextureID TextureCastHelper(const void* pTexture)
 }
 
 #ifndef IS_NETIMGUISERVER
-ImTextureID TextureCastHelper(uint64_t textureID)
+ImTextureID TextureCastFromUInt(uint64_t textureID)
 {
 	TextureCastHelperUnion textureUnion;
 	textureUnion.TextureUint = textureID;

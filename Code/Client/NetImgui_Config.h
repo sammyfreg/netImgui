@@ -21,7 +21,7 @@
 #endif // NETIMGUI_ENABLED
 
 //=================================================================================================
-// Port used by connect the Server and Client together
+// Default Ports used to reach the Server or the Client (listen port for incoming connection)
 //=================================================================================================
 namespace NetImgui
 {
@@ -53,5 +53,10 @@ namespace NetImgui
 	#define NETIMGUI_POSIX_SOCKETS_ENABLED	!(NETIMGUI_WINSOCKET_ENABLED)
 #endif
 
-// Disable auto interception of ImGui::NewFrame() / ImGui::Render()
-//#define NETIMGUI_IMGUI_CALLBACK_ENABLED 0
+//=================================================================================================
+// Various build settings define
+// Note: for more information, please look in 'NetImgui_Api.h' for description and default values
+//=================================================================================================
+//#define NETIMGUI_IMGUI_CALLBACK_ENABLED		(IMGUI_VERSION_NUM >= 18100)	// Not supported pre Dear ImGui 1.81
+//#define NETIMGUI_FORCE_TCP_LISTEN_BINDING		0								// Doesn't seem to be needed on Window/Linux
+//#define NETIMGUI_API							IMGUI_API						// Use same value as defined by Dear ImGui by default 

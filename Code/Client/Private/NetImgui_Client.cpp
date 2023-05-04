@@ -347,7 +347,7 @@ ClientInfo::ClientInfo()
 : mpSocketPending(nullptr)
 , mpSocketComs(nullptr)
 , mpSocketListen(nullptr)
-, mFontTextureID(TextureCastHelper(uint64_t(0u)))
+, mFontTextureID(TextureCastFromUInt(uint64_t(0u)))
 , mTexturesPendingSent(0)
 , mTexturesPendingCreated(0)
 {
@@ -382,6 +382,7 @@ void ClientInfo::ContextInitialize()
 
 #if NETIMGUI_IMGUI_CALLBACK_ENABLED
 	ImGuiContextHook hookNewframe, hookEndframe;
+	ContextRemoveHooks();
 	hookNewframe.HookId		= 0;
 	hookNewframe.Type		= ImGuiContextHookType_NewFramePre;
 	hookNewframe.Callback	= HookBeginFrame;

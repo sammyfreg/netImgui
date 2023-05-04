@@ -42,6 +42,7 @@ struct alignas(8) CmdVersion
 		DataCompression2	= 8,	// Improvement to data compression (save corner position and use SoA for vertices data)
 		VertexUVRange		= 9,	// Changed vertices UV value range to [0,1] for increased precision on large font texture
 		Imgui_1_87			= 10,	// Added Dear ImGui Input refactor
+		OffetPointer		= 11,	// Updated the handling of OffsetPoint. Moved flag bit from last bit to first bit. Addresses and data are always at least 4 bytes aligned, so should never conflict with potential address space
 		// Insert new version here
 
 		//--------------------------------
@@ -129,32 +130,37 @@ struct alignas(8) CmdInput
 		ImGuiKey_KeypadEnter,
 		ImGuiKey_KeypadEqual,
 
-		// Gamepad (some of those are analog values, 0.0f to 1.0f)                              // NAVIGATION action
-		ImGuiKey_GamepadStart,          // Menu (Xbox)          + (Switch)   Start/Options (PS) // --
-		ImGuiKey_GamepadBack,           // View (Xbox)          - (Switch)   Share (PS)         // --
-		ImGuiKey_GamepadFaceUp,         // Y (Xbox)             X (Switch)   Triangle (PS)      // -> ImGuiNavInput_Input
-		ImGuiKey_GamepadFaceDown,       // A (Xbox)             B (Switch)   Cross (PS)         // -> ImGuiNavInput_Activate
-		ImGuiKey_GamepadFaceLeft,       // X (Xbox)             Y (Switch)   Square (PS)        // -> ImGuiNavInput_Menu
-		ImGuiKey_GamepadFaceRight,      // B (Xbox)             A (Switch)   Circle (PS)        // -> ImGuiNavInput_Cancel
-		ImGuiKey_GamepadDpadUp,         // D-pad Up                                             // -> ImGuiNavInput_DpadUp
-		ImGuiKey_GamepadDpadDown,       // D-pad Down                                           // -> ImGuiNavInput_DpadDown
-		ImGuiKey_GamepadDpadLeft,       // D-pad Left                                           // -> ImGuiNavInput_DpadLeft
-		ImGuiKey_GamepadDpadRight,      // D-pad Right                                          // -> ImGuiNavInput_DpadRight
-		ImGuiKey_GamepadL1,             // L Bumper (Xbox)      L (Switch)   L1 (PS)            // -> ImGuiNavInput_FocusPrev + ImGuiNavInput_TweakSlow
-		ImGuiKey_GamepadR1,             // R Bumper (Xbox)      R (Switch)   R1 (PS)            // -> ImGuiNavInput_FocusNext + ImGuiNavInput_TweakFast
-		ImGuiKey_GamepadL2,             // L Trigger (Xbox)     ZL (Switch)  L2 (PS) [Analog]
-		ImGuiKey_GamepadR2,             // R Trigger (Xbox)     ZR (Switch)  R2 (PS) [Analog]
-		ImGuiKey_GamepadL3,             // L Thumbstick (Xbox)  L3 (Switch)  L3 (PS)
-		ImGuiKey_GamepadR3,             // R Thumbstick (Xbox)  R3 (Switch)  R3 (PS)
-		
-		ImGuiKey_GamepadLStickUp,       // [Analog]                                             // -> ImGuiNavInput_LStickUp
-		ImGuiKey_GamepadLStickDown,     // [Analog]                                             // -> ImGuiNavInput_LStickDown
-		ImGuiKey_GamepadLStickLeft,     // [Analog]                                             // -> ImGuiNavInput_LStickLeft
-		ImGuiKey_GamepadLStickRight,    // [Analog]                                             // -> ImGuiNavInput_LStickRight
-		ImGuiKey_GamepadRStickUp,       // [Analog]
-		ImGuiKey_GamepadRStickDown,     // [Analog]
+		// Gamepad (some of those are analog values, 0.0f to 1.0f)                          // GAME NAVIGATION ACTION
+		// (download controller mapping PNG/PSD at http://dearimgui.org/controls_sheets)
+		ImGuiKey_GamepadStart,          // Menu (Xbox)      + (Switch)   Start/Options (PS)
+		ImGuiKey_GamepadBack,           // View (Xbox)      - (Switch)   Share (PS)
+		ImGuiKey_GamepadFaceLeft,       // X (Xbox)         Y (Switch)   Square (PS)        // Tap: Toggle Menu. Hold: Windowing mode (Focus/Move/Resize windows)
+		ImGuiKey_GamepadFaceRight,      // B (Xbox)         A (Switch)   Circle (PS)        // Cancel / Close / Exit
+		ImGuiKey_GamepadFaceUp,         // Y (Xbox)         X (Switch)   Triangle (PS)      // Text Input / On-screen Keyboard
+		ImGuiKey_GamepadFaceDown,       // A (Xbox)         B (Switch)   Cross (PS)         // Activate / Open / Toggle / Tweak
+		ImGuiKey_GamepadDpadLeft,       // D-pad Left                                       // Move / Tweak / Resize Window (in Windowing mode)
+		ImGuiKey_GamepadDpadRight,      // D-pad Right                                      // Move / Tweak / Resize Window (in Windowing mode)
+		ImGuiKey_GamepadDpadUp,         // D-pad Up                                         // Move / Tweak / Resize Window (in Windowing mode)
+		ImGuiKey_GamepadDpadDown,       // D-pad Down                                       // Move / Tweak / Resize Window (in Windowing mode)
+		ImGuiKey_GamepadL1,             // L Bumper (Xbox)  L (Switch)   L1 (PS)            // Tweak Slower / Focus Previous (in Windowing mode)
+		ImGuiKey_GamepadR1,             // R Bumper (Xbox)  R (Switch)   R1 (PS)            // Tweak Faster / Focus Next (in Windowing mode)
+		ImGuiKey_GamepadL2,             // L Trig. (Xbox)   ZL (Switch)  L2 (PS) [Analog]
+		ImGuiKey_GamepadR2,             // R Trig. (Xbox)   ZR (Switch)  R2 (PS) [Analog]
+		ImGuiKey_GamepadL3,             // L Stick (Xbox)   L3 (Switch)  L3 (PS)
+		ImGuiKey_GamepadR3,             // R Stick (Xbox)   R3 (Switch)  R3 (PS)
+
+		ImGuiKey_GamepadLStickLeft,     // [Analog]                                         // Move Window (in Windowing mode)
+		ImGuiKey_GamepadLStickRight,    // [Analog]                                         // Move Window (in Windowing mode)
+		ImGuiKey_GamepadLStickUp,       // [Analog]                                         // Move Window (in Windowing mode)
+		ImGuiKey_GamepadLStickDown,     // [Analog]                                         // Move Window (in Windowing mode)
 		ImGuiKey_GamepadRStickLeft,     // [Analog]
 		ImGuiKey_GamepadRStickRight,    // [Analog]
+		ImGuiKey_GamepadRStickUp,       // [Analog]
+		ImGuiKey_GamepadRStickDown,     // [Analog]
+
+		// Mouse Buttons (auto-submitted from AddMouseButtonEvent() calls)
+		// - This is mirroring the data also written to io.MouseDown[], io.MouseWheel, in a format allowing them to be accessed via standard key API.
+		ImGuiKey_MouseLeft, ImGuiKey_MouseRight, ImGuiKey_MouseMiddle, ImGuiKey_MouseX1, ImGuiKey_MouseX2, ImGuiKey_MouseWheelX, ImGuiKey_MouseWheelY,
 
 		// Keyboard Modifiers (explicitly submitted by backend via AddKeyEvent() calls)
 		// - This is mirroring the data also written to io.KeyCtrl, io.KeyShift, io.KeyAlt, io.KeySuper, in a format allowing
@@ -164,15 +170,15 @@ struct alignas(8) CmdInput
 		// - In theory the value of keyboard modifiers should be roughly equivalent to a logical or of the equivalent left/right keys.
 		//   In practice: it's complicated; mods are often provided from different sources. Keyboard layout, IME, sticky keys and
 		//   backends tend to interfere and break that equivalence. The safer decision is to relay that ambiguity down to the end-user...
-		ImGuiKey_ModCtrl, ImGuiKey_ModShift, ImGuiKey_ModAlt, ImGuiKey_ModSuper,
+		ImGuiKey_ReservedForModCtrl, ImGuiKey_ReservedForModShift, ImGuiKey_ReservedForModAlt, ImGuiKey_ReservedForModSuper,
 
 		// End of list
 		ImGuiKey_COUNT,                 // No valid ImGuiKey is ever greater than this value
 	};
 
 	
-	static constexpr uint32_t kAnalog_First	= ImGuiKey_GamepadLStickUp;
-	static constexpr uint32_t kAnalog_Last	= ImGuiKey_GamepadRStickRight;
+	static constexpr uint32_t kAnalog_First	= ImGuiKey_GamepadLStickLeft;
+	static constexpr uint32_t kAnalog_Last	= ImGuiKey_GamepadRStickDown;
 	static constexpr uint32_t kAnalog_Count	= kAnalog_Last - kAnalog_First + 1;
 
 	CmdHeader						mHeader							= CmdHeader(CmdHeader::eCommands::Input, sizeof(CmdInput));

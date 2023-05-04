@@ -88,7 +88,7 @@ inline void ImGui_ExtractDraws(const ImDrawList& cmdList, ImguiDrawGroup& drawGr
 			pOutDraws[drawCount].mIdxOffset		= 0;
 		#endif
 			
-			pOutDraws[drawCount].mTextureId		= TextureCastHelper(pCmd->TextureId);
+			pOutDraws[drawCount].mTextureId		= TextureCastFromID(pCmd->TextureId);
 			pOutDraws[drawCount].mIdxCount		= pCmd->ElemCount;
 			pOutDraws[drawCount].mClipRect[0]	= pCmd->ClipRect.x;
 			pOutDraws[drawCount].mClipRect[1]	= pCmd->ClipRect.y;
