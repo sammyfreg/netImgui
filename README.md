@@ -89,7 +89,7 @@ The NetImgui Server application currently compiles under Windows, but few change
 - `NetImgui::IsConnected()` and `NetImgui::IsDrawingRemote()` can be used during Dear ImGui drawing, helping to make selective decisions on the content to draw based on where it will be displayed.
 
 #### Dear Imgui versions
-- Tested against **Dear ImGui** versions: **1.71, 1.72, 1.73, 1.74, 1.75, 1.76, 1.76** (docking)**, 1.77, 1.78, 1.79, 1.80, 1.80** (docking)**, 1.81, 1.82, 1.83, 1.84, 1.85, 1.86, 1.87, 1.87**.
+- Tested against **Dear ImGui** versions: **1.71, 1.72, 1.73, 1.74, 1.75, 1.76, 1.76** (docking)**, 1.77, 1.78, 1.79, 1.80, 1.80** (docking)**, 1.81, 1.82, 1.83, 1.84, 1.85, 1.86, 1.87, 1.87, 1.88, 1.89** (docking)**, 1.89.1, 189.2, 189.2, 189.5**.
 - *Note*: Should support other versions without too much difficulties.
 
 # Related
@@ -109,21 +109,12 @@ Related projects making use of **NetImgui**.
 - ~~Commands to assign custom backgrounds~~
 - ~~Add compression to data between Client and Server~~
 
-### Version 1.8
-(2022/07/18)
+### Version 1.9
+(2023/05/04)
 - **API Changes**
   - None
-- **Dear ImGui 1.87 input event support**
-  - Input handling refactored to handle new Dear ImGui input event system (thanks to @lemantisee)
-  - Added gamepad support
-- **Compatibility tests**
-  - Now compile simple compatibility app for each Dear ImGui version supported
-  - Allows to make sure the NetImgui Server works properly against any Dear ImGui version
-- **Other Changes**
-  - 32bits support bugs fix in client code
-  - NetImgui server popup now centered on main window
-  - Some OpenGL fixes
-  - Visual Studio 2022 LLVM support fix
+- **Upgraded Dear ImGui support to 1.89.5**
+- **Various small changes and fixes**
 
 ### Older
 [Release Notes](https://github.com/sammyfreg/netImgui/wiki/Release-notes)
