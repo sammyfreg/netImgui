@@ -5,11 +5,11 @@
 //=================================================================================================
 //! @author		: Sammy Fatnassi
 //! @date		: 2023/05/04
-//!	@version	: v1.9
+//!	@version	: v1.9.1
 //! @Details	: For integration info : https://github.com/sammyfreg/netImgui/wiki
 //=================================================================================================
-#define NETIMGUI_VERSION		"1.9"	// Version Release 1.9
-#define NETIMGUI_VERSION_NUM	10900
+#define NETIMGUI_VERSION		"1.9.1"	// 'Custom' texture format added
+#define NETIMGUI_VERSION_NUM	10901
 
 
 
@@ -108,9 +108,10 @@ namespace NetImgui
 //=================================================================================================
 // List of texture format supported
 //=================================================================================================
-enum eTexFormat { 
-	kTexFmtA8, 
-	kTexFmtRGBA8, 
+enum eTexFormat {
+	kTexFmtA8,
+	kTexFmtRGBA8,
+	kTexFmtCustom,
 	kTexFmt_Count,
 	kTexFmt_Invalid=kTexFmt_Count 
 };

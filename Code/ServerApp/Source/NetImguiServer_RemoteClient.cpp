@@ -98,27 +98,27 @@ void Client::ProcessPendingTextures()
 			if( mvTextures[i].mImguiId == pTextureCmd->mTextureId )
 			{
 				foundIdx = i;
-				NetImguiServer::App::HAL_DestroyTexture(mvTextures[foundIdx]);
-				if( isRemoval )
-				{
+				if( isRemoval ){
+					NetImguiServer::App::HAL_DestroyTexture(mvTextures[foundIdx]);
 					mvTextures[foundIdx] = mvTextures.back();
 					mvTextures.pop_back();
 				}
 			}
 		}
-
+		
 		if( !isRemoval )
 		{		
-			if( foundIdx == static_cast<size_t>(-1))
-			{
+			if( foundIdx == static_cast<size_t>(-1)){
 				foundIdx = mvTextures.size();
 				mvTextures.resize(foundIdx+1);
+				mvTextures[foundIdx].mpHAL_Texture	= nullptr;
+				mvTextures[foundIdx].mImguiId		= pTextureCmd->mTextureId;
 			}
-			
-			NetImguiServer::App::HAL_CreateTexture(pTextureCmd->mWidth, pTextureCmd->mHeight, static_cast<NetImgui::eTexFormat>(pTextureCmd->mFormat), pTextureCmd->mpTextureData.Get(), mvTextures[foundIdx]);
-			mvTextures[foundIdx].mImguiId = pTextureCmd->mTextureId;
-		}
 
+			if (!ProcessTexture_Custom(*pTextureCmd, mvTextures[foundIdx])){
+				ProcessTexture_Default(*pTextureCmd, mvTextures[foundIdx]);
+			}
+		}
 		NetImgui::Internal::netImguiDeleteSafe(pTextureCmd);
 	}
 }

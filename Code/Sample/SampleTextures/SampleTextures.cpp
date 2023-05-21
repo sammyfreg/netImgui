@@ -47,6 +47,7 @@ void CustomTextureCreate(NetImgui::eTexFormat eTexFmt)
 				pixelData[(y * Width + x) * 4 + 3] = 0xFF;
 			}
 		}break;
+	case NetImgui::eTexFormat::kTexFmtCustom:
 	case NetImgui::eTexFormat::kTexFmt_Invalid: assert(0); break;
 	}
 	TextureCreate(pixelData, Width, Height, gCustomTextureView[static_cast<int>(eTexFmt)]);													// For local display

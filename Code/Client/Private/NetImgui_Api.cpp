@@ -473,6 +473,7 @@ uint8_t GetTexture_BitsPerPixel(eTexFormat eFormat)
 	{
 	case eTexFormat::kTexFmtA8:			return 8*1;
 	case eTexFormat::kTexFmtRGBA8:		return 8*4;
+	case eTexFormat::kTexFmtCustom:		return 0;
 	case eTexFormat::kTexFmt_Invalid:	return 0;
 	}
 	return 0;

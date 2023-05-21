@@ -203,4 +203,62 @@ void UpdateRemoteContent()
 	}
 }
 
+//=================================================================================================
+bool ProcessTexture_Default(const NetImgui::Internal::CmdTexture& cmdTextureUpdate, ServerTexture& serverTexture)
+//=================================================================================================
+{
+	auto eTexFmt = static_cast<NetImgui::eTexFormat>(cmdTextureUpdate.mFormat);
+	if( eTexFmt < NetImgui::eTexFormat::kTexFmtCustom )
+	{
+		// Release the previously created texture
+		if( serverTexture.mpHAL_Texture ){
+			NetImguiServer::App::HAL_DestroyTexture(serverTexture);
+		}
+
+		// Create or Recreate the texture
+		NetImguiServer::App::HAL_CreateTexture(cmdTextureUpdate.mWidth, cmdTextureUpdate.mHeight, eTexFmt, cmdTextureUpdate.mpTextureData.Get(), serverTexture);
+		return true;
+	}
+	return false;
+}
+
+//=================================================================================================
+// This contains a sample of letting User create their own texture format and handle
+// it on both the NetImgui Client and the NetImgui Server side
+//=================================================================================================
+bool ProcessTexture_Custom(const NetImgui::Internal::CmdTexture& cmdTextureUpdate, ServerTexture& serverTexture)
+{
+#if 1
+	auto eTexFmt = static_cast<NetImgui::eTexFormat>(cmdTextureUpdate.mFormat);
+	if( eTexFmt == NetImgui::eTexFormat::kTexFmtCustom ){
+		// Release the previously created texture
+		// Note: User could decide to support texture without recreating the GPU texture
+		if( serverTexture.mpHAL_Texture ){
+			NetImguiServer::App::HAL_DestroyTexture(serverTexture);
+		}
+
+		// Create or Recreate the texture
+		struct customTextureData{
+			uint32_t m_Type;
+			uint32_t Color;
+		};
+		const customTextureData* pCustomTextureCmdData = reinterpret_cast<const customTextureData*>(cmdTextureUpdate.mpTextureData.Get());
+		uint32_t* pTempData = static_cast<uint32_t*>(malloc(cmdTextureUpdate.mWidth*cmdTextureUpdate.mHeight*sizeof(uint32_t)));
+		for(uint32_t i=0; i<cmdTextureUpdate.mWidth*cmdTextureUpdate.mHeight; ++i){
+			pTempData[i] = pCustomTextureCmdData->Color;
+		}
+		
+		NetImguiServer::App::HAL_CreateTexture(cmdTextureUpdate.mWidth, cmdTextureUpdate.mHeight, NetImgui::eTexFormat::kTexFmtRGBA8, reinterpret_cast<uint8_t*>(pTempData), serverTexture);
+		free(pTempData);
+		return true;
+	}
+#else
+	IM_UNUSED(cmdTextureUpdate);
+	IM_UNUSED(serverTexture);
+#endif
+	return false;
+}
+
+	
+	
 }} // namespace NetImguiServer { namespace App

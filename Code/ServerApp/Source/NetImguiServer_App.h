@@ -11,8 +11,9 @@
 #define HAL_API_RENDERTARGET_INVERT_Y	(HAL_API_PLATFORM_GLFW_GL3)	// Invert client render target Y axis (since OpenGL start texture UV from BottomLeft instead of DirectX TopLeft)
 //=============================================================================================
 
-
-namespace NetImguiServer { namespace RemoteClient { struct Client; } } // Forward declare
+// Forward declare
+namespace NetImguiServer { namespace RemoteClient { struct Client; } } 
+namespace NetImgui { namespace Internal { struct CmdTexture; } }
 
 namespace NetImguiServer { namespace App
 {
@@ -38,6 +39,9 @@ namespace NetImguiServer { namespace App
 		uint64_t	mImguiId			= 0u;		// Associated ImGui TextureId in Imgui commandlist
 	};
 
+	bool	ProcessTexture_Default(const NetImgui::Internal::CmdTexture& cmdTextureUpdate, ServerTexture& serverTexture);
+	bool	ProcessTexture_Custom(const NetImgui::Internal::CmdTexture& cmdTextureUpdate, ServerTexture& serverTexture);
+	
 	//=============================================================================================
 	// Note:	(H)ardware (A)bstraction (L)ayer
 	//			When porting the 'NetImgui Server' application to other platform, 
