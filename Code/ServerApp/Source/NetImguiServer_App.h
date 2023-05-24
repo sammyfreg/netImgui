@@ -35,12 +35,14 @@ namespace NetImguiServer { namespace App
 	{
 		inline bool	IsValid(){ return mpHAL_Texture != nullptr; }
 		void*		mpHAL_Texture		= nullptr;
-		uint16_t	mSize[2]			= {0, 0};
 		uint64_t	mImguiId			= 0u;		// Associated ImGui TextureId in Imgui commandlist
+		uint16_t	mSize[2]			= {0, 0};
+		uint8_t		mFormat				= 0;
+		uint8_t		mPadding[3];
 	};
 
-	bool	ProcessTexture_Default(const NetImgui::Internal::CmdTexture& cmdTextureUpdate, ServerTexture& serverTexture);
-	bool	ProcessTexture_Custom(const NetImgui::Internal::CmdTexture& cmdTextureUpdate, ServerTexture& serverTexture);
+	bool	ProcessTexture_Default(const NetImgui::Internal::CmdTexture& cmdTextureUpdate, ServerTexture& serverTexture, uint32_t dataSize);
+	bool	ProcessTexture_Custom(const NetImgui::Internal::CmdTexture& cmdTextureUpdate, ServerTexture& serverTexture, uint32_t dataSize);
 	
 	//=============================================================================================
 	// Note:	(H)ardware (A)bstraction (L)ayer

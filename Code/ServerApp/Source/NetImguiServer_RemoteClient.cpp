@@ -98,25 +98,46 @@ void Client::ProcessPendingTextures()
 			if( mvTextures[i].mImguiId == pTextureCmd->mTextureId )
 			{
 				foundIdx = i;
-				if( isRemoval ){
+				bool shouldDelete	= isRemoval 
+									|| (mvTextures[i].mFormat != pTextureCmd->mFormat) 
+									|| (mvTextures[i].mSize[0] != pTextureCmd->mWidth) 
+									|| (mvTextures[i].mSize[1] != pTextureCmd->mHeight);
+				
+				// Delete texture when format/size changed or asked to remove
+				if (shouldDelete) {
 					NetImguiServer::App::HAL_DestroyTexture(mvTextures[foundIdx]);
-					mvTextures[foundIdx] = mvTextures.back();
-					mvTextures.pop_back();
+					if( isRemoval ){
+						mvTextures[foundIdx] = mvTextures.back();
+						mvTextures.pop_back();
+					}
 				}
 			}
 		}
 		
 		if( !isRemoval )
-		{		
+		{
+			// Add texture when new imgui id
 			if( foundIdx == static_cast<size_t>(-1)){
 				foundIdx = mvTextures.size();
 				mvTextures.resize(foundIdx+1);
 				mvTextures[foundIdx].mpHAL_Texture	= nullptr;
-				mvTextures[foundIdx].mImguiId		= pTextureCmd->mTextureId;
+				
 			}
-
-			if (!ProcessTexture_Custom(*pTextureCmd, mvTextures[foundIdx])){
-				ProcessTexture_Default(*pTextureCmd, mvTextures[foundIdx]);
+			// Create texture
+			uint32_t dataSize = pTextureCmd->mHeader.mSize - sizeof(NetImgui::Internal::CmdTexture);
+			if( ProcessTexture_Custom(*pTextureCmd, mvTextures[foundIdx], dataSize) ||
+				ProcessTexture_Default(*pTextureCmd, mvTextures[foundIdx], dataSize) )
+			{
+				mvTextures[foundIdx].mImguiId	= pTextureCmd->mTextureId;
+				mvTextures[foundIdx].mFormat	= pTextureCmd->mFormat;
+				mvTextures[foundIdx].mSize[0]	= pTextureCmd->mWidth;
+				mvTextures[foundIdx].mSize[1]	= pTextureCmd->mHeight;
+			}
+			// Release texture if creation failed
+			else
+			{
+				mvTextures[foundIdx] = mvTextures.back();
+				mvTextures.pop_back();
 			}
 		}
 		NetImgui::Internal::netImguiDeleteSafe(pTextureCmd);

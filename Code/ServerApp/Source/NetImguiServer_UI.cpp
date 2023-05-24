@@ -67,8 +67,10 @@ void DrawCenteredBackground(const App::ServerTexture& Texture, const ImVec4& Tin
 	float uvOffsetX			= (areaSize.x - bgSizeX) / 2.f;
 	float uvOffsetY			= (areaSize.y - bgSizeY) / 2.f;
 	ImGui::SetCursorPos(ImVec2(savedPos.x+uvOffsetX, savedPos.y+uvOffsetY));
+	ImGui::Dummy(ImVec2(0,0));
 	ImGui::Image(reinterpret_cast<ImTextureID>(Texture.mpHAL_Texture), ImVec2(bgSizeX, bgSizeY), ImVec2(0, 0), ImVec2(1, 1), Tint);
 	ImGui::SetCursorPos(savedPos);
+	ImGui::Dummy(ImVec2(0,0));
 }
 
 //=================================================================================================

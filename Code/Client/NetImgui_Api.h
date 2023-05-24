@@ -192,7 +192,7 @@ NETIMGUI_API	bool				IsDrawingRemote(void);
 // Send an updated texture used by imgui, to the NetImguiServer application
 // Note: To remove a texture, set pData to nullptr
 //=================================================================================================
-NETIMGUI_API	void				SendDataTexture(ImTextureID textureId, void* pData, uint16_t width, uint16_t height, eTexFormat format);
+NETIMGUI_API	void				SendDataTexture(ImTextureID textureId, void* pData, uint16_t width, uint16_t height, eTexFormat format, uint32_t dataSize=0);
 
 //=================================================================================================
 // Start a new Imgui Frame and wait for Draws commands, using ImContext that was active on connect.

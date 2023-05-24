@@ -204,9 +204,10 @@ void UpdateRemoteContent()
 }
 
 //=================================================================================================
-bool ProcessTexture_Default(const NetImgui::Internal::CmdTexture& cmdTextureUpdate, ServerTexture& serverTexture)
+bool ProcessTexture_Default(const NetImgui::Internal::CmdTexture& cmdTextureUpdate, ServerTexture& serverTexture, uint32_t dataSize)
 //=================================================================================================
 {
+	IM_UNUSED(dataSize);
 	auto eTexFmt = static_cast<NetImgui::eTexFormat>(cmdTextureUpdate.mFormat);
 	if( eTexFmt < NetImgui::eTexFormat::kTexFmtCustom )
 	{
@@ -225,32 +226,56 @@ bool ProcessTexture_Default(const NetImgui::Internal::CmdTexture& cmdTextureUpda
 //=================================================================================================
 // This contains a sample of letting User create their own texture format and handle
 // it on both the NetImgui Client and the NetImgui Server side
+// 
+// User are entirely free to manage custom texture content as they wish as long as it generates
+// a valid 'ServerTexture.mpHAL_Texture' GPU texture object for the Imgui Backend
+// 
+// Sample was kept simple by reusing HAL_CreateTexture / HAL_DestroyTexture when updating
+// the texture, but User is free to create valid texture without these functions
 //=================================================================================================
-bool ProcessTexture_Custom(const NetImgui::Internal::CmdTexture& cmdTextureUpdate, ServerTexture& serverTexture)
+bool ProcessTexture_Custom(const NetImgui::Internal::CmdTexture& cmdTextureUpdate, ServerTexture& serverTexture, uint32_t dataSize )
 {
-#if 1
+	IM_UNUSED(dataSize);
+#if 1 
+	// This is our Custom texture data format, it must match when the NetImgui Client code send
+	// It can be customized to anything needed, as long as Client/Server have the same data
+	struct customTextureData{ 
+			uint32_t m_Type; 
+			uint32_t m_ColorStart; 
+			uint32_t m_ColorEnd; 
+	};
+
 	auto eTexFmt = static_cast<NetImgui::eTexFormat>(cmdTextureUpdate.mFormat);
 	if( eTexFmt == NetImgui::eTexFormat::kTexFmtCustom ){
-		// Release the previously created texture
-		// Note: User could decide to support texture without recreating the GPU texture
-		if( serverTexture.mpHAL_Texture ){
-			NetImguiServer::App::HAL_DestroyTexture(serverTexture);
-		}
+		const customTextureData* pCustomData = reinterpret_cast<const customTextureData*>(cmdTextureUpdate.mpTextureData.Get());
+		if( dataSize == sizeof(customTextureData) && pCustomData->m_Type == 1 )
+		{
+			// Release the previously created texture
+			// Note: User could decide to support texture without recreating the GPU texture
+			if( serverTexture.mpHAL_Texture ){
+				NetImguiServer::App::HAL_DestroyTexture(serverTexture);
+			}
 
-		// Create or Recreate the texture
-		struct customTextureData{
-			uint32_t m_Type;
-			uint32_t Color;
-		};
-		const customTextureData* pCustomTextureCmdData = reinterpret_cast<const customTextureData*>(cmdTextureUpdate.mpTextureData.Get());
-		uint32_t* pTempData = static_cast<uint32_t*>(malloc(cmdTextureUpdate.mWidth*cmdTextureUpdate.mHeight*sizeof(uint32_t)));
-		for(uint32_t i=0; i<cmdTextureUpdate.mWidth*cmdTextureUpdate.mHeight; ++i){
-			pTempData[i] = pCustomTextureCmdData->Color;
-		}
+			// Create or Recreate the texture
+			// Our sample custom texture just interpolate between 2 colors over the x axis
+			ImColor colorStart			= pCustomData->m_ColorStart;
+			ImColor colorEnd			= pCustomData->m_ColorEnd;
+			uint32_t* pTempData			= static_cast<uint32_t*>(malloc(cmdTextureUpdate.mWidth*cmdTextureUpdate.mHeight*sizeof(uint32_t)));
+			for(uint32_t x=0; x<cmdTextureUpdate.mWidth; ++x){
+				float ratio				= static_cast<float>(x) / static_cast<float>(cmdTextureUpdate.mWidth);
+				ImColor colorCurrent	= ImColor(	colorStart.Value.x  * ratio + colorEnd.Value.x * (1.f - ratio),
+													colorStart.Value.y  * ratio + colorEnd.Value.y * (1.f - ratio),
+													colorStart.Value.z  * ratio + colorEnd.Value.z * (1.f - ratio),
+													colorStart.Value.w  * ratio + colorEnd.Value.w * (1.f - ratio));
+				for(uint32_t y=0; y<cmdTextureUpdate.mHeight; ++y){
+					pTempData[y*cmdTextureUpdate.mWidth+x] = colorCurrent;
+				}
+			}
 		
-		NetImguiServer::App::HAL_CreateTexture(cmdTextureUpdate.mWidth, cmdTextureUpdate.mHeight, NetImgui::eTexFormat::kTexFmtRGBA8, reinterpret_cast<uint8_t*>(pTempData), serverTexture);
-		free(pTempData);
-		return true;
+			NetImguiServer::App::HAL_CreateTexture(cmdTextureUpdate.mWidth, cmdTextureUpdate.mHeight, NetImgui::eTexFormat::kTexFmtRGBA8, reinterpret_cast<uint8_t*>(pTempData), serverTexture);
+			free(pTempData);
+			return true;
+		}
 	}
 #else
 	IM_UNUSED(cmdTextureUpdate);

@@ -16,42 +16,71 @@ namespace SampleClient
 {
 static void*	gDefaultEmptyTexture = nullptr;
 static void*	gCustomTextureView[static_cast<int>(NetImgui::eTexFormat::kTexFmt_Count)];
-const char*		gTextureFormatName[static_cast<int>(NetImgui::eTexFormat::kTexFmt_Count)] = { "R8", "RGBA8" };
+const char*		gTextureFormatName[static_cast<int>(NetImgui::eTexFormat::kTexFmt_Count)] = { "R8", "RGBA8", "Custom"};
 
 //=================================================================================================
 // Add a new texture of a specified format, to our sample. Will be displayed locally or remotely
 //=================================================================================================
 void CustomTextureCreate(NetImgui::eTexFormat eTexFmt)
-{
-	constexpr uint32_t BytePerPixelMax = 4;
-	constexpr uint32_t Width = 8;
-	constexpr uint32_t Height = 8;
-	uint8_t pixelData[Width * Height * BytePerPixelMax];
-
-	switch (eTexFmt)
-	{
-	case NetImgui::eTexFormat::kTexFmtA8:
-		for (uint8_t y(0); y < Height; ++y) {
-			for (uint8_t x(0); x < Width; ++x)
-			{
-				pixelData[(y * Width + x)] = 0xFF * x / 8u;
-			}
-		}break;
-	case NetImgui::eTexFormat::kTexFmtRGBA8:
-		for (uint8_t y(0); y < Height; ++y) {
-			for (uint8_t x(0); x < Width; ++x)
-			{
-				pixelData[(y * Width + x) * 4 + 0] = 0xFF * x / 8u;
-				pixelData[(y * Width + x) * 4 + 1] = 0xFF * y / 8u;
-				pixelData[(y * Width + x) * 4 + 2] = 0xFF;
-				pixelData[(y * Width + x) * 4 + 3] = 0xFF;
-			}
-		}break;
-	case NetImgui::eTexFormat::kTexFmtCustom:
-	case NetImgui::eTexFormat::kTexFmt_Invalid: assert(0); break;
+{	
+	//----------------------------------------------------------------------------
+	// Note: This is an example of user adding their own texture format
+	//		 It needs to be handled by adding the code in NetImguiServer 
+	//		 inside the 'ProcessTexture_Custom' function.
+	//		 If user change the Server function, then this sample code won't 
+	//		 be compatible anymore. 
+	//----------------------------------------------------------------------------
+	if (eTexFmt == NetImgui::eTexFormat::kTexFmtCustom) {
+		struct customTextureData{ 
+			uint32_t m_Type; 
+			uint32_t m_ColorStart; 
+			uint32_t m_ColorEnd; 
+		};
+		constexpr uint32_t Width			= 8;
+		constexpr uint32_t Height			= 8;
+		customTextureData customTextrueData;
+		customTextrueData.m_Type		= 0x01;
+		customTextrueData.m_ColorStart	= ImColor(0.2f,0.2f,1.f,1.f);
+		customTextrueData.m_ColorEnd	= ImColor(1.f,0.2f,0.2f,1.f);
+		uint8_t pixelData[Width * Height * 4]={};
+		TextureCreate(pixelData, Width, Height, gCustomTextureView[static_cast<int>(eTexFmt)]);	// For local display
+		NetImgui::SendDataTexture(static_cast<ImTextureID>(gCustomTextureView[static_cast<int>(eTexFmt)]), &customTextrueData, Width, Height, eTexFmt, sizeof(customTextureData));	// For remote display
 	}
-	TextureCreate(pixelData, Width, Height, gCustomTextureView[static_cast<int>(eTexFmt)]);													// For local display
-	NetImgui::SendDataTexture(static_cast<ImTextureID>(gCustomTextureView[static_cast<int>(eTexFmt)]), pixelData, Width, Height, eTexFmt);	// For remote display
+
+	//----------------------------------------------------------------------------
+	// Normal Texture Handling that always supported
+	//----------------------------------------------------------------------------
+	else
+	{
+		constexpr uint32_t BytePerPixelMax	= 4;
+		constexpr uint32_t Width			= 8;
+		constexpr uint32_t Height			= 8;
+		uint8_t pixelData[Width * Height * BytePerPixelMax];
+		switch (eTexFmt)
+		{
+		case NetImgui::eTexFormat::kTexFmtA8:
+			for (uint8_t y(0); y < Height; ++y) {
+				for (uint8_t x(0); x < Width; ++x)
+				{
+					pixelData[(y * Width + x)] = 0xFF * x / 8u;
+				}
+			}break;
+		case NetImgui::eTexFormat::kTexFmtRGBA8:
+			for (uint8_t y(0); y < Height; ++y) {
+				for (uint8_t x(0); x < Width; ++x)
+				{
+					pixelData[(y * Width + x) * 4 + 0] = 0xFF * x / 8u;
+					pixelData[(y * Width + x) * 4 + 1] = 0xFF * y / 8u;
+					pixelData[(y * Width + x) * 4 + 2] = 0xFF;
+					pixelData[(y * Width + x) * 4 + 3] = 0xFF;
+				}
+			}break;
+		case NetImgui::eTexFormat::kTexFmtCustom:
+		case NetImgui::eTexFormat::kTexFmt_Invalid: assert(0); break;
+		}
+		TextureCreate(pixelData, Width, Height, gCustomTextureView[static_cast<int>(eTexFmt)]);													// For local display
+		NetImgui::SendDataTexture(static_cast<ImTextureID>(gCustomTextureView[static_cast<int>(eTexFmt)]), pixelData, Width, Height, eTexFmt);	// For remote display
+	}
 }
 
 //=================================================================================================

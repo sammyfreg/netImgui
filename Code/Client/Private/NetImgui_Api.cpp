@@ -274,7 +274,7 @@ ImGuiContext* GetContext()
 }
 
 //=================================================================================================
-void SendDataTexture(ImTextureID textureId, void* pData, uint16_t width, uint16_t height, eTexFormat format)
+void SendDataTexture(ImTextureID textureId, void* pData, uint16_t width, uint16_t height, eTexFormat format, uint32_t dataSize)
 //=================================================================================================
 {
 	if (!gpClientInfo) return;
@@ -290,12 +290,14 @@ void SendDataTexture(ImTextureID textureId, void* pData, uint16_t width, uint16_
 	// Add/Update a texture
 	if( pData != nullptr )
 	{		
-		uint32_t PixelDataSize				= GetTexture_BytePerImage(format, width, height);
-		uint32_t SizeNeeded					= PixelDataSize + sizeof(CmdTexture);
+		if( format != eTexFormat::kTexFmtCustom ){
+			dataSize						= GetTexture_BytePerImage(format, width, height);
+		}
+		uint32_t SizeNeeded					= dataSize + sizeof(CmdTexture);
 		pCmdTexture							= netImguiSizedNew<CmdTexture>(SizeNeeded);
 
 		pCmdTexture->mpTextureData.SetPtr(reinterpret_cast<uint8_t*>(&pCmdTexture[1]));
-		memcpy(pCmdTexture->mpTextureData.Get(), pData, PixelDataSize);
+		memcpy(pCmdTexture->mpTextureData.Get(), pData, dataSize);
 
 		pCmdTexture->mHeader.mSize			= SizeNeeded;
 		pCmdTexture->mWidth					= width;
