@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <chrono>
+#include <unordered_map>
 #include <Private/NetImgui_CmdPackets.h>
 #include "NetImguiServer_App.h"
 
@@ -32,6 +33,8 @@ struct Client
 	using ExchPtrInput		= NetImgui::Internal::ExchangePtr<NetImgui::Internal::CmdInput>;
 	using ExchPtrBackground = NetImgui::Internal::ExchangePtr<NetImgui::Internal::CmdBackground>;
 	using ExchPtrImguiDraw	= NetImgui::Internal::ExchangePtr<NetImguiImDrawData>;
+	using TextureTable		= std::unordered_map<uint64_t, App::ServerTexture>;
+
 											Client();
 											~Client();
 											Client(const Client&)	= delete;
@@ -68,7 +71,7 @@ struct Client
 
 	NetImguiImDrawData*						mpImguiDrawData			= nullptr;	//!< Current Imgui Data that this client is the owner of
 	NetImgui::Internal::CmdDrawFrame*		mpFrameDrawPrev			= nullptr;	//!< Last valid DrawDrame (used by com thread, to uncompress data)
-	std::vector<App::ServerTexture>			mvTextures;							//!< List of textures received and used by the client
+	TextureTable							mTextureTable;						//!< Table of textures received and used by the client
 	ExchPtrImguiDraw						mPendingImguiDrawDataIn;			//!< Pending received Imgui DrawData, waiting to be taken ownership of
 	ExchPtrBackground						mPendingBackgroundIn;				//!< Background settings received and waiting to update client setting
 	ExchPtrInput							mPendingInputOut;					//!< Input command waiting to be sent out to client

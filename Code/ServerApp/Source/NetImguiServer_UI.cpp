@@ -67,8 +67,10 @@ void DrawCenteredBackground(const App::ServerTexture& Texture, const ImVec4& Tin
 	float uvOffsetX			= (areaSize.x - bgSizeX) / 2.f;
 	float uvOffsetY			= (areaSize.y - bgSizeY) / 2.f;
 	ImGui::SetCursorPos(ImVec2(savedPos.x+uvOffsetX, savedPos.y+uvOffsetY));
+	ImGui::Dummy(ImVec2(0,0));
 	ImGui::Image(reinterpret_cast<ImTextureID>(Texture.mpHAL_Texture), ImVec2(bgSizeX, bgSizeY), ImVec2(0, 0), ImVec2(1, 1), Tint);
 	ImGui::SetCursorPos(savedPos);
+	ImGui::Dummy(ImVec2(0,0));
 }
 
 //=================================================================================================
@@ -170,7 +172,6 @@ void Popup_ConfirmDisconnect()
 //=================================================================================================
 void Popup_AboutNetImgui()
 {
-	static bool sbURLHover = false;
 	if( gPopup_AboutNetImgui_Show )
 	{		
 		ImGuiWindowClass windowClass;
@@ -192,12 +193,7 @@ void Popup_AboutNetImgui()
 			ImGui::NewLine();
 			ImGui::Text("For more informations : ");
 			
-			ImGui::TextColored(sbURLHover ? ImColor(0.8f, 0.8f, 1.f,1.f) : ImColor(0.5f, 0.5f, 1.f,1.f), kNetImguiURL);
-			sbURLHover = ImGui::IsItemHovered();
-			if (sbURLHover && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
-			{
-				NetImguiServer::App::HAL_ShellCommand(kNetImguiURL);
-			}
+			ImGui::TextColored(ImColor(0.5f, 0.5f, 1.f,1.f), kNetImguiURL);
 
 			ImGui::NewLine();
 			ImGui::TextUnformatted("Note: Commandline can be used to connect to a Client."); 
