@@ -111,7 +111,13 @@ namespace NetImgui
 enum eTexFormat {
 	kTexFmtA8,
 	kTexFmtRGBA8,
+	
+	// Support of 'user defined' texture format.
+	// Implementation must be added on both client and Server code. 
+	// Search for TEXTURE_CUSTOM_SAMPLE for example implementation.
 	kTexFmtCustom,
+	
+	//
 	kTexFmt_Count,
 	kTexFmt_Invalid=kTexFmt_Count 
 };

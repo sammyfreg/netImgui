@@ -93,23 +93,18 @@ void Client::ProcessPendingTextures()
 		NetImgui::Internal::CmdTexture* pTextureCmd = mpPendingTextures[(mPendingTextureReadIndex++) % IM_ARRAYSIZE(mpPendingTextures)];
 		size_t foundIdx								= static_cast<size_t>(-1);
 		bool isRemoval								= pTextureCmd->mFormat == NetImgui::eTexFormat::kTexFmt_Invalid;
+		uint32_t dataSize							= pTextureCmd->mHeader.mSize - sizeof(NetImgui::Internal::CmdTexture);
 		for(size_t i=0; foundIdx == static_cast<size_t>(-1) && i<mvTextures.size(); i++)
 		{
 			if( mvTextures[i].mImguiId == pTextureCmd->mTextureId )
 			{
 				foundIdx = i;
-				bool shouldDelete	= isRemoval 
-									|| (mvTextures[i].mFormat != pTextureCmd->mFormat) 
-									|| (mvTextures[i].mSize[0] != pTextureCmd->mWidth) 
-									|| (mvTextures[i].mSize[1] != pTextureCmd->mHeight);
 				
 				// Delete texture when format/size changed or asked to remove
-				if (shouldDelete) {
-					NetImguiServer::App::HAL_DestroyTexture(mvTextures[foundIdx]);
-					if( isRemoval ){
-						mvTextures[foundIdx] = mvTextures.back();
-						mvTextures.pop_back();
-					}
+				if (isRemoval) {
+					DestroyTexture(mvTextures[foundIdx], *pTextureCmd, dataSize);
+					mvTextures[foundIdx] = mvTextures.back();
+					mvTextures.pop_back();
 				}
 			}
 		}
@@ -123,18 +118,8 @@ void Client::ProcessPendingTextures()
 				mvTextures[foundIdx].mpHAL_Texture	= nullptr;
 				
 			}
-			// Create texture
-			uint32_t dataSize = pTextureCmd->mHeader.mSize - sizeof(NetImgui::Internal::CmdTexture);
-			if( ProcessTexture_Custom(*pTextureCmd, mvTextures[foundIdx], dataSize) ||
-				ProcessTexture_Default(*pTextureCmd, mvTextures[foundIdx], dataSize) )
-			{
-				mvTextures[foundIdx].mImguiId	= pTextureCmd->mTextureId;
-				mvTextures[foundIdx].mFormat	= pTextureCmd->mFormat;
-				mvTextures[foundIdx].mSize[0]	= pTextureCmd->mWidth;
-				mvTextures[foundIdx].mSize[1]	= pTextureCmd->mHeight;
-			}
-			// Release texture if creation failed
-			else
+			// Try creating the texture (and free it if failed)
+			if( !CreateTexture(mvTextures[foundIdx], *pTextureCmd, dataSize) )
 			{
 				mvTextures[foundIdx] = mvTextures.back();
 				mvTextures.pop_back();
