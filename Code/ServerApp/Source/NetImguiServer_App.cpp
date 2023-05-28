@@ -144,15 +144,8 @@ void DrawClientBackground(RemoteClient::Client& client)
 		ImGui::SetNextWindowSize(ImVec2(client.mAreaSizeX,client.mAreaSizeY));
 		ImGui::Begin("Background", nullptr, ImGuiWindowFlags_NoDecoration|ImGuiWindowFlags_NoInputs|ImGuiWindowFlags_NoNav|ImGuiWindowFlags_NoBackground|ImGuiWindowFlags_NoSavedSettings);
 		// Look for the desired texture (and use default if not found)
-		const ServerTexture* pTexture = &UI::GetBackgroundTexture();
-		for(size_t i=0; i<client.mvTextures.size(); ++i)
-		{
-			if( client.mvTextures[i].mImguiId == client.mBGSettings.mTextureId )
-			{
-				pTexture = &client.mvTextures[i];
-				break;
-			}
-		}		
+		auto texIt						= client.mTextureTable.find(client.mBGSettings.mTextureId);
+		const ServerTexture* pTexture	= texIt == client.mTextureTable.end() ? &UI::GetBackgroundTexture() : &texIt->second;
 		UI::DrawCenteredBackground(*pTexture, ImVec4(client.mBGSettings.mTextureTint[0],client.mBGSettings.mTextureTint[1],client.mBGSettings.mTextureTint[2],client.mBGSettings.mTextureTint[3]));
 		ImGui::End();
 		ImGui::Render();
@@ -203,4 +196,61 @@ void UpdateRemoteContent()
 	}
 }
 
+//=================================================================================================
+bool CreateTexture_Default(ServerTexture& serverTexture, const NetImgui::Internal::CmdTexture& cmdTexture, uint32_t customDataSize)
+//=================================================================================================
+{	
+	IM_UNUSED(cmdTexture);
+	IM_UNUSED(customDataSize);
+
+	auto eTexFmt = static_cast<NetImgui::eTexFormat>(cmdTexture.mFormat);
+	if( eTexFmt < NetImgui::eTexFormat::kTexFmtCustom ){
+		NetImguiServer::App::HAL_CreateTexture(cmdTexture.mWidth, cmdTexture.mHeight, eTexFmt, cmdTexture.mpTextureData.Get(), serverTexture);
+		return true;
+	}
+	return false;
+}
+
+//=================================================================================================
+bool DestroyTexture_Default(ServerTexture& serverTexture, const NetImgui::Internal::CmdTexture& cmdTexture, uint32_t customDataSize)
+//=================================================================================================
+{
+	IM_UNUSED(cmdTexture);
+	IM_UNUSED(customDataSize);
+	
+	if( serverTexture.mpHAL_Texture ){
+		NetImguiServer::App::HAL_DestroyTexture(serverTexture);
+	}
+	return true;
+}
+
+//=================================================================================================
+bool CreateTexture(ServerTexture& serverTexture, const NetImgui::Internal::CmdTexture& cmdTexture, uint32_t customDataSize)
+//=================================================================================================
+{
+	// Default behavior is to always destroy then re-create the texture
+	// But this can be changed inside the DestroyTexture_Custom function
+	if(	(serverTexture.mpHAL_Texture != nullptr) ){
+		DestroyTexture(serverTexture, cmdTexture, customDataSize);
+	}
+
+	if(	CreateTexture_Custom(serverTexture, cmdTexture, customDataSize)		||
+		CreateTexture_Default(serverTexture, cmdTexture, customDataSize)	)
+	{
+		serverTexture.mImguiId	= cmdTexture.mTextureId;
+		serverTexture.mFormat	= cmdTexture.mFormat;
+		serverTexture.mSize[0]	= cmdTexture.mWidth;
+		serverTexture.mSize[1]	= cmdTexture.mHeight;
+		return true;	
+	}
+	return false;
+}
+//=================================================================================================
+void DestroyTexture(ServerTexture& serverTexture, const NetImgui::Internal::CmdTexture& cmdTexture, uint32_t customDataSize)
+//=================================================================================================
+{
+	if ( DestroyTexture_Custom(serverTexture, cmdTexture, customDataSize) == false ) {
+		DestroyTexture_Default(serverTexture, cmdTexture, customDataSize);
+	}
+}
 }} // namespace NetImguiServer { namespace App

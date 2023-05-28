@@ -150,15 +150,6 @@ void HAL_Shutdown()
 }
 
 //=================================================================================================
-// HAL SHELL COMMAND
-// Receive a command to execute by the OS. Used to open our weblink to the NetImgui Github
-//=================================================================================================
-void HAL_ShellCommand(const char* aCommandline)
-{
-	ShellExecuteA(0, 0, aCommandline, 0, 0 , SW_SHOW );
-}
-
-//=================================================================================================
 // HAL GET SOCKET INFO
 // Take a platform specific socket (based on the NetImguiNetworkXXX.cpp implementation) and
 // fetch informations about the client IP connected

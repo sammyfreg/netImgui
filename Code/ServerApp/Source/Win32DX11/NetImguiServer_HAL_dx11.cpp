@@ -182,8 +182,6 @@ bool HAL_CreateTexture(uint16_t Width, uint16_t Height, NetImgui::eTexFormat For
 		{
 			pTexture->Release();
 			OutTexture.mpHAL_Texture    = reinterpret_cast<void*>(pTextureView);
-			OutTexture.mSize[0]         = static_cast<uint16_t>(Width);
-			OutTexture.mSize[1]         = static_cast<uint16_t>(Height);
 			return true;
 		}
 	}

@@ -43,6 +43,7 @@ struct alignas(8) CmdVersion
 		VertexUVRange		= 9,	// Changed vertices UV value range to [0,1] for increased precision on large font texture
 		Imgui_1_87			= 10,	// Added Dear ImGui Input refactor
 		OffetPointer		= 11,	// Updated the handling of OffsetPoint. Moved flag bit from last bit to first bit. Addresses and data are always at least 4 bytes aligned, so should never conflict with potential address space
+		CustomTexture		= 12,	// Added a 'custom' texture format to let user potentially handle their how format
 		// Insert new version here
 
 		//--------------------------------

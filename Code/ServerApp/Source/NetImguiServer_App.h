@@ -11,8 +11,9 @@
 #define HAL_API_RENDERTARGET_INVERT_Y	(HAL_API_PLATFORM_GLFW_GL3)	// Invert client render target Y axis (since OpenGL start texture UV from BottomLeft instead of DirectX TopLeft)
 //=============================================================================================
 
-
-namespace NetImguiServer { namespace RemoteClient { struct Client; } } // Forward declare
+// Forward declare
+namespace NetImguiServer { namespace RemoteClient { struct Client; } } 
+namespace NetImgui { namespace Internal { struct CmdTexture; } }
 
 namespace NetImguiServer { namespace App
 {
@@ -34,15 +35,27 @@ namespace NetImguiServer { namespace App
 	{
 		inline bool	IsValid(){ return mpHAL_Texture != nullptr; }
 		void*		mpHAL_Texture		= nullptr;
-		uint16_t	mSize[2]			= {0, 0};
 		uint64_t	mImguiId			= 0u;		// Associated ImGui TextureId in Imgui commandlist
+		uint64_t	mCustomData			= 0u;		// Memory available to custom command
+		uint16_t	mSize[2]			= {0, 0};
+		uint8_t		mFormat				= 0;
+		uint8_t		mPadding[3];
 	};
 
 	//=============================================================================================
-	// Note:	(H)ardware (A)bstraction (L)ayer
-	//			When porting the 'NetImgui Server' application to other platform, 
-	//			theses are the few functions needed to be supported by each specific API that 
-	//			are not already supported by de 'Dear ImGui' provided backends
+	// Handling of texture data
+	//=============================================================================================
+	bool	CreateTexture(ServerTexture& serverTexture, const NetImgui::Internal::CmdTexture& cmdTexture, uint32_t customDataSize);
+	void	DestroyTexture(ServerTexture& serverTexture, const NetImgui::Internal::CmdTexture& cmdTexture, uint32_t customDataSize);
+	// Library users can implement their own texture format (on client/server). Useful for vidoe streaming, new format, etc.
+	bool	CreateTexture_Custom(ServerTexture& serverTexture, const NetImgui::Internal::CmdTexture& cmdTexture, uint32_t customDataSize);
+	bool	DestroyTexture_Custom(ServerTexture& serverTexture, const NetImgui::Internal::CmdTexture& cmdTexture, uint32_t customDataSize);
+	
+	//=============================================================================================
+	// Note (H)ardware (A)bstraction (L)ayer
+	//		When porting the 'NetImgui Server' application to other platform, 
+	//		theses are the few functions needed to be supported by each specific API that 
+	//		are not already supported by de 'Dear ImGui' provided backends
 	//=============================================================================================
 	// Additional initialisation that are platform specific
 	bool	HAL_Startup(const char* CmdLine);
@@ -50,8 +63,6 @@ namespace NetImguiServer { namespace App
 	void	HAL_Shutdown();
 	// Receive a platform specific socket, and return us with info on the connection
 	bool	HAL_GetSocketInfo(NetImgui::Internal::Network::SocketInfo* pClientSocket, char* pOutHostname, size_t HostNameLen, int& outPort);
-	// Receive a command to execute by the OS. Used to open our weblink to the NetImgui Github
-	void	HAL_ShellCommand(const char* aCommandline);
 	
 	// Receive a ImDrawData drawlist and request Dear ImGui's backend to output it into a texture
 	void	HAL_RenderDrawData(RemoteClient::Client& client, ImDrawData* pDrawData);
