@@ -144,15 +144,8 @@ void DrawClientBackground(RemoteClient::Client& client)
 		ImGui::SetNextWindowSize(ImVec2(client.mAreaSizeX,client.mAreaSizeY));
 		ImGui::Begin("Background", nullptr, ImGuiWindowFlags_NoDecoration|ImGuiWindowFlags_NoInputs|ImGuiWindowFlags_NoNav|ImGuiWindowFlags_NoBackground|ImGuiWindowFlags_NoSavedSettings);
 		// Look for the desired texture (and use default if not found)
-		const ServerTexture* pTexture = &UI::GetBackgroundTexture();
-		for(size_t i=0; i<client.mvTextures.size(); ++i)
-		{
-			if( client.mvTextures[i].mImguiId == client.mBGSettings.mTextureId )
-			{
-				pTexture = &client.mvTextures[i];
-				break;
-			}
-		}		
+		auto texIt						= client.mTextureTable.find(client.mBGSettings.mTextureId);
+		const ServerTexture* pTexture	= texIt == client.mTextureTable.end() ? &UI::GetBackgroundTexture() : &texIt->second;
 		UI::DrawCenteredBackground(*pTexture, ImVec4(client.mBGSettings.mTextureTint[0],client.mBGSettings.mTextureTint[1],client.mBGSettings.mTextureTint[2],client.mBGSettings.mTextureTint[3]));
 		ImGui::End();
 		ImGui::Render();

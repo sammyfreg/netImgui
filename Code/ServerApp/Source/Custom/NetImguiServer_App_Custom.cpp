@@ -12,7 +12,7 @@
 // Enable handling of a Custom Texture Format samples. 
 // Only meant as an example, users are free to replace it with their own handling of
 // custom texture formats. Look for this define for implementation details.
-#define TEXTURE_CUSTOM_SAMPLE 1	
+#define TEXTURE_CUSTOM_SAMPLE 1
 
 #if TEXTURE_CUSTOM_SAMPLE
 

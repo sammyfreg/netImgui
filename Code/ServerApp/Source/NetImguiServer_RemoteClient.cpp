@@ -91,38 +91,24 @@ void Client::ProcessPendingTextures()
 	while( mPendingTextureReadIndex != mPendingTextureWriteIndex )
 	{
 		NetImgui::Internal::CmdTexture* pTextureCmd = mpPendingTextures[(mPendingTextureReadIndex++) % IM_ARRAYSIZE(mpPendingTextures)];
-		size_t foundIdx								= static_cast<size_t>(-1);
-		bool isRemoval								= pTextureCmd->mFormat == NetImgui::eTexFormat::kTexFmt_Invalid;
-		uint32_t dataSize							= pTextureCmd->mHeader.mSize - sizeof(NetImgui::Internal::CmdTexture);
-		for(size_t i=0; foundIdx == static_cast<size_t>(-1) && i<mvTextures.size(); i++)
-		{
-			if( mvTextures[i].mImguiId == pTextureCmd->mTextureId )
-			{
-				foundIdx = i;
-				
-				// Delete texture when format/size changed or asked to remove
-				if (isRemoval) {
-					DestroyTexture(mvTextures[foundIdx], *pTextureCmd, dataSize);
-					mvTextures[foundIdx] = mvTextures.back();
-					mvTextures.pop_back();
-				}
-			}
+		bool isRemoval		= pTextureCmd->mFormat == NetImgui::eTexFormat::kTexFmt_Invalid;
+		uint32_t dataSize	= pTextureCmd->mHeader.mSize - sizeof(NetImgui::Internal::CmdTexture);
+		auto texIt			= mTextureTable.find(pTextureCmd->mTextureId) ;
+		
+		// Delete texture when format/size changed or asked to remove
+		if ( isRemoval && texIt != mTextureTable.end() ) {
+			DestroyTexture(texIt->second, *pTextureCmd, dataSize);
+			mTextureTable.erase(texIt);
+		}
+		// Add texture when new imgui id
+		else if (texIt == mTextureTable.end() ) {
+			texIt = mTextureTable.insert({pTextureCmd->mTextureId,App::ServerTexture()}).first;
 		}
 		
-		if( !isRemoval )
-		{
-			// Add texture when new imgui id
-			if( foundIdx == static_cast<size_t>(-1)){
-				foundIdx = mvTextures.size();
-				mvTextures.resize(foundIdx+1);
-				mvTextures[foundIdx].mpHAL_Texture	= nullptr;
-				
-			}
-			// Try creating the texture (and free it if failed)
-			if( !CreateTexture(mvTextures[foundIdx], *pTextureCmd, dataSize) )
-			{
-				mvTextures[foundIdx] = mvTextures.back();
-				mvTextures.pop_back();
+		// Try creating the texture (and free it if failed)
+		if( !isRemoval && texIt != mTextureTable.end() ) {
+			if( !CreateTexture(texIt->second, *pTextureCmd, dataSize) )	{
+				mTextureTable.erase(texIt);
 			}
 		}
 		NetImgui::Internal::netImguiDeleteSafe(pTextureCmd);
@@ -152,11 +138,12 @@ void Client::Initialize()
 void Client::Uninitialize()
 {
 	NetImguiServer::App::HAL_DestroyRenderTarget(mpHAL_AreaRT, mpHAL_AreaTexture);
-	for(auto& texEntry : mvTextures )
-	{
-		NetImguiServer::App::HAL_DestroyTexture(texEntry);
+	NetImgui::Internal::CmdTexture cmdDelete;
+	for(auto& texIt : mTextureTable ){
+		cmdDelete.mTextureId = texIt.second.mImguiId;
+		NetImguiServer::App::DestroyTexture(texIt.second, cmdDelete, 0);
 	}
-	mvTextures.clear();
+	mTextureTable.clear();
 
 	mPendingImguiDrawDataIn.Free();
 	mPendingBackgroundIn.Free();
@@ -235,8 +222,7 @@ NetImguiImDrawData*	Client::GetImguiDrawData(void* pEmtpyTextureHAL)
 	if( pPendingDrawData )
 	{
 		NetImgui::Internal::netImguiDeleteSafe( mpImguiDrawData );
-		mpImguiDrawData				= pPendingDrawData;
-		const size_t clientTexCount = mvTextures.size();
+		mpImguiDrawData	= pPendingDrawData;
 		
 		// When a new drawdata is available, need to convert the textureid from NetImgui Id
 		// to the backend renderer format (texture view pointer). 
@@ -247,16 +233,10 @@ NetImguiImDrawData*	Client::GetImguiDrawData(void* pEmtpyTextureHAL)
 			ImDrawList* pCmdList = pPendingDrawData->CmdLists[i];
 			for(int drawIdx(0), drawCount(pCmdList->CmdBuffer.size()); drawIdx<drawCount; ++drawIdx)
 			{
-				uint64_t wantedTexID					= NetImgui::Internal::TextureCastFromID(pCmdList->CmdBuffer[drawIdx].TextureId);
-				pCmdList->CmdBuffer[drawIdx].TextureId	= NetImgui::Internal::TextureCastFromPtr(pEmtpyTextureHAL); // Default to empty texture
-				for(size_t texIdx=0; texIdx<clientTexCount; ++texIdx)
-				{
-					if( mvTextures[texIdx].mImguiId == wantedTexID )
-					{
-						pCmdList->CmdBuffer[drawIdx].TextureId	= NetImgui::Internal::TextureCastFromPtr(mvTextures[texIdx].mpHAL_Texture);
-						break;
-					}
-				}
+				uint64_t wantedTexID	= NetImgui::Internal::TextureCastFromID(pCmdList->CmdBuffer[drawIdx].TextureId);
+				auto texIt				= mTextureTable.find(wantedTexID);
+				auto texHALPtr			= texIt == mTextureTable.end() ? pEmtpyTextureHAL : texIt->second.mpHAL_Texture;
+				pCmdList->CmdBuffer[drawIdx].TextureId	= NetImgui::Internal::TextureCastFromPtr( texHALPtr );
 			}
 		}
 	}	
