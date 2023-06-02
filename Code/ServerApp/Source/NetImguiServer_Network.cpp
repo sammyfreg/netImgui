@@ -368,6 +368,7 @@ bool Startup( )
 		return false;
 	}
 	
+	gbShutdown = false;
 	gActiveClientThreadCount = 0;	
 	std::thread(NetworkConnectRequest_Receive).detach();
 	std::thread(NetworkConnectRequest_Send).detach();
