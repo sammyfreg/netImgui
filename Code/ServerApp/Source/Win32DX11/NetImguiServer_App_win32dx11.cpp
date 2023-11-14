@@ -39,6 +39,8 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 // Main code
 int main(int, char**)
 {
+    SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE); // @SAMPLE_EDIT (DPI Awareness)
+
     // Create application window
     //ImGui_ImplWin32_EnableDpiAwareness();
     WNDCLASSEXW wc = { sizeof(wc), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, L"NetImgui Server", nullptr }; // @SAMPLE_EDIT (changed name)
@@ -140,7 +142,8 @@ int main(int, char**)
             elapsedSec	= std::chrono::high_resolution_clock::now() - sLastTime;
         }
         sLastTime = std::chrono::high_resolution_clock::now();
-        NetImguiServer::App::UpdateRemoteContent();         // @SAMPLE_EDIT (Request each client to update their drawing content )
+        NetImguiServer::App::UpdateRemoteContent();         					// @SAMPLE_EDIT (Request each client to update their drawing content )
+        ImGui::GetIO().FontGlobalScale = NetImguiServer::UI::GetFontDPIScale();	// @SAMPLE_EDIT (DPI Awareness)
         //=========================================================================================
 		
         // Start the Dear ImGui frame
@@ -307,6 +310,7 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
             g_pSwapChain->ResizeBuffers(0, (UINT)LOWORD(lParam), (UINT)HIWORD(lParam), DXGI_FORMAT_UNKNOWN, 0);
             CreateRenderTarget();
         }
+        NetImguiServer::UI::SetWindowDPI(GetDpiForWindow(hWnd)); // @SAMPLE_EDIT (DPI Awareness)
         return 0;
     case WM_SYSCOMMAND:
         if ((wParam & 0xfff0) == SC_KEYMENU) // Disable ALT application menu
@@ -316,6 +320,7 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         ::PostQuitMessage(0);
         return 0;
     case WM_DPICHANGED:
+        NetImguiServer::UI::SetWindowDPI(GetDpiForWindow(hWnd)); // @SAMPLE_EDIT (DPI Awareness)
         if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DpiEnableScaleViewports)
         {
             //const int dpi = HIWORD(wParam);

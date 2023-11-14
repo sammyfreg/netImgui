@@ -27,8 +27,8 @@ namespace NetImguiServer { namespace App
 	void	Shutdown();
 	// Receive rendering request of each Remote client and output it to their own RenderTarget
 	void	UpdateRemoteContent();
-	// Add a new remote client config to our list (to attempt conexion)
-	bool	AddClientConfigFromString(const char* string, bool transient);	
+	// Add a new remote client config to our list (to attempt connexion)
+	bool	AddTransientClientConfigFromString(const char* string);
 	
 	// Descriptor of each textures by Server. Format always RGBA8
 	// @sammyfreg todo: make this safer with smart pointer instead of manually deleting the HALTexture

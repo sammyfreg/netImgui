@@ -4,12 +4,12 @@
 //! @Name		: NetImgui
 //=================================================================================================
 //! @author		: Sammy Fatnassi
-//! @date		: 2023/05/04
-//!	@version	: v1.9.1
+//! @date		: 2023/11/13
+//!	@version	: v1.9.2
 //! @Details	: For integration info : https://github.com/sammyfreg/netImgui/wiki
 //=================================================================================================
-#define NETIMGUI_VERSION		"1.9.1"	// 'Custom' texture format added
-#define NETIMGUI_VERSION_NUM	10901
+#define NETIMGUI_VERSION		"1.9.2"	// Handling of monitor DPI and ReadOnly config files
+#define NETIMGUI_VERSION_NUM	10902
 
 
 

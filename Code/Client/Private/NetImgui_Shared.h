@@ -72,7 +72,7 @@ public:
 protected:
 	TType&	mValueRef;
 	TType	mValueRestore;
-	uint8_t mPadding[sizeof(void*)-(sizeof(TType)%8)];
+	uint8_t mPadding[sizeof(void*)-(sizeof(TType)%8)]={};
 	
 	// Prevents warning about implicitly delete functions
 	ScopedValue(const ScopedValue&) = delete;

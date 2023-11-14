@@ -81,7 +81,7 @@ void NetImguiNamedPipeMsgReceive( HANDLE& hNamedPipe )
 			cbBytesReadTotal += cbBytesRead;
 		
 		ComPipeBuffer[cbBytesReadTotal] = 0;
-        NetImguiServer::App::AddClientConfigFromString(ComPipeBuffer, true);
+        NetImguiServer::App::AddTransientClientConfigFromString(ComPipeBuffer);
 		CloseHandle(hNamedPipe); // Will recreate the pipe, since it seems only 1 per remote application can exist
 		hNamedPipe = INVALID_HANDLE_VALUE;
 	}

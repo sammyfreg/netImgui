@@ -44,6 +44,7 @@ struct alignas(8) CmdVersion
 		Imgui_1_87			= 10,	// Added Dear ImGui Input refactor
 		OffetPointer		= 11,	// Updated the handling of OffsetPoint. Moved flag bit from last bit to first bit. Addresses and data are always at least 4 bytes aligned, so should never conflict with potential address space
 		CustomTexture		= 12,	// Added a 'custom' texture format to let user potentially handle their how format
+		DPIScale			= 13,	// Server now handle monitor DPI
 		// Insert new version here
 
 		//--------------------------------
@@ -191,7 +192,7 @@ struct alignas(8) CmdInput
 	uint16_t						mKeyCharCount					= 0;		// Number of valid input characters
 	bool							mCompressionUse					= false;	// Server would like client to compress the communication data
 	bool							mCompressionSkip				= false;	// Server forcing next client's frame data to be uncompressed
-	uint8_t							PADDING[4]						= {};
+	float							mFontDPIScaling					= 1.f;		// Font scaling request by Server accounting for monitor DPI
 	uint64_t						mMouseDownMask					= 0;
 	uint64_t						mInputDownMask[(ImGuiKey_COUNT+63)/64]={};
 	float							mInputAnalog[kAnalog_Count]		= {};
@@ -222,7 +223,7 @@ struct alignas(8) CmdDrawFrame
 	uint32_t						mTotalDrawCount		= 0;
 	uint32_t						mUncompressedSize	= 0;
 	uint8_t							mCompressed			= false;
-	uint8_t							PADDING[3];
+	uint8_t							PADDING[3]			= {};
 	OffsetPointer<ImguiDrawGroup>	mpDrawGroups;
 	inline void						ToPointers();
 	inline void						ToOffsets();

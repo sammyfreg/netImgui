@@ -93,7 +93,7 @@ bool CreateTexture_Custom( ServerTexture& serverTexture, const NetImgui::Interna
 		if( customDataSize == sizeof(customTextureData2) && pCustomData2->m_Stamp == customTextureData2::kStamp )
 		{
 			uint32_t* pTempData	= static_cast<uint32_t*>(malloc(cmdTexture.mWidth*cmdTexture.mHeight*sizeof(uint32_t)));
-			for(uint32_t x=0; x<cmdTexture.mWidth; ++x)
+			for(uint32_t x=0; pTempData && x<cmdTexture.mWidth; ++x)
 			{
 				constexpr uint64_t kLoopTimeUS	= 1000 * 1000 * 3; // 1 Loop per 10 seconds
 				float ratioX					= static_cast<float>(x) / static_cast<float>(cmdTexture.mWidth);

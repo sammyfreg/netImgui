@@ -393,6 +393,8 @@ void Client::CaptureImguiInput()
 	pNewInput								= pNewInput ? pNewInput : NetImgui::Internal::netImguiNew<NetImgui::Internal::CmdInput>();
 
 	// Create new Input command to send to client
+	NetImguiServer::Config::Client config;
+	NetImguiServer::Config::Client::GetConfigByID(mClientConfigID, config);
 	pNewInput->mScreenSize[0]		= static_cast<uint16_t>(ImGui::GetContentRegionAvail().x);
 	pNewInput->mScreenSize[1]		= static_cast<uint16_t>(ImGui::GetContentRegionAvail().y);
 	pNewInput->mMousePos[0]			= static_cast<int16_t>(mMousePos[0]);
@@ -401,6 +403,7 @@ void Client::CaptureImguiInput()
 	pNewInput->mMouseWheelHoriz		= mMouseWheelPos[1];
 	pNewInput->mCompressionUse		= NetImguiServer::Config::Server::sCompressionEnable;
 	pNewInput->mCompressionSkip		= mbCompressionSkipOncePending;
+	pNewInput->mFontDPIScaling		= config.mDPIScaleEnabled ? NetImguiServer::UI::GetFontDPIScale() : 1.f;
 	mbCompressionSkipOncePending	= false;
 
 	if( ImGui::IsWindowFocused() )

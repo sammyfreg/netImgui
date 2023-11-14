@@ -21,7 +21,7 @@ struct ImguiDraw
 	uint32_t	mVtxOffset;		// Drawcall start position in vertices buffer (considered index 0)
 	uint32_t	mIdxOffset;		// Drawcall start position in indices buffer
 	float		mClipRect[4];
-	uint8_t		PADDING[4];
+	uint8_t		PADDING[4]={};
 };
 
 // Each DearImgui window has its own vertex/index buffers with multiple drawcalls
@@ -34,7 +34,7 @@ struct alignas(8) ImguiDrawGroup
 	uint32_t					mDrawCount			= 0;
 	uint32_t					mDrawGroupIdxPrev	= kInvalidDrawGroup;// Group index in previous DrawFrame (kInvalidDrawGroup when not using delta compression)
 	uint8_t						mBytePerIndex		= 2;				// 2, 4 bytes
-	uint8_t						PADDING[7];
+	uint8_t						PADDING[7]			= {};
 	float						mReferenceCoord[2]	= {};				// Reference position for the encoded vertices offsets (1st vertice top/left position)
 	OffsetPointer<uint8_t>		mpIndices;
 	OffsetPointer<ImguiVert>	mpVertices;

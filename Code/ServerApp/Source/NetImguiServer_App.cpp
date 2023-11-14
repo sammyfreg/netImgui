@@ -18,7 +18,7 @@ bool Startup(const char* CmdLine)
 	// Load Settings savefile and parse for auto connect commandline option
 	//---------------------------------------------------------------------------------------------	
 	NetImguiServer::Config::Client::LoadAll();
-	AddClientConfigFromString(CmdLine, true);
+	AddTransientClientConfigFromString(CmdLine);
 	
 	//---------------------------------------------------------------------------------------------
     // Perform application initialization:
@@ -74,14 +74,14 @@ void DestroyDrawData(ImDrawData*& pDrawData)
 // INIT CLIENT CONFIG FROM STRING
 // Take a commandline string, and create a ClientConfig from it.
 // Simple format of (Hostname);(HostPort)
-bool AddClientConfigFromString(const char* string, bool transient)
+bool AddTransientClientConfigFromString(const char* string)
 //=================================================================================================
 {
 	NetImguiServer::Config::Client cmdlineClient;
 	const char* zEntryStart		= string;
 	const char* zEntryCur		= string;
 	int paramIndex				= 0;
-	cmdlineClient.mTransient	= transient;
+	cmdlineClient.mConfigType	= NetImguiServer::Config::Client::eConfigType::Transient;
 	NetImgui::Internal::StringCopy(cmdlineClient.mClientName, "Commandline");
 
 	while( *zEntryCur != 0 )

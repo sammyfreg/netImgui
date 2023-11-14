@@ -18,6 +18,7 @@ namespace NetImguiServer { namespace UI
 
 constexpr uint32_t			kClientRemoteInvalid				= 0xFFFFFFFF;
 constexpr char				kNetImguiURL[]						= "https://github.com/sammyfreg/netImgui";
+constexpr uint32_t			kWindowDPIDefault					= 96;
 const char*					kDataSizeUnits[]					= {"B", "KB", "MB", "GB"};
 static const  ImVec4		kColorBGClear						= ImVec4(0.8f,0.8f,0.8f, 1.f);	// Background color of the main Server window
 static const  ImVec4		kColorBGTint						= ImVec4(1.f, 1.f, 1.f, 1.f);	// Tint applied to the main server window bg logo
@@ -25,6 +26,7 @@ static const ImVec4			kColorTitle							= ImVec4(0.3f,1.0f,0.3f,1.f);	// Various
 static const ImVec4			kColorContent						= ImVec4(0.7f,0.75f,0.7f,1.f);	// Various Server text content color
 static ImGuiID				gMainDockID							= 0;
 static float				gDisplayFPS							= 30.f;
+static uint32_t				gWindowDPI							= kWindowDPIDefault;
 static auto					gLastUIUpdate						= std::chrono::steady_clock::now();
 static App::ServerTexture	gBackgroundTexture;
 
@@ -81,8 +83,7 @@ void ClientInfoTooltip(const RemoteClient::Client& Client)
 	if (ImGui::IsItemHovered())
 	{		
 		NetImguiServer::Config::Client config;
-		constexpr float width(60.f);
-		
+		float width			= ImGui::CalcTextSize("Config  ").x;
 		auto elapsedTime	= std::chrono::steady_clock::now() - Client.mConnectedTime;
 		int tmSec			= static_cast<int>(std::chrono::duration_cast<std::chrono::seconds>(elapsedTime).count() % 60);
 		int tmMin			= static_cast<int>(std::chrono::duration_cast<std::chrono::minutes>(elapsedTime).count() % 60);
@@ -221,13 +222,15 @@ void Popup_ServerConfig()
 	static float sEditRefreshFPSActive		= 0;
 	static float sEditRefreshFPSInactive	= 0;
 	static bool sEditCompressionEnable		= true;
+	static float sSavedDPIScalePourcentage	= 0.f;
 	if( gPopup_ServerConfig_Show )
 	{		
 		if( sEditPort == -1 ){
-			sEditPort				= static_cast<int>(NetImguiServer::Config::Server::sPort);
-			sEditRefreshFPSActive	= NetImguiServer::Config::Server::sRefreshFPSActive;
-			sEditRefreshFPSInactive	= NetImguiServer::Config::Server::sRefreshFPSInactive;
-			sEditCompressionEnable	= NetImguiServer::Config::Server::sCompressionEnable;
+			sEditPort					= static_cast<int>(NetImguiServer::Config::Server::sPort);
+			sEditRefreshFPSActive		= NetImguiServer::Config::Server::sRefreshFPSActive;
+			sEditRefreshFPSInactive		= NetImguiServer::Config::Server::sRefreshFPSInactive;
+			sEditCompressionEnable		= NetImguiServer::Config::Server::sCompressionEnable;
+			sSavedDPIScalePourcentage	= NetImguiServer::Config::Server::sDPIScaleRatio;
 		}
 		ImGuiWindowClass windowClass;
 		windowClass.ViewportFlagsOverrideSet = ImGuiViewportFlags_TopMost;
@@ -266,12 +269,22 @@ void Popup_ServerConfig()
 				ImGui::SetTooltip("How often we refresh content of *visible* and *unfocused* clients.\nNote: Lowering this will reduce network traffic.");
 			}
 
+			// --- DPI Scale ---
+			constexpr float kStepSize = 5.f;
+			float scalePourcentage = NetImguiServer::Config::Server::sDPIScaleRatio * 100.f;
+			ImGui::SliderFloat("DPI Scale Factor", &scalePourcentage, 0.f, 200.f, "%4.f %%");			
+			scalePourcentage = round(scalePourcentage  / kStepSize) * kStepSize;
+			NetImguiServer::Config::Server::sDPIScaleRatio = scalePourcentage / 100.f;
+			if (ImGui::IsItemHovered()) {
+				ImGui::SetTooltip("Amount of Font scaling applied on high resolution monitors.\n(Helps with tiny text)");
+			}
+
 			// --- Data Compression ---
 			ImGui::Checkbox("Use Compression", &sEditCompressionEnable);
 			if( ImGui::IsItemHovered() ){
 				ImGui::SetTooltip(	"Enable data compression between Client/Server communications.\n"
 									"Greatly reduce bandwidth for a small CPU overhead on the client.\n"
-									"Note: This setting can be overriden on client side.");
+									"Note: This setting can be overridden on client side.");
 			}
 
 			// --- Save/Cancel ---
@@ -281,6 +294,7 @@ void Popup_ServerConfig()
 			gPopup_ServerConfig_Show	&= !ImGui::Button("Cancel", ImVec2(ImGui::GetContentRegionAvail().x / 2.f, 0)) && !wantExit;
 			ImGui::SetItemDefaultFocus();
 			ImGui::SameLine();
+			// Save settings
 			if (ImGui::Button("Save", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
 				NetImguiServer::Config::Server::sPort				= static_cast<uint32_t>(sEditPort);
 				NetImguiServer::Config::Server::sRefreshFPSActive	= sEditRefreshFPSActive;
@@ -288,6 +302,10 @@ void Popup_ServerConfig()
 				NetImguiServer::Config::Server::sCompressionEnable	= sEditCompressionEnable;
 				NetImguiServer::Config::Client::SaveAll();
 				gPopup_ServerConfig_Show = false;
+			}
+			// Restore settings
+			else if (!gPopup_ServerConfig_Show){
+				NetImguiServer::Config::Server::sDPIScaleRatio = sSavedDPIScalePourcentage;
 			}
 
 			sPopupSize = ImGui::GetWindowSize();
@@ -346,6 +364,15 @@ void Popup_ClientConfigEdit()
 
 			// --- Auto ---
 			ImGui::Checkbox("Auto Connect", &gPopup_ClientConfig_pConfig->mConnectAuto);
+			if (ImGui::IsItemHovered()) {
+				ImGui::SetTooltip("Server automatically detect when this client is available and connect to it.");
+			}
+
+			// --- DPI Scale ---
+			ImGui::Checkbox("DPI Scale", &gPopup_ClientConfig_pConfig->mDPIScaleEnabled);
+			if (ImGui::IsItemHovered()) {
+				ImGui::SetTooltip("Text content will be scaled up on high resolution monitors for increased readability.");
+			}
 
 			// --- Save/Cancel ---
 			ImGui::NewLine();
@@ -570,13 +597,12 @@ void DrawImguiContent_Clients()
 //=================================================================================================
 void DrawImguiContent_MainMenu_Clients_Entry(RemoteClient::Client* pClient, NetImguiServer::Config::Client* pClientConfig)
 {
-	const bool hasValidConfig = pClientConfig && !pClientConfig->mTransient;
-
 	ImGui::TableNextRow();
 	ImGui::TableSetColumnIndex(0);
 		
 	// Name / Status
 	ImGui::PushStyleColor(ImGuiCol_CheckMark, pClient && pClient->mbIsConnected ? ImVec4(0.7f, 1.f, 0.25f, 1.f) : ImVec4(1.f, 0.35f, 0.35f, 1.f));
+	ImGui::BeginDisabled(pClientConfig->IsReadOnly());
 	ImGui::RadioButton("##Connected", true);
 	ImGui::PopStyleColor();	
 	if( pClient && pClient->mbIsConnected  ){
@@ -600,7 +626,7 @@ void DrawImguiContent_MainMenu_Clients_Entry(RemoteClient::Client* pClient, NetI
 	ImGui::TableNextColumn();
 	
 	// Config: AutoConnect
-	if( hasValidConfig && ImGui::Checkbox("##auto", &pClientConfig->mConnectAuto)) {
+	if (ImGui::Checkbox("##auto", &pClientConfig->mConnectAuto)) {
 		NetImguiServer::Config::Client::SetProperty_ConnectAuto(pClientConfig->mRuntimeID, pClientConfig->mConnectAuto);
 		NetImguiServer::Config::Client::SaveAll();
 	}
@@ -609,31 +635,30 @@ void DrawImguiContent_MainMenu_Clients_Entry(RemoteClient::Client* pClient, NetI
 	}
 	ImGui::TableNextColumn();
 
-	if( hasValidConfig )
-	{
-		if (ImGui::Button("-") )
-		{		
-			gPopup_ConfirmDelete_ConfigIdx = pClientConfig->mRuntimeID;
-		}		
-		ImGui::SameLine(); 
-		if ( ImGui::Button("...") && !gPopup_ClientConfig_pConfig ) // Only 1 config edit at a time, otherwise need to handle properly to avoid mem leak
-		{
-			gPopup_ClientConfig_pConfig	= NetImgui::Internal::netImguiNew<NetImguiServer::Config::Client>(*pClientConfig);
-		}		
+	if (ImGui::Button(" - ") )
+	{		
+		gPopup_ConfirmDelete_ConfigIdx = pClientConfig->mRuntimeID;
 	}
+	ImGui::SameLine(); 
+	if ( ImGui::Button(" ... ") && !gPopup_ClientConfig_pConfig ) // Only 1 config edit at a time, otherwise need to handle properly to avoid mem leak
+	{
+		gPopup_ClientConfig_pConfig	= NetImgui::Internal::netImguiNew<NetImguiServer::Config::Client>(*pClientConfig);
+	}		
+
+	ImGui::EndDisabled();
 	ImGui::TableNextColumn();
 
 	// Config: Connection
-	if( pClient && !pClient->mbDisconnectPending && ImGui::Button("Disconnect", ImVec2(80,0 )) )
+	if( pClient && !pClient->mbDisconnectPending && ImGui::Button("Disconnect", ImVec2(80 * GetFontDPIScale(),0 )) )
 	{
 		gPopup_ConfirmDisconnect_ClientIdx = pClient->mClientIndex;
 	}
 	else if( pClientConfig )
 	{
-		if( pClientConfig->mTransient ){
+		if( pClientConfig->IsTransient() ){
 			ImGui::TextUnformatted("(Request)");
 		}
-		else if (!pClientConfig->mConnected && !pClientConfig->mConnectRequest && ImGui::Button("Connect", ImVec2(80,0 )) ){
+		else if (!pClientConfig->mConnected && !pClientConfig->mConnectRequest && ImGui::Button("Connect", ImVec2(80 * GetFontDPIScale(),0 )) ){
 			NetImguiServer::Config::Client::SetProperty_ConnectRequest(pClientConfig->mRuntimeID, true);
 		}
 	}
@@ -747,7 +772,6 @@ void DrawImguiContent_MainMenu_Clients()
 //=================================================================================================
 void DrawImguiContent_MainMenu_Stats()
 {
-	constexpr float width(100.f);
 	uint32_t txKBs(0), rxKBs(0), connected(0);	
 	for(uint32_t i(0); i<RemoteClient::Client::GetCountMax(); ++i)
 	{
@@ -757,8 +781,9 @@ void DrawImguiContent_MainMenu_Stats()
 		connected	+= client.mbIsConnected ? 1 : 0;
 	}
 
-	ImGui::SameLine(0.f, ImGui::GetContentRegionAvail().x-200.f);
-	ImGui::TextColored(kColorContent, "(Rx) %iKB/s   (Tx) %iKB/s", rxKBs, txKBs);
+	float textWidth = ImGui::CalcTextSize("(Rx)0000KB/s  (Tx) 0000KB/s").x;
+	ImGui::SameLine(0.f, ImGui::GetContentRegionAvail().x - textWidth);
+	ImGui::TextColored(kColorContent, "(Rx) %4iKB/s  (Tx) %4iKB/s", rxKBs, txKBs);
 	if (ImGui::IsItemHovered())
 	{
 		uint64_t txData(NetImguiServer::Network::GetStatsDataSent());
@@ -767,9 +792,10 @@ void DrawImguiContent_MainMenu_Stats()
 		uint8_t rxUnitIdx = ConvertDataAmount(rxData);	
 		ImGui::BeginTooltip();
 		{
+			float width = ImGui::CalcTextSize("Data Received  ").x;
 			ImGui::TextUnformatted("Connections");		ImGui::SameLine(width); ImGui::TextColored(kColorContent, ": %i", connected);
 			ImGui::TextUnformatted("Data Received");	ImGui::SameLine(width); ImGui::TextColored(kColorContent, ": %i %s", static_cast<int>(rxData), kDataSizeUnits[rxUnitIdx]);
-			ImGui::TextUnformatted("Data Sent");		ImGui::SameLine(width); ImGui::TextColored(kColorContent, ": %i %s", static_cast<int>(txData), kDataSizeUnits[txUnitIdx]);			
+			ImGui::TextUnformatted("Data Sent");		ImGui::SameLine(width); ImGui::TextColored(kColorContent, ": %i %s", static_cast<int>(txData), kDataSizeUnits[txUnitIdx]);
 		}
 		ImGui::EndTooltip();
 	}
@@ -854,6 +880,24 @@ void Shutdown()
 float GetDisplayFPS()
 {	
 	return gDisplayFPS;
+}
+
+//=================================================================================================
+// Store the current Server application DPI (for font upscaling)
+//=================================================================================================
+void SetWindowDPI(uint32_t dpi)
+{
+	gWindowDPI = dpi;
+}
+
+//=================================================================================================
+// Get the font scaling factor applied to handle small text on screen with high resolution
+//=================================================================================================
+float GetFontDPIScale()
+{
+	float scale = ((float)gWindowDPI / (float)kWindowDPIDefault);
+	scale		= scale > 1.f ? scale : 1.f;
+	return 1.f + (scale - 1.f) * NetImguiServer::Config::Server::sDPIScaleRatio;
 }
 
 }} // namespace NetImguiServer { namespace UI

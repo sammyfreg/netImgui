@@ -521,9 +521,10 @@ static inline void AddKeyAnalogEvent(const Client::ClientInfo& client, const Cmd
 #if IMGUI_VERSION_NUM < 18700
 	IM_UNUSED(client); IM_UNUSED(pCmdInput); IM_UNUSED(netimguiKey); IM_UNUSED(imguiKey);
 #else
-	float analogValue	= pCmdInput->mInputAnalog[netimguiKey-CmdInput::kAnalog_First];
+	int indexAnalog		= ImMin(netimguiKey - CmdInput::kAnalog_First, CmdInput::kAnalog_Count-1);
+	float analogValue	= pCmdInput->mInputAnalog[indexAnalog];
 	bool bChanged		= (pCmdInput->mInputDownMask[valIndex] ^ client.mPreviousInputState.mInputDownMask[valIndex]) & valMask;
-	bChanged			|= abs(client.mPreviousInputState.mInputAnalog[netimguiKey-CmdInput::kAnalog_First] - analogValue) > 0.001f;
+	bChanged			|= abs(client.mPreviousInputState.mInputAnalog[indexAnalog] - analogValue) > 0.001f;
 	if(bChanged){
 		ImGui::GetIO().AddKeyAnalogEvent(imguiKey, pCmdInput->mInputDownMask[valIndex] & valMask, analogValue);
 	}
@@ -544,11 +545,11 @@ bool ProcessInputData(Client::ClientInfo& client)
 		const float wheelY	= pCmdInput->mMouseWheelVert - client.mPreviousInputState.mMouseWheelVertPrev;
 		const float wheelX	= pCmdInput->mMouseWheelHoriz - client.mPreviousInputState.mMouseWheelHorizPrev;
 		io.DisplaySize		= ImVec2(pCmdInput->mScreenSize[0], pCmdInput->mScreenSize[1]);
-		
+		io.FontGlobalScale	= pCmdInput->mFontDPIScaling;
 #if IMGUI_VERSION_NUM < 18700
-		io.MousePos									= ImVec2(pCmdInput->mMousePos[0], pCmdInput->mMousePos[1]);
-		io.MouseWheel								= wheelY;
-		io.MouseWheelH								= wheelX;
+		io.MousePos			= ImVec2(pCmdInput->mMousePos[0], pCmdInput->mMousePos[1]);
+		io.MouseWheel		= wheelY;
+		io.MouseWheelH		= wheelX;
 		for (uint32_t i(0); i < CmdInput::NetImguiMouseButton::ImGuiMouseButton_COUNT; ++i) {
 			io.MouseDown[i] = (pCmdInput->mMouseDownMask & (0x0000000000000001ull << i)) != 0;
 		}

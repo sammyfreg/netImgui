@@ -45,7 +45,7 @@ SocketInfo* Connect(const char* ServerHost, uint32_t ServerPort)
 	if(ClientSocket == INVALID_SOCKET)
 		return nullptr;
 	
-	char zPortName[32];
+	char zPortName[32]={};
 	addrinfo*	pResults	= nullptr;
 	SocketInfo* pSocketInfo	= nullptr;
 	NetImgui::Internal::StringFormat(zPortName, "%i", ServerPort);

@@ -38,9 +38,9 @@ struct SavedImguiContext
 	ImGuiConfigFlags		mConfigFlags			= 0;	
 	bool					mDrawMouse				= false;
 	bool					mSavedContext			= false;
-	char					mPadding1[6];
-	int						mKeyMap[ImGuiKey_COUNT];
-	char					mPadding2[8 - (sizeof(mKeyMap) % 8)];	
+	char					mPadding1[6]			= {};
+	int						mKeyMap[ImGuiKey_COUNT]	= {};
+	char					mPadding2[8 - (sizeof(mKeyMap) % 8)]={};	
 };
 
 //=============================================================================

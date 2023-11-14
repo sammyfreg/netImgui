@@ -12,10 +12,10 @@ static ImVector<Client*>	gConfigList;
 static std::mutex			gConfigLock;
 static Client::RuntimeID	gRuntimeID = static_cast<Client::RuntimeID>(1);
 
-static constexpr char kConfigFile[]								= "netImgui.cfg";
 static constexpr char kConfigField_ServerPort[]					= "ServerPort";
 static constexpr char kConfigField_ServerRefreshActive[]		= "RefreshFPSActive";
 static constexpr char kConfigField_ServerRefreshInactive[]		= "RefreshFPSInactive";
+static constexpr char kConfigField_ServerDPIScaleRatio[]		= "DPIScaleRatio";
 static constexpr char kConfigField_ServerCompressionEnable[]	= "CompressionEnable";
 
 static constexpr char kConfigField_Note[]						= "Note";
@@ -25,11 +25,22 @@ static constexpr char kConfigField_Name[]						= "Name";
 static constexpr char kConfigField_Hostname[]					= "Hostname";
 static constexpr char kConfigField_Hostport[]					= "HostPort";
 static constexpr char kConfigField_AutoConnect[]				= "Auto";
+static constexpr char kConfigField_DPIScaleEnabled[]			= "DPIScaleEnabled";
 
 uint32_t	Server::sPort				= NetImgui::kDefaultServerPort;
 float		Server::sRefreshFPSActive	= 30.f;
 float		Server::sRefreshFPSInactive	= 30.f;
+float		Server::sDPIScaleRatio		= 1.f;
 bool		Server::sCompressionEnable	= true;
+
+//=================================================================================================
+// The user config is created when the main config file is readonly
+// Allows having a distributed config file that cannot be touched by users
+static const char* GetConfigFilename(bool isUserConfig)
+//=================================================================================================
+{
+	return isUserConfig ? "netImgui_user.cfg" : "netImgui.cfg";
+}
 
 //=================================================================================================
 // Find entry index with same configId. (-1 if not found)
@@ -65,7 +76,8 @@ Client::Client()
 , mConnectAuto(false)
 , mConnectRequest(false)
 , mConnected(false)
-, mTransient(false)
+, mConfigType(NetImguiServer::Config::Client::eConfigType::PendingNew)
+, mDPIScaleEnabled(true)
 {
 	NetImgui::Internal::StringCopy(mClientName, "New Client");
 	NetImgui::Internal::StringCopy(mHostName, "localhost");
@@ -85,9 +97,9 @@ void Client::SetConfig(const Client& config)
 	std::lock_guard<std::mutex> guard(gConfigLock);	
 	
 	// Only allow 1 transient connection to keep things clean	
-	for(int i=0; config.mTransient && i<gConfigList.size(); ++i)
+	for(int i=0; config.IsTransient() && i<gConfigList.size(); ++i)
 	{
-		if( gConfigList[i] && gConfigList[i]->mTransient )
+		if( gConfigList[i] && gConfigList[i]->IsTransient())
 		{
 			NetImgui::Internal::netImguiDelete(gConfigList[i]);
 			gConfigList.erase(&gConfigList[i]);
@@ -187,37 +199,69 @@ void Client::SetProperty_ConnectRequest(uint32_t configID, bool value)
 		gConfigList[index]->mConnectRequest = value;
 }
 
+bool Client::ShouldSave(bool isUserCfg) const
+{ 
+	return isUserCfg	? mConfigType == eConfigType::PendingNew || mConfigType == eConfigType::User 
+						: mConfigType == eConfigType::PendingNew || mConfigType == eConfigType::Default;
+}
+
 //=================================================================================================
 void Client::SaveAll()
 //=================================================================================================
 {
 	std::lock_guard<std::mutex> guard(gConfigLock);
-	nlohmann::json configRoot;
+	std::ofstream outputFile(GetConfigFilename(false));
+	bool defaultIsWritable = outputFile.is_open();
+	outputFile.close();
 	
-	for (int i(0); i<gConfigList.size(); ++i)
-	{		
-		Client* pConfig	= gConfigList[i];
-		if( pConfig && !pConfig->mTransient )
+	// Try saving into default config file
+	// and then try saving it in user file when default is readonly	
+	SaveConfigFile(false, defaultIsWritable);
+	SaveConfigFile(true, !defaultIsWritable);
+}
+
+//=================================================================================================
+void Client::SaveConfigFile(bool isUserConfig, bool writeServerSettings)
+//=================================================================================================
+{
+	nlohmann::json configRoot;
+	configRoot[kConfigField_Version]	= eVersion::_Latest;
+	configRoot[kConfigField_Note]		= isUserConfig ? "NetImgui Server's list of Clients (Using JSON format) User file." : "netImgui Server's list of Clients (Using JSON format) Default File.";
+	if( writeServerSettings ){		
+		configRoot[kConfigField_ServerPort]					= Server::sPort;
+		configRoot[kConfigField_ServerRefreshActive]		= Server::sRefreshFPSActive;
+		configRoot[kConfigField_ServerRefreshInactive]		= Server::sRefreshFPSInactive;
+		configRoot[kConfigField_ServerDPIScaleRatio]		= Server::sDPIScaleRatio;
+		configRoot[kConfigField_ServerCompressionEnable]	= Server::sCompressionEnable;
+	}
+
+	int clientToSaveCount(0);
+	for (int i(0); i < gConfigList.size(); ++i)
+	{
+		Client* pConfig = gConfigList[i];
+		if (pConfig && pConfig->ShouldSave(isUserConfig))
 		{
-			auto& config						= configRoot[kConfigField_Configs][i] = nullptr;
-			config[kConfigField_Name]			= pConfig->mClientName;
-			config[kConfigField_Hostname]		= pConfig->mHostName;
-			config[kConfigField_Hostport]		= pConfig->mHostPort;
-			config[kConfigField_AutoConnect]	= pConfig->mConnectAuto;
+			auto& config = configRoot[kConfigField_Configs][clientToSaveCount++] = nullptr;
+			config[kConfigField_Name] = pConfig->mClientName;
+			config[kConfigField_Hostname] = pConfig->mHostName;
+			config[kConfigField_Hostport] = pConfig->mHostPort;
+			config[kConfigField_AutoConnect] = pConfig->mConnectAuto;
+			config[kConfigField_DPIScaleEnabled] = pConfig->mDPIScaleEnabled;
 		}
 	}
-	configRoot[kConfigField_Version]					= eVersion::_Latest;
-	configRoot[kConfigField_Note]						= "netImgui Server's list of Clients (Using JSON format).";
-	configRoot[kConfigField_ServerPort]					= Server::sPort;
-	configRoot[kConfigField_ServerRefreshActive]		= Server::sRefreshFPSActive;
-	configRoot[kConfigField_ServerRefreshInactive]		= Server::sRefreshFPSInactive;
-	configRoot[kConfigField_ServerCompressionEnable]	= Server::sCompressionEnable;
 
-	std::ofstream outputFile(kConfigFile);
-	if( outputFile.is_open() )
-	{
-		std::string result = configRoot.dump(1);
-		outputFile << result;
+	if( writeServerSettings || clientToSaveCount > 0 ){
+		std::ofstream outputFile(GetConfigFilename(isUserConfig));
+		if (outputFile.is_open()){
+			outputFile << configRoot.dump(1);
+			for (int i(0); i < gConfigList.size(); ++i)
+			{
+				Client* pConfig = gConfigList[i];
+				if (pConfig && pConfig->mConfigType == eConfigType::PendingNew) {
+					pConfig->mConfigType = isUserConfig ? eConfigType::User : eConfigType::Default;
+				}
+			}
+		}
 	}
 }
 
@@ -227,40 +271,53 @@ void Client::LoadAll()
 {
 	Clear();
 	std::lock_guard<std::mutex> guard(gConfigLock);
-	
-	nlohmann::json configRoot;
-	std::ifstream inputFile(kConfigFile);
-	if( !inputFile.is_open() )
-		return;
+	LoadConfigFile(false);
+	LoadConfigFile(true);
+}
 
+//=================================================================================================
+void Client::LoadConfigFile(bool isUserConfig)
+//=================================================================================================
+{	
+	nlohmann::json configRoot;
+	const char* filename = GetConfigFilename(isUserConfig);
+	std::ifstream inputFile(filename);
+	if (!inputFile.is_open() || inputFile.eof())
+		return;
+		
 	inputFile >> configRoot;
+	inputFile.close();
+	
+	std::ofstream outputFile(filename, std::ios_base::app);
+	bool isWritable = outputFile.is_open() && !outputFile.eof();
+	outputFile.close();
 
 	uint32_t configVersion		= GetPropertyValue(configRoot, kConfigField_Version,					0u);
 	Server::sPort				= GetPropertyValue(configRoot, kConfigField_ServerPort,					NetImgui::kDefaultServerPort);
 	Server::sRefreshFPSActive	= GetPropertyValue(configRoot, kConfigField_ServerRefreshActive,		Server::sRefreshFPSActive);
 	Server::sRefreshFPSInactive	= GetPropertyValue(configRoot, kConfigField_ServerRefreshInactive,		Server::sRefreshFPSInactive);
+	Server::sDPIScaleRatio		= GetPropertyValue(configRoot, kConfigField_ServerDPIScaleRatio,		Server::sDPIScaleRatio);
 	Server::sCompressionEnable	= GetPropertyValue(configRoot, kConfigField_ServerCompressionEnable,	Server::sCompressionEnable);
 	
 	if( configVersion >= static_cast<uint32_t>(eVersion::Initial) )
 	{	
 		for(const auto& config : configRoot[kConfigField_Configs] )
 		{
-			bool isValid(true);
-			if( isValid )
-			{
-				gConfigList.push_back(NetImgui::Internal::netImguiNew<NetImguiServer::Config::Client>());
-				Client* pConfig			= gConfigList.back();
-				pConfig->mRuntimeID		= gRuntimeID++;
+			gConfigList.push_back(NetImgui::Internal::netImguiNew<NetImguiServer::Config::Client>());
+			Client* pConfig			= gConfigList.back();
+			pConfig->mRuntimeID		= gRuntimeID++;
 
-				if( config.find(kConfigField_Name) != config.end() )
-					NetImgui::Internal::StringCopy(pConfig->mClientName, config[kConfigField_Name].get<std::string>().c_str());
+			if( config.find(kConfigField_Name) != config.end() )
+				NetImgui::Internal::StringCopy(pConfig->mClientName, config[kConfigField_Name].get<std::string>().c_str());
 				
-				if( config.find(kConfigField_Hostname) != config.end() )
-					NetImgui::Internal::StringCopy(pConfig->mHostName, config[kConfigField_Hostname].get<std::string>().c_str());
+			if( config.find(kConfigField_Hostname) != config.end() )
+				NetImgui::Internal::StringCopy(pConfig->mHostName, config[kConfigField_Hostname].get<std::string>().c_str());
 				
-				pConfig->mHostPort		= GetPropertyValue(config, kConfigField_Hostport, pConfig->mHostPort);
-				pConfig->mConnectAuto	= GetPropertyValue(config, kConfigField_AutoConnect, pConfig->mConnectAuto);
-			}
+			pConfig->mHostPort			= GetPropertyValue(config, kConfigField_Hostport, pConfig->mHostPort);
+			pConfig->mConnectAuto		= GetPropertyValue(config, kConfigField_AutoConnect, pConfig->mConnectAuto);
+			pConfig->mDPIScaleEnabled	= GetPropertyValue(config, kConfigField_DPIScaleEnabled, pConfig->mDPIScaleEnabled);
+			pConfig->mConfigType		= isUserConfig	? isWritable ? eConfigType::User	: eConfigType::UserRead
+														: isWritable ? eConfigType::Default : eConfigType::DefaultRead;
 		}
 	}
 }
