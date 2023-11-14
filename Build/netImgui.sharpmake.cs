@@ -89,7 +89,10 @@ namespace NetImgui
 			conf.Options.Add(new Options.Vc.Linker.DisableSpecificWarnings("4099")); //Prevents: warning LNK4099: PDB '' was not found with 'glfw3_mtd.lib(context.c.obj)' or at ''; linking object as if no debug info
 			//---------------------------------------------
 			
-			conf.EventPostBuild.Add("xcopy \"" + NetImguiTarget.GetPath(@"\Code\ServerApp\Background.png") + "\" \"" + conf.TargetPath + "\" /D /Y");
+			if (target.DevEnv != DevEnv.xcode4ios)
+			{
+				conf.EventPostBuild.Add("xcopy \"" + NetImguiTarget.GetPath(@"\Code\ServerApp\Background.png") + "\" \"" + conf.TargetPath + "\" /D /Y");
+			}
 		}
 
 		private string getGlfwLibName(Platform platform, DevEnv developerEnv)
@@ -101,7 +104,9 @@ namespace NetImgui
                 libName += "-vc2019";
 			} else if( developerEnv == DevEnv.vs2017 ) {
                 libName += "-vc2017";
-			}
+			} else if( developerEnv == DevEnv.xcode4ios ) {
+                libName += "-macos-universal";
+            }
 
             if (platform == Platform.win64) {
                 libName += "-64";
