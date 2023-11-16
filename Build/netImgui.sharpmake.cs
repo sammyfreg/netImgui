@@ -30,7 +30,8 @@ namespace NetImgui
 	}
 	
 	// Test compiling netImgui with the Disabled Define
-	[Sharpmake.Generate] public class ProjectNetImgui_Disabled : ProjectNetImgui { 
+	[Sharpmake.Generate] public class ProjectNetImgui_Disabled : ProjectNetImgui 
+	{ 
 		public ProjectNetImgui_Disabled() : base(NetImguiTarget.GetPath(ProjectImgui.sDefaultPath)) { Name = "NetImguiLib (Disabled)"; }
 		
 		public override void ConfigureAll(Configuration conf, NetImguiTarget target)

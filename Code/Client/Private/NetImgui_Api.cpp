@@ -521,7 +521,8 @@ static inline void AddKeyAnalogEvent(const Client::ClientInfo& client, const Cmd
 #if IMGUI_VERSION_NUM < 18700
 	IM_UNUSED(client); IM_UNUSED(pCmdInput); IM_UNUSED(netimguiKey); IM_UNUSED(imguiKey);
 #else
-	int indexAnalog		= ImMin(netimguiKey - CmdInput::kAnalog_First, CmdInput::kAnalog_Count-1);
+	int indexAnalog		= netimguiKey - CmdInput::kAnalog_First;
+	indexAnalog			= indexAnalog >= CmdInput::kAnalog_Count ? CmdInput::kAnalog_Count - 1 : indexAnalog;
 	float analogValue	= pCmdInput->mInputAnalog[indexAnalog];
 	bool bChanged		= (pCmdInput->mInputDownMask[valIndex] ^ client.mPreviousInputState.mInputDownMask[valIndex]) & valMask;
 	bChanged			|= abs(client.mPreviousInputState.mInputAnalog[indexAnalog] - analogValue) > 0.001f;

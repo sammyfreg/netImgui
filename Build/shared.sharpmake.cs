@@ -153,7 +153,7 @@ namespace NetImgui
 			conf.Output				= mIsExe ? Project.Configuration.OutputType.Exe : Project.Configuration.OutputType.Lib;
 
 			conf.IncludePaths.Add(NetImguiTarget.GetPath(ProjectImgui.sDefaultPath) + @"\backends");
-			
+			conf.IncludePaths.Add(NetImguiTarget.GetPath(@"\Code\Client"));
 			if ( target.Compiler == Compiler.Clang ){
 				conf.Options.Add(Options.Vc.General.PlatformToolset.ClangCL);
 				conf.AdditionalCompilerOptions.Add("-Wno-unused-command-line-argument"); //Note: Latest Clang doesn't support '/MP' (multiprocessor build) option, creating a compile error

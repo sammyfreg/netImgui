@@ -1,3 +1,4 @@
+#pragma once
 //
 // Deactivate a few more warnings to allow standard header includes,  
 // without generating warnings in '-Wall' compile actions enabled
