@@ -143,7 +143,7 @@ namespace NetImgui
 			conf.TargetPath			= NetImguiTarget.GetPath( mIsExe	? @"/_Bin/[target.DevEnv]_[target.Compiler]_[target.Platform]" 
 																		: @"\_generated/Libs\[target.DevEnv]_[target.Compiler]_[target.Platform]");
 			conf.IntermediatePath	= NetImguiTarget.GetPath(@"/_intermediate\[target.DevEnv]_[target.Compiler]_[target.Platform]_[target.Optimization]/[project.Name]");
-			conf.Output				= mIsExe ? Project.Configuration.OutputType.Exe : Project.Configuration.OutputType.Lib;
+			conf.Output				= mIsExe ? Project.Configuration.OutputType.IosApp : Project.Configuration.OutputType.Lib;
 			
 			conf.IncludePaths.Add(NetImguiTarget.GetPath(ProjectImgui.sDefaultPath) + @"\backends");
 

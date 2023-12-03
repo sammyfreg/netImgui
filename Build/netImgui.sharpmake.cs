@@ -89,7 +89,11 @@ namespace NetImgui
 			conf.Options.Add(new Options.Vc.Linker.DisableSpecificWarnings("4099")); //Prevents: warning LNK4099: PDB '' was not found with 'glfw3_mtd.lib(context.c.obj)' or at ''; linking object as if no debug info
 			//---------------------------------------------
 			
-			if (target.DevEnv != DevEnv.xcode4ios)
+			if (target.DevEnv == DevEnv.xcode4ios)
+			{
+				conf.Options.Add(new Sharpmake.Options.XCode.Compiler.InfoPListFile(NetImguiTarget.GetPath(@"/Code/ServerApp/info.plist")));
+			}
+			else
 			{
 				conf.EventPostBuild.Add("xcopy \"" + NetImguiTarget.GetPath(@"\Code\ServerApp\Background.png") + "\" \"" + conf.TargetPath + "\" /D /Y");
 			}
