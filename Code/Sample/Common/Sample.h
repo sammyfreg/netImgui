@@ -5,7 +5,11 @@
 // forward declares when NetImgui not enabled
 #if !NETIMGUI_ENABLED
 	struct ImDrawData;
-	namespace NetImgui { using ThreadFunctPtr = void*; }
+	namespace NetImgui 
+	{ 
+		using ThreadFunctPtr = void*;
+		using FontCreationFuncPtr = void*;
+	}
 #endif
 
 namespace SampleClient
