@@ -33,13 +33,25 @@ float		Server::sRefreshFPSInactive	= 30.f;
 float		Server::sDPIScaleRatio		= 1.f;
 bool		Server::sCompressionEnable	= true;
 
+
 //=================================================================================================
 // The user config is created when the main config file is readonly
 // Allows having a distributed config file that cannot be touched by users
-static const char* GetConfigFilename(bool isUserConfig)
+static const char* GetConfigFilename(Client::eConfigType configFileType)
 //=================================================================================================
 {
-	return isUserConfig ? "netImgui_user.cfg" : "netImgui.cfg";
+	if(configFileType == Client::eConfigType::Local){
+		return "netImgui.cfg";
+	}
+	else if(configFileType == Client::eConfigType::Local2nd){
+		return "netImgui_2.cfg";
+	}
+	else{
+		static char sUserSettingFile[1024];
+		const char* userSettingFolder = NetImguiServer::App::HAL_GetUserSettingFolder();
+		NetImgui::Internal::StringFormat(sUserSettingFile, (userSettingFolder ? "%s\\netImgui.cfg" : "netImgui_2.cfg"), userSettingFolder);
+		return sUserSettingFile;
+	}
 }
 
 //=================================================================================================
@@ -76,7 +88,7 @@ Client::Client()
 , mConnectAuto(false)
 , mConnectRequest(false)
 , mConnected(false)
-, mConfigType(NetImguiServer::Config::Client::eConfigType::PendingNew)
+, mConfigType(NetImguiServer::Config::Client::eConfigType::Pending)
 , mDPIScaleEnabled(true)
 {
 	NetImgui::Internal::StringCopy(mClientName, "New Client");
@@ -199,10 +211,11 @@ void Client::SetProperty_ConnectRequest(uint32_t configID, bool value)
 		gConfigList[index]->mConnectRequest = value;
 }
 
-bool Client::ShouldSave(bool isUserCfg) const
+//=================================================================================================
+bool Client::ShouldSave(eConfigType fileConfigType) const
+//=================================================================================================
 { 
-	return isUserCfg	? mConfigType == eConfigType::PendingNew || mConfigType == eConfigType::User 
-						: mConfigType == eConfigType::PendingNew || mConfigType == eConfigType::Default;
+	return mConfigType == fileConfigType || mConfigType == eConfigType::Pending;
 }
 
 //=================================================================================================
@@ -210,23 +223,30 @@ void Client::SaveAll()
 //=================================================================================================
 {
 	std::lock_guard<std::mutex> guard(gConfigLock);
-	std::ofstream outputFile(GetConfigFilename(false));
-	bool defaultIsWritable = outputFile.is_open();
-	outputFile.close();
-	
-	// Try saving into default config file
-	// and then try saving it in user file when default is readonly	
-	SaveConfigFile(false, defaultIsWritable);
-	SaveConfigFile(true, !defaultIsWritable);
+	std::ofstream localFile(GetConfigFilename(eConfigType::Local));
+	bool localIsWritable = localFile.is_open();
+	localFile.close();
+	std::ofstream local2ndFile(GetConfigFilename(eConfigType::Local2nd));
+	bool local2ndIsWritable = local2ndFile.is_open();
+	local2ndFile.close();
+
+	// Try saving into default config file	
+	SaveConfigFile(eConfigType::Local, localIsWritable);
+	// And then in 2nd workingdir user file when 1st one is read only
+	SaveConfigFile(eConfigType::Local2nd, !localIsWritable && local2ndIsWritable);
+	// Finally saved the shared config into user folder
+	SaveConfigFile(eConfigType::Shared, !localIsWritable && !local2ndIsWritable);
 }
 
 //=================================================================================================
-void Client::SaveConfigFile(bool isUserConfig, bool writeServerSettings)
+void Client::SaveConfigFile(eConfigType configFileType, bool writeServerSettings)
 //=================================================================================================
 {
 	nlohmann::json configRoot;
 	configRoot[kConfigField_Version]	= eVersion::_Latest;
-	configRoot[kConfigField_Note]		= isUserConfig ? "NetImgui Server's list of Clients (Using JSON format) User file." : "netImgui Server's list of Clients (Using JSON format) Default File.";
+	configRoot[kConfigField_Note]		= configFileType == eConfigType::Local	? "NetImgui Server's list of Clients (Using JSON format) Local File." 
+										: configFileType == eConfigType::Local	? "NetImgui Server's list of Clients (Using JSON format) 2nd Local File."
+																				: "NetImgui Server's list of Clients (Using JSON format) Shared File.";
 	if( writeServerSettings ){		
 		configRoot[kConfigField_ServerPort]					= Server::sPort;
 		configRoot[kConfigField_ServerRefreshActive]		= Server::sRefreshFPSActive;
@@ -239,7 +259,7 @@ void Client::SaveConfigFile(bool isUserConfig, bool writeServerSettings)
 	for (int i(0); i < gConfigList.size(); ++i)
 	{
 		Client* pConfig = gConfigList[i];
-		if (pConfig && pConfig->ShouldSave(isUserConfig))
+		if (pConfig && pConfig->ShouldSave(configFileType))
 		{
 			auto& config = configRoot[kConfigField_Configs][clientToSaveCount++] = nullptr;
 			config[kConfigField_Name] = pConfig->mClientName;
@@ -250,16 +270,16 @@ void Client::SaveConfigFile(bool isUserConfig, bool writeServerSettings)
 		}
 	}
 
-	if( writeServerSettings || clientToSaveCount > 0 ){
-		std::ofstream outputFile(GetConfigFilename(isUserConfig));
-		if (outputFile.is_open()){
-			outputFile << configRoot.dump(1);
-			for (int i(0); i < gConfigList.size(); ++i)
-			{
-				Client* pConfig = gConfigList[i];
-				if (pConfig && pConfig->mConfigType == eConfigType::PendingNew) {
-					pConfig->mConfigType = isUserConfig ? eConfigType::User : eConfigType::Default;
-				}
+	
+	std::ofstream outputFile(GetConfigFilename(configFileType));
+	if (outputFile.is_open()){
+		outputFile << configRoot.dump(4);
+		for (int i(0); clientToSaveCount > 0 && i < gConfigList.size(); ++i)
+		{
+			Client* pConfig = gConfigList[i];
+			if (pConfig && pConfig->ShouldSave(configFileType)){
+				pConfig->mReadOnly		= false;
+				pConfig->mConfigType	= configFileType;
 			}
 		}
 	}
@@ -271,21 +291,22 @@ void Client::LoadAll()
 {
 	Clear();
 	std::lock_guard<std::mutex> guard(gConfigLock);
-	LoadConfigFile(false);
-	LoadConfigFile(true);
+	LoadConfigFile(eConfigType::Local);
+	LoadConfigFile(eConfigType::Local2nd);
+	LoadConfigFile(eConfigType::Shared);
 }
 
 //=================================================================================================
-void Client::LoadConfigFile(bool isUserConfig)
+void Client::LoadConfigFile(eConfigType configFileType)
 //=================================================================================================
 {	
 	nlohmann::json configRoot;
-	const char* filename = GetConfigFilename(isUserConfig);
+	const char* filename = GetConfigFilename(configFileType);
 	std::ifstream inputFile(filename);
 	if (!inputFile.is_open() || inputFile.eof())
 		return;
-		
-	inputFile >> configRoot;
+
+	configRoot = nlohmann::json::parse(inputFile, nullptr, false);
 	inputFile.close();
 	
 	std::ofstream outputFile(filename, std::ios_base::app);
@@ -316,8 +337,8 @@ void Client::LoadConfigFile(bool isUserConfig)
 			pConfig->mHostPort			= GetPropertyValue(config, kConfigField_Hostport, pConfig->mHostPort);
 			pConfig->mConnectAuto		= GetPropertyValue(config, kConfigField_AutoConnect, pConfig->mConnectAuto);
 			pConfig->mDPIScaleEnabled	= GetPropertyValue(config, kConfigField_DPIScaleEnabled, pConfig->mDPIScaleEnabled);
-			pConfig->mConfigType		= isUserConfig	? isWritable ? eConfigType::User	: eConfigType::UserRead
-														: isWritable ? eConfigType::Default : eConfigType::DefaultRead;
+			pConfig->mConfigType		= configFileType;
+			pConfig->mReadOnly			= !isWritable;
 		}
 	}
 }

@@ -1090,6 +1090,7 @@ static void ImGui_ImplGlfw_ShowWindow(ImGuiViewport* viewport)
     // GLFW hack: install hook for WM_NCHITTEST message handler
 #if !GLFW_HAS_MOUSE_PASSTHROUGH && GLFW_HAS_WINDOW_HOVERED && defined(_WIN32)
     ImGui_ImplGlfw_Data* bd = ImGui_ImplGlfw_GetBackendData();
+    (VOID)bd;
     ::SetPropA(hwnd, "IMGUI_VIEWPORT", viewport);
     IM_ASSERT(bd->GlfwWndProc == (WNDPROC)::GetWindowLongPtr(hwnd, GWLP_WNDPROC));
     ::SetWindowLongPtr(hwnd, GWLP_WNDPROC, (LONG_PTR)ImGui_ImplGlfw_WndProc);

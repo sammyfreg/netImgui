@@ -4,12 +4,12 @@
 //! @Name		: NetImgui
 //=================================================================================================
 //! @author		: Sammy Fatnassi
-//! @date		: 2023/11/13
-//!	@version	: v1.9.2
+//! @date		: 2023/11/17
+//!	@version	: v1.9.3
 //! @Details	: For integration info : https://github.com/sammyfreg/netImgui/wiki
 //=================================================================================================
-#define NETIMGUI_VERSION		"1.9.2"	// Handling of monitor DPI and ReadOnly config files
-#define NETIMGUI_VERSION_NUM	10902
+#define NETIMGUI_VERSION		"1.9.3"	// Improve monitor DPI Handling by enabling font generation just for NetImgui
+#define NETIMGUI_VERSION_NUM	10903
 
 
 
@@ -132,9 +132,10 @@ enum eCompressionMode {
 };
 
 //-------------------------------------------------------------------------------------------------
-// Thread start function
+// Function typedefs
 //-------------------------------------------------------------------------------------------------
-typedef void ThreadFunctPtr(void threadedFunction(void* pClientInfo), void* pClientInfo);
+typedef void (*ThreadFunctPtr)(void threadedFunction(void* pClientInfo), void* pClientInfo);
+typedef void (*FontCreationFuncPtr)(float PreviousDPIScale, float NewDPIScale);
 
 //=================================================================================================
 // Initialize the Network Library
@@ -162,9 +163,12 @@ NETIMGUI_API	void				Shutdown();
 // clientPort		: PortID this Client should wait for connection from Server application
 // threadFunction	: User provided function to launch new networking thread.
 //					  Use 'DefaultStartCommunicationThread' by default (relying on 'std::thread').
+//SF todo
+// Assign callback to regenerate font to requested scaling to handle monitor DPI
+// Without this, will rely on 'FontGlobalScale' which is not as sharp looking
 //=================================================================================================
-NETIMGUI_API	bool				ConnectToApp(const char* clientName, const char* serverHost, uint32_t serverPort=kDefaultServerPort, ThreadFunctPtr threadFunction=0);
-NETIMGUI_API	bool				ConnectFromApp(const char* clientName, uint32_t clientPort=kDefaultClientPort, ThreadFunctPtr threadFunction=0);
+NETIMGUI_API	bool				ConnectToApp(const char* clientName, const char* serverHost, uint32_t serverPort=kDefaultServerPort, ThreadFunctPtr threadFunction=0, FontCreationFuncPtr FontCreateFunction = 0);
+NETIMGUI_API	bool				ConnectFromApp(const char* clientName, uint32_t clientPort=kDefaultClientPort, ThreadFunctPtr threadFunction=0, FontCreationFuncPtr FontCreateFunction  = 0);
 
 //=================================================================================================
 // Request a disconnect from the NetImguiServer application

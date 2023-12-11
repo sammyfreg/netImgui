@@ -20,7 +20,7 @@ ImDrawData*		Client_Draw();
 //-----------------------------------------------------------------------------
 // Utility methods available in Samples
 //-----------------------------------------------------------------------------
-void ClientUtil_ImGuiContent_Common(const char* zAppName, NetImgui::ThreadFunctPtr customThreadLauncher=nullptr);
+void ClientUtil_ImGuiContent_Common(const char* zAppName, NetImgui::ThreadFunctPtr customThreadLauncher=nullptr, NetImgui::FontCreationFuncPtr FontCreateFunction=nullptr);
 
 }
 

@@ -36,7 +36,7 @@ void DefaultStartCommunicationThread(void ComFunctPtr(void*), void* pClient)
 
 
 //=================================================================================================
-bool ConnectToApp(const char* clientName, const char* ServerHost, uint32_t serverPort, ThreadFunctPtr threadFunction)
+bool ConnectToApp(const char* clientName, const char* ServerHost, uint32_t serverPort, ThreadFunctPtr threadFunction, FontCreationFuncPtr FontCreateFunction)
 //=================================================================================================
 {
 	if (!gpClientInfo) return false;
@@ -48,10 +48,11 @@ bool ConnectToApp(const char* clientName, const char* ServerHost, uint32_t serve
 		std::this_thread::yield();
 
 	client.ContextRestore();		// Restore context setting override, after a disconnect
-	client.ContextRemoveHooks();	// Remove hooks callback only when completly disconnected
+	client.ContextRemoveHooks();	// Remove hooks callback only when completely disconnected
 
 	StringCopy(client.mName, (clientName == nullptr || clientName[0] == 0 ? "Unnamed" : clientName));
-	client.mpSocketPending	= Network::Connect(ServerHost, serverPort);	
+	client.mpSocketPending			= Network::Connect(ServerHost, serverPort);
+	client.mFontCreationFunction	= FontCreateFunction;
 	if (client.mpSocketPending.load() != nullptr)
 	{				
 		client.ContextInitialize();
@@ -63,7 +64,7 @@ bool ConnectToApp(const char* clientName, const char* ServerHost, uint32_t serve
 }
 
 //=================================================================================================
-bool ConnectFromApp(const char* clientName, uint32_t serverPort, ThreadFunctPtr threadFunction)
+bool ConnectFromApp(const char* clientName, uint32_t serverPort, ThreadFunctPtr threadFunction, FontCreationFuncPtr FontCreateFunction)
 //=================================================================================================
 {
 	if (!gpClientInfo) return false;
@@ -78,7 +79,8 @@ bool ConnectFromApp(const char* clientName, uint32_t serverPort, ThreadFunctPtr 
 	client.ContextRemoveHooks();	// Remove hooks callback only when completly disconnected
 	
 	StringCopy(client.mName, (clientName == nullptr || clientName[0] == 0 ? "Unnamed" : clientName));
-	client.mpSocketPending = Network::ListenStart(serverPort);
+	client.mpSocketPending			= Network::ListenStart(serverPort);
+	client.mFontCreationFunction	= FontCreateFunction;
 	if (client.mpSocketPending.load() != nullptr)
 	{				
 		client.ContextInitialize();
@@ -546,7 +548,24 @@ bool ProcessInputData(Client::ClientInfo& client)
 		const float wheelY	= pCmdInput->mMouseWheelVert - client.mPreviousInputState.mMouseWheelVertPrev;
 		const float wheelX	= pCmdInput->mMouseWheelHoriz - client.mPreviousInputState.mMouseWheelHorizPrev;
 		io.DisplaySize		= ImVec2(pCmdInput->mScreenSize[0], pCmdInput->mScreenSize[1]);
-		io.FontGlobalScale	= pCmdInput->mFontDPIScaling;
+
+		// User assigned a function callback handling FontScaling, 
+		// use it to request a Font update on DPI scaling change on the server
+		if (gpClientInfo->mFontCreationFunction != nullptr)
+		{
+			if(abs(gpClientInfo->mFontCreationScaling - pCmdInput->mFontDPIScaling) > 0.01f)
+			{				
+				gpClientInfo->mFontCreationFunction(gpClientInfo->mFontCreationScaling, pCmdInput->mFontDPIScaling);
+				gpClientInfo->mFontCreationScaling = pCmdInput->mFontDPIScaling;
+			}
+		}
+		// Client doesn't support regenerating the font at new DPI
+		// Use FontGlobalScale to affect rendering size, resulting in blurrier result
+		else
+		{
+			io.FontGlobalScale = pCmdInput->mFontDPIScaling;
+		}
+		
 #if IMGUI_VERSION_NUM < 18700
 		io.MousePos			= ImVec2(pCmdInput->mMousePos[0], pCmdInput->mMousePos[1]);
 		io.MouseWheel		= wheelY;

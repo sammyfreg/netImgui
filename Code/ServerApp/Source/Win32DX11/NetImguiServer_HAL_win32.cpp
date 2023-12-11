@@ -10,9 +10,9 @@
 
 #include <windows.h>
 #include <tchar.h>
+#include <shlobj_core.h> 
 #include <WinSock2.h>
 #include <WS2tcpip.h>
-#include <shellapi.h>	// To open webpage link
 #include "../resource.h"
 #include "imgui.h"
 #include "imgui_impl_win32.h"
@@ -170,6 +170,35 @@ bool HAL_GetSocketInfo(NetImgui::Internal::Network::SocketInfo* pClientSocket, c
 	}
 	return false;
 }
+
+//=================================================================================================
+// HAL GET USER SETTING FOLDER
+// Request the directory where to the 'shared config' clients should be saved
+// Return 'nullptr' to disable this feature
+//=================================================================================================
+const char* HAL_GetUserSettingFolder()
+{
+	static char sUserSettingFolder[1024]={};
+	if(sUserSettingFolder[0] == 0)
+	{
+		WCHAR* UserPath;
+		HRESULT Ret = SHGetKnownFolderPath(FOLDERID_LocalAppData, 0, NULL, &UserPath);
+		if( SUCCEEDED(Ret) ){
+			sprintf_s(sUserSettingFolder, "%ws\\NetImgui", UserPath); // convert from wchar to char
+			DWORD ftyp = GetFileAttributesA(sUserSettingFolder);
+			if (ftyp != INVALID_FILE_ATTRIBUTES && (ftyp & FILE_ATTRIBUTE_DIRECTORY) ){
+				return sUserSettingFolder;
+			}
+			else if (ftyp == INVALID_FILE_ATTRIBUTES && CreateDirectoryA(sUserSettingFolder, nullptr) ){
+				return sUserSettingFolder;
+			}
+		}
+		sUserSettingFolder[0] = 0;
+		return nullptr;
+	}
+	return sUserSettingFolder;
+}
+
 }} // namespace NetImguiServer { namespace App
 
 #endif // HAL_API_PLATFORM_WIN32_DX11

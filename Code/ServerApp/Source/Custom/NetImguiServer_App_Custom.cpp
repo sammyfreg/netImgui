@@ -141,13 +141,13 @@ bool DestroyTexture_Custom( ServerTexture& serverTexture, const NetImgui::Intern
 				 serverTexture.mSize[0] == cmdTexture.mWidth &&
 				 serverTexture.mSize[1] == cmdTexture.mHeight )
 			{
-				NetImguiServer::App::HAL_DestroyTexture(serverTexture);
+				NetImguiServer::App::EnqueueHALTextureDestroy(serverTexture);
 				return true;
 			}
 			// Texture format changed or requested to be deleted
 			else
 			{		
-				NetImguiServer::App::HAL_DestroyTexture(serverTexture);
+				NetImguiServer::App::EnqueueHALTextureDestroy(serverTexture);
 				return true;
 			}
 		}

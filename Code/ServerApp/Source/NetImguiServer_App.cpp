@@ -4,13 +4,13 @@
 #include "NetImguiServer_UI.h"
 #include "NetImguiServer_RemoteClient.h"
 #include "Fonts/Roboto_Medium.cpp"
-#include <algorithm>
 
 namespace NetImguiServer { namespace App
 {
 
-constexpr uint32_t		kClientCountMax			= 32;	//! @sammyfreg todo: support unlimited client count
-static ServerTexture	gEmptyTexture;
+constexpr uint32_t			kClientCountMax			= 32;	//! @sammyfreg todo: support unlimited client count
+static ServerTexture		gEmptyTexture;
+std::atomic<ServerTexture*>	gPendingTextureDelete	= nullptr;
 
 bool Startup(const char* CmdLine)
 {	
@@ -194,6 +194,7 @@ void UpdateRemoteContent()
 			}
 		}
 	}
+	CompleteHALTextureDestroy();
 }
 
 //=================================================================================================
@@ -205,7 +206,7 @@ bool CreateTexture_Default(ServerTexture& serverTexture, const NetImgui::Interna
 
 	auto eTexFmt = static_cast<NetImgui::eTexFormat>(cmdTexture.mFormat);
 	if( eTexFmt < NetImgui::eTexFormat::kTexFmtCustom ){
-		NetImguiServer::App::HAL_CreateTexture(cmdTexture.mWidth, cmdTexture.mHeight, eTexFmt, cmdTexture.mpTextureData.Get(), serverTexture);
+		HAL_CreateTexture(cmdTexture.mWidth, cmdTexture.mHeight, eTexFmt, cmdTexture.mpTextureData.Get(), serverTexture);
 		return true;
 	}
 	return false;
@@ -219,7 +220,7 @@ bool DestroyTexture_Default(ServerTexture& serverTexture, const NetImgui::Intern
 	IM_UNUSED(customDataSize);
 	
 	if( serverTexture.mpHAL_Texture ){
-		NetImguiServer::App::HAL_DestroyTexture(serverTexture);
+		EnqueueHALTextureDestroy(serverTexture);
 	}
 	return true;
 }
@@ -253,4 +254,27 @@ void DestroyTexture(ServerTexture& serverTexture, const NetImgui::Internal::CmdT
 		DestroyTexture_Default(serverTexture, cmdTexture, customDataSize);
 	}
 }
+
+//=================================================================================================
+void EnqueueHALTextureDestroy(const ServerTexture& serverTexture)
+//=================================================================================================
+{
+	ServerTexture* pDeleteTexture	= new ServerTexture(serverTexture);
+	pDeleteTexture->mpDeleteNext	= gPendingTextureDelete.exchange(pDeleteTexture);
+}
+
+//=================================================================================================
+void CompleteHALTextureDestroy()
+//=================================================================================================
+{
+	ServerTexture* pTexture = gPendingTextureDelete.exchange(nullptr);
+	while(pTexture)
+	{
+		ServerTexture* pDeleteMe	= pTexture;
+		pTexture					= pTexture->mpDeleteNext;
+		HAL_DestroyTexture(*pDeleteMe);
+		delete pDeleteMe;
+	}
+}
+
 }} // namespace NetImguiServer { namespace App

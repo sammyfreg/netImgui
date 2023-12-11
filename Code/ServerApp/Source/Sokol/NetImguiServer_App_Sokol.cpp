@@ -70,11 +70,10 @@ void init() {
 
     bool ok = NetImguiServer::App::Startup(cmdArgs.c_str());
     IM_ASSERT(ok);
+    (VOID)ok;
 
     // IMGUI Font texture init
     {
-        ImGuiIO& io = ImGui::GetIO();
-
         // Build texture atlas
         unsigned char* pixels;
         int width, height;

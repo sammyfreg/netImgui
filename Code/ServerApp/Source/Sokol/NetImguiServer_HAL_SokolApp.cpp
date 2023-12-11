@@ -31,10 +31,21 @@ void HAL_Shutdown()
 // Take a platform specific socket (based on the NetImguiNetworkXXX.cpp implementation) and
 // fetch informations about the client IP connected
 //=================================================================================================
-bool HAL_GetSocketInfo(NetImgui::Internal::Network::SocketInfo* pClientSocket, char* pOutHostname, size_t HostNameLen, int& outPort)
+bool HAL_GetSocketInfo(NetImgui::Internal::Network::SocketInfo* , char* , size_t , int& )
 {
 	return false;
 }
+
+//=================================================================================================
+// HAL GET USER SETTING FOLDER
+// Request the directory where to the 'shared config' clients should be saved
+// Return 'nullptr' to disable this feature
+//=================================================================================================
+const char* HAL_GetUserSettingFolder()
+{
+	return nullptr;
+}
+
 }} // namespace NetImguiServer { namespace App
 
 #endif // HAL_API_PLATFORM_SOKOL

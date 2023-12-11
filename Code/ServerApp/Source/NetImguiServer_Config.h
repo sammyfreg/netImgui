@@ -28,12 +28,11 @@ public:
 	};
 	enum class eConfigType : uint8_t
 	{
-		PendingNew,		// New config, will try saving it in default config, and then user config when default is readonly 
-		Default,		// Config fetched from writable default file, can be saved
-		DefaultRead,	// Config fetched from a read only default file, cannot be saved
-		User,			// Config fetched from user file, can be saved
-		UserRead,		// Config fetched from read only user file, cannot be saved
-		Transient,		// Config created from connect request, cannot be saved
+		Pending,		// New config, will try saving it in the local config
+		Local,			// Config fetched from local config file, in the current working directory
+		Local2nd,		// Config fetched from a second local config file, in the current working directory. Used when 'Local' file is read only
+		Shared,			// Config fetched from the shared user folder
+		Transient,		// Config created from connection request (command line, OS pipes), cannot be saved
 	};
 					Client();
 					Client(const Client& Copy);
@@ -47,9 +46,10 @@ public:
 	bool			mConnected;					//!< Associated client is connected to this server
 	eConfigType		mConfigType;				//!< Type of the configuration
 	bool			mDPIScaleEnabled;			//!< Enable support of Font DPI scaling requests by Server
-	
-	inline bool		IsReadOnly()const { return mConfigType == eConfigType::DefaultRead || mConfigType == eConfigType::UserRead || mConfigType == eConfigType::Transient; };
-	inline bool		IsTransient()const { return mConfigType == eConfigType::Transient; };	
+	bool			mReadOnly;					//!< Config comes from read only file, can't be modified
+
+	inline bool		IsReadOnly()const { return mReadOnly; };
+	inline bool		IsTransient()const { return mConfigType == eConfigType::Transient; };
 		
 	// Add/Edit/Remove config
 	static void		SetConfig(const Client& config);						//!< Add or replace a client configuration info
@@ -67,10 +67,11 @@ public:
 	static void		SaveAll();
 	static void		LoadAll();
 	static void		Clear();
+
 protected:
-	static void		SaveConfigFile(bool isUserConfig, bool writeServerSettings);
-	static void		LoadConfigFile(bool isUserConfig);
-	inline bool		ShouldSave(bool isUserCfg) const;
+	static void		SaveConfigFile(eConfigType fileConfigType, bool writeServerSettings);
+	static void		LoadConfigFile(eConfigType fileConfigType);
+	inline bool		ShouldSave(eConfigType fileConfigType) const;
 };
 
 struct Server

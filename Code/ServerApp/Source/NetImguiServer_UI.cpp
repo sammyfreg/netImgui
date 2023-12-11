@@ -374,6 +374,16 @@ void Popup_ClientConfigEdit()
 				ImGui::SetTooltip("Text content will be scaled up on high resolution monitors for increased readability.");
 			}
 
+			// --- Shared Config ---
+			if( NetImguiServer::App::HAL_GetUserSettingFolder() != nullptr ){
+				bool isShared = gPopup_ClientConfig_pConfig->mConfigType == NetImguiServer::Config::Client::eConfigType::Shared;
+				if( ImGui::Checkbox("Shared Config", &isShared) ){
+					gPopup_ClientConfig_pConfig->mConfigType = isShared ? NetImguiServer::Config::Client::eConfigType::Shared : NetImguiServer::Config::Client::eConfigType::Pending;
+				}
+				if (ImGui::IsItemHovered()) {
+					ImGui::SetTooltip("Client's settings are saved in 'Working Directory' by default.\nEnabling this option saves their settings in the 'User Directory', making it available no matter which folder the Server Application is launched from.");
+				}
+			}
 			// --- Save/Cancel ---
 			ImGui::NewLine();
 			ImGui::Separator();
@@ -602,7 +612,7 @@ void DrawImguiContent_MainMenu_Clients_Entry(RemoteClient::Client* pClient, NetI
 		
 	// Name / Status
 	ImGui::PushStyleColor(ImGuiCol_CheckMark, pClient && pClient->mbIsConnected ? ImVec4(0.7f, 1.f, 0.25f, 1.f) : ImVec4(1.f, 0.35f, 0.35f, 1.f));
-	ImGui::BeginDisabled(pClientConfig->IsReadOnly());
+	ImGui::BeginDisabled(pClientConfig && pClientConfig->IsReadOnly());
 	ImGui::RadioButton("##Connected", true);
 	ImGui::PopStyleColor();	
 	if( pClient && pClient->mbIsConnected  ){
@@ -626,27 +636,35 @@ void DrawImguiContent_MainMenu_Clients_Entry(RemoteClient::Client* pClient, NetI
 	ImGui::TableNextColumn();
 	
 	// Config: AutoConnect
-	if (ImGui::Checkbox("##auto", &pClientConfig->mConnectAuto)) {
-		NetImguiServer::Config::Client::SetProperty_ConnectAuto(pClientConfig->mRuntimeID, pClientConfig->mConnectAuto);
-		NetImguiServer::Config::Client::SaveAll();
-	}
-	if( ImGui::IsItemHovered() ){
-		ImGui::SetTooltip("Toggle auto connection attempt on this client");
-	}
-	ImGui::TableNextColumn();
-
-	if (ImGui::Button(" - ") )
-	{		
-		gPopup_ConfirmDelete_ConfigIdx = pClientConfig->mRuntimeID;
-	}
-	ImGui::SameLine(); 
-	if ( ImGui::Button(" ... ") && !gPopup_ClientConfig_pConfig ) // Only 1 config edit at a time, otherwise need to handle properly to avoid mem leak
+	if( pClientConfig )
 	{
-		gPopup_ClientConfig_pConfig	= NetImgui::Internal::netImguiNew<NetImguiServer::Config::Client>(*pClientConfig);
-	}		
+		if (ImGui::Checkbox("##auto", &pClientConfig->mConnectAuto)) {
+			NetImguiServer::Config::Client::SetProperty_ConnectAuto(pClientConfig->mRuntimeID, pClientConfig->mConnectAuto);
+			NetImguiServer::Config::Client::SaveAll();
+		}
+		if( ImGui::IsItemHovered() ){
+			ImGui::SetTooltip("Toggle auto connection attempt on this client");
+		}
+	
+		ImGui::TableNextColumn();
 
-	ImGui::EndDisabled();
-	ImGui::TableNextColumn();
+		if (ImGui::Button(" - ") )
+		{		
+			gPopup_ConfirmDelete_ConfigIdx = pClientConfig->mRuntimeID;
+		}
+		ImGui::SameLine(); 
+		if ( ImGui::Button(" ... ") && !gPopup_ClientConfig_pConfig ) // Only 1 config edit at a time, otherwise need to handle properly to avoid mem leak
+		{
+			gPopup_ClientConfig_pConfig	= NetImgui::Internal::netImguiNew<NetImguiServer::Config::Client>(*pClientConfig);
+		}
+		ImGui::TableNextColumn();
+	}
+	else
+	{
+		ImGui::TableNextColumn();
+		ImGui::TableNextColumn();
+	}
+	ImGui::EndDisabled();	
 
 	// Config: Connection
 	if( pClient && !pClient->mbDisconnectPending && ImGui::Button("Disconnect", ImVec2(80 * GetFontDPIScale(),0 )) )

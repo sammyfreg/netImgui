@@ -35,12 +35,13 @@ namespace NetImguiServer { namespace App
 	struct ServerTexture 
 	{
 		inline bool	IsValid(){ return mpHAL_Texture != nullptr; }
-		void*		mpHAL_Texture		= nullptr;
-		uint64_t	mImguiId			= 0u;		// Associated ImGui TextureId in Imgui commandlist
-		uint64_t	mCustomData			= 0u;		// Memory available to custom command
-		uint16_t	mSize[2]			= {0, 0};
-		uint8_t		mFormat				= 0;
-		uint8_t		mPadding[3];
+		void*			mpHAL_Texture		= nullptr;
+		ServerTexture*	mpDeleteNext		= nullptr;	// Used to insert in a list of textures to be deleted next frame
+		uint64_t		mImguiId			= 0u;		// Associated ImGui TextureId in Imgui commandlist
+		uint64_t		mCustomData			= 0u;		// Memory available to custom command
+		uint16_t		mSize[2]			= {0, 0};
+		uint8_t			mFormat				= 0;
+		uint8_t			mPadding[3];
 	};
 
 	//=============================================================================================
@@ -48,10 +49,15 @@ namespace NetImguiServer { namespace App
 	//=============================================================================================
 	bool	CreateTexture(ServerTexture& serverTexture, const NetImgui::Internal::CmdTexture& cmdTexture, uint32_t customDataSize);
 	void	DestroyTexture(ServerTexture& serverTexture, const NetImgui::Internal::CmdTexture& cmdTexture, uint32_t customDataSize);
+
 	// Library users can implement their own texture format (on client/server). Useful for vidoe streaming, new format, etc.
 	bool	CreateTexture_Custom(ServerTexture& serverTexture, const NetImgui::Internal::CmdTexture& cmdTexture, uint32_t customDataSize);
 	bool	DestroyTexture_Custom(ServerTexture& serverTexture, const NetImgui::Internal::CmdTexture& cmdTexture, uint32_t customDataSize);
-	
+
+	// Texture destruction is postponed until the end of the frame update to avoid rendering issues
+	void	EnqueueHALTextureDestroy(const ServerTexture& serverTexture);
+	void	CompleteHALTextureDestroy();
+
 	//=============================================================================================
 	// Note (H)ardware (A)bstraction (L)ayer
 	//		When porting the 'NetImgui Server' application to other platform, 
@@ -64,7 +70,9 @@ namespace NetImguiServer { namespace App
 	void	HAL_Shutdown();
 	// Receive a platform specific socket, and return us with info on the connection
 	bool	HAL_GetSocketInfo(NetImgui::Internal::Network::SocketInfo* pClientSocket, char* pOutHostname, size_t HostNameLen, int& outPort);
-	
+	// Provide the current user setting folder (used to save the shared config file)
+	const char* HAL_GetUserSettingFolder();
+
 	// Receive a ImDrawData drawlist and request Dear ImGui's backend to output it into a texture
 	void	HAL_RenderDrawData(RemoteClient::Client& client, ImDrawData* pDrawData);
 	// Allocate a texture resource

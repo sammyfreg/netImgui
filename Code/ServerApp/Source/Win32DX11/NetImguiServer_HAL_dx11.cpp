@@ -127,13 +127,13 @@ void HAL_DestroyRenderTarget(void*& pOutRT, void*& pOutTexture)
 //=================================================================================================
 bool HAL_CreateTexture(uint16_t Width, uint16_t Height, NetImgui::eTexFormat Format, const uint8_t* pPixelData, ServerTexture& OutTexture)
 {
-	HAL_DestroyTexture(OutTexture);
+	NetImguiServer::App::EnqueueHALTextureDestroy(OutTexture);
 
 	// Convert all incoming textures data to RGBA8
-	uint32_t* pPixelDataAlloc = nullptr;    
+	uint32_t* pPixelDataAlloc = nullptr;
 	if(Format == NetImgui::eTexFormat::kTexFmtA8)
 	{
-		pPixelDataAlloc = NetImgui::Internal::netImguiSizedNew<uint32_t>(Width*Height*4);              
+		pPixelDataAlloc = NetImgui::Internal::netImguiSizedNew<uint32_t>(Width*Height*4);
 		for (int i = 0; i < Width * Height; ++i){
 			pPixelDataAlloc[i] = 0x00FFFFFF | (static_cast<uint32_t>(pPixelData[i])<<24);
 		}

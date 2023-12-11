@@ -34,11 +34,13 @@ struct SavedImguiContext
 	const char*				mBackendRendererName	= nullptr;	
 	void*					mClipboardUserData		= nullptr;
     void*					mImeWindowHandle		= nullptr;
+	float					mFontGlobalScale		= 1.f;
+	float					mFontGeneratedSize		= 0.f;
 	ImGuiBackendFlags		mBackendFlags			= 0;
 	ImGuiConfigFlags		mConfigFlags			= 0;	
 	bool					mDrawMouse				= false;
 	bool					mSavedContext			= false;
-	char					mPadding1[6]			= {};
+	char					mPadding1[2]			= {};
 	int						mKeyMap[ImGuiKey_COUNT]	= {};
 	char					mPadding2[8 - (sizeof(mKeyMap) % 8)]={};	
 };
@@ -106,7 +108,9 @@ struct ClientInfo
 	uint8_t								mClientCompressionMode		= eCompressionMode::kUseServerSetting;
 	bool								mServerCompressionEnabled	= false;	// If Server would like compression to be enabled (mClientCompressionMode value can override this value)
 	bool								mServerCompressionSkip		= false;	// Force ignore compression setting for 1 frame
-	char								PADDING[2];
+	char								PADDING[1];
+	FontCreationFuncPtr					mFontCreationFunction		= nullptr;	// Method to call to generate the remote ImGui font. By default, re-use the local font, but this doesn't handle native DPI scaling on remote server
+	float								mFontCreationScaling		= 1.f;		// Last font scaling used when generating the NetImgui font
 	InputState							mPreviousInputState;					// Keeping track of last keyboard/mouse state
 	ImGuiID								mhImguiHookNewframe			= 0;
 	ImGuiID								mhImguiHookEndframe			= 0;

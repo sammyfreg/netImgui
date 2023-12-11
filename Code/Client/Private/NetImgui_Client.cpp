@@ -25,6 +25,8 @@ void SavedImguiContext::Save(ImGuiContext* copyFrom)
 	mBackendRendererName	= sourceIO.BackendRendererName;
 	mDrawMouse				= sourceIO.MouseDrawCursor;
 	mClipboardUserData		= sourceIO.ClipboardUserData;
+	mFontGlobalScale		= sourceIO.FontGlobalScale;
+	mFontGeneratedSize		= sourceIO.Fonts->Fonts.Size > 0 ? sourceIO.Fonts->Fonts[0]->FontSize : 13.f; // Save size to restore the font to original size
 #if IMGUI_VERSION_NUM < 18700
 	memcpy(mKeyMap, sourceIO.KeyMap, sizeof(mKeyMap));
 #endif
@@ -41,6 +43,7 @@ void SavedImguiContext::Restore(ImGuiContext* copyTo)
 	destIO.BackendRendererName	= mBackendRendererName;
 	destIO.MouseDrawCursor		= mDrawMouse;
 	destIO.ClipboardUserData	= mClipboardUserData;
+	destIO.FontGlobalScale		= mFontGlobalScale;
 #if IMGUI_VERSION_NUM < 18700
 	memcpy(destIO.KeyMap, mKeyMap, sizeof(destIO.KeyMap));
 #endif
@@ -415,6 +418,12 @@ void ClientInfo::ContextOverride()
 		newIO.ClipboardUserData				= nullptr;
 		newIO.BackendPlatformName			= "NetImgui";
 		newIO.BackendRendererName			= "DirectX11";
+		if( mFontCreationFunction != nullptr )
+		{
+			newIO.FontGlobalScale = 1;
+			mFontCreationScaling = -1;
+		}
+		
 #if IMGUI_VERSION_NUM < 18700
 		for (uint32_t i(0); i < ImGuiKey_COUNT; ++i) {
 			newIO.KeyMap[i] = i;
@@ -437,6 +446,12 @@ void ClientInfo::ContextRestore()
 #ifdef IMGUI_HAS_VIEWPORT
 		ImGui::UpdatePlatformWindows(); // Prevents issue with mismatched frame tracking, when restoring enabled viewport feature
 #endif
+		if( mFontCreationFunction && ImGui::GetIO().Fonts && ImGui::GetIO().Fonts->Fonts.size() > 0)
+		{
+			float noScaleSize	= ImGui::GetIO().Fonts->Fonts[0]->FontSize / mFontCreationScaling;
+			float originalScale = mSavedContextValues.mFontGeneratedSize / noScaleSize;
+			mFontCreationFunction(mFontCreationScaling, originalScale);
+		}
 		mSavedContextValues.Restore(mpContext);
 	}
 }

@@ -7,10 +7,10 @@
 #include <NetImgui_Api.h>
 #include "..\Common\Sample.h"
 
-// Since NetImgui is disabled in this sample, hit will not include this header
+// Since NetImgui is disabled in this sample, it doesn't already include this header
 #if !NETIMGUI_ENABLED
 #include "imgui.h" 
-namespace SampleClient { void ClientUtil_ImGuiContent_Common(const char*, NetImgui::ThreadFunctPtr){} }
+namespace SampleClient { void ClientUtil_ImGuiContent_Common(const char*, NetImgui::ThreadFunctPtr, NetImgui::FontCreationFuncPtr){} }
 
 #else
 
@@ -30,8 +30,9 @@ static bool sbShowDemoWindow		= false;
 // 
 // @param zAppName:				Name displayed in the Main Menu bar
 // @param customThreadLauncher:	Optional thread launcher function to pass along NetImgui
+// #param FontCreateFunction:	Optional font generation function to pass along NetImgui. Used to adjust to remote server monitor DPI
 //=================================================================================================
-void ClientUtil_ImGuiContent_Common(const char* zAppName, NetImgui::ThreadFunctPtr customThreadLauncher)
+void ClientUtil_ImGuiContent_Common(const char* zAppName, NetImgui::ThreadFunctPtr customThreadLauncher, NetImgui::FontCreationFuncPtr FontCreateFunction)
 {
 	ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(3,6) );
 	if( ImGui::BeginMainMenuBar() )
@@ -85,7 +86,7 @@ void ClientUtil_ImGuiContent_Common(const char* zAppName, NetImgui::ThreadFunctP
 				ImGui::Separator();
 				if (ImGui::Button("Connect", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
 				{
-					NetImgui::ConnectToApp(zAppName, sServerHostname, sServerPort, customThreadLauncher);
+					NetImgui::ConnectToApp(zAppName, sServerHostname, sServerPort, customThreadLauncher, FontCreateFunction);
 				}
 				ImGui::EndMenu();
 			}
@@ -103,7 +104,7 @@ void ClientUtil_ImGuiContent_Common(const char* zAppName, NetImgui::ThreadFunctP
 				ImGui::Separator();
 				if (ImGui::Button("Listen", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
 				{
-					NetImgui::ConnectFromApp(zAppName, sClientPort, customThreadLauncher);
+					NetImgui::ConnectFromApp(zAppName, sClientPort, customThreadLauncher, FontCreateFunction);
 				}
 				ImGui::EndMenu();
 			}
