@@ -54,7 +54,7 @@ Here is a quick overview of the logic behind using the **NetImgui Server** and o
 **6. Go back to 1**
 
 #### Note
-The NetImgui Server application currently compiles under Windows, but few changes are required to properly have it running under other Operating Systems.
+The NetImgui Server application currently compiles under Windows and Mac, but few changes are required to properly have it running under other Operating Systems. To compile for Mac, modify NetImguiServer_App.h to enable the GLFW_GL3 rendering API.
 
 # Integration
 1. Download the [latest version](https://github.com/sammyfreg/netImgui/releases "latest version") of the **NetImgui** library.
