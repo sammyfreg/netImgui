@@ -10,7 +10,7 @@ namespace NetImguiServer { namespace App
 
 constexpr uint32_t			kClientCountMax			= 32;	//! @sammyfreg todo: support unlimited client count
 static ServerTexture		gEmptyTexture;
-std::atomic<ServerTexture*>	gPendingTextureDelete	= nullptr;
+std::atomic<ServerTexture*>	gPendingTextureDelete(nullptr);
 
 bool Startup(const char* CmdLine)
 {	

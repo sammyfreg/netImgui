@@ -1,12 +1,13 @@
 @echo off
 setlocal enabledelayedexpansion
 cls
+pushd %~dp0
 
 ::-----------------------------------------------------------------------------------
 :: SETTINGS 
 ::-----------------------------------------------------------------------------------
 :: List of offical Dear ImGui (from official depot)
-set VERSIONS=(v1.71 v1.72 v1.73 v1.74 v1.75 v1.76 v1.77 v1.78 v1.79, v1.80, v1.81, v1.82, v1.83, v1.84, v1.85, v1.86, v1.87, v1.88, v1.89.1, v1.89.2, v1.89.3, v1.89.4, v1.89.5)
+set VERSIONS=(v1.71 v1.72 v1.73 v1.74 v1.75 v1.76 v1.77 v1.78 v1.79, v1.80, v1.81, v1.82, v1.83, v1.84, v1.85, v1.86, v1.87, v1.88, v1.89.1, v1.89.2, v1.89.3, v1.89.4, v1.89.5, v1.89.6, v1.89.7, v1.89.7-docking, v1.89.8, v1.89.8-docking, v1.89.9, v1.89.9-docking, v1.90, v1.90-docking)
 
 :: List of custom Dear ImGui releases (from own depot)
 set EXTRA_VERSIONS=(dock-1-76, dock-1-80, dock-1-89)
@@ -27,43 +28,47 @@ echo  Used to test compatibility against multiple version of Dear ImGui
 echo ================================================================================
 echo.
 
-if not exist %IMGUI_DIR% goto SkipDelete
-echo.
-echo --------------------------------------------------------------------------------
-echo  Clearing Releases
-echo --------------------------------------------------------------------------------
-echo Removing: %IMGUI_DIR%
-rmdir /s /q %IMGUI_DIR%
+:: Only download new release
+
+:: if not exist %IMGUI_DIR% goto SkipDelete
+:: echo.
+:: echo --------------------------------------------------------------------------------
+:: echo  Clearing Releases
+:: echo --------------------------------------------------------------------------------
+:: echo Removing: %IMGUI_DIR%
+:: rmdir /s /q %IMGUI_DIR%
 
 
 :SkipDelete
-mkdir %IMGUI_DIR%
+if not exist %IMGUI_DIR% (
+	mkdir %IMGUI_DIR%
+)
+
 echo.
 echo --------------------------------------------------------------------------------
 echo  Downloading and extracting Dear ImGui Releases
 echo --------------------------------------------------------------------------------
 pushd %IMGUI_DIR%
-for %%v in %VERSIONS% do (	
+
+for %%v in %VERSIONS% do (    
+    echo Extracting: %%v
 	set IMGUI_FILE=%%v.tar.gz
 	set IMGUI_FILEPATH="https://github.com/ocornut/imgui/archive/!IMGUI_FILE!"
-	echo !IMGUI_FILEPATH!		
-	curl -LJ !IMGUI_FILEPATH! --output !IMGUI_FILE!
+	if not exist !IMGUI_FILE! curl -LJ !IMGUI_FILEPATH! --output !IMGUI_FILE!
 	tar -xzf !IMGUI_FILE!
-	::del !IMGUI_FILE!
-	echo.
 )
-for %%v in %EXTRA_VERSIONS% do (	
+
+for %%v in %EXTRA_VERSIONS% do (    
+    echo Extracting: %%v
 	set IMGUI_FILE=%%v.zip
 	set IMGUI_FILEPATH="https://raw.githubusercontent.com/wiki/sammyfreg/netImgui/ImguiVersions/!IMGUI_FILE!"
-	echo !IMGUI_FILE!		
-	curl -LJ !IMGUI_FILEPATH! --output !IMGUI_FILE!
+	if not exist !IMGUI_FILE! curl -LJ !IMGUI_FILEPATH! --output !IMGUI_FILE!
 	tar -xzf !IMGUI_FILE!
-	del !IMGUI_FILE!
-	echo.
 )
 popd
 
 :SkipDownload
+echo.
 echo --------------------------------------------------------------------------------
 echo  Generating Sharpmake config for compatibility projects
 echo --------------------------------------------------------------------------------
@@ -89,6 +94,8 @@ echo  Dear ImGui Older versions fetched
 echo  Please regenerate the projects to have them included in compiling tests
 echo --------------------------------------------------------------------------------
 pause
+
+popd
 exit /b %errorlevel%
 
 :: Take a Imgui install path, and make it into a NetImgui project name
@@ -99,3 +106,5 @@ exit /b %errorlevel%
 	set NetImguiName=%NetImguiName:.=_%
 	set NetImguiName=ProjectCompatibility_%NetImguiName%
 exit /b 0
+
+

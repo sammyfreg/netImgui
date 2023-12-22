@@ -4,12 +4,12 @@
 //! @Name		: NetImgui
 //=================================================================================================
 //! @author		: Sammy Fatnassi
-//! @date		: 2023/11/17
-//!	@version	: v1.9.3
+//! @date		: 2023/12/22
+//!	@version	: v1.9.4
 //! @Details	: For integration info : https://github.com/sammyfreg/netImgui/wiki
 //=================================================================================================
-#define NETIMGUI_VERSION		"1.9.3"	// Improve monitor DPI Handling by enabling font generation just for NetImgui
-#define NETIMGUI_VERSION_NUM	10903
+#define NETIMGUI_VERSION		"1.9.4"	// Support for Dear Imgui 1.90
+#define NETIMGUI_VERSION_NUM	10904
 
 
 

@@ -524,7 +524,7 @@ static inline void AddKeyAnalogEvent(const Client::ClientInfo& client, const Cmd
 	IM_UNUSED(client); IM_UNUSED(pCmdInput); IM_UNUSED(netimguiKey); IM_UNUSED(imguiKey);
 #else
 	int indexAnalog		= netimguiKey - CmdInput::kAnalog_First;
-	indexAnalog			= indexAnalog >= CmdInput::kAnalog_Count ? CmdInput::kAnalog_Count - 1 : indexAnalog;
+	indexAnalog			= indexAnalog >= static_cast<int>(CmdInput::kAnalog_Count) ? CmdInput::kAnalog_Count - 1 : indexAnalog;
 	float analogValue	= pCmdInput->mInputAnalog[indexAnalog];
 	bool bChanged		= (pCmdInput->mInputDownMask[valIndex] ^ client.mPreviousInputState.mInputDownMask[valIndex]) & valMask;
 	bChanged			|= abs(client.mPreviousInputState.mInputAnalog[indexAnalog] - analogValue) > 0.001f;
@@ -704,7 +704,8 @@ bool ProcessInputData(Client::ClientInfo& client)
 		
 		size_t keyCount(1);
 		uint16_t character;
-		io.ClearInputCharacters();
+		io.InputQueueCharacters.resize(0);
+
 		client.mPendingKeyIn.ReadData(&character, keyCount);
 		while (keyCount > 0){
 			io.AddInputCharacter(character);
