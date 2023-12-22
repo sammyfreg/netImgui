@@ -4,6 +4,7 @@ namespace NetImguiServer { namespace App { struct ServerTexture; } } // Forward 
 
 namespace NetImguiServer { namespace UI
 {
+	constexpr uint32_t			kWindowDPIDefault	= 96;
 	bool						Startup();
 	void						Shutdown();
 	ImVec4						DrawImguiContent();

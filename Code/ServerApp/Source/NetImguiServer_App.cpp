@@ -57,19 +57,6 @@ void Shutdown()
 	HAL_Shutdown();
 }
 
-void DestroyDrawData(ImDrawData*& pDrawData)
-{
-	if( pDrawData )
-	{
-		if( pDrawData->CmdLists )
-		{
-			NetImgui::Internal::netImguiDelete( pDrawData->CmdLists[0] );
-			NetImgui::Internal::netImguiDelete( pDrawData->CmdLists );
-		}
-		NetImgui::Internal::netImguiDeleteSafe( pDrawData );
-	}
-}
-
 //=================================================================================================
 // INIT CLIENT CONFIG FROM STRING
 // Take a commandline string, and create a ClientConfig from it.

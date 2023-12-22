@@ -144,6 +144,7 @@ int main(int, char**)
         sLastTime = std::chrono::high_resolution_clock::now();
         NetImguiServer::App::UpdateRemoteContent();         					// @SAMPLE_EDIT (Request each client to update their drawing content )
         ImGui::GetIO().FontGlobalScale = NetImguiServer::UI::GetFontDPIScale();	// @SAMPLE_EDIT (DPI Awareness)
+        // @Sammyfreg TODO : Regenerate the font with DPI awareness instead of scaling.
         //=========================================================================================
 		
         // Start the Dear ImGui frame

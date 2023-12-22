@@ -15,8 +15,7 @@ NetImguiImDrawData::NetImguiImDrawData()
 : mCommandList(nullptr)
 {
 	CmdListsCount	= 1;	// All draws collapsed in same CmdList
-	mpCommandList	= &mCommandList;
-	CmdLists		= &mpCommandList;
+	CmdLists.push_back(&mCommandList);
 }
 
 

@@ -18,7 +18,6 @@ namespace NetImguiServer { namespace UI
 
 constexpr uint32_t			kClientRemoteInvalid				= 0xFFFFFFFF;
 constexpr char				kNetImguiURL[]						= "https://github.com/sammyfreg/netImgui";
-constexpr uint32_t			kWindowDPIDefault					= 96;
 const char*					kDataSizeUnits[]					= {"B", "KB", "MB", "GB"};
 static const  ImVec4		kColorBGClear						= ImVec4(0.8f,0.8f,0.8f, 1.f);	// Background color of the main Server window
 static const  ImVec4		kColorBGTint						= ImVec4(1.f, 1.f, 1.f, 1.f);	// Tint applied to the main server window bg logo

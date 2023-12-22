@@ -21,7 +21,6 @@ struct NetImguiImDrawData : ImDrawData
 {
 				NetImguiImDrawData();
 	ImDrawList	mCommandList;
-	ImDrawList*	mpCommandList = nullptr;
 };
 
 //=================================================================================================
