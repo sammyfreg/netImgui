@@ -2,7 +2,7 @@
 
 namespace NetImgui { namespace Internal
 {
-// @sammyfreg TODO: Make Offset/Pointer test safer
+
 void CmdDrawFrame::ToPointers()
 {
 	if( !mpDrawGroups.IsPointer() )
@@ -64,6 +64,39 @@ bool CmdBackground::operator==(const CmdBackground& cmp)const
 bool CmdBackground::operator!=(const CmdBackground& cmp)const
 {
 	return (*this == cmp) == false;
+}
+
+
+void CmdClipboard::ToPointers()
+{
+	if( !mContentUTF8.IsPointer() ){
+		mContentUTF8.ToPointer();
+	}
+}
+
+void CmdClipboard::ToOffsets()
+{
+	if( !mContentUTF8.IsOffset() ){
+		mContentUTF8.ToOffset();
+	}
+}
+
+CmdClipboard* CmdClipboard::Create(const char* clipboard)
+{
+	if( clipboard )
+	{
+		size_t clipboardByteSize(0);
+		while(clipboard[clipboardByteSize++] != 0);
+		size_t totalDataCount			= sizeof(CmdClipboard) + DivUp<size_t>(clipboardByteSize, ComDataSize);
+		auto pNewClipboard				= NetImgui::Internal::netImguiSizedNew<CmdClipboard>(totalDataCount*ComDataSize);
+		pNewClipboard->mHeader.mSize	= static_cast<uint32_t>(totalDataCount*ComDataSize);
+		pNewClipboard->mByteSize		= clipboardByteSize;
+		pNewClipboard->mContentUTF8.SetPtr(reinterpret_cast<char*>(&pNewClipboard[1]));
+		memcpy(pNewClipboard->mContentUTF8.Get(), clipboard, clipboardByteSize);
+		
+		return pNewClipboard;
+	}
+	return nullptr;
 }
 
 }} // namespace NetImgui::Internal

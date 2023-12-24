@@ -142,14 +142,13 @@ private:
 
 //=============================================================================
 //=============================================================================
-// @sammyfreg TODO: re purpose this to a threadsafe consume/append buffer?
 template <typename TType, size_t TCount>
 class Ringbuffer
 {
 public:
 							Ringbuffer():mPosCur(0),mPosLast(0){}
 	void					AddData(const TType* pData, size_t& count);
-	void					ReadData(TType* pData, size_t& count);
+	bool					ReadData(TType* pData);
 private:
 	TType					mBuffer[TCount] = {0};
 	std::atomic_uint64_t	mPosCur;

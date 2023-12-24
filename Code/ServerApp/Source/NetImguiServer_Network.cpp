@@ -60,6 +60,20 @@ void Communications_Incoming_CmdDrawFrame(RemoteClient::Client* pClient, uint8_t
 }
 
 //=================================================================================================
+// (IN) COMMAND CLIPBOARD
+//=================================================================================================
+void Communications_Incoming_CmdClipboard(RemoteClient::Client* pClient, uint8_t*& pCmdData)
+{
+	if( pCmdData )
+	{
+		auto pCmdClipboard	= reinterpret_cast<NetImgui::Internal::CmdClipboard*>(pCmdData);
+		pCmdData			= nullptr; // Take ownership of the data, preventing freeing
+		pCmdClipboard->ToPointers();
+		pClient->mPendingClipboardIn.Assign(pCmdClipboard);
+	}
+}
+
+//=================================================================================================
 // Receive every commands sent by remote client and process them
 // We keep receiving until we detect a ping command (signal end of commands)
 //=================================================================================================
@@ -100,6 +114,7 @@ bool Communications_Incoming(NetImgui::Internal::Network::SocketInfo* pClientSoc
 			case NetImgui::Internal::CmdHeader::eCommands::Texture:		Communications_Incoming_CmdTexture(pClient, pCmdData);		break;
 			case NetImgui::Internal::CmdHeader::eCommands::Background: 	Communications_Incoming_CmdBackground(pClient, pCmdData);	break;
 			case NetImgui::Internal::CmdHeader::eCommands::DrawFrame:	Communications_Incoming_CmdDrawFrame(pClient, pCmdData);	break;
+			case NetImgui::Internal::CmdHeader::eCommands::Clipboard:	Communications_Incoming_CmdClipboard(pClient, pCmdData);	break;
 			// Commands not received in main loop, by Server
 			case NetImgui::Internal::CmdHeader::eCommands::Invalid:
 			case NetImgui::Internal::CmdHeader::eCommands::Version:
@@ -121,13 +136,22 @@ bool Communications_Incoming(NetImgui::Internal::Network::SocketInfo* pClientSoc
 bool Communications_Outgoing(NetImgui::Internal::Network::SocketInfo* pClientSocket, RemoteClient::Client* pClient)
 {
 	bool bSuccess(true);
-	NetImgui::Internal::CmdInput* pInputCmd = pClient->TakePendingInput();
+	NetImgui::Internal::CmdInput* pInputCmd			= pClient->TakePendingInput();
+	NetImgui::Internal::CmdClipboard* pClipboardCmd = pClient->TakePendingClipboard();
 	uint64_t frameDataSent(0);
 	if( pInputCmd )
-	{		
+	{
 		bSuccess &= NetImgui::Internal::Network::DataSend(pClientSocket, reinterpret_cast<void*>(pInputCmd), pInputCmd->mHeader.mSize);
 		frameDataSent += pInputCmd->mHeader.mSize;
 		NetImgui::Internal::netImguiDeleteSafe(pInputCmd);
+	}
+	
+	if( pClipboardCmd )
+	{
+		pClipboardCmd->ToOffsets();
+		bSuccess &= NetImgui::Internal::Network::DataSend(pClientSocket, reinterpret_cast<void*>(pClipboardCmd), pClipboardCmd->mHeader.mSize);
+		frameDataSent += pClipboardCmd->mHeader.mSize;
+		NetImgui::Internal::netImguiDeleteSafe(pClipboardCmd);
 	}
 
 	if( pClient->mbDisconnectPending )

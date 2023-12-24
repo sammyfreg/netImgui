@@ -206,7 +206,7 @@ CmdDrawFrame* CompressCmdDrawFrame(const CmdDrawFrame* pDrawFramePrev, const Cmd
 	// Allocate memory for worst case scenario (no compression possible)
 	// New DrawFrame size + 2 'compression block info' per data stream
 	size_t neededDataCount			= DivUp<size_t>(pDrawFrameNew->mHeader.mSize, ComDataSize) + 6*static_cast<size_t>(pDrawFrameNew->mDrawGroupCount);
-	CmdDrawFrame* pDrawFramePacked	= netImguiSizedNew<CmdDrawFrame>(neededDataCount*ComDataSize);	
+	CmdDrawFrame* pDrawFramePacked	= netImguiSizedNew<CmdDrawFrame>(neededDataCount*ComDataSize);
 	*pDrawFramePacked				= *pDrawFrameNew;
 	pDrawFramePacked->mCompressed	= true;
 

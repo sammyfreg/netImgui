@@ -10,7 +10,7 @@ namespace NetImgui { namespace Internal
 
 struct CmdHeader
 {
-	enum class eCommands : uint8_t { Invalid, Ping, Disconnect, Version, Texture, Input, DrawFrame, Background };
+	enum class eCommands : uint8_t { Invalid, Ping, Disconnect, Version, Texture, Input, DrawFrame, Background, Clipboard };
 				CmdHeader(){}
 				CmdHeader(eCommands CmdType, uint16_t Size) : mSize(Size), mType(CmdType){}
 	uint32_t	mSize		= 0;
@@ -45,6 +45,7 @@ struct alignas(8) CmdVersion
 		OffetPointer		= 11,	// Updated the handling of OffsetPoint. Moved flag bit from last bit to first bit. Addresses and data are always at least 4 bytes aligned, so should never conflict with potential address space
 		CustomTexture		= 12,	// Added a 'custom' texture format to let user potentially handle their how format
 		DPIScale			= 13,	// Server now handle monitor DPI
+		Clipboard			= 14,	// Added clipboard support between server/client
 		// Insert new version here
 
 		//--------------------------------
@@ -240,6 +241,15 @@ struct alignas(8) CmdBackground
 	inline bool operator!=(const CmdBackground& cmp)const;
 };
 
+struct alignas(8) CmdClipboard
+{
+	CmdHeader						mHeader				= CmdHeader(CmdHeader::eCommands::Clipboard, sizeof(CmdClipboard));
+	size_t							mByteSize			= 0;
+	OffsetPointer<char>				mContentUTF8;
+	inline void						ToPointers();
+	inline void						ToOffsets();
+	inline static CmdClipboard*		Create(const char* clipboard);
+};
 
 }} // namespace NetImgui::Internal
 

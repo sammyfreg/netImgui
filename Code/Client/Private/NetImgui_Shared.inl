@@ -197,26 +197,26 @@ void Ringbuffer<TType,TCount>::AddData(const TType* pData, size_t& count)
 //=============================================================================
 {
 	size_t i(0);
-	for(; i<count && mPosLast-mPosCur < TCount; ++i)
-	{
-		mBuffer[(mPosLast + i) % TCount] = pData[i];
-		++mPosLast;
+	while (i < count && (mPosLast - mPosCur < TCount)) {
+		mBuffer[mPosLast % TCount] = pData[i];
+		mPosLast++;
+		i++;
 	}
 	count = i;
 }
 
 //=============================================================================
 template <typename TType, size_t TCount>
-void Ringbuffer<TType,TCount>::ReadData(TType* pData, size_t& count)
+bool Ringbuffer<TType,TCount>::ReadData(TType* pData)
 //=============================================================================
 {
-	size_t i(0);
-	for(; i<count && mPosLast != mPosCur; ++i)
+	if (mPosCur < mPosLast) 
 	{
-		pData[i] = mBuffer[mPosCur % TCount];
-		++mPosCur;
+		*pData = mBuffer[mPosCur % TCount];
+		mPosCur++;
+		return true;
 	}
-	count = i;
+	return false;
 }
 
 

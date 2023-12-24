@@ -147,6 +147,7 @@ void Client::Uninitialize()
 	mPendingImguiDrawDataIn.Free();
 	mPendingBackgroundIn.Free();
 	mPendingInputOut.Free();
+	mPendingClipboardOut.Free();
 
 	NetImgui::Internal::netImguiDeleteSafe(mpImguiDrawData);
 	NetImgui::Internal::netImguiDeleteSafe(mpFrameDrawPrev);
@@ -343,6 +344,11 @@ NetImgui::Internal::CmdInput* Client::TakePendingInput()
 	return mPendingInputOut.Release();
 }
 
+NetImgui::Internal::CmdClipboard* Client::TakePendingClipboard()
+{
+	return mPendingClipboardOut.Release();
+}
+
 //=================================================================================================
 // Capture current received Dear ImGui input, and forward it to the active client
 // Note:	Even if a client is not focused, we are still sending it the mouse position, 
@@ -456,7 +462,7 @@ void Client::CaptureImguiInput()
 	}
 
 	// Copy waiting characters inputs
-	size_t addedKeyCount	= std::min<size_t>(NetImgui::Internal::ArrayCount(pNewInput->mKeyChars)-pNewInput->mKeyCharCount, mPendingInputChars.size());
+	size_t addedKeyCount = std::min<size_t>(NetImgui::Internal::ArrayCount(pNewInput->mKeyChars)-pNewInput->mKeyCharCount, mPendingInputChars.size());
 	if( addedKeyCount ){
 		memcpy(&pNewInput->mKeyChars[pNewInput->mKeyCharCount], &mPendingInputChars[0], addedKeyCount*sizeof(ImWchar));
 		pNewInput->mKeyCharCount	+= static_cast<uint16_t>(addedKeyCount);

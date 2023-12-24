@@ -199,6 +199,25 @@ const char* HAL_GetUserSettingFolder()
 	return sUserSettingFolder;
 }
 
+//=================================================================================================
+// HAL GET CLIPBOARD UPDATED
+// Detect when clipboard had a content change and we should refetch it on the Server and
+// forward it to the Clients
+// 
+// Note: We rely on Dear ImGui for Clipboard Get/Set but want to avoid constantly reading then
+// converting it to a UTF8 text. If the Server platform doesn't support tracking change, 
+// return true. If the Server platform doesn't support any clipboard, return false;
+//=================================================================================================
+bool HAL_GetClipboardUpdated()
+{
+	static DWORD sClipboardSequence(0);
+	DWORD clipboardSequence = GetClipboardSequenceNumber();
+	if (sClipboardSequence != clipboardSequence){
+		sClipboardSequence = clipboardSequence;
+		return true;
+	}
+	return false;
+}
 }} // namespace NetImguiServer { namespace App
 
 #endif // HAL_API_PLATFORM_WIN32_DX11

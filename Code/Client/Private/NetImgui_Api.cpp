@@ -538,9 +538,17 @@ static inline void AddKeyAnalogEvent(const Client::ClientInfo& client, const Cmd
 bool ProcessInputData(Client::ClientInfo& client)
 //=================================================================================================
 {
+	// Update the current clipboard data received from Server
+	CmdClipboard* pCmdClipboardNew = client.mPendingClipboardIn.Release();
+	if( pCmdClipboardNew ){
+		netImguiDeleteSafe(client.mpCmdClipboard);
+		client.mpCmdClipboard = pCmdClipboardNew;
+	}
+
+	// Update the keyboard/mouse/gamepad inputs
 	CmdInput* pCmdInputNew	= client.mPendingInputIn.Release();
 	bool hasNewInput		= pCmdInputNew != nullptr; 	
-	CmdInput* pCmdInput		= hasNewInput ? pCmdInputNew : client.mpInputPending;
+	CmdInput* pCmdInput		= hasNewInput ? pCmdInputNew : client.mpCmdInputPending;
 	ImGuiIO& io				= ImGui::GetIO();
 
 	if (pCmdInput)
@@ -596,6 +604,11 @@ bool ProcessInputData(Client::ClientInfo& client)
 		AddInputDown(ImGuiKey_X)         // for text edit CTRL+X: cut
 		AddInputDown(ImGuiKey_Y)         // for text edit CTRL+Y: redo
 		AddInputDown(ImGuiKey_Z)         // for text edit CTRL+Z: undo
+
+		io.KeyShift		= pCmdInput->IsKeyDown(CmdInput::NetImguiKeys::ImGuiKey_ReservedForModShift);
+		io.KeyCtrl		= pCmdInput->IsKeyDown(CmdInput::NetImguiKeys::ImGuiKey_ReservedForModCtrl);
+		io.KeyAlt		= pCmdInput->IsKeyDown(CmdInput::NetImguiKeys::ImGuiKey_ReservedForModAlt);
+		io.KeySuper		= pCmdInput->IsKeyDown(CmdInput::NetImguiKeys::ImGuiKey_ReservedForModSuper);
 #else
 	#if IMGUI_VERSION_NUM < 18837
 		#define ImGuiKey ImGuiKey_
@@ -629,6 +642,7 @@ bool ProcessInputData(Client::ClientInfo& client)
 		AddInputDown(ImGuiKey_U) AddInputDown(ImGuiKey_V) AddInputDown(ImGuiKey_W) AddInputDown(ImGuiKey_X) AddInputDown(ImGuiKey_Y) AddInputDown(ImGuiKey_Z)
 		AddInputDown(ImGuiKey_F1) AddInputDown(ImGuiKey_F2) AddInputDown(ImGuiKey_F3) AddInputDown(ImGuiKey_F4) AddInputDown(ImGuiKey_F5) AddInputDown(ImGuiKey_F6)
 		AddInputDown(ImGuiKey_F7) AddInputDown(ImGuiKey_F8) AddInputDown(ImGuiKey_F9) AddInputDown(ImGuiKey_F10) AddInputDown(ImGuiKey_F11) AddInputDown(ImGuiKey_F12)
+
 		AddInputDown(ImGuiKey_Apostrophe)
 		AddInputDown(ImGuiKey_Comma)
 		AddInputDown(ImGuiKey_Minus)
@@ -647,14 +661,16 @@ bool ProcessInputData(Client::ClientInfo& client)
 		AddInputDown(ImGuiKey_Pause)
 		AddInputDown(ImGuiKey_Keypad0) AddInputDown(ImGuiKey_Keypad1) AddInputDown(ImGuiKey_Keypad2) AddInputDown(ImGuiKey_Keypad3) AddInputDown(ImGuiKey_Keypad4)
 		AddInputDown(ImGuiKey_Keypad5) AddInputDown(ImGuiKey_Keypad6) AddInputDown(ImGuiKey_Keypad7) AddInputDown(ImGuiKey_Keypad8) AddInputDown(ImGuiKey_Keypad9)
-		AddInputDown(ImGuiKey_KeypadDecimal)
-		AddInputDown(ImGuiKey_KeypadDivide)
-		AddInputDown(ImGuiKey_KeypadMultiply)
-		AddInputDown(ImGuiKey_KeypadSubtract)
-		AddInputDown(ImGuiKey_KeypadAdd)
-		AddInputDown(ImGuiKey_KeypadEnter)
+		AddInputDown(ImGuiKey_KeypadDecimal)	AddInputDown(ImGuiKey_KeypadDivide)	AddInputDown(ImGuiKey_KeypadMultiply)
+		AddInputDown(ImGuiKey_KeypadSubtract)	AddInputDown(ImGuiKey_KeypadAdd)	AddInputDown(ImGuiKey_KeypadEnter)
 		AddInputDown(ImGuiKey_KeypadEqual)
 
+#if IMGUI_VERSION_NUM >= 19000
+		AddInputDown(ImGuiKey_F13) AddInputDown(ImGuiKey_F14) AddInputDown(ImGuiKey_F15) AddInputDown(ImGuiKey_F16) AddInputDown(ImGuiKey_F17) AddInputDown(ImGuiKey_F18)
+		AddInputDown(ImGuiKey_F19) AddInputDown(ImGuiKey_F20) AddInputDown(ImGuiKey_F21) AddInputDown(ImGuiKey_F22) AddInputDown(ImGuiKey_F23) AddInputDown(ImGuiKey_F24)
+		AddInputDown(ImGuiKey_AppBack)
+		AddInputDown(ImGuiKey_AppForward)
+#endif
 		// Gamepad
 		AddInputDown(ImGuiKey_GamepadStart)
 		AddInputDown(ImGuiKey_GamepadBack)
@@ -687,9 +703,20 @@ bool ProcessInputData(Client::ClientInfo& client)
 		#undef ImGuiKey
 	#endif
 
+	#if IMGUI_VERSION_NUM < 18837
+		#define ImGuiMod_Ctrl ImGuiKey_ModCtrl
+		#define ImGuiMod_Shift ImGuiKey_ModShift
+		#define ImGuiMod_Alt ImGuiKey_ModAlt
+		#define ImGuiMod_Super ImGuiKey_ModSuper
+	#endif
+		io.AddKeyEvent(ImGuiMod_Ctrl,	pCmdInput->IsKeyDown(CmdInput::NetImguiKeys::ImGuiKey_ReservedForModCtrl));
+		io.AddKeyEvent(ImGuiMod_Shift,	pCmdInput->IsKeyDown(CmdInput::NetImguiKeys::ImGuiKey_ReservedForModShift));
+		io.AddKeyEvent(ImGuiMod_Alt,	pCmdInput->IsKeyDown(CmdInput::NetImguiKeys::ImGuiKey_ReservedForModAlt));
+		io.AddKeyEvent(ImGuiMod_Super,	pCmdInput->IsKeyDown(CmdInput::NetImguiKeys::ImGuiKey_ReservedForModSuper));
+
 		// Mouse
 		io.AddMouseWheelEvent(wheelX, wheelY);
-		io.AddMousePosEvent(pCmdInput->mMousePos[0],	pCmdInput->mMousePos[1]);
+		io.AddMousePosEvent(pCmdInput->mMousePos[0], pCmdInput->mMousePos[1]);
 		for(int i(0); i<CmdInput::NetImguiMouseButton::ImGuiMouseButton_COUNT; ++i){
 			uint64_t valMask = 0x0000000000000001ull << i;
 			if((pCmdInput->mMouseDownMask ^ client.mPreviousInputState.mMouseDownMask) & valMask){
@@ -697,19 +724,10 @@ bool ProcessInputData(Client::ClientInfo& client)
 			}
 		}
 #endif
-		io.KeyShift		= pCmdInput->IsKeyDown(CmdInput::NetImguiKeys::ImGuiKey_ReservedForModShift);
-		io.KeyCtrl		= pCmdInput->IsKeyDown(CmdInput::NetImguiKeys::ImGuiKey_ReservedForModCtrl);
-		io.KeyAlt		= pCmdInput->IsKeyDown(CmdInput::NetImguiKeys::ImGuiKey_ReservedForModAlt);
-		io.KeySuper		= pCmdInput->IsKeyDown(CmdInput::NetImguiKeys::ImGuiKey_ReservedForModSuper);
-		
-		size_t keyCount(1);
 		uint16_t character;
 		io.InputQueueCharacters.resize(0);
-
-		client.mPendingKeyIn.ReadData(&character, keyCount);
-		while (keyCount > 0){
+		while (client.mPendingKeyIn.ReadData(&character)){
 			io.AddInputCharacter(character);
-			client.mPendingKeyIn.ReadData(&character, keyCount);
 		}
 
 		static_assert(sizeof(client.mPreviousInputState.mInputDownMask) == sizeof(pCmdInput->mInputDownMask), "Array size should match");
@@ -724,8 +742,8 @@ bool ProcessInputData(Client::ClientInfo& client)
 	}
 
 	if( hasNewInput ){
-		netImguiDeleteSafe(client.mpInputPending);
-		client.mpInputPending		= pCmdInputNew;
+		netImguiDeleteSafe(client.mpCmdInputPending);
+		client.mpCmdInputPending = pCmdInputNew;
 	}
 	return hasNewInput;
 }

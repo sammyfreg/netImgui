@@ -514,18 +514,18 @@ void DrawImguiContent_Clients()
 	//---------------------------------------------------------------------------------------------	
 	// Display each connected client window
 	//---------------------------------------------------------------------------------------------
-	bool hasConnection(false);
+	bool hasConnection(false), hasClipboardSet(false);
 	for(uint32_t i(0); i<RemoteClient::Client::GetCountMax(); ++i)
 	{
 		RemoteClient::Client& client = RemoteClient::Client::Get(i);
 		if( client.mbIsConnected )
-		{			
-			ImGui::PushID(i);			
+		{
+			ImGui::PushID(i);
 			ImGui::SetNextWindowBgAlpha(1.0);
 			ImGui::SetNextWindowDockID(gMainDockID, ImGuiCond_Once);
-			bool bOpened(true);
-			hasConnection = true;
-			client.mbIsVisible = ImGui::Begin(client.mWindowID, &bOpened, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+			bool bOpened		= true;
+			hasConnection		= true;
+			client.mbIsVisible	= ImGui::Begin(client.mWindowID, &bOpened, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
 			ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.f, 8.f));
 			ClientInfoTooltip(client);
 			ImGui::PopStyleVar(1);
@@ -560,9 +560,54 @@ void DrawImguiContent_Clients()
 				gPopup_ConfirmDisconnect_ClientIdx = i;
 			}
 			ImGui::PopID();
+
+			// Clipboard Received from Client
+			NetImgui::Internal::CmdClipboard* pClientIncomingClipboard = client.mPendingClipboardIn.Release();
+			if (pClientIncomingClipboard){
+				ImGui::SetClipboardText(pClientIncomingClipboard->mContentUTF8.Get());
+				netImguiDeleteSafe(pClientIncomingClipboard);
+				hasClipboardSet = true;
+			}
 		}
 	}
 	
+	//---------------------------------------------------------------------------------------------	
+	// Retrieve Server Clipboard content and Update Clients Clipboard
+	//---------------------------------------------------------------------------------------------	
+	if( hasConnection )
+	{
+		// Fetch OS clipboard (when supported by Dear ImGui backend)
+		static ImVector<char> sSavedServerClipboard;
+		if (sSavedServerClipboard.empty()) {
+			sSavedServerClipboard.push_back(static_cast<char>(0));
+		}
+		bool clipboardContentUpdated(false);
+		if( NetImguiServer::App::HAL_GetClipboardUpdated() || hasClipboardSet )
+		{
+			const char* serverClipboard = ImGui::GetClipboardText();
+			serverClipboard				= serverClipboard ? serverClipboard : "";
+			clipboardContentUpdated		= strncmp(&sSavedServerClipboard[0], serverClipboard, sSavedServerClipboard.size()) != 0;
+			if (clipboardContentUpdated)
+			{
+				sSavedServerClipboard.resize(0);
+				while( *serverClipboard != 0 ){
+					sSavedServerClipboard.push_back(*serverClipboard++);
+				}
+				sSavedServerClipboard.push_back(0);
+			}
+		}
+		// Forward Server Clipboard content to Clients
+		for(uint32_t i(0); i<RemoteClient::Client::GetCountMax(); ++i)
+		{
+			RemoteClient::Client& client = RemoteClient::Client::Get(i);
+			const bool bFirstTimeDisplay = client.mpHAL_AreaRT == nullptr;
+			if( client.mbIsConnected  && (clipboardContentUpdated  || bFirstTimeDisplay) ){
+				NetImgui::Internal::CmdClipboard* pClipboard = NetImgui::Internal::CmdClipboard::Create(&sSavedServerClipboard[0]);
+				client.mPendingClipboardOut.Assign(pClipboard);
+			}
+		}
+	}
+
 	//---------------------------------------------------------------------------------------------
 	// Display some instruction when no connection detected
 	//---------------------------------------------------------------------------------------------
@@ -857,7 +902,7 @@ ImVec4 DrawImguiContent()
 
 	DrawImguiContent_MainMenu();
 	DrawImguiContent_SetupDocking();
-	DrawImguiContent_Clients();	
+	DrawImguiContent_Clients();
 	//ImGui::ShowDemoWindow();
 
 	return kColorBGClear;

@@ -24,7 +24,9 @@ void SavedImguiContext::Save(ImGuiContext* copyFrom)
 	mBackendPlatformName	= sourceIO.BackendPlatformName;
 	mBackendRendererName	= sourceIO.BackendRendererName;
 	mDrawMouse				= sourceIO.MouseDrawCursor;
-	mClipboardUserData		= sourceIO.ClipboardUserData;
+	mGetClipboardTextFn		= sourceIO.GetClipboardTextFn;
+    mSetClipboardTextFn		= sourceIO.SetClipboardTextFn;
+    mClipboardUserData		= sourceIO.ClipboardUserData;
 	mFontGlobalScale		= sourceIO.FontGlobalScale;
 	mFontGeneratedSize		= sourceIO.Fonts->Fonts.Size > 0 ? sourceIO.Fonts->Fonts[0]->FontSize : 13.f; // Save size to restore the font to original size
 #if IMGUI_VERSION_NUM < 18700
@@ -42,11 +44,35 @@ void SavedImguiContext::Restore(ImGuiContext* copyTo)
 	destIO.BackendPlatformName	= mBackendPlatformName;
 	destIO.BackendRendererName	= mBackendRendererName;
 	destIO.MouseDrawCursor		= mDrawMouse;
+	destIO.GetClipboardTextFn	= mGetClipboardTextFn;
+    destIO.SetClipboardTextFn	= mSetClipboardTextFn;
 	destIO.ClipboardUserData	= mClipboardUserData;
 	destIO.FontGlobalScale		= mFontGlobalScale;
 #if IMGUI_VERSION_NUM < 18700
 	memcpy(destIO.KeyMap, mKeyMap, sizeof(destIO.KeyMap));
 #endif
+}
+
+//=================================================================================================
+// GET CLIPBOARD
+// Content received from the Server
+//=================================================================================================
+static const char* GetClipboardTextFn_NetImguiImpl(void* user_data_ctx)
+{
+	const ClientInfo* pClient = reinterpret_cast<const ClientInfo*>(user_data_ctx);
+	return pClient && pClient->mpCmdClipboard ? pClient->mpCmdClipboard->mContentUTF8.Get() : nullptr;
+}
+
+//=================================================================================================
+// SET CLIPBOARD
+//=================================================================================================
+static void SetClipboardTextFn_NetImguiImpl(void* user_data_ctx, const char* text)
+{
+	if(user_data_ctx){
+		ClientInfo* pClient				= reinterpret_cast<ClientInfo*>(user_data_ctx);
+		CmdClipboard* pClipboardOut		= CmdClipboard::Create(text);
+		pClient->mPendingClipboardOut.Assign(pClipboardOut);
+	}
 }
 
 //=================================================================================================
@@ -91,6 +117,21 @@ void Communications_Incoming_Input(ClientInfo& client, uint8_t*& pCmdData)
 		size_t keyCount(pCmdInput->mKeyCharCount);
 		client.mPendingKeyIn.AddData(pCmdInput->mKeyChars, keyCount);
 		client.mPendingInputIn.Assign(pCmdInput);	
+	}
+}
+
+//=================================================================================================
+// INCOM: CLIPBOARD
+// Receive server new clipboard content, updating internal cache
+//=================================================================================================
+void Communications_Incoming_Clipboard(ClientInfo& client, uint8_t*& pCmdData)
+{
+	if( pCmdData )
+	{
+		auto pCmdClipboard	= reinterpret_cast<CmdClipboard*>(pCmdData);
+		pCmdData			= nullptr; // Take ownership of the data, prevent Free
+		pCmdClipboard->ToPointers();
+		client.mPendingClipboardIn.Assign(pCmdClipboard);
 	}
 }
 
@@ -142,39 +183,39 @@ bool Communications_Outgoing_Background(ClientInfo& client)
 bool Communications_Outgoing_Frame(ClientInfo& client)
 {
 	bool bSuccess(true);
-	CmdDrawFrame* pPendingDrawFrame = client.mPendingFrameOut.Release();
-	if( pPendingDrawFrame )
+	CmdDrawFrame* pPendingDraw = client.mPendingFrameOut.Release();
+	if( pPendingDraw )
 	{
-		pPendingDrawFrame->mFrameIndex	= client.mFrameIndex++;
+		pPendingDraw->mFrameIndex	= client.mFrameIndex++;
 		//---------------------------------------------------------------------
 		// Apply delta compression to DrawCommand, when requested
-		if( pPendingDrawFrame->mCompressed )
+		if( pPendingDraw->mCompressed )
 		{
 			// Create a new Compressed DrawFrame Command
-			if( client.mpDrawFramePrevious && !client.mServerCompressionSkip ){
-				client.mpDrawFramePrevious->ToPointers();
-				CmdDrawFrame* pDrawFrameCompressed	= CompressCmdDrawFrame(client.mpDrawFramePrevious, pPendingDrawFrame);
-				netImguiDeleteSafe(client.mpDrawFramePrevious);
-				client.mpDrawFramePrevious			= pPendingDrawFrame;	// Keep original new command for next frame delta compression
-				pPendingDrawFrame					= pDrawFrameCompressed;	// Request compressed copy to be sent to server
+			if( client.mpCmdDrawLast && !client.mServerCompressionSkip ){
+				client.mpCmdDrawLast->ToPointers();
+				CmdDrawFrame* pDrawCompressed	= CompressCmdDrawFrame(client.mpCmdDrawLast, pPendingDraw);
+				netImguiDeleteSafe(client.mpCmdDrawLast);
+				client.mpCmdDrawLast			= pPendingDraw;		// Keep original new command for next frame delta compression
+				pPendingDraw					= pDrawCompressed;	// Request compressed copy to be sent to server
 			}
 			// Save DrawCmd for next frame delta compression
 			else {
-				pPendingDrawFrame->mCompressed		= false;
-				client.mpDrawFramePrevious			= pPendingDrawFrame;
+				pPendingDraw->mCompressed		= false;
+				client.mpCmdDrawLast			= pPendingDraw;
 			}
 		}
 		client.mServerCompressionSkip = false;
 
 		//---------------------------------------------------------------------
 		// Send Command to server
-		pPendingDrawFrame->ToOffsets();
-		bSuccess = Network::DataSend(client.mpSocketComs, pPendingDrawFrame, pPendingDrawFrame->mHeader.mSize);
+		pPendingDraw->ToOffsets();
+		bSuccess = Network::DataSend(client.mpSocketComs, pPendingDraw, pPendingDraw->mHeader.mSize);
 
 		//---------------------------------------------------------------------
 		// Free created data once sent (when not used in next frame)
-		if( client.mpDrawFramePrevious != pPendingDrawFrame ){
-			netImguiDeleteSafe(pPendingDrawFrame);
+		if( client.mpCmdDrawLast != pPendingDraw ){
+			netImguiDeleteSafe(pPendingDraw);
 		}
 	}
 	return bSuccess;
@@ -206,6 +247,23 @@ bool Communications_Outgoing_Ping(ClientInfo& client)
 }
 
 //=================================================================================================
+// OUTCOM: Clipboard
+// Send client 'Copy' clipboard content to Server
+//=================================================================================================
+bool Communications_Outgoing_Clipboard(ClientInfo& client)
+{
+	bool bResult(true);
+	CmdClipboard* pPendingClipboard = client.mPendingClipboardOut.Release();
+	if( pPendingClipboard ){
+		pPendingClipboard->ToOffsets();
+		bResult = Network::DataSend(client.mpSocketComs, pPendingClipboard, pPendingClipboard->mHeader.mSize);
+		netImguiDeleteSafe(pPendingClipboard);
+
+	}
+	return bResult;
+}
+
+//=================================================================================================
 // INCOMING COMMUNICATIONS
 //=================================================================================================
 bool Communications_Incoming(ClientInfo& client)
@@ -231,6 +289,7 @@ bool Communications_Incoming(ClientInfo& client)
 			case CmdHeader::eCommands::Ping:		bPingReceived = true; break;
 			case CmdHeader::eCommands::Disconnect:	bOk = false; break;
 			case CmdHeader::eCommands::Input:		Communications_Incoming_Input(client, pCmdData); break;
+			case CmdHeader::eCommands::Clipboard:	Communications_Incoming_Clipboard(client, pCmdData); break;
 			// Commands not received in main loop, by Client
 			case CmdHeader::eCommands::Invalid:
 			case CmdHeader::eCommands::Version:
@@ -248,18 +307,26 @@ bool Communications_Incoming(ClientInfo& client)
 // OUTGOING COMMUNICATIONS
 //=================================================================================================
 bool Communications_Outgoing(ClientInfo& client)
-{		
+{
 	bool bSuccess(true);
-	if( bSuccess )
+	if( bSuccess ){
 		bSuccess = Communications_Outgoing_Textures(client);
-	if( bSuccess )
+	}
+	if( bSuccess ){
 		bSuccess = Communications_Outgoing_Background(client);
-	if( bSuccess )
+	}
+	if( bSuccess ){
+		bSuccess = Communications_Outgoing_Clipboard(client);
+	}
+	if( bSuccess ){
 		bSuccess = Communications_Outgoing_Frame(client);
-	if( bSuccess )
+	}
+	if( bSuccess ){
 		bSuccess = Communications_Outgoing_Disconnect(client);
-	if( bSuccess )
+	}
+	if( bSuccess ){
 		bSuccess = Communications_Outgoing_Ping(client); // Always finish with a ping
+	}
 
 	return bSuccess;
 }
@@ -372,8 +439,9 @@ ClientInfo::~ClientInfo()
 		netImguiDeleteSafe(mTexturesPending[i]);
 	}
 
-	netImguiDeleteSafe(mpInputPending);
-	netImguiDeleteSafe(mpDrawFramePrevious);
+	netImguiDeleteSafe(mpCmdInputPending);
+	netImguiDeleteSafe(mpCmdDrawLast);
+	netImguiDeleteSafe(mpCmdClipboard);
 }
 
 //=================================================================================================
@@ -415,7 +483,9 @@ void ClientInfo::ContextOverride()
 	{
 		ImGuiIO& newIO						= ImGui::GetIO();
 		newIO.MouseDrawCursor				= false;
-		newIO.ClipboardUserData				= nullptr;
+		newIO.GetClipboardTextFn			= GetClipboardTextFn_NetImguiImpl;
+		newIO.SetClipboardTextFn			= SetClipboardTextFn_NetImguiImpl;
+		newIO.ClipboardUserData				= this;
 		newIO.BackendPlatformName			= "NetImgui";
 		newIO.BackendRendererName			= "DirectX11";
 		if( mFontCreationFunction != nullptr )

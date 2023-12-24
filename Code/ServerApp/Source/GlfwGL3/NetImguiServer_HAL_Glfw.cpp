@@ -7,7 +7,7 @@
 //=================================================================================================
 // WINDOWS GLFW
 // Note: This file currently only has support for Windows application
-#if _WIN32
+#ifdef _WIN32
 	extern int main(int, char**);
 	#ifndef WIN32_LEAN_AND_MEAN
 	#define WIN32_LEAN_AND_MEAN
@@ -47,7 +47,7 @@ bool HAL_Startup(const char* CmdLine)
 {
 	IM_UNUSED(CmdLine);
 
-#if _WIN32
+#ifdef _WIN32
 	// Change the icon for hwnd's window class.
 	HICON appIconBig				= LoadIcon(GetModuleHandle(nullptr), MAKEINTRESOURCE(IDI_NETIMGUIAPP));
 	HICON appIconSmall				= LoadIcon(GetModuleHandle(nullptr), MAKEINTRESOURCE(IDI_SMALL));
@@ -75,7 +75,7 @@ void HAL_Shutdown()
 //=================================================================================================
 bool HAL_GetSocketInfo(NetImgui::Internal::Network::SocketInfo* pClientSocket, char* pOutHostname, size_t HostNameLen, int& outPort)
 {
-#if _WIN32
+#ifdef _WIN32
 	sockaddr socketAdr;
 	int sizeSocket(sizeof(sockaddr));
 	SOCKET* pClientSocketWin = reinterpret_cast<SOCKET*>(pClientSocket);
@@ -99,7 +99,7 @@ bool HAL_GetSocketInfo(NetImgui::Internal::Network::SocketInfo* pClientSocket, c
 //=================================================================================================
 const char* HAL_GetUserSettingFolder()
 {
-#if _WIN32
+#ifdef _WIN32
 	static char sUserSettingFolder[1024]={};
 	if(sUserSettingFolder[0] == 0)
 	{
@@ -119,7 +119,40 @@ const char* HAL_GetUserSettingFolder()
 		return nullptr;
 	}
 	return sUserSettingFolder;
+#else
+	return nullptr;
 #endif
+}
+
+//=================================================================================================
+// HAL GET CLIPBOARD UPDATED
+// Detect when clipboard had a content change and we should refetch it on the Server and
+// forward it to the Clients
+// 
+// Note: We rely on Dear ImGui for Clipboard Get/Set but want to avoid constantly reading then
+// converting it to a UTF8 text. If the Server platform doesn't support tracking change, 
+// return true. If the Server platform doesn't support any clipboard, return false;
+//=================================================================================================
+bool HAL_GetClipboardUpdated()
+{	
+#ifdef _WIN32
+	static DWORD sClipboardSequence(0);
+	DWORD clipboardSequence = GetClipboardSequenceNumber();
+	if (sClipboardSequence != clipboardSequence){
+		sClipboardSequence = clipboardSequence;
+		return true;
+	}
+#else
+	// Update Clipboard content every second
+	static std::chrono::steady_clock::time_point sLastCheck = std::chrono::steady_clock::now();
+	std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
+	if( (now - sLastCheck) > std::chrono::seconds(1) )
+	{
+		sLastCheck = now;
+		return true;
+	}
+#endif
+	return false;
 }
 
 }} // namespace NetImguiServer { namespace App
