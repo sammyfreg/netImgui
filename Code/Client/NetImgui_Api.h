@@ -4,12 +4,12 @@
 //! @Name		: NetImgui
 //=================================================================================================
 //! @author		: Sammy Fatnassi
-//! @date		: 2023/12/22
-//!	@version	: v1.9.4
+//! @date		: 2023/12/24
+//!	@version	: v1.9.5
 //! @Details	: For integration info : https://github.com/sammyfreg/netImgui/wiki
 //=================================================================================================
-#define NETIMGUI_VERSION		"1.9.4"	// Support for Dear Imgui 1.90
-#define NETIMGUI_VERSION_NUM	10904
+#define NETIMGUI_VERSION		"1.9.5"	// Copy/Paste support and fixed fast keys input issue
+#define NETIMGUI_VERSION_NUM	10905
 
 
 
