@@ -30,15 +30,8 @@ bool Startup(const char* CmdLine)
 		uint8_t EmptyPixels[8*8];
 		memset(EmptyPixels, 0, sizeof(EmptyPixels));
 		NetImguiServer::App::HAL_CreateTexture(8, 8, NetImgui::eTexFormat::kTexFmtA8, EmptyPixels, gEmptyTexture);
-	
-		//-----------------------------------------------------------------------------------------
-		// Using a different default font (provided with Dear ImGui)
-		//-----------------------------------------------------------------------------------------
-		ImFontConfig Config;
-		NetImgui::Internal::StringCopy(Config.Name, "Roboto Medium, 16px");
-		if( !ImGui::GetIO().Fonts->AddFontFromMemoryCompressedTTF(Roboto_Medium_compressed_data, Roboto_Medium_compressed_size, 16.f, &Config) ){
-			ImGui::GetIO().Fonts->AddFontDefault();
-		}
+		
+		UpdateFont();
 
 		ImGui::GetIO().IniFilename	= nullptr;	// Disable server ImGui ini settings (not really needed, and avoid imgui.ini filename conflicts)
 		ImGui::GetIO().LogFilename	= nullptr; 
@@ -262,6 +255,32 @@ void CompleteHALTextureDestroy()
 		HAL_DestroyTexture(*pDeleteMe);
 		delete pDeleteMe;
 	}
+}
+
+//-----------------------------------------------------------------------------------------
+// Update the Font texture when new monitor DPI is detected
+//-----------------------------------------------------------------------------------------
+bool UpdateFont()
+{
+	static float sGeneratedDPI	= 0.f;
+	float currentDPIScale		= NetImguiServer::UI::GetFontDPIScale();
+	if( sGeneratedDPI != currentDPIScale )
+	{
+		ImFontConfig fontConfig;
+		ImFontAtlas* pFontAtlas = ImGui::GetIO().Fonts;
+		sGeneratedDPI			= currentDPIScale;
+		pFontAtlas->Clear();
+
+		// Add Fonts here...
+		// Using a different default font (provided with Dear ImGui)
+		NetImgui::Internal::StringCopy(fontConfig.Name, "Roboto Medium, 16px");	
+		if( !pFontAtlas->AddFontFromMemoryCompressedTTF(Roboto_Medium_compressed_data, Roboto_Medium_compressed_size, 16.f*currentDPIScale, &fontConfig) ){
+			fontConfig.SizePixels = 16.f*currentDPIScale;
+			pFontAtlas->AddFontDefault(&fontConfig);
+		}
+		return true;
+	}
+	return false;
 }
 
 }} // namespace NetImguiServer { namespace App

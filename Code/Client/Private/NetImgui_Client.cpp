@@ -243,7 +243,7 @@ bool Communications_Outgoing_Disconnect(ClientInfo& client)
 bool Communications_Outgoing_Ping(ClientInfo& client)
 {
 	CmdPing cmdPing;
-	return Network::DataSend(client.mpSocketComs, &cmdPing, cmdPing.mHeader.mSize);		
+	return Network::DataSend(client.mpSocketComs, &cmdPing, cmdPing.mHeader.mSize);
 }
 
 //=================================================================================================

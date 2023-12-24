@@ -5,11 +5,11 @@
 //=================================================================================================
 //! @author		: Sammy Fatnassi
 //! @date		: 2023/12/24
-//!	@version	: v1.9.5
+//!	@version	: v1.9.6
 //! @Details	: For integration info : https://github.com/sammyfreg/netImgui/wiki
 //=================================================================================================
-#define NETIMGUI_VERSION		"1.9.5"	// Copy/Paste support and fixed fast keys input issue
-#define NETIMGUI_VERSION_NUM	10905
+#define NETIMGUI_VERSION		"1.9.6"	// Server Support of DPI font regeneration
+#define NETIMGUI_VERSION_NUM	10906
 
 
 
@@ -163,9 +163,6 @@ NETIMGUI_API	void				Shutdown();
 // clientPort		: PortID this Client should wait for connection from Server application
 // threadFunction	: User provided function to launch new networking thread.
 //					  Use 'DefaultStartCommunicationThread' by default (relying on 'std::thread').
-//SF todo
-// Assign callback to regenerate font to requested scaling to handle monitor DPI
-// Without this, will rely on 'FontGlobalScale' which is not as sharp looking
 //=================================================================================================
 NETIMGUI_API	bool				ConnectToApp(const char* clientName, const char* serverHost, uint32_t serverPort=kDefaultServerPort, ThreadFunctPtr threadFunction=0, FontCreationFuncPtr FontCreateFunction = 0);
 NETIMGUI_API	bool				ConnectFromApp(const char* clientName, uint32_t clientPort=kDefaultClientPort, ThreadFunctPtr threadFunction=0, FontCreationFuncPtr FontCreateFunction  = 0);

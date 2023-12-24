@@ -29,7 +29,9 @@ namespace NetImguiServer { namespace App
 	void	UpdateRemoteContent();
 	// Add a new remote client config to our list (to attempt connexion)
 	bool	AddTransientClientConfigFromString(const char* string);
-	
+	// Check for monitor DPI update and regenerate font when needed 
+	// (return true when font texture needs to be created)
+	bool	UpdateFont();
 	// Descriptor of each textures by Server. Format always RGBA8
 	// @sammyfreg todo: make this safer with smart pointer instead of manually deleting the HALTexture
 	struct ServerTexture 

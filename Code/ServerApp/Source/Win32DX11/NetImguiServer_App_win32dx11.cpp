@@ -142,9 +142,17 @@ int main(int, char**)
             elapsedSec	= std::chrono::high_resolution_clock::now() - sLastTime;
         }
         sLastTime = std::chrono::high_resolution_clock::now();
-        NetImguiServer::App::UpdateRemoteContent();         					// @SAMPLE_EDIT (Request each client to update their drawing content )
-        ImGui::GetIO().FontGlobalScale = NetImguiServer::UI::GetFontDPIScale();	// @SAMPLE_EDIT (DPI Awareness)
-        // @Sammyfreg TODO : Regenerate the font with DPI awareness instead of scaling.
+        
+        // @SAMPLE_EDIT (DPI Awareness)
+        if( NetImguiServer::App::UpdateFont() ) {
+            // Release all Dear ImGui GFX when font texture needs to be re-created.
+            // A bit drastic but avoids having to change Dear ImGui backend code,
+            // there's not too much to recreate and this rarely occurs
+            ImGui_ImplDX11_InvalidateDeviceObjects();
+        }
+
+        // @SAMPLE_EDIT (Request each client to update their drawing content )
+        NetImguiServer::App::UpdateRemoteContent();
         //=========================================================================================
 		
         // Start the Dear ImGui frame
