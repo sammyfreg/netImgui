@@ -155,7 +155,7 @@ bool NewFrame(bool bSupportFrameSkip)
 	ScopedBool scopedInside(client.mbInsideNewEnd, true);
 	assert(!client.mbIsDrawing);
 
-	// ImGui Newframe handled by remote connection settings	
+	// ImGui Newframe handled by remote connection settings
 	if( NetImgui::IsConnected() )
 	{		
 		ImGui::SetCurrentContext(client.mpContext);

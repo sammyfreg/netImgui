@@ -6,36 +6,32 @@
 //=================================================================================================
 
 #include <NetImgui_Api.h>
-#include "..\Common\Sample.h"
+#include "../Common/Sample.h"
 
-namespace SampleClient
-{
 //=================================================================================================
-//
+// SAMPLE CLASS
 //=================================================================================================
-bool Client_Startup()
+class SampleBasic : public SampleClient_Base
 {
-	if( !NetImgui::Startup() )
-		return false;
+public:
+					SampleBasic() : SampleClient_Base("SampleBasic") {}
+virtual ImDrawData* Draw() override;
+};
 
-	// Can have more ImGui initialization here, like loading extra fonts.
-	// ...
-    
-	return true;
+//=================================================================================================
+// GET SAMPLE
+// Each project must return a valid sample object
+//=================================================================================================
+SampleClient_Base& GetSample()
+{
+	static SampleBasic sample;
+	return sample;
 }
 
 //=================================================================================================
-//
+// DRAW
 //=================================================================================================
-void Client_Shutdown()
-{	
-	NetImgui::Shutdown();
-}
-
-//=================================================================================================
-// Function used by the sample, to draw all ImGui Content
-//=================================================================================================
-ImDrawData* Client_Draw()
+ImDrawData* SampleBasic::Draw()
 {
 	//---------------------------------------------------------------------------------------------
 	// (1) Start a new Frame.
@@ -49,8 +45,9 @@ ImDrawData* Client_Draw()
 	//-----------------------------------------------------------------------------------------
 	// (2) Draw ImGui Content
 	//-----------------------------------------------------------------------------------------
-	ClientUtil_ImGuiContent_Common("SampleBasic"); //Note: Connection to remote server done in there
+	SampleClient_Base::Draw_Connect(); //Note: Connection to remote server done in there
 
+	//Note: Some dummy text content
 	ImGui::SetNextWindowPos(ImVec2(32,48), ImGuiCond_Once);
 	ImGui::SetNextWindowSize(ImVec2(400,400), ImGuiCond_Once);
 	if( ImGui::Begin("Sample Basic", nullptr) )
@@ -76,7 +73,5 @@ ImDrawData* Client_Draw()
 	//---------------------------------------------------------------------------------------------
 	// (4) Return content to draw by local renderer. Stop drawing locally when remote connected
 	//---------------------------------------------------------------------------------------------
-	return !NetImgui::IsConnected() ? ImGui::GetDrawData() : nullptr;	
+	return !NetImgui::IsConnected() ? ImGui::GetDrawData() : nullptr;
 }
-
-} // namespace SampleClient

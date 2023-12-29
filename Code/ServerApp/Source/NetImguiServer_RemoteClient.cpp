@@ -87,13 +87,14 @@ void Client::ReceiveTexture(NetImgui::Internal::CmdTexture* pTextureCmd)
 
 void Client::ProcessPendingTextures()
 {
+	bool textureChanged(false);
 	while( mPendingTextureReadIndex != mPendingTextureWriteIndex )
 	{
 		NetImgui::Internal::CmdTexture* pTextureCmd = mpPendingTextures[(mPendingTextureReadIndex++) % IM_ARRAYSIZE(mpPendingTextures)];
 		bool isRemoval		= pTextureCmd->mFormat == NetImgui::eTexFormat::kTexFmt_Invalid;
 		uint32_t dataSize	= pTextureCmd->mHeader.mSize - sizeof(NetImgui::Internal::CmdTexture);
 		auto texIt			= mTextureTable.find(pTextureCmd->mTextureId) ;
-		
+		textureChanged 		|= texIt != mTextureTable.end();
 		// Delete texture when format/size changed or asked to remove
 		if ( isRemoval && texIt != mTextureTable.end() ) {
 			DestroyTexture(texIt->second, *pTextureCmd, dataSize);
@@ -111,6 +112,16 @@ void Client::ProcessPendingTextures()
 			}
 		}
 		NetImgui::Internal::netImguiDeleteSafe(pTextureCmd);
+	}
+
+	// Must invalidate last resolved Dear ImGui draw data,
+	// since some texture pointers are now invalid
+	// Note: if there's frequent texture removal/update and it could cause
+	//		 flickering. This could be fixed by saving the last received 
+	//		 draw command and resolving it every frame 
+	// 		 (with ProcessPendingTextures) instead
+	if (textureChanged) {
+		NetImgui::Internal::netImguiDeleteSafe( mpImguiDrawData );
 	}
 }
 

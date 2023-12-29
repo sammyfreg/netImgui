@@ -31,7 +31,7 @@ void HAL_RenderDrawData(RemoteClient::Client& client, ImDrawData* pDrawData)
 		{
 			void* mainBackend = ImGui::GetIO().BackendRendererUserData;
 			NetImgui::Internal::ScopedImguiContext scopedCtx(client.mpBGContext);
-			ImGui::GetIO().BackendRendererUserData = mainBackend; // Re-appropriate the existing renderer backend, for this client rendeering
+			ImGui::GetIO().BackendRendererUserData = mainBackend; // Re-appropriate the existing renderer backend, for this client rendering
 			ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 		}
 		if (pDrawData)
@@ -152,8 +152,9 @@ bool HAL_CreateTexture(uint16_t Width, uint16_t Height, NetImgui::eTexFormat For
 	ID3D11Texture2D*            pTexture(nullptr);
 	ID3D11ShaderResourceView*   pTextureView(nullptr);
 	DXGI_FORMAT                 texFmt(DXGI_FORMAT_UNKNOWN);
-	D3D11_TEXTURE2D_DESC        texDesc;	
-	ZeroMemory(&texDesc, sizeof(texDesc));		
+	D3D11_TEXTURE2D_DESC        texDesc;
+	D3D11_SUBRESOURCE_DATA		subResource;
+	ZeroMemory(&texDesc, sizeof(texDesc));
 	
 	texDesc.Width						= Width;
 	texDesc.Height						= Height;
@@ -164,11 +165,11 @@ bool HAL_CreateTexture(uint16_t Width, uint16_t Height, NetImgui::eTexFormat For
 	texDesc.Usage						= D3D11_USAGE_DEFAULT;
 	texDesc.BindFlags					= D3D11_BIND_SHADER_RESOURCE;
 	texDesc.CPUAccessFlags				= 0;
-	D3D11_SUBRESOURCE_DATA subResource;
 	subResource.pSysMem					= pPixelData;
 	subResource.SysMemPitch				= Width * 4;
 	subResource.SysMemSlicePitch		= 0;
 	HRESULT Result						= g_pd3dDeviceExtern->CreateTexture2D(&texDesc, &subResource, &pTexture);
+	
 	if( Result == S_OK )
 	{
 		D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
@@ -177,23 +178,22 @@ bool HAL_CreateTexture(uint16_t Width, uint16_t Height, NetImgui::eTexFormat For
 		srvDesc.ViewDimension				= D3D11_SRV_DIMENSION_TEXTURE2D;
 		srvDesc.Texture2D.MipLevels			= texDesc.MipLevels;
 		srvDesc.Texture2D.MostDetailedMip	= 0;
-		g_pd3dDeviceExtern->CreateShaderResourceView(pTexture, &srvDesc, &pTextureView);            
+		g_pd3dDeviceExtern->CreateShaderResourceView(pTexture, &srvDesc, &pTextureView);
 		if( Result == S_OK )
 		{
 			pTexture->Release();
-			OutTexture.mpHAL_Texture    = reinterpret_cast<void*>(pTextureView);
-			return true;
+			OutTexture.mpHAL_Texture		= reinterpret_cast<void*>(pTextureView);
 		}
 	}
-
-	if( pTextureView ){
+	
+	if( Result != S_OK && pTextureView ){
 		pTextureView->Release();
 	}
-	if( pTexture ){
+	if( Result != S_OK && pTexture ){
 		pTexture->Release();
 	}
 	NetImgui::Internal::netImguiDeleteSafe(pPixelDataAlloc);
-	return false;
+	return Result == S_OK;
 }
 
 //=================================================================================================

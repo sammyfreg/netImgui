@@ -39,10 +39,8 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 // Main code
 int main(int, char**)
 {
-    SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE); // @SAMPLE_EDIT (DPI Awareness)
-
     // Create application window
-    //ImGui_ImplWin32_EnableDpiAwareness();
+    ImGui_ImplWin32_EnableDpiAwareness(); // @SAMPLE_EDIT (DPI Awareness)
     WNDCLASSEXW wc = { sizeof(wc), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, L"NetImgui Server", nullptr }; // @SAMPLE_EDIT (changed name)
     ::RegisterClassExW(&wc);
     HWND hwnd = ::CreateWindowW(wc.lpszClassName, L"NetImgui Server", WS_OVERLAPPEDWINDOW, 100, 100, 1280, 800, nullptr, nullptr, wc.hInstance, nullptr); // @SAMPLE_EDIT (changed name)
@@ -145,10 +143,7 @@ int main(int, char**)
         
         // @SAMPLE_EDIT (DPI Awareness)
         if( NetImguiServer::App::UpdateFont() ) {
-            // Release all Dear ImGui GFX when font texture needs to be re-created.
-            // A bit drastic but avoids having to change Dear ImGui backend code,
-            // there's not too much to recreate and this rarely occurs
-            ImGui_ImplDX11_InvalidateDeviceObjects();
+			ImGui_ImplDX11_CreateFontsTexture();
         }
 
         // @SAMPLE_EDIT (Request each client to update their drawing content )

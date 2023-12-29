@@ -4,12 +4,12 @@
 //! @Name		: NetImgui
 //=================================================================================================
 //! @author		: Sammy Fatnassi
-//! @date		: 2023/12/24
-//!	@version	: v1.9.6
+//! @date		: 2023/12/2
+//!	@version	: v1.9.7
 //! @Details	: For integration info : https://github.com/sammyfreg/netImgui/wiki
 //=================================================================================================
-#define NETIMGUI_VERSION		"1.9.6"	// Server Support of DPI font regeneration
-#define NETIMGUI_VERSION_NUM	10906
+#define NETIMGUI_VERSION		"1.9.7"	// Update to samples, texture creation fix
+#define NETIMGUI_VERSION_NUM	10907
 
 
 
@@ -190,7 +190,7 @@ NETIMGUI_API	bool				IsConnectionPending(void);
 NETIMGUI_API	bool				IsDrawing(void);
 
 //=================================================================================================
-// True when we are currently drawinf on the NetImguiServer application
+// True when we are currently drawing on the NetImguiServer application
 // Means that we are between NewFrame() and EndFrame() of drawing for remote application
 //=================================================================================================
 NETIMGUI_API	bool				IsDrawingRemote(void);

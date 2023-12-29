@@ -140,10 +140,9 @@ bool HAL_CreateTexture(uint16_t Width, uint16_t Height, NetImgui::eTexFormat For
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, Width, Height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pPixelData);
 		OutTexture.mpHAL_Texture	= reinterpret_cast<void*>(static_cast<uint64_t>(texture));
-		NetImgui::Internal::netImguiDeleteSafe(pPixelDataAlloc);
-	
 		glBindTexture(GL_TEXTURE_2D, last_texture); // Restore state
 	}
+	NetImgui::Internal::netImguiDeleteSafe(pPixelDataAlloc);
 	return texture != 0;
 }
 

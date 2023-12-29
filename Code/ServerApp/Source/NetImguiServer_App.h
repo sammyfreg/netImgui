@@ -13,7 +13,7 @@
 //=============================================================================================
 
 // Forward declare
-namespace NetImguiServer { namespace RemoteClient { struct Client; } } 
+namespace NetImguiServer { namespace RemoteClient { struct Client; } }
 namespace NetImgui { namespace Internal { struct CmdTexture; } }
 
 namespace NetImguiServer { namespace App
@@ -57,7 +57,7 @@ namespace NetImguiServer { namespace App
 	bool	DestroyTexture_Custom(ServerTexture& serverTexture, const NetImgui::Internal::CmdTexture& cmdTexture, uint32_t customDataSize);
 
 	// Texture destruction is postponed until the end of the frame update to avoid rendering issues
-	void	EnqueueHALTextureDestroy(const ServerTexture& serverTexture);
+	void	EnqueueHALTextureDestroy(ServerTexture& serverTexture);
 	void	CompleteHALTextureDestroy();
 
 	//=============================================================================================

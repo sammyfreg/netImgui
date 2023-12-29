@@ -736,4 +736,23 @@ static void ImGui_ImplDX11_ShutdownPlatformInterface()
 
 //-----------------------------------------------------------------------------
 
+//=============================================================================
+// @SAMPLE_EDIT (DPI Awareness)
+// Function added to original backend code, handling Font Texture updates
+// when required (like a DPI change) in various samples
+void ExtraSampleBackend_UpdateFontTexture()
+{
+    ImGui_ImplDX11_Data* bd = ImGui_ImplDX11_GetBackendData();
+    if (bd && bd->pFontTextureView)
+    {
+        bd->pFontTextureView->Release();
+        bd->pFontTextureView = nullptr;
+        bd->pFontSampler->Release();
+        bd->pFontSampler = nullptr;
+        ImGui::GetIO().Fonts->SetTexID(0); // We copied data->pFontTextureView to io.Fonts->TexID so let's clear that as well.
+    } 
+    ImGui_ImplDX11_CreateFontsTexture();
+}
+//=============================================================================
+
 #endif // #ifndef IMGUI_DISABLE

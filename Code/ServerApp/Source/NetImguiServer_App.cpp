@@ -236,11 +236,12 @@ void DestroyTexture(ServerTexture& serverTexture, const NetImgui::Internal::CmdT
 }
 
 //=================================================================================================
-void EnqueueHALTextureDestroy(const ServerTexture& serverTexture)
+void EnqueueHALTextureDestroy(ServerTexture& serverTexture)
 //=================================================================================================
 {
 	ServerTexture* pDeleteTexture	= new ServerTexture(serverTexture);
 	pDeleteTexture->mpDeleteNext	= gPendingTextureDelete.exchange(pDeleteTexture);
+	memset(&serverTexture, 0, sizeof(serverTexture)); // Making sure we don't double free this later
 }
 
 //=================================================================================================
