@@ -9,10 +9,10 @@
 
 #ifndef NETIMGUI_INTERNAL_INCLUDE
 	#define NETIMGUI_INTERNAL_INCLUDE 1
-	#include "../NetImgui_Api.h"
+	#include "NetImgui_Api.h"
 	#undef NETIMGUI_INTERNAL_INCLUDE
 #else
-	#include "../NetImgui_Api.h"
+	#include "NetImgui_Api.h"
 #endif
 
 #if NETIMGUI_ENABLED
@@ -72,7 +72,7 @@ public:
 protected:
 	TType&	mValueRef;
 	TType	mValueRestore;
-	uint8_t mPadding[sizeof(void*)-(sizeof(TType)%8)];
+	uint8_t mPadding[sizeof(void*)-(sizeof(TType)%8)]={};
 	
 	// Prevents warning about implicitly delete functions
 	ScopedValue(const ScopedValue&) = delete;
@@ -142,14 +142,13 @@ private:
 
 //=============================================================================
 //=============================================================================
-// @sammyfreg TODO: re purpose this to a threadsafe consume/append buffer?
 template <typename TType, size_t TCount>
 class Ringbuffer
 {
 public:
 							Ringbuffer():mPosCur(0),mPosLast(0){}
 	void					AddData(const TType* pData, size_t& count);
-	void					ReadData(TType* pData, size_t& count);
+	bool					ReadData(TType* pData);
 private:
 	TType					mBuffer[TCount] = {0};
 	std::atomic_uint64_t	mPosCur;

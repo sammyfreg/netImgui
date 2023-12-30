@@ -5,52 +5,46 @@
 //
 // Other samples use the 'NetImgui_Api.h' and link against a pre compiled 'NetImgui' library.
 //
-// This sample uses the define 'NETIMGUI_IMPLEMENTATION' before including 'NetImgui_Api.h'. 
-// This tell 'NetImgui_Api.h' to also include every 'NetImgui' sources file,  
-// removing the need to link against the library.
+// By defining 'NETIMGUI_IMPLEMENTATION' before '#include <NetImgui_Api.h>', you can tell the 
+// library to pull all source files needed to compile NetImgui here.
+//
+// It should only be done in 1 source file (to avoid duplicate symbol at link time).
+//
+// Other location can still include 'NetImgui_Api.h', but without using the define
 //
 // Note: Another (more conventional) way of compiling 'NetImgui' with your code, 
 //		 is to includes its sources file directly in your project. This single header include
-//		 approach was added for potential convenience, minimizing changes to a project.
+//		 approach was added for potential convenience, minimizing changes to a project, but
+//		 can prevent code change detection in these included files, when compiling.
 //=================================================================================================
-
-// Defining this value before '#include <NetImgui_Api.h>', also load all 'NetImgui' client sources
-// It should only be done in 1 source file (to avoid duplicate symbol at link time), 
-// other location can still include 'NetImgui_Api.h', but without using the define
 #define NETIMGUI_IMPLEMENTATION
 #include <NetImgui_Api.h>
+#include "../Common/Sample.h"
 
-
-#include "..\Common\Sample.h"
-
-namespace SampleClient
+//=================================================================================================
+// SAMPLE CLASS
+//=================================================================================================
+class SampleSingleInclude : public SampleClient_Base
 {
+public:
+					SampleSingleInclude() : SampleClient_Base("SampleSingleInclude") {}
+virtual ImDrawData* Draw() override;
+};
+
 //=================================================================================================
-//
+// GET SAMPLE
+// Each project must return a valid sample object
 //=================================================================================================
-bool Client_Startup()
+SampleClient_Base& GetSample()
 {
-	if( !NetImgui::Startup() )
-		return false;
-
-	// Can have more ImGui initialization here, like loading extra fonts.
-	// ...
-    
-	return true;
-}
-
-//=================================================================================================
-//
-//=================================================================================================
-void Client_Shutdown()
-{	
-	NetImgui::Shutdown();
+	static SampleSingleInclude sample;
+	return sample;
 }
 
 //=================================================================================================
 // Function used by the sample, to draw all ImGui Content
 //=================================================================================================
-ImDrawData* Client_Draw()
+ImDrawData* SampleSingleInclude::Draw()
 {
 	//---------------------------------------------------------------------------------------------
 	// (1) Start a new Frame.
@@ -60,10 +54,10 @@ ImDrawData* Client_Draw()
 	//-----------------------------------------------------------------------------------------
 	// (2) Draw ImGui Content 		
 	//-----------------------------------------------------------------------------------------
-	ClientUtil_ImGuiContent_Common("SampleSingleInclude"); //Note: Connection to remote server done in there
+	SampleClient_Base::Draw_Connect(); //Note: Connection to remote server done in there
 
 	ImGui::SetNextWindowPos(ImVec2(32,48), ImGuiCond_Once);
-	ImGui::SetNextWindowSize(ImVec2(400,400), ImGuiCond_Once);
+	ImGui::SetNextWindowSize(ImVec2(600,500), ImGuiCond_Once);
 	if( ImGui::Begin("Sample Single Include", nullptr) )
 	{
 		ImGui::TextColored(ImVec4(0.1, 1, 0.1, 1), "Basic demonstration of NetImgui code integration.");
@@ -90,5 +84,3 @@ ImDrawData* Client_Draw()
 	//---------------------------------------------------------------------------------------------
 	return !NetImgui::IsConnected() ? ImGui::GetDrawData() : nullptr;	
 }
-
-} // namespace SampleClient

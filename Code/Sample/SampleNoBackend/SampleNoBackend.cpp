@@ -7,25 +7,32 @@
 // is running on hardward without any display and/or convenient input.
 // 
 // Because we are not using any Backend code, this Sample is a little bit different from 
-// the others. All of its code is included in this file (except for Dear ImGui sourcs)
+// the others. All of its code is included in this file (except for Dear ImGui sources)
 // and does not rely on some shared sample source file.
 // 
 // This sample compile both 'Dear Imgui' and 'NetImgui' sources directly 
-// (not using library version for them)
+// (not using their project version in the solution)
 // 
 // NOTE:	This sample is also use in backward compatibility test with older Dear ImGui versions,
 //			making it easier to compile Dear Imgui without any OS specific code (Backends)
+// 
+// NOTE:	This is also an excellent example of own little is needed to add NetImgui support
+//			to a project. It doesn't handle Font DPI regeneration, keeping things simple.
 //=================================================================================================
 
 #include <stdio.h>
 
-// Defining this value before '#include <NetImgui_Api.h>', also load all 'NetImgui' client sources
-// It should only be done in 1 source file (to avoid duplicate symbol at link time), 
-// other location can still include 'NetImgui_Api.h', but without using the define
+// By defining 'NETIMGUI_IMPLEMENTATION' before '#include <NetImgui_Api.h>', you can tell the 
+// library to pull all source files needed to compile NetImgui here.
+//
+// It should only be done in 1 source file (to avoid duplicate symbol at link time).
+//
+// Other location can still include 'NetImgui_Api.h', but without using the define
 //
 // Note: Another (more conventional) way of compiling 'NetImgui' with your code, 
 //		 is to includes its sources file directly in your project. This single header include
-//		 approach was added for potential convenience, minimizing changes to a project.
+//		 approach was added for potential convenience, minimizing changes to a project, but
+//		 can prevent code change detection in these included files, when compiling.
 #define NETIMGUI_IMPLEMENTATION
 #include <NetImgui_Api.h>
 

@@ -6,11 +6,12 @@
 //=================================================================================================
 #include "NetImguiServer_App.h"
 
-#if HAL_API_PLATFORM_GLFW_GL3
+#if HAL_API_PLATFORM_SOKOL
 
 #include "NetImguiServer_RemoteClient.h"
-#include <imgui_impl_opengl3.h>
-#include <imgui_impl_opengl3_loader.h>
+#include "sokol/sokol_app.h"
+#include "sokol/sokol_gfx.h"
+#include "sokol/util/sokol_imgui.h"
 
 namespace NetImguiServer { namespace App
 {
@@ -21,23 +22,40 @@ namespace NetImguiServer { namespace App
 //=================================================================================================
 void HAL_RenderDrawData(RemoteClient::Client& client, ImDrawData* pDrawData)
 {
-	if( client.mpHAL_AreaRT )
-	{
-		glBindFramebuffer(GL_FRAMEBUFFER, static_cast<GLuint>(reinterpret_cast<uint64_t>(client.mpHAL_AreaRT)));
-		glClearColor(client.mBGSettings.mClearColor[0], client.mBGSettings.mClearColor[1], client.mBGSettings.mClearColor[2], client.mBGSettings.mClearColor[3]);
-		glClear(GL_COLOR_BUFFER_BIT);
-		{
-			void* mainBackend = ImGui::GetIO().BackendRendererUserData;
-			NetImgui::Internal::ScopedImguiContext scopedCtx(client.mpBGContext);
-			ImGui::GetIO().BackendRendererUserData = mainBackend; // Re-appropriate the existing renderer backend, for this client rendeering
-			ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-		}
-		if (pDrawData)
-		{
-			ImGui_ImplOpenGL3_RenderDrawData(pDrawData);
-		}
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	}
+    if (client.mpHAL_AreaRT)
+    {
+        sg_pass_action pass_action{};
+        sg_pass_desc pass_desc{};
+
+        pass_desc.color_attachments[0].image.id = static_cast<uint32_t>(reinterpret_cast<uint64_t>(client.mpHAL_AreaRT));
+        pass_desc.depth_stencil_attachment.image.id = SG_INVALID_ID;
+        pass_desc.label = "mpHAL_AreaRT";
+
+        pass_action.colors[0].load_action = SG_LOADACTION_CLEAR;
+        pass_action.colors[0].clear_value.r = client.mBGSettings.mClearColor[0];
+        pass_action.colors[0].clear_value.g = client.mBGSettings.mClearColor[1];
+        pass_action.colors[0].clear_value.b = client.mBGSettings.mClearColor[2];
+        pass_action.colors[0].clear_value.a = client.mBGSettings.mClearColor[3];
+
+        sg_pass pass = sg_make_pass(&pass_desc);
+
+        sg_begin_pass(pass, &pass_action);
+        {
+            {
+                void* mainBackend = ImGui::GetIO().BackendRendererUserData;
+                NetImgui::Internal::ScopedImguiContext scopedCtx(client.mpBGContext);
+                ImGui::GetIO().BackendRendererUserData = mainBackend; // Re-appropriate the existing renderer backend, for this client rendeering
+                simgui_render_draw_data(ImGui::GetDrawData());
+            }
+            if (pDrawData)
+            {
+                simgui_render_draw_data(pDrawData);
+            }
+        }
+        sg_end_pass();
+
+        sg_destroy_pass(pass);
+    }
 }
 
 //=================================================================================================
@@ -50,32 +68,23 @@ bool HAL_CreateRenderTarget(uint16_t Width, uint16_t Height, void*& pOutRT, void
 {
 	HAL_DestroyRenderTarget(pOutRT, pOutTexture);
 
-    GLuint pTextureView = 0u;
-    glGenTextures(1, &pTextureView);
-    glBindTexture(GL_TEXTURE_2D, pTextureView);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, Width, Height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-		
-    GLuint pRenderTargetView = 0u;
-    glGenFramebuffers(1, &pRenderTargetView);
-    glBindFramebuffer(GL_FRAMEBUFFER, pRenderTargetView);
+    sg_image_desc img_desc{};
+    img_desc.render_target = true;
+    img_desc.width = Width;
+    img_desc.height = Height;
+    img_desc.pixel_format = SG_PIXELFORMAT_RGBA8;
+    img_desc.min_filter = SG_FILTER_LINEAR;
+    img_desc.mag_filter = SG_FILTER_LINEAR;
 
-    //Attach 2D texture to this FBO
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, pTextureView, 0);
+    sg_image img = sg_make_image(&img_desc);
 
-    GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-	bool bSuccess = status == GL_FRAMEBUFFER_COMPLETE;
-
-	// Unbind resources
-    glBindTexture(GL_TEXTURE_2D, 0);
-    glBindFramebuffer(GL_FRAMEBUFFER, 0); 
-
-	if( bSuccess ){
-		pOutRT      = reinterpret_cast<void*>(static_cast<uint64_t>(pRenderTargetView));
-		pOutTexture = reinterpret_cast<void*>(static_cast<uint64_t>(pTextureView));
+    bool bSuccess = img.id != SG_INVALID_ID;
+    if( bSuccess ){
+		pOutRT      = reinterpret_cast<void*>(static_cast<uint64_t>(img.id));
+		pOutTexture = reinterpret_cast<void*>(static_cast<uint64_t>(img.id));
 		return true;
 	}
+
     return false;
 }
 
@@ -85,17 +94,19 @@ bool HAL_CreateRenderTarget(uint16_t Width, uint16_t Height, void*& pOutRT, void
 //=================================================================================================
 void HAL_DestroyRenderTarget(void*& pOutRT, void*& pOutTexture)
 {
-	if(pOutRT)
+    if(pOutRT)
 	{
-		GLuint pRT	= static_cast<GLuint>(reinterpret_cast<uint64_t>(pOutRT));
-		pOutRT		= nullptr;
-		glDeleteFramebuffers(1, &pRT);
+		sg_image pRT{};
+        pRT.id = static_cast<uint32_t>(reinterpret_cast<uint64_t>(pOutRT));
+		pOutRT = nullptr;
+        sg_destroy_image(pRT);
 	}
 	if(pOutTexture)
 	{
-		GLuint pTexture = static_cast<GLuint>(reinterpret_cast<uint64_t>(pOutTexture));
-		pOutTexture		= nullptr;
-		glDeleteTextures(1, &pTexture);
+		sg_image pTexture{};
+        pTexture.id = static_cast<uint32_t>(reinterpret_cast<uint64_t>(pOutTexture));
+		pOutTexture = nullptr;
+        sg_destroy_image(pTexture);
 	}
 }
 
@@ -107,7 +118,7 @@ void HAL_DestroyRenderTarget(void*& pOutRT, void*& pOutTexture)
 bool HAL_CreateTexture(uint16_t Width, uint16_t Height, NetImgui::eTexFormat Format, const uint8_t* pPixelData, ServerTexture& OutTexture)
 {
 	NetImguiServer::App::EnqueueHALTextureDestroy(OutTexture);
-	
+
 	// Convert all incoming textures data to RGBA8
 	uint32_t* pPixelDataAlloc = NetImgui::Internal::netImguiSizedNew<uint32_t>(Width*Height*4);
 	if(Format == NetImgui::eTexFormat::kTexFmtA8)
@@ -119,31 +130,35 @@ bool HAL_CreateTexture(uint16_t Width, uint16_t Height, NetImgui::eTexFormat For
 	}
 	else if (Format == NetImgui::eTexFormat::kTexFmtRGBA8)
 	{
-	}	
+	}
 	else
 	{
 		// Unsupported format
 		return false;
 	}
 
-	GLint last_texture;
-	glGetIntegerv(GL_TEXTURE_BINDING_2D, &last_texture); // Save state
+    sg_image_desc img_desc{};
+    img_desc.width = Width;
+    img_desc.height = Height;
+    img_desc.pixel_format = SG_PIXELFORMAT_RGBA8;
+    img_desc.usage = SG_USAGE_STREAM;
 
-	// Create new texture
-	GLuint texture = 0u;
-	glGenTextures(1, &texture);
+    sg_image img = sg_make_image(&img_desc);
 
-	//GLenum error = glGetError(); (void)error;
-	if( texture != 0 ){
-		glBindTexture(GL_TEXTURE_2D, texture);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, Width, Height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pPixelData);
-		OutTexture.mpHAL_Texture	= reinterpret_cast<void*>(static_cast<uint64_t>(texture));
-		glBindTexture(GL_TEXTURE_2D, last_texture); // Restore state
-	}
-	NetImgui::Internal::netImguiDeleteSafe(pPixelDataAlloc);
-	return texture != 0;
+    if (img.id != SG_INVALID_ID)
+    {
+        sg_image_data img_data{};
+        img_data.subimage[0][0].ptr  = pPixelData;
+        img_data.subimage[0][0].size = Width * Height * sizeof(uint32_t);
+        sg_update_image(img, img_data);
+
+        OutTexture.mSize[0]         = Width;
+        OutTexture.mSize[1]         = Height;
+        OutTexture.mpHAL_Texture	= reinterpret_cast<void*>(static_cast<uint64_t>(img.id));
+    }
+
+    NetImgui::Internal::netImguiDeleteSafe(pPixelDataAlloc);
+    return img.id != SG_INVALID_ID;
 }
 
 //=================================================================================================
@@ -152,11 +167,15 @@ bool HAL_CreateTexture(uint16_t Width, uint16_t Height, NetImgui::eTexFormat For
 //=================================================================================================
 void HAL_DestroyTexture(ServerTexture& OutTexture)
 {
-	GLuint pTexture = static_cast<GLuint>(reinterpret_cast<uint64_t>(OutTexture.mpHAL_Texture));
-	glDeleteTextures(1, &pTexture);
-	memset(&OutTexture, 0, sizeof(OutTexture));
+    if(OutTexture.mpHAL_Texture)
+    {
+        sg_image image{};
+        image.id = static_cast<uint32_t>(reinterpret_cast<uint64_t>(OutTexture.mpHAL_Texture));
+        sg_destroy_image(image);
+        OutTexture.mpHAL_Texture = nullptr;
+    }
 }
 
 }} //namespace NetImguiServer { namespace App
 
-#endif // HAL_API_PLATFORM_GLFW_GL3
+#endif // HAL_API_PLATFORM_SOKOL

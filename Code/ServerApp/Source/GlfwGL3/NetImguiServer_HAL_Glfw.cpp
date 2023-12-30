@@ -2,23 +2,22 @@
 
 #if HAL_API_PLATFORM_GLFW_GL3
 
-
-
 #include <Private/NetImgui_Shared.h>
 
 //=================================================================================================
 // WINDOWS GLFW
 // Note: This file currently only has support for Windows application
-#if _WIN32
+#ifdef _WIN32
 	extern int main(int, char**);
 	#ifndef WIN32_LEAN_AND_MEAN
 	#define WIN32_LEAN_AND_MEAN
 	#endif
 
 	#include <windows.h>
+	#include <tchar.h>
+	#include <shlobj_core.h> 
 	#include <WinSock2.h>
 	#include <WS2tcpip.h>
-	#include <shellapi.h>	// To open webpage link
 	#include "../resource.h"
 
 	// WIN MAIN
@@ -48,7 +47,7 @@ bool HAL_Startup(const char* CmdLine)
 {
 	IM_UNUSED(CmdLine);
 
-#if _WIN32
+#ifdef _WIN32
 	// Change the icon for hwnd's window class.
 	HICON appIconBig				= LoadIcon(GetModuleHandle(nullptr), MAKEINTRESOURCE(IDI_NETIMGUIAPP));
 	HICON appIconSmall				= LoadIcon(GetModuleHandle(nullptr), MAKEINTRESOURCE(IDI_SMALL));
@@ -70,25 +69,13 @@ void HAL_Shutdown()
 }
 
 //=================================================================================================
-// HAL SHELL COMMAND
-// Receive a command to execute by the OS. Used to open our weblink to the NetImgui Github
-//=================================================================================================
-void HAL_ShellCommand(const char* aCommandline)
-{
-	(void)aCommandline;
-#if _WIN32
-	ShellExecuteA(0, 0, aCommandline, 0, 0 , SW_SHOW );
-#endif
-}
-
-//=================================================================================================
 // HAL GET SOCKET INFO
 // Take a platform specific socket (based on the NetImguiNetworkXXX.cpp implementation) and
 // fetch informations about the client IP connected
 //=================================================================================================
 bool HAL_GetSocketInfo(NetImgui::Internal::Network::SocketInfo* pClientSocket, char* pOutHostname, size_t HostNameLen, int& outPort)
 {
-#if _WIN32
+#ifdef _WIN32
 	sockaddr socketAdr;
 	int sizeSocket(sizeof(sockaddr));
 	SOCKET* pClientSocketWin = reinterpret_cast<SOCKET*>(pClientSocket);
@@ -104,6 +91,70 @@ bool HAL_GetSocketInfo(NetImgui::Internal::Network::SocketInfo* pClientSocket, c
 #endif
 	return false;
 }
+
+//=================================================================================================
+// HAL GET USER SETTING FOLDER
+// Request the directory where to the 'shared config' clients should be saved
+// Return 'nullptr' to disable this feature
+//=================================================================================================
+const char* HAL_GetUserSettingFolder()
+{
+#ifdef _WIN32
+	static char sUserSettingFolder[1024]={};
+	if(sUserSettingFolder[0] == 0)
+	{
+		WCHAR* UserPath;
+		HRESULT Ret = SHGetKnownFolderPath(FOLDERID_LocalAppData, 0, NULL, &UserPath);
+		if( SUCCEEDED(Ret) ){
+			sprintf_s(sUserSettingFolder, "%ws\\NetImgui", UserPath); // convert from wchar to char
+			DWORD ftyp = GetFileAttributesA(sUserSettingFolder);
+			if (ftyp != INVALID_FILE_ATTRIBUTES && (ftyp & FILE_ATTRIBUTE_DIRECTORY) ){
+				return sUserSettingFolder;
+			}
+			else if (ftyp == INVALID_FILE_ATTRIBUTES && CreateDirectoryA(sUserSettingFolder, nullptr) ){
+				return sUserSettingFolder;
+			}
+		}
+		sUserSettingFolder[0] = 0;
+		return nullptr;
+	}
+	return sUserSettingFolder;
+#else
+	return nullptr;
+#endif
+}
+
+//=================================================================================================
+// HAL GET CLIPBOARD UPDATED
+// Detect when clipboard had a content change and we should refetch it on the Server and
+// forward it to the Clients
+// 
+// Note: We rely on Dear ImGui for Clipboard Get/Set but want to avoid constantly reading then
+// converting it to a UTF8 text. If the Server platform doesn't support tracking change, 
+// return true. If the Server platform doesn't support any clipboard, return false;
+//=================================================================================================
+bool HAL_GetClipboardUpdated()
+{	
+#ifdef _WIN32
+	static DWORD sClipboardSequence(0);
+	DWORD clipboardSequence = GetClipboardSequenceNumber();
+	if (sClipboardSequence != clipboardSequence){
+		sClipboardSequence = clipboardSequence;
+		return true;
+	}
+#else
+	// Update Clipboard content every second
+	static std::chrono::steady_clock::time_point sLastCheck = std::chrono::steady_clock::now();
+	std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
+	if( (now - sLastCheck) > std::chrono::seconds(1) )
+	{
+		sLastCheck = now;
+		return true;
+	}
+#endif
+	return false;
+}
+
 }} // namespace NetImguiServer { namespace App
 
 #endif // HAL_API_PLATFORM_WIN32DX11

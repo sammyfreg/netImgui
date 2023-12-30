@@ -20,6 +20,7 @@ static ID3D11Device*            g_pd3dDevice = NULL;
 static ID3D11DeviceContext*     g_pd3dDeviceContext = NULL;
 static IDXGISwapChain*          g_pSwapChain = NULL;
 static ID3D11RenderTargetView*  g_mainRenderTargetView = NULL;
+float                           g_MonitorDPIScale = 0; // @SAMPLE_EDIT (DPI Awareness)
 
 // Forward declarations of helper functions
 bool CreateDeviceD3D(HWND hWnd);
@@ -32,7 +33,7 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 int main(int, char**)
 {
     // Create application window
-    //ImGui_ImplWin32_EnableDpiAwareness();
+    ImGui_ImplWin32_EnableDpiAwareness(); // @SAMPLE_EDIT (DPI Awareness)
     WNDCLASSEX wc = { sizeof(WNDCLASSEX), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(NULL), NULL, NULL, NULL, NULL, _T("ImGui Example"), NULL };
     ::RegisterClassEx(&wc);
     HWND hwnd = ::CreateWindow(wc.lpszClassName, _T("Dear ImGui DirectX11 Example"), WS_OVERLAPPEDWINDOW, 100, 100, 1280, 800, NULL, NULL, wc.hInstance, NULL);
@@ -103,7 +104,8 @@ int main(int, char**)
 
     // Main loop
     bool done = false;
-	done = !SampleClient::Client_Startup(); // @SAMPLE_EDIT
+	SampleClient_Base& sample = GetSample();	// @SAMPLE_EDIT
+	done = !sample.Startup();					// @SAMPLE_EDIT
     while (!done)
     {
         // Poll and handle messages (inputs, window resize, etc.)
@@ -125,6 +127,7 @@ int main(int, char**)
         // Start the Dear ImGui frame
         ImGui_ImplDX11_NewFrame();
         ImGui_ImplWin32_NewFrame();
+		sample.UpdateFont(g_MonitorDPIScale, true); // @SAMPLE_EDIT (DPI Awareness)
     #if 0 // @SAMPLE_EDIT
         ImGui::NewFrame();
 
@@ -199,7 +202,7 @@ int main(int, char**)
         const float clear_color_with_alpha[4] = { clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w };
         g_pd3dDeviceContext->OMSetRenderTargets(1, &g_mainRenderTargetView, NULL);
         g_pd3dDeviceContext->ClearRenderTargetView(g_mainRenderTargetView, clear_color_with_alpha);
-        ImDrawData* pDrawData = SampleClient::Client_Draw();
+        ImDrawData* pDrawData = sample.Draw();
         if( pDrawData ){
             ImGui_ImplDX11_RenderDrawData(pDrawData);
         }
@@ -221,7 +224,7 @@ int main(int, char**)
     // Cleanup
     ImGui_ImplDX11_Shutdown();
     ImGui_ImplWin32_Shutdown();
-	SampleClient::Client_Shutdown(); // @SAMPLE_EDIT
+	sample.Shutdown(); // @SAMPLE_EDIT
     ImGui::DestroyContext();
 
     CleanupDeviceD3D();
@@ -306,6 +309,7 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
             g_pSwapChain->ResizeBuffers(0, (UINT)LOWORD(lParam), (UINT)HIWORD(lParam), DXGI_FORMAT_UNKNOWN, 0);
             CreateRenderTarget();
         }
+		g_MonitorDPIScale = static_cast<float>(GetDpiForWindow(hWnd)) / 96.f; // @SAMPLE_EDIT (DPI Awareness)
         return 0;
     case WM_SYSCOMMAND:
         if ((wParam & 0xfff0) == SC_KEYMENU) // Disable ALT application menu
@@ -315,6 +319,7 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         ::PostQuitMessage(0);
         return 0;
     case WM_DPICHANGED:
+        g_MonitorDPIScale = static_cast<float>(GetDpiForWindow(hWnd)) / 96.f; // @SAMPLE_EDIT (DPI Awareness)
         if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DpiEnableScaleViewports)
         {
             //const int dpi = HIWORD(wParam);

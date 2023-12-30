@@ -30,17 +30,21 @@ struct SavedImguiContext
 {
 	void					Save(ImGuiContext* copyFrom);
 	void					Restore(ImGuiContext* copyTo);	
-	const char*				mBackendPlatformName	= nullptr;
-	const char*				mBackendRendererName	= nullptr;	
-	void*					mClipboardUserData		= nullptr;
-    void*					mImeWindowHandle		= nullptr;
-	ImGuiBackendFlags		mBackendFlags			= 0;
-	ImGuiConfigFlags		mConfigFlags			= 0;	
-	bool					mDrawMouse				= false;
-	bool					mSavedContext			= false;
-	char					mPadding1[6];
-	int						mKeyMap[ImGuiKey_COUNT];
-	char					mPadding2[8 - (sizeof(mKeyMap) % 8)];	
+	const char*				mBackendPlatformName						= nullptr;
+	const char*				mBackendRendererName						= nullptr;
+	const char*				(*mGetClipboardTextFn)(void*)				= nullptr;
+    void					(*mSetClipboardTextFn)(void*, const char*)	= nullptr;
+	void*					mClipboardUserData							= nullptr;
+    void*					mImeWindowHandle							= nullptr;
+	float					mFontGlobalScale							= 1.f;
+	float					mFontGeneratedSize							= 0.f;
+	ImGuiBackendFlags		mBackendFlags								= 0;
+	ImGuiConfigFlags		mConfigFlags								= 0;	
+	bool					mDrawMouse									= false;
+	bool					mSavedContext								= false;
+	char					mPadding1[2]								= {};
+	int						mKeyMap[ImGuiKey_COUNT]						= {};
+	char					mPadding2[8 - (sizeof(mKeyMap) % 8)]		={};	
 };
 
 //=============================================================================
@@ -77,10 +81,13 @@ struct ClientInfo
 	CmdTexture*							mTexturesPending[16];
 	ExchangePtr<CmdDrawFrame>			mPendingFrameOut;
 	ExchangePtr<CmdBackground>			mPendingBackgroundOut;
-	ExchangePtr<CmdInput>				mPendingInputIn;		
+	ExchangePtr<CmdInput>				mPendingInputIn;
+	ExchangePtr<CmdClipboard>			mPendingClipboardIn;					// Clipboard content received from Server and waiting to be taken by client
+	ExchangePtr<CmdClipboard>			mPendingClipboardOut;					// Clipboard content copied on Client and waiting to be sent to Server
 	ImGuiContext*						mpContext					= nullptr;	// Context that the remote drawing should use (either the one active when connection request happened, or a clone)
-	CmdInput*							mpInputPending				= nullptr;	// Last Input Command from server, waiting to be processed by client
-	CmdDrawFrame*						mpDrawFramePrevious			= nullptr;	// Last sent Draw Command. Used by data compression, to generate delta between previous and current frame
+	CmdInput*							mpCmdInputPending			= nullptr;	// Last Input Command from server, waiting to be processed by client
+	CmdClipboard*						mpCmdClipboard				= nullptr;	// Last received clipboad command
+	CmdDrawFrame*						mpCmdDrawLast				= nullptr;	// Last sent Draw Command. Used by data compression, to generate delta between previous and current frame
 	CmdBackground						mBGSetting;								// Current value assigned to background appearance by user
 	CmdBackground						mBGSettingSent;							// Last sent value to remote server
 	BufferKeys							mPendingKeyIn;							// Keys pressed received. Results of 2 CmdInputs are concatenated if received before being processed
@@ -106,7 +113,9 @@ struct ClientInfo
 	uint8_t								mClientCompressionMode		= eCompressionMode::kUseServerSetting;
 	bool								mServerCompressionEnabled	= false;	// If Server would like compression to be enabled (mClientCompressionMode value can override this value)
 	bool								mServerCompressionSkip		= false;	// Force ignore compression setting for 1 frame
-	char								PADDING[2];
+	char								PADDING[1];
+	FontCreationFuncPtr					mFontCreationFunction		= nullptr;	// Method to call to generate the remote ImGui font. By default, re-use the local font, but this doesn't handle native DPI scaling on remote server
+	float								mFontCreationScaling		= 1.f;		// Last font scaling used when generating the NetImgui font
 	InputState							mPreviousInputState;					// Keeping track of last keyboard/mouse state
 	ImGuiID								mhImguiHookNewframe			= 0;
 	ImGuiID								mhImguiHookEndframe			= 0;

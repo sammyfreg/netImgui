@@ -9,19 +9,37 @@
 // other location can still include 'NetImgui_Api.h', but without using the define
 #define NETIMGUI_IMPLEMENTATION
 #include <NetImgui_Api.h>
+#include "../Common/Sample.h"
 
-#include "..\Common\Sample.h"
+//=================================================================================================
+// SAMPLE CLASS
+//=================================================================================================
+class SampleCompression : public SampleClient_Base
+{
+public:
+						SampleCompression();
+	virtual ImDrawData* Draw() override;
+protected:
+	void				Draw_ExtraWindow(const char* name, const ImVec2& pos);
+};
+
+//=================================================================================================
+// GET SAMPLE
+// Each project must return a valid sample object
+//=================================================================================================
+SampleClient_Base& GetSample()
+{
+	static SampleCompression sample;
+	return sample;
+}
 
 extern uint64_t gMetric_SentDataCompressed;
 extern uint64_t gMetric_SentDataUncompressed;
-static float	gMetric_SentDataTimeUS = 0.f;
-
-namespace SampleClient
-{
-
+static float	gMetric_SentDataTimeUS	= 0.f;
+static bool		gMetric_ConnectTo		= false;
 //=================================================================================================
-// Replacement of Main Communication Loop used by Communication Thread
-// Used to insert some timing metrics
+// Replacement of original NetImgui 'CommunicationsClient' used to exchange data with server.
+// Used to insert some metrics for our sample timing with/without compression
 // @Note: Keep this version identical original in 'NetImgui_Client.cpp' (minus the small edits)
 //=================================================================================================
 using namespace NetImgui::Internal::Client;
@@ -59,9 +77,8 @@ void CustomCommunicationsClient(void* pClientVoid)
 
 //=================================================================================================
 // Copy of 'DefaultStartCommunicationThread()' minus our small edit.
-// Sneaky method of replacing the original 'CommunicationsClient' function with our own.
-// When this thread launcher function detects that NetImgui wants to launch the original 
-// Communication function, we start a new thread with our own custum version instead.
+// Sneaky method of replacing the 'CommunicationsClient' function with our own to instrument
+// the original function with performance tracking.
 //=================================================================================================
 void CustomThreadLauncher(void ComFunctPtr(void*), void* pClient)
 {
@@ -75,8 +92,10 @@ void CustomThreadLauncher(void ComFunctPtr(void*), void* pClient)
 	// @SAMPLE_EDIT	
 	if( ComFunctPtr == NetImgui::Internal::Client::CommunicationsClient ){
 		std::thread(CustomCommunicationsClient, pClient).detach();
+		gMetric_ConnectTo = true;
 		return;
 	}
+	gMetric_ConnectTo = false;
 	//=========================================================================================
 	std::thread(ComFunctPtr, pClient).detach();
 
@@ -86,51 +105,18 @@ void CustomThreadLauncher(void ComFunctPtr(void*), void* pClient)
 }
 
 //=================================================================================================
-//
+// CONSTRUCTOR
 //=================================================================================================
-bool Client_Startup()
+SampleCompression::SampleCompression() 
+: SampleClient_Base("SampleCompression") 
 {
-	if( !NetImgui::Startup() )
-		return false;
-
-	// Can have more ImGui initialization here, like loading extra fonts.
-	// ...
-    
-	return true;
+	mCallback_ThreadLaunch = CustomThreadLauncher;
 }
 
 //=================================================================================================
-//
+// DRAW
 //=================================================================================================
-void Client_Shutdown()
-{	
-	NetImgui::Shutdown();
-}
-
-void Client_Draw_ExtraWindowDraw(const char* name, const ImVec2& pos)
-{
-	ImGui::SetNextWindowPos(pos, ImGuiCond_Once);
-	ImGui::SetNextWindowSize(ImVec2(400,400), ImGuiCond_Once);
-	if( ImGui::Begin(name, nullptr) )
-	{
-		ImGui::TextWrapped("Basic Window with some text.");
-		ImGui::NewLine();
-		ImGui::TextWrapped("Drawing more than 1 window to better see compression improvements.");
-		ImGui::NewLine();
-		ImGui::TextColored(ImVec4(0.1, 1, 0.1, 1), "Where are we drawing: ");
-		ImGui::SameLine();
-		ImGui::TextUnformatted(NetImgui::IsDrawingRemote() ? "Remote Draw" : "Local Draw");
-		ImGui::NewLine();
-		ImGui::TextColored(ImVec4(0.1, 1, 0.1, 1), "Filler content");
-		ImGui::TextWrapped("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.");
-	}
-	ImGui::End();
-}
-
-//=================================================================================================
-// Function used by the sample, to draw all ImGui Content
-//=================================================================================================
-ImDrawData* Client_Draw()
+ImDrawData* SampleCompression::Draw()
 {
 	//---------------------------------------------------------------------------------------------
 	// (0) Update the communications statistics
@@ -178,7 +164,8 @@ ImDrawData* Client_Draw()
 	//-----------------------------------------------------------------------------------------
 	// (2) Draw ImGui Content
 	//-----------------------------------------------------------------------------------------
-	ClientUtil_ImGuiContent_Common("SampleCompression", CustomThreadLauncher); //Note: Connection to remote server done in there
+	SampleClient_Base::Draw_Connect(); //Note: Connection to remote server done in there
+
 	ImGui::SetNextWindowPos(ImVec2(32,48), ImGuiCond_Once);
 	ImGui::SetNextWindowSize(ImVec2(400,500), ImGuiCond_Once);
 	if( ImGui::Begin("Sample Compression", nullptr) )
@@ -213,7 +200,15 @@ ImDrawData* Client_Draw()
 		ImGui::Text(									"NetImgui process: %5.03f ms", (sMetric_RenderTimeUS+gMetric_SentDataTimeUS)/1000.f);
 		ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1), "...EndFrame:      %5.03f ms", sMetric_RenderTimeUS/1000.f);
 		if( ImGui::IsItemHovered() ) ImGui::SetTooltip("Includes time for Dear ImGui to generate rendering data and NetImgui to create draw command.");
-		ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1), "...Comms:         %5.03f ms", gMetric_SentDataTimeUS/1000.f);
+		if( !NetImgui::IsConnected() ){
+			ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1), "...Comms:          No Connection");
+		}
+		else if( !gMetric_ConnectTo ){
+			ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1), "...Comms:          Use 'Connect To' for timings");
+		}
+		else{
+			ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1), "...Comms:          %5.03f ms", gMetric_SentDataTimeUS/1000.f);
+		}
 		if( ImGui::IsItemHovered() ) ImGui::SetTooltip("Includes time for NetImgui to send/receive data with server, and data compression when in use. This is all done on the on communication thread.");
 		ImGui::NewLine();
 
@@ -225,9 +220,9 @@ ImDrawData* Client_Draw()
 	}
 	ImGui::End();
 
-	Client_Draw_ExtraWindowDraw("Extra Window 1", ImVec2(500,48));
-	Client_Draw_ExtraWindowDraw("Extra Window 2", ImVec2(600,148));
-	Client_Draw_ExtraWindowDraw("Extra Window 3", ImVec2(700,248));
+	Draw_ExtraWindow("Extra Window 1", ImVec2(500,48));
+	Draw_ExtraWindow("Extra Window 2", ImVec2(600,148));
+	Draw_ExtraWindow("Extra Window 3", ImVec2(700,248));
 		
 	//---------------------------------------------------------------------------------------------
 	// (3) Finish the frame
@@ -246,7 +241,30 @@ ImDrawData* Client_Draw()
 	//---------------------------------------------------------------------------------------------
 	// (4) Return content to draw by local renderer. Stop drawing locally when remote connected
 	//---------------------------------------------------------------------------------------------
-	return !NetImgui::IsConnected() ? ImGui::GetDrawData() : nullptr;	
+	return !NetImgui::IsConnected() ? ImGui::GetDrawData() : nullptr;
 }
 
-} // namespace SampleClient
+//=================================================================================================
+// DRAW EXTRA WINDOW
+// Create a new window with same dummy content, increasing draw data and showcasing compression
+//=================================================================================================
+void SampleCompression::Draw_ExtraWindow(const char* name, const ImVec2& pos)
+{
+	ImGui::SetNextWindowPos(pos, ImGuiCond_Once);
+	ImGui::SetNextWindowSize(ImVec2(400,400), ImGuiCond_Once);
+	if( ImGui::Begin(name, nullptr) )
+	{
+		ImGui::TextWrapped("Basic Window with some text.");
+		ImGui::NewLine();
+		ImGui::TextWrapped("Drawing more than 1 window to better see compression improvements.");
+		ImGui::NewLine();
+		ImGui::TextColored(ImVec4(0.1, 1, 0.1, 1), "Where are we drawing: ");
+		ImGui::SameLine();
+		ImGui::TextUnformatted(NetImgui::IsDrawingRemote() ? "Remote Draw" : "Local Draw");
+		ImGui::NewLine();
+		ImGui::TextColored(ImVec4(0.1, 1, 0.1, 1), "Filler content");
+		ImGui::TextWrapped("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.");
+	}
+	ImGui::End();
+}
+

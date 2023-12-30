@@ -30,7 +30,8 @@ namespace NetImgui
 	}
 	
 	// Test compiling netImgui with the Disabled Define
-	[Sharpmake.Generate] public class ProjectNetImgui_Disabled : ProjectNetImgui { 
+	[Sharpmake.Generate] public class ProjectNetImgui_Disabled : ProjectNetImgui 
+	{ 
 		public ProjectNetImgui_Disabled() : base(NetImguiTarget.GetPath(ProjectImgui.sDefaultPath)) { Name = "NetImguiLib (Disabled)"; }
 		
 		public override void ConfigureAll(Configuration conf, NetImguiTarget target)
@@ -148,6 +149,7 @@ namespace NetImgui
 	// Standard samples
 	//-------------------------------------------------------------------------
 	[Sharpmake.Generate] public class ProjectSample_Basic 		: ProjectSample { public ProjectSample_Basic() 		: base("SampleBasic"){} }
+	[Sharpmake.Generate] public class ProjectSample_FontDPI		: ProjectSample { public ProjectSample_FontDPI() 	: base("SampleFontDPI"){} }
 	[Sharpmake.Generate] public class ProjectSample_DualUI 		: ProjectSample { public ProjectSample_DualUI()		: base("SampleDualUI"){} }	
 	[Sharpmake.Generate] public class ProjectSample_Textures	: ProjectSample { public ProjectSample_Textures() 	: base("SampleTextures"){} }
 	[Sharpmake.Generate] public class ProjectSample_NewFrame	: ProjectSample { public ProjectSample_NewFrame()	: base("SampleNewFrame"){} }
@@ -277,6 +279,7 @@ namespace NetImgui
 		{
 			string SolutionFolder = "Samples";
 			conf.AddProject<ProjectSample_Basic>(target, false, SolutionFolder);			
+			conf.AddProject<ProjectSample_FontDPI>(target, false, SolutionFolder);
 			conf.AddProject<ProjectSample_DualUI>(target, false, SolutionFolder);
 			conf.AddProject<ProjectSample_NewFrame>(target, false, SolutionFolder);
 			conf.AddProject<ProjectSample_Compression>(target, false, SolutionFolder);			

@@ -1,3 +1,4 @@
+#pragma once
 //
 // Deactivate a few warnings to allow internal netImgui code to compile 
 // with 'Warning as error' and '-Wall' compile actions enabled

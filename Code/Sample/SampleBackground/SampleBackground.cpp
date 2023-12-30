@@ -6,26 +6,44 @@
 
 #include <NetImgui_Api.h>
 #include <array>
-#include "..\Common\Sample.h"
+#include "../Common/Sample.h"
 
 // Methods declared in main.cpp, extern declare to avoid having to include 'd3d11.h' here
 extern void TextureCreate(const uint8_t* pPixelData, uint32_t width, uint32_t height, void*& pTextureViewOut);
 extern void TextureDestroy(void*& pTextureView);
 
-namespace SampleClient
+//=================================================================================================
+// SAMPLE CLASS
+//=================================================================================================
+class SampleBackground : public SampleClient_Base
 {
-
-static void*	gTextureView;
+public:
+						SampleBackground() : SampleClient_Base("SampleBackground") {}
+	virtual bool		Startup() override;
+	virtual void		Shutdown() override;
+	virtual ImDrawData* Draw() override;
+protected:
+	void*				mTextureView = nullptr;
+};
 
 //=================================================================================================
-//
+// GET SAMPLE
+// Each project must return a valid sample object
 //=================================================================================================
-bool Client_Startup()
+SampleClient_Base& GetSample()
 {
-	if (!NetImgui::Startup())
+	static SampleBackground sample;
+	return sample;
+}
+
+//=================================================================================================
+// STARTUP
+//=================================================================================================
+bool SampleBackground::Startup()
+{
+	if (!SampleClient_Base::Startup())
 		return false;
 
-	
 	constexpr uint16_t kSize	= 256;
 	constexpr float kFadeSize	= 16.f;
 	uint32_t pixels[kSize][kSize];
@@ -39,25 +57,24 @@ bool Client_Startup()
 			pixels[y][x]	= ImColor( static_cast<uint8_t>(x), static_cast<uint8_t>(y), (x+y) <= 255 ? 0 : 255-(x+y), static_cast<uint8_t>(255.f*alpha));
 		}
 	}
-	TextureCreate(reinterpret_cast<uint8_t*>(pixels), kSize, kSize, gTextureView);													// For local display
-	NetImgui::SendDataTexture(static_cast<ImTextureID>(gTextureView), pixels, kSize, kSize, NetImgui::eTexFormat::kTexFmtRGBA8);	// For remote display
-
+	TextureCreate(reinterpret_cast<uint8_t*>(pixels), kSize, kSize, mTextureView);													// For local display
+	NetImgui::SendDataTexture(static_cast<ImTextureID>(mTextureView), pixels, kSize, kSize, NetImgui::eTexFormat::kTexFmtRGBA8);	// For remote display
 	return true;
 }
 
 //=================================================================================================
-//
+// SHUTDOWN
 //=================================================================================================
-void Client_Shutdown()
+void SampleBackground::Shutdown()
 {
-	TextureDestroy(gTextureView);
+	TextureDestroy(mTextureView);
 	NetImgui::Shutdown();
 }
 
 //=================================================================================================
-// Function used by the sample, to draw all ImGui Content
+// DRAW
 //=================================================================================================
-ImDrawData* Client_Draw()
+ImDrawData* SampleBackground::Draw()
 {
 	//---------------------------------------------------------------------------------------------
 	// (1) Start a new Frame
@@ -65,9 +82,10 @@ ImDrawData* Client_Draw()
 	if (NetImgui::NewFrame(true))
 	{		
 		//-----------------------------------------------------------------------------------------
-		// (2) Draw ImGui Content 		
+		// (2) Draw ImGui Content
 		//-----------------------------------------------------------------------------------------
-		ClientUtil_ImGuiContent_Common("SampleBackground");
+		SampleClient_Base::Draw_Connect(); //Note: Connection to remote server done in there
+
 		ImGui::SetNextWindowPos(ImVec2(32, 48), ImGuiCond_Once);
 		ImGui::SetNextWindowSize(ImVec2(400, 400), ImGuiCond_Once);
 		if (ImGui::Begin("Sample Background", nullptr))
@@ -80,13 +98,13 @@ ImDrawData* Client_Draw()
 			ImGui::ColorEdit4("Background", reinterpret_cast<float*>(&sBgColor), ImGuiColorEditFlags_Float | ImGuiColorEditFlags_DisplayRGB | ImGuiColorEditFlags_InputRGB | ImGuiColorEditFlags_PickerHueWheel);
 			ImGui::ColorEdit4("Logo Tint", reinterpret_cast<float*>(&sTextureTint), ImGuiColorEditFlags_Float | ImGuiColorEditFlags_DisplayRGB | ImGuiColorEditFlags_InputRGB | ImGuiColorEditFlags_PickerHueWheel);			
 			ImGui::Checkbox("Replace Background Texture", &sUseTextureOverride);
-			ImGui::Image(gTextureView, ImVec2(64,64));
+			ImGui::Image(mTextureView, ImVec2(64,64));
 			ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.5f, 0.5f, 1.f));
 			ImGui::TextWrapped("(Note: Custom background settings only applied on remote server)");
 			ImGui::PopStyleColor();
 			if( sUseTextureOverride )
 			{
-				NetImgui::SetBackground(sBgColor, sTextureTint, static_cast<ImTextureID>(gTextureView));
+				NetImgui::SetBackground(sBgColor, sTextureTint, static_cast<ImTextureID>(mTextureView));
 			}
 			else
 			{ 
@@ -107,6 +125,4 @@ ImDrawData* Client_Draw()
 	//---------------------------------------------------------------------------------------------
 	return !NetImgui::IsConnected() ? ImGui::GetDrawData() : nullptr;
 }
-
-} // namespace SampleClient
 

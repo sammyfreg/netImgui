@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <chrono>
+#include <unordered_map>
 #include <Private/NetImgui_CmdPackets.h>
 #include "NetImguiServer_App.h"
 
@@ -20,7 +21,6 @@ struct NetImguiImDrawData : ImDrawData
 {
 				NetImguiImDrawData();
 	ImDrawList	mCommandList;
-	ImDrawList*	mpCommandList = nullptr;
 };
 
 //=================================================================================================
@@ -30,8 +30,11 @@ struct Client
 {	
 	static constexpr uint32_t kInvalidClient = static_cast<uint32_t>(-1);
 	using ExchPtrInput		= NetImgui::Internal::ExchangePtr<NetImgui::Internal::CmdInput>;
+	using ExchPtrClipboard	= NetImgui::Internal::ExchangePtr<NetImgui::Internal::CmdClipboard>;
 	using ExchPtrBackground = NetImgui::Internal::ExchangePtr<NetImgui::Internal::CmdBackground>;
 	using ExchPtrImguiDraw	= NetImgui::Internal::ExchangePtr<NetImguiImDrawData>;
+	using TextureTable		= std::unordered_map<uint64_t, App::ServerTexture>;
+
 											Client();
 											~Client();
 											Client(const Client&)	= delete;
@@ -49,6 +52,7 @@ struct Client
 		
 	void									CaptureImguiInput();
 	NetImgui::Internal::CmdInput*			TakePendingInput();
+	NetImgui::Internal::CmdClipboard*		TakePendingClipboard();
 	void									ProcessPendingTextures();
 
 	void*									mpHAL_AreaRT			= nullptr;
@@ -68,10 +72,12 @@ struct Client
 
 	NetImguiImDrawData*						mpImguiDrawData			= nullptr;	//!< Current Imgui Data that this client is the owner of
 	NetImgui::Internal::CmdDrawFrame*		mpFrameDrawPrev			= nullptr;	//!< Last valid DrawDrame (used by com thread, to uncompress data)
-	std::vector<App::ServerTexture>			mvTextures;							//!< List of textures received and used by the client
+	TextureTable							mTextureTable;						//!< Table of textures received and used by the client
 	ExchPtrImguiDraw						mPendingImguiDrawDataIn;			//!< Pending received Imgui DrawData, waiting to be taken ownership of
 	ExchPtrBackground						mPendingBackgroundIn;				//!< Background settings received and waiting to update client setting
+	ExchPtrClipboard						mPendingClipboardIn;				//!< Clipboard received from Client and waiting to be processed on Server
 	ExchPtrInput							mPendingInputOut;					//!< Input command waiting to be sent out to client
+	ExchPtrClipboard						mPendingClipboardOut;				//!< Clipboard command waiting to be sent out to client
 	std::vector<ImWchar>					mPendingInputChars;					//!< Captured Imgui characters input waiting to be added to new InputCmd
 	NetImgui::Internal::CmdTexture*			mpPendingTextures[64]	= {};		//!< Textures commands waiting to be processed in main update loop
 	std::atomic_uint64_t					mPendingTextureReadIndex;

@@ -1,11 +1,18 @@
 #include "NetImgui_Shared.h"
 
+// Tested with Unreal Engine 4.27, 5.0, 5.2
+
 #if NETIMGUI_ENABLED && defined(__UNREAL__)
 
 #include "CoreMinimal.h"
+#include "Runtime/Launch/Resources/Version.h"
 #include "Misc/OutputDeviceRedirector.h"
 #include "SocketSubsystem.h"
 #include "Sockets.h"
+#include "HAL/PlatformProcess.h"
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 2
+#include "IPAddressAsyncResolve.h"
+#endif
 
 namespace NetImgui { namespace Internal { namespace Network 
 {
@@ -39,14 +46,15 @@ SocketInfo* Connect(const char* ServerHost, uint32_t ServerPort)
 {
 	SocketInfo* pSocketInfo					= nullptr;
 	ISocketSubsystem* SocketSubSystem		= ISocketSubsystem::Get();
-	auto ResolveInfo						= SocketSubSystem->GetHostByName(ServerHost);
-	while( !ResolveInfo->IsComplete() )
-		FPlatformProcess::Sleep(0.1);
-	
+	auto ResolveInfo						= SocketSubSystem->GetHostByName(ServerHost);	
+	while( !ResolveInfo->IsComplete() ){
+		FPlatformProcess::YieldThread();
+	}
+
 	if (ResolveInfo->GetErrorCode() == 0)
 	{
 		TSharedRef<FInternetAddr> IpAddress	= ResolveInfo->GetResolvedAddress().Clone();
-		IpAddress->SetPort(ServerPort);		
+		IpAddress->SetPort(ServerPort);
 		if (IpAddress->IsValid())
 		{
 			FSocket* pNewSocket				= SocketSubSystem->CreateSocket(NAME_Stream, "netImgui", IpAddress->GetProtocolType());

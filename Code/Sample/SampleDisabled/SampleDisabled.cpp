@@ -8,29 +8,32 @@
 
 #include <NetImgui_Api.h>
 #include "imgui.h" // Since NetImgui is disabled in this sample, it will not include this header
-#include "..\Common\Sample.h"
+#include "../Common/Sample.h"
 
-namespace SampleClient
-{
 //=================================================================================================
-//
+// SAMPLE CLASS
 //=================================================================================================
-bool Client_Startup()
+class SampleDisabled : public SampleClient_Base
 {
-	return true;
+public:
+					SampleDisabled() : SampleClient_Base("SampleDisabled") {}
+virtual ImDrawData* Draw() override;
+};
+
+//=================================================================================================
+// GET SAMPLE
+// Each project must return a valid sample object
+//=================================================================================================
+SampleClient_Base& GetSample()
+{
+	static SampleDisabled sample;
+	return sample;
 }
 
 //=================================================================================================
-//
+// DRAW
 //=================================================================================================
-void Client_Shutdown()
-{	
-}
-
-//=================================================================================================
-// Function used by the sample, to draw all ImGui Content
-//=================================================================================================
-ImDrawData* Client_Draw()
+ImDrawData* SampleDisabled::Draw()
 {
 	//---------------------------------------------------------------------------------------------
 	// (1) Start a new Frame
@@ -39,11 +42,12 @@ ImDrawData* Client_Draw()
 	
 	//-----------------------------------------------------------------------------------------
 	// (2) Draw ImGui Content
-	//-----------------------------------------------------------------------------------------	
-	ClientUtil_ImGuiContent_Common("SampleDisabled");
+	//-----------------------------------------------------------------------------------------		
+	SampleClient_Base::Draw_Connect(); //Note: Connection to remote server done in there
+
 	ImGui::SetNextWindowPos(ImVec2(32,48), ImGuiCond_Once);
 	ImGui::SetNextWindowSize(ImVec2(400,400), ImGuiCond_Once);
-	if( ImGui::Begin("Sample Basic", nullptr) )
+	if( ImGui::Begin("Sample Disabled", nullptr) )
 	{
 		ImGui::TextColored(ImVec4(0.1, 1, 0.1, 1), "Compiling with netImgui Disabled.");		
 		ImGui::TextWrapped(	"This shows being able to continue using ImGui normally, while netImgui code has been disabled. "
@@ -65,4 +69,3 @@ ImDrawData* Client_Draw()
 	return ImGui::GetDrawData();
 }
 
-} // namespace SampleClient

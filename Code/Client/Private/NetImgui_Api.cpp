@@ -36,7 +36,7 @@ void DefaultStartCommunicationThread(void ComFunctPtr(void*), void* pClient)
 
 
 //=================================================================================================
-bool ConnectToApp(const char* clientName, const char* ServerHost, uint32_t serverPort, ThreadFunctPtr threadFunction)
+bool ConnectToApp(const char* clientName, const char* ServerHost, uint32_t serverPort, ThreadFunctPtr threadFunction, FontCreationFuncPtr FontCreateFunction)
 //=================================================================================================
 {
 	if (!gpClientInfo) return false;
@@ -48,10 +48,11 @@ bool ConnectToApp(const char* clientName, const char* ServerHost, uint32_t serve
 		std::this_thread::yield();
 
 	client.ContextRestore();		// Restore context setting override, after a disconnect
-	client.ContextRemoveHooks();	// Remove hooks callback only when completly disconnected
+	client.ContextRemoveHooks();	// Remove hooks callback only when completely disconnected
 
 	StringCopy(client.mName, (clientName == nullptr || clientName[0] == 0 ? "Unnamed" : clientName));
-	client.mpSocketPending	= Network::Connect(ServerHost, serverPort);	
+	client.mpSocketPending			= Network::Connect(ServerHost, serverPort);
+	client.mFontCreationFunction	= FontCreateFunction;
 	if (client.mpSocketPending.load() != nullptr)
 	{				
 		client.ContextInitialize();
@@ -63,7 +64,7 @@ bool ConnectToApp(const char* clientName, const char* ServerHost, uint32_t serve
 }
 
 //=================================================================================================
-bool ConnectFromApp(const char* clientName, uint32_t serverPort, ThreadFunctPtr threadFunction)
+bool ConnectFromApp(const char* clientName, uint32_t serverPort, ThreadFunctPtr threadFunction, FontCreationFuncPtr FontCreateFunction)
 //=================================================================================================
 {
 	if (!gpClientInfo) return false;
@@ -78,7 +79,8 @@ bool ConnectFromApp(const char* clientName, uint32_t serverPort, ThreadFunctPtr 
 	client.ContextRemoveHooks();	// Remove hooks callback only when completly disconnected
 	
 	StringCopy(client.mName, (clientName == nullptr || clientName[0] == 0 ? "Unnamed" : clientName));
-	client.mpSocketPending = Network::ListenStart(serverPort);
+	client.mpSocketPending			= Network::ListenStart(serverPort);
+	client.mFontCreationFunction	= FontCreateFunction;
 	if (client.mpSocketPending.load() != nullptr)
 	{				
 		client.ContextInitialize();
@@ -153,7 +155,7 @@ bool NewFrame(bool bSupportFrameSkip)
 	ScopedBool scopedInside(client.mbInsideNewEnd, true);
 	assert(!client.mbIsDrawing);
 
-	// ImGui Newframe handled by remote connection settings	
+	// ImGui Newframe handled by remote connection settings
 	if( NetImgui::IsConnected() )
 	{		
 		ImGui::SetCurrentContext(client.mpContext);
@@ -274,7 +276,7 @@ ImGuiContext* GetContext()
 }
 
 //=================================================================================================
-void SendDataTexture(ImTextureID textureId, void* pData, uint16_t width, uint16_t height, eTexFormat format)
+void SendDataTexture(ImTextureID textureId, void* pData, uint16_t width, uint16_t height, eTexFormat format, uint32_t dataSize)
 //=================================================================================================
 {
 	if (!gpClientInfo) return;
@@ -290,12 +292,14 @@ void SendDataTexture(ImTextureID textureId, void* pData, uint16_t width, uint16_
 	// Add/Update a texture
 	if( pData != nullptr )
 	{		
-		uint32_t PixelDataSize				= GetTexture_BytePerImage(format, width, height);
-		uint32_t SizeNeeded					= PixelDataSize + sizeof(CmdTexture);
+		if( format != eTexFormat::kTexFmtCustom ){
+			dataSize						= GetTexture_BytePerImage(format, width, height);
+		}
+		uint32_t SizeNeeded					= dataSize + sizeof(CmdTexture);
 		pCmdTexture							= netImguiSizedNew<CmdTexture>(SizeNeeded);
 
 		pCmdTexture->mpTextureData.SetPtr(reinterpret_cast<uint8_t*>(&pCmdTexture[1]));
-		memcpy(pCmdTexture->mpTextureData.Get(), pData, PixelDataSize);
+		memcpy(pCmdTexture->mpTextureData.Get(), pData, dataSize);
 
 		pCmdTexture->mHeader.mSize			= SizeNeeded;
 		pCmdTexture->mWidth					= width;
@@ -473,6 +477,7 @@ uint8_t GetTexture_BitsPerPixel(eTexFormat eFormat)
 	{
 	case eTexFormat::kTexFmtA8:			return 8*1;
 	case eTexFormat::kTexFmtRGBA8:		return 8*4;
+	case eTexFormat::kTexFmtCustom:		return 0;
 	case eTexFormat::kTexFmt_Invalid:	return 0;
 	}
 	return 0;
@@ -518,9 +523,11 @@ static inline void AddKeyAnalogEvent(const Client::ClientInfo& client, const Cmd
 #if IMGUI_VERSION_NUM < 18700
 	IM_UNUSED(client); IM_UNUSED(pCmdInput); IM_UNUSED(netimguiKey); IM_UNUSED(imguiKey);
 #else
-	float analogValue	= pCmdInput->mInputAnalog[netimguiKey-CmdInput::kAnalog_First];
+	int indexAnalog		= netimguiKey - CmdInput::kAnalog_First;
+	indexAnalog			= indexAnalog >= static_cast<int>(CmdInput::kAnalog_Count) ? CmdInput::kAnalog_Count - 1 : indexAnalog;
+	float analogValue	= pCmdInput->mInputAnalog[indexAnalog];
 	bool bChanged		= (pCmdInput->mInputDownMask[valIndex] ^ client.mPreviousInputState.mInputDownMask[valIndex]) & valMask;
-	bChanged			|= abs(client.mPreviousInputState.mInputAnalog[netimguiKey-CmdInput::kAnalog_First] - analogValue) > 0.001f;
+	bChanged			|= abs(client.mPreviousInputState.mInputAnalog[indexAnalog] - analogValue) > 0.001f;
 	if(bChanged){
 		ImGui::GetIO().AddKeyAnalogEvent(imguiKey, pCmdInput->mInputDownMask[valIndex] & valMask, analogValue);
 	}
@@ -531,9 +538,17 @@ static inline void AddKeyAnalogEvent(const Client::ClientInfo& client, const Cmd
 bool ProcessInputData(Client::ClientInfo& client)
 //=================================================================================================
 {
+	// Update the current clipboard data received from Server
+	CmdClipboard* pCmdClipboardNew = client.mPendingClipboardIn.Release();
+	if( pCmdClipboardNew ){
+		netImguiDeleteSafe(client.mpCmdClipboard);
+		client.mpCmdClipboard = pCmdClipboardNew;
+	}
+
+	// Update the keyboard/mouse/gamepad inputs
 	CmdInput* pCmdInputNew	= client.mPendingInputIn.Release();
 	bool hasNewInput		= pCmdInputNew != nullptr; 	
-	CmdInput* pCmdInput		= hasNewInput ? pCmdInputNew : client.mpInputPending;
+	CmdInput* pCmdInput		= hasNewInput ? pCmdInputNew : client.mpCmdInputPending;
 	ImGuiIO& io				= ImGui::GetIO();
 
 	if (pCmdInput)
@@ -541,11 +556,28 @@ bool ProcessInputData(Client::ClientInfo& client)
 		const float wheelY	= pCmdInput->mMouseWheelVert - client.mPreviousInputState.mMouseWheelVertPrev;
 		const float wheelX	= pCmdInput->mMouseWheelHoriz - client.mPreviousInputState.mMouseWheelHorizPrev;
 		io.DisplaySize		= ImVec2(pCmdInput->mScreenSize[0], pCmdInput->mScreenSize[1]);
+
+		// User assigned a function callback handling FontScaling, 
+		// use it to request a Font update on DPI scaling change on the server
+		if (gpClientInfo->mFontCreationFunction != nullptr)
+		{
+			if(abs(gpClientInfo->mFontCreationScaling - pCmdInput->mFontDPIScaling) > 0.01f)
+			{				
+				gpClientInfo->mFontCreationFunction(gpClientInfo->mFontCreationScaling, pCmdInput->mFontDPIScaling);
+				gpClientInfo->mFontCreationScaling = pCmdInput->mFontDPIScaling;
+			}
+		}
+		// Client doesn't support regenerating the font at new DPI
+		// Use FontGlobalScale to affect rendering size, resulting in blurrier result
+		else
+		{
+			io.FontGlobalScale = pCmdInput->mFontDPIScaling;
+		}
 		
 #if IMGUI_VERSION_NUM < 18700
-		io.MousePos									= ImVec2(pCmdInput->mMousePos[0], pCmdInput->mMousePos[1]);
-		io.MouseWheel								= wheelY;
-		io.MouseWheelH								= wheelX;
+		io.MousePos			= ImVec2(pCmdInput->mMousePos[0], pCmdInput->mMousePos[1]);
+		io.MouseWheel		= wheelY;
+		io.MouseWheelH		= wheelX;
 		for (uint32_t i(0); i < CmdInput::NetImguiMouseButton::ImGuiMouseButton_COUNT; ++i) {
 			io.MouseDown[i] = (pCmdInput->mMouseDownMask & (0x0000000000000001ull << i)) != 0;
 		}
@@ -572,6 +604,11 @@ bool ProcessInputData(Client::ClientInfo& client)
 		AddInputDown(ImGuiKey_X)         // for text edit CTRL+X: cut
 		AddInputDown(ImGuiKey_Y)         // for text edit CTRL+Y: redo
 		AddInputDown(ImGuiKey_Z)         // for text edit CTRL+Z: undo
+
+		io.KeyShift		= pCmdInput->IsKeyDown(CmdInput::NetImguiKeys::ImGuiKey_ReservedForModShift);
+		io.KeyCtrl		= pCmdInput->IsKeyDown(CmdInput::NetImguiKeys::ImGuiKey_ReservedForModCtrl);
+		io.KeyAlt		= pCmdInput->IsKeyDown(CmdInput::NetImguiKeys::ImGuiKey_ReservedForModAlt);
+		io.KeySuper		= pCmdInput->IsKeyDown(CmdInput::NetImguiKeys::ImGuiKey_ReservedForModSuper);
 #else
 	#if IMGUI_VERSION_NUM < 18837
 		#define ImGuiKey ImGuiKey_
@@ -605,6 +642,7 @@ bool ProcessInputData(Client::ClientInfo& client)
 		AddInputDown(ImGuiKey_U) AddInputDown(ImGuiKey_V) AddInputDown(ImGuiKey_W) AddInputDown(ImGuiKey_X) AddInputDown(ImGuiKey_Y) AddInputDown(ImGuiKey_Z)
 		AddInputDown(ImGuiKey_F1) AddInputDown(ImGuiKey_F2) AddInputDown(ImGuiKey_F3) AddInputDown(ImGuiKey_F4) AddInputDown(ImGuiKey_F5) AddInputDown(ImGuiKey_F6)
 		AddInputDown(ImGuiKey_F7) AddInputDown(ImGuiKey_F8) AddInputDown(ImGuiKey_F9) AddInputDown(ImGuiKey_F10) AddInputDown(ImGuiKey_F11) AddInputDown(ImGuiKey_F12)
+
 		AddInputDown(ImGuiKey_Apostrophe)
 		AddInputDown(ImGuiKey_Comma)
 		AddInputDown(ImGuiKey_Minus)
@@ -623,14 +661,16 @@ bool ProcessInputData(Client::ClientInfo& client)
 		AddInputDown(ImGuiKey_Pause)
 		AddInputDown(ImGuiKey_Keypad0) AddInputDown(ImGuiKey_Keypad1) AddInputDown(ImGuiKey_Keypad2) AddInputDown(ImGuiKey_Keypad3) AddInputDown(ImGuiKey_Keypad4)
 		AddInputDown(ImGuiKey_Keypad5) AddInputDown(ImGuiKey_Keypad6) AddInputDown(ImGuiKey_Keypad7) AddInputDown(ImGuiKey_Keypad8) AddInputDown(ImGuiKey_Keypad9)
-		AddInputDown(ImGuiKey_KeypadDecimal)
-		AddInputDown(ImGuiKey_KeypadDivide)
-		AddInputDown(ImGuiKey_KeypadMultiply)
-		AddInputDown(ImGuiKey_KeypadSubtract)
-		AddInputDown(ImGuiKey_KeypadAdd)
-		AddInputDown(ImGuiKey_KeypadEnter)
+		AddInputDown(ImGuiKey_KeypadDecimal)	AddInputDown(ImGuiKey_KeypadDivide)	AddInputDown(ImGuiKey_KeypadMultiply)
+		AddInputDown(ImGuiKey_KeypadSubtract)	AddInputDown(ImGuiKey_KeypadAdd)	AddInputDown(ImGuiKey_KeypadEnter)
 		AddInputDown(ImGuiKey_KeypadEqual)
 
+#if IMGUI_VERSION_NUM >= 19000
+		AddInputDown(ImGuiKey_F13) AddInputDown(ImGuiKey_F14) AddInputDown(ImGuiKey_F15) AddInputDown(ImGuiKey_F16) AddInputDown(ImGuiKey_F17) AddInputDown(ImGuiKey_F18)
+		AddInputDown(ImGuiKey_F19) AddInputDown(ImGuiKey_F20) AddInputDown(ImGuiKey_F21) AddInputDown(ImGuiKey_F22) AddInputDown(ImGuiKey_F23) AddInputDown(ImGuiKey_F24)
+		AddInputDown(ImGuiKey_AppBack)
+		AddInputDown(ImGuiKey_AppForward)
+#endif
 		// Gamepad
 		AddInputDown(ImGuiKey_GamepadStart)
 		AddInputDown(ImGuiKey_GamepadBack)
@@ -663,9 +703,20 @@ bool ProcessInputData(Client::ClientInfo& client)
 		#undef ImGuiKey
 	#endif
 
+	#if IMGUI_VERSION_NUM < 18837
+		#define ImGuiMod_Ctrl ImGuiKey_ModCtrl
+		#define ImGuiMod_Shift ImGuiKey_ModShift
+		#define ImGuiMod_Alt ImGuiKey_ModAlt
+		#define ImGuiMod_Super ImGuiKey_ModSuper
+	#endif
+		io.AddKeyEvent(ImGuiMod_Ctrl,	pCmdInput->IsKeyDown(CmdInput::NetImguiKeys::ImGuiKey_ReservedForModCtrl));
+		io.AddKeyEvent(ImGuiMod_Shift,	pCmdInput->IsKeyDown(CmdInput::NetImguiKeys::ImGuiKey_ReservedForModShift));
+		io.AddKeyEvent(ImGuiMod_Alt,	pCmdInput->IsKeyDown(CmdInput::NetImguiKeys::ImGuiKey_ReservedForModAlt));
+		io.AddKeyEvent(ImGuiMod_Super,	pCmdInput->IsKeyDown(CmdInput::NetImguiKeys::ImGuiKey_ReservedForModSuper));
+
 		// Mouse
 		io.AddMouseWheelEvent(wheelX, wheelY);
-		io.AddMousePosEvent(pCmdInput->mMousePos[0],	pCmdInput->mMousePos[1]);
+		io.AddMousePosEvent(pCmdInput->mMousePos[0], pCmdInput->mMousePos[1]);
 		for(int i(0); i<CmdInput::NetImguiMouseButton::ImGuiMouseButton_COUNT; ++i){
 			uint64_t valMask = 0x0000000000000001ull << i;
 			if((pCmdInput->mMouseDownMask ^ client.mPreviousInputState.mMouseDownMask) & valMask){
@@ -673,18 +724,10 @@ bool ProcessInputData(Client::ClientInfo& client)
 			}
 		}
 #endif
-		io.KeyShift		= pCmdInput->IsKeyDown(CmdInput::NetImguiKeys::ImGuiKey_ReservedForModShift);
-		io.KeyCtrl		= pCmdInput->IsKeyDown(CmdInput::NetImguiKeys::ImGuiKey_ReservedForModCtrl);
-		io.KeyAlt		= pCmdInput->IsKeyDown(CmdInput::NetImguiKeys::ImGuiKey_ReservedForModAlt);
-		io.KeySuper		= pCmdInput->IsKeyDown(CmdInput::NetImguiKeys::ImGuiKey_ReservedForModSuper);
-		
-		size_t keyCount(1);
 		uint16_t character;
-		io.ClearInputCharacters();
-		client.mPendingKeyIn.ReadData(&character, keyCount);
-		while (keyCount > 0){
+		io.InputQueueCharacters.resize(0);
+		while (client.mPendingKeyIn.ReadData(&character)){
 			io.AddInputCharacter(character);
-			client.mPendingKeyIn.ReadData(&character, keyCount);
 		}
 
 		static_assert(sizeof(client.mPreviousInputState.mInputDownMask) == sizeof(pCmdInput->mInputDownMask), "Array size should match");
@@ -699,8 +742,8 @@ bool ProcessInputData(Client::ClientInfo& client)
 	}
 
 	if( hasNewInput ){
-		netImguiDeleteSafe(client.mpInputPending);
-		client.mpInputPending		= pCmdInputNew;
+		netImguiDeleteSafe(client.mpCmdInputPending);
+		client.mpCmdInputPending = pCmdInputNew;
 	}
 	return hasNewInput;
 }

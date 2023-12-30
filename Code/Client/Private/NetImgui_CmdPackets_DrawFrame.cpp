@@ -16,6 +16,22 @@ inline void SetAndIncreaseDataPointer(OffsetPointer<TType>& dataPointer, uint32_
 	pDataOutput					+= dataCount;
 }
 
+//=============================================================================
+// Safely convert a pointer to a int value, even if int storage size > pointer
+//=============================================================================
+template<typename TInt, typename TPointer>
+TInt PointerCast(TPointer* pointer)
+{
+	union CastHelperUnion
+	{
+		TInt		ValueInt;
+		TPointer*	ValuePointer;
+	};
+	CastHelperUnion helperObject = {};
+	helperObject.ValuePointer = pointer;
+	return helperObject.ValueInt;
+}
+
 //=================================================================================================
 // 
 //=================================================================================================
@@ -189,8 +205,8 @@ CmdDrawFrame* CompressCmdDrawFrame(const CmdDrawFrame* pDrawFramePrev, const Cmd
 	//-----------------------------------------------------------------------------------------
 	// Allocate memory for worst case scenario (no compression possible)
 	// New DrawFrame size + 2 'compression block info' per data stream
-	size_t neededDataCount			= DivUp<size_t>(pDrawFrameNew->mHeader.mSize, ComDataSize) + 6*pDrawFrameNew->mDrawGroupCount;
-	CmdDrawFrame* pDrawFramePacked	= netImguiSizedNew<CmdDrawFrame>(neededDataCount*ComDataSize);	
+	size_t neededDataCount			= DivUp<size_t>(pDrawFrameNew->mHeader.mSize, ComDataSize) + 6*static_cast<size_t>(pDrawFrameNew->mDrawGroupCount);
+	CmdDrawFrame* pDrawFramePacked	= netImguiSizedNew<CmdDrawFrame>(neededDataCount*ComDataSize);
 	*pDrawFramePacked				= *pDrawFrameNew;
 	pDrawFramePacked->mCompressed	= true;
 
@@ -338,14 +354,17 @@ CmdDrawFrame* ConvertToCmdDrawFrame(const ImDrawData* pDearImguiData, ImGuiMouse
 	//-----------------------------------------------------------------------------------------
 	// Copy draw data (vertices, indices, drawcall info, ...)
 	//-----------------------------------------------------------------------------------------
-	for(uint32_t n = 0; n < pDrawFrame->mDrawGroupCount; n++)
+
+
+	for(size_t n = 0; n < pDrawFrame->mDrawGroupCount; n++)
 	{
 		ImguiDrawGroup& drawGroup		= pDrawFrame->mpDrawGroups[n];
+		const ImDrawList* pCmdList		= pDearImguiData->CmdLists[static_cast<int>(n)];
 		drawGroup						= ImguiDrawGroup();
-		drawGroup.mGroupID				= reinterpret_cast<uint64_t>(pDearImguiData->CmdLists[n]->_OwnerName); // Use the name string pointer as a unique ID (seems to remain the same between frame)
-		ImGui_ExtractIndices(*pDearImguiData->CmdLists[n],	drawGroup, pDataOutput);
-		ImGui_ExtractVertices(*pDearImguiData->CmdLists[n],	drawGroup, pDataOutput);
-		ImGui_ExtractDraws(*pDearImguiData->CmdLists[n],	drawGroup, pDataOutput);
+		drawGroup.mGroupID				= PointerCast<uint64_t>(pCmdList->_OwnerName); // Use the name string pointer as a unique ID (seems to remain the same between frame)
+		ImGui_ExtractIndices(*pCmdList,	drawGroup, pDataOutput);
+		ImGui_ExtractVertices(*pCmdList,drawGroup, pDataOutput);
+		ImGui_ExtractDraws(*pCmdList,	drawGroup, pDataOutput);
 		pDrawFrame->mTotalVerticeCount	+= drawGroup.mVerticeCount;
 		pDrawFrame->mTotalIndiceCount	+= drawGroup.mIndiceCount;
 		pDrawFrame->mTotalDrawCount		+= drawGroup.mDrawCount;

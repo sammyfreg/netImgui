@@ -7,50 +7,49 @@
 //=================================================================================================
 
 #include <NetImgui_Api.h>
-#include <array>
-#include "..\Common\Sample.h"
-
-namespace SampleClient
-{	
-
-enum class eDrawUpdateMode : int { Always, OnDemand };
-static eDrawUpdateMode sDrawUpdateMode	= eDrawUpdateMode::Always;
-static uint32_t sFrameDrawnCount		= 0;
-static uint32_t sFrameSkippedCount		= 0;
+#include "../Common/Sample.h"
 
 //=================================================================================================
-//
+// SAMPLE CLASS
 //=================================================================================================
-bool Client_Startup()
+class SampleNewFrame : public SampleClient_Base
 {
-	if (!NetImgui::Startup())
-		return false;
+public:
+						SampleNewFrame() : SampleClient_Base("SampleNewFrame") {}
+	virtual ImDrawData* Draw() override;
 
-
-	// Can have more ImGui initialization here, like loading extra fonts.
-	// ...
-
-	return true;
-}
+protected:
+	enum class eDrawUpdateMode : int { Always, OnDemand };
+	void				Draw_Content();
+	ImDrawData*			Draw_ModeOnDemand();
+	ImDrawData*			Draw_ModeAlways();
+	
+	eDrawUpdateMode		mFrameRefreshMode	= eDrawUpdateMode::Always;
+	uint32_t			mFrameDrawnCount	= 0;
+	uint32_t			mFrameSkippedCount	= 0;
+};
 
 //=================================================================================================
-//
+// GET SAMPLE
+// Each project must return a valid sample object
 //=================================================================================================
-void Client_Shutdown()
+SampleClient_Base& GetSample()
 {
-	NetImgui::Shutdown();
+	static SampleNewFrame sample;
+	return sample;
 }
 
 //=================================================================================================
 // Imgui content 
 //=================================================================================================
-void Client_Draw_Content()
+void SampleNewFrame::Draw_Content()
 {
 	bool bModeChanged(false);
 
-	ClientUtil_ImGuiContent_Common("SampleNewFrame");
+	SampleClient_Base::Draw_Connect(); //Note: Connection to remote server done in there
+
 	ImGui::SetNextWindowPos(ImVec2(32,48), ImGuiCond_Once);
-	ImGui::SetNextWindowSize(ImVec2(400,400), ImGuiCond_Once);
+	ImGui::SetNextWindowSize(ImVec2(700,450), ImGuiCond_Once);
 	if (ImGui::Begin("Sample NewFrame", nullptr))
 	{
 		ImGui::TextColored(ImVec4(0.1, 1, 0.1, 1), "Demonstration of frame skip handling.");
@@ -61,21 +60,21 @@ void Client_Draw_Content()
 
 		ImGui::NewLine();
 		ImGui::AlignTextToFramePadding();
-		ImGui::TextUnformatted("Draw Update Mode :");		
-		ImGui::SameLine();	bModeChanged |= ImGui::RadioButton("Always", reinterpret_cast<int*>(&sDrawUpdateMode), static_cast<int>(eDrawUpdateMode::Always));
-		ImGui::SameLine();	bModeChanged |= ImGui::RadioButton("On Demand", reinterpret_cast<int*>(&sDrawUpdateMode), static_cast<int>(eDrawUpdateMode::OnDemand));
+		ImGui::TextUnformatted("Frame Refresh Mode :");		
+		ImGui::SameLine();	bModeChanged |= ImGui::RadioButton("Always", reinterpret_cast<int*>(&mFrameRefreshMode), static_cast<int>(eDrawUpdateMode::Always));
+		ImGui::SameLine();	bModeChanged |= ImGui::RadioButton("On Demand", reinterpret_cast<int*>(&mFrameRefreshMode), static_cast<int>(eDrawUpdateMode::OnDemand));
 		if( bModeChanged )
-			sFrameDrawnCount = sFrameSkippedCount = 0;
+			mFrameDrawnCount = mFrameSkippedCount = 0;
 		
-		if( !NetImgui::IsDrawingRemote() )
-		{
-			ImGui::TextUnformatted("(Note: There is not frame skipping when not remote drawing.)");
-		}
+		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.75f,0.75f,0.75f,1.f));
+		ImGui::TextWrapped( NetImgui::IsDrawingRemote()	? "Note: The ratio of frames skipped depends on the 'Refresh Rate' configured in the Server's settings." 
+														: "Note: Frame skipping only happen when drawing for remote connection.");
+		ImGui::PopStyleColor();
 	
 		ImGui::NewLine();
-		ImGui::Text("Draw Count: %i", sFrameDrawnCount);
-		ImGui::Text("Skip Count: %i", sFrameSkippedCount);
-		ImGui::Text("Time Saved: %i%%", sFrameSkippedCount ? sFrameSkippedCount * 100 / (sFrameDrawnCount+sFrameSkippedCount) : 0);
+		ImGui::Text("Draw Count: %i", mFrameDrawnCount);
+		ImGui::Text("Skip Count: %i", mFrameSkippedCount);
+		ImGui::Text("Time Saved: %i%%", mFrameSkippedCount ? mFrameSkippedCount * 100 / (mFrameDrawnCount+mFrameSkippedCount) : 0);
 	}
 	ImGui::End();
 }
@@ -84,7 +83,7 @@ void Client_Draw_Content()
 // Without Frame skip support. User redraw content every frame, even when netImgui doesn't
 // require a new drawframe
 //=================================================================================================
-ImDrawData* Client_Draw_ModeAlways()
+ImDrawData* SampleNewFrame::Draw_ModeAlways()
 {
 	//---------------------------------------------------------------------------------------------
 	// (1) Start a new Frame
@@ -96,14 +95,14 @@ ImDrawData* Client_Draw_ModeAlways()
 	//-----------------------------------------------------------------------------------------
 	// (2) Draw ImGui Content
 	//-----------------------------------------------------------------------------------------
-	Client_Draw_Content();
+	Draw_Content();
 
 	//---------------------------------------------------------------------------------------------
 	// (3) Finish the frame, preparing the drawing data and...
 	// (3a) Send the data to the netImGui server when connected
 	//---------------------------------------------------------------------------------------------
 	NetImgui::EndFrame();
-	sFrameDrawnCount++;
+	mFrameDrawnCount++;
 
 	//---------------------------------------------------------------------------------------------
 	// (4) Forward to drawing data our local renderer when not connected or 
@@ -117,7 +116,7 @@ ImDrawData* Client_Draw_ModeAlways()
 // This code path handle not rendering a frame when not needed. netImgui doesn't require 
 // redrawing every frame.
 //=============================================================================================
-ImDrawData* Client_Draw_ModeOnDemand()
+ImDrawData* SampleNewFrame::Draw_ModeOnDemand()
 {
 	//---------------------------------------------------------------------------------------------
 	// (1) Start a new Frame
@@ -131,9 +130,9 @@ ImDrawData* Client_Draw_ModeOnDemand()
 	if (NetImgui::NewFrame(true))
 	{		
 		//-----------------------------------------------------------------------------------------
-		// (2) Draw ImGui Content 		
+		// (2) Draw ImGui Content
 		//-----------------------------------------------------------------------------------------		
-		Client_Draw_Content();
+		Draw_Content();
 
 		//---------------------------------------------------------------------------------------------
 		// (3) Finish the frame, preparing the drawing data and...
@@ -145,11 +144,11 @@ ImDrawData* Client_Draw_ModeOnDemand()
 		// (4) Forward to drawing data our local renderer when not connected or 
 		//	connected and wanting to mirror the remote content. 
 		//---------------------------------------------------------------------------------------------
-		sFrameDrawnCount++;
+		mFrameDrawnCount++;
 		return !NetImgui::IsConnected() ? ImGui::GetDrawData() : nullptr;
 	}
 		
-	sFrameSkippedCount++;
+	mFrameSkippedCount++;
 	return nullptr;
 }
 
@@ -157,13 +156,13 @@ ImDrawData* Client_Draw_ModeOnDemand()
 //=================================================================================================
 // Function used by the sample, to draw all ImGui Content
 //=================================================================================================
-ImDrawData* Client_Draw()
+ImDrawData* SampleNewFrame::Draw()
 {	
-	switch( sDrawUpdateMode )
+	switch( mFrameRefreshMode )
 	{
-	case eDrawUpdateMode::Always:	return Client_Draw_ModeAlways();
-	case eDrawUpdateMode::OnDemand:	return Client_Draw_ModeOnDemand();
+	case eDrawUpdateMode::Always:	return Draw_ModeAlways();
+	case eDrawUpdateMode::OnDemand:	return Draw_ModeOnDemand();
 	}
 	return nullptr;
 }
-} // namespace SampleClient
+

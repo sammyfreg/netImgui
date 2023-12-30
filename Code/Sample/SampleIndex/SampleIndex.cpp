@@ -13,37 +13,32 @@
 
 #include <NetImgui_Api.h>
 #include <array>
-#include "..\Common\Sample.h"
+#include "../Common/Sample.h"
 
-namespace SampleClient
+//=================================================================================================
+// SAMPLE CLASS
+//=================================================================================================
+class SampleIndex : public SampleClient_Base
 {
+public:
+					SampleIndex() : SampleClient_Base(sizeof(ImDrawIdx) == 2 ? "SampleIndex16Bits" : "SampleIndex32Bits") {}
+virtual ImDrawData* Draw() override;
+};
 
 //=================================================================================================
-//
+// GET SAMPLE
+// Each project must return a valid sample object
 //=================================================================================================
-bool Client_Startup()
+SampleClient_Base& GetSample()
 {
-	if (!NetImgui::Startup())
-		return false;
-
-	// Can have more ImGui initialization here, like loading extra fonts.
-	// ...
-
-	return true;
-}
-
-//=================================================================================================
-//
-//=================================================================================================
-void Client_Shutdown()
-{
-	NetImgui::Shutdown();
+	static SampleIndex sample;
+	return sample;
 }
 
 //=================================================================================================
 // Function used by the sample, to draw all ImGui Content
 //=================================================================================================
-ImDrawData* Client_Draw()
+ImDrawData* SampleIndex::Draw()
 {
 	//---------------------------------------------------------------------------------------------
 	// (1) Start a new Frame
@@ -53,9 +48,10 @@ ImDrawData* Client_Draw()
 		//-----------------------------------------------------------------------------------------
 		// (2) Draw ImGui Content 		
 		//-----------------------------------------------------------------------------------------
-		ClientUtil_ImGuiContent_Common(sizeof(ImDrawIdx) == 2 ? "SampleIndex16Bits" : "SampleIndex32Bits");
+		SampleClient_Base::Draw_Connect(); //Note: Connection to remote server done in there
+
 		ImGui::SetNextWindowPos(ImVec2(32, 48), ImGuiCond_Once);
-		ImGui::SetNextWindowSize(ImVec2(525, 675), ImGuiCond_Once);
+		ImGui::SetNextWindowSize(ImVec2(525, 820), ImGuiCond_Once);
 		if (ImGui::Begin("Sample Index", nullptr))
 		{
 			ImGui::TextColored(ImVec4(0.1, 1, 0.1, 1), "Large amount of mesh drawing.");
@@ -101,6 +97,3 @@ ImDrawData* Client_Draw()
 	//---------------------------------------------------------------------------------------------
 	return !NetImgui::IsConnected() ? ImGui::GetDrawData() : nullptr;
 }
-
-} // namespace SampleClient
-

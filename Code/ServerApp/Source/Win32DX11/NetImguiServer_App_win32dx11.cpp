@@ -40,7 +40,7 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 int main(int, char**)
 {
     // Create application window
-    //ImGui_ImplWin32_EnableDpiAwareness();
+    ImGui_ImplWin32_EnableDpiAwareness(); // @SAMPLE_EDIT (DPI Awareness)
     WNDCLASSEXW wc = { sizeof(wc), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, L"NetImgui Server", nullptr }; // @SAMPLE_EDIT (changed name)
     ::RegisterClassExW(&wc);
     HWND hwnd = ::CreateWindowW(wc.lpszClassName, L"NetImgui Server", WS_OVERLAPPEDWINDOW, 100, 100, 1280, 800, nullptr, nullptr, wc.hInstance, nullptr); // @SAMPLE_EDIT (changed name)
@@ -140,7 +140,14 @@ int main(int, char**)
             elapsedSec	= std::chrono::high_resolution_clock::now() - sLastTime;
         }
         sLastTime = std::chrono::high_resolution_clock::now();
-        NetImguiServer::App::UpdateRemoteContent();         // @SAMPLE_EDIT (Request each client to update their drawing content )
+        
+        // @SAMPLE_EDIT (DPI Awareness)
+        if( NetImguiServer::App::UpdateFont() ) {
+			ImGui_ImplDX11_CreateFontsTexture();
+        }
+
+        // @SAMPLE_EDIT (Request each client to update their drawing content )
+        NetImguiServer::App::UpdateRemoteContent();
         //=========================================================================================
 		
         // Start the Dear ImGui frame
@@ -307,6 +314,7 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
             g_pSwapChain->ResizeBuffers(0, (UINT)LOWORD(lParam), (UINT)HIWORD(lParam), DXGI_FORMAT_UNKNOWN, 0);
             CreateRenderTarget();
         }
+        NetImguiServer::UI::SetWindowDPI(GetDpiForWindow(hWnd)); // @SAMPLE_EDIT (DPI Awareness)
         return 0;
     case WM_SYSCOMMAND:
         if ((wParam & 0xfff0) == SC_KEYMENU) // Disable ALT application menu
@@ -316,6 +324,7 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         ::PostQuitMessage(0);
         return 0;
     case WM_DPICHANGED:
+        NetImguiServer::UI::SetWindowDPI(GetDpiForWindow(hWnd)); // @SAMPLE_EDIT (DPI Awareness)
         if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DpiEnableScaleViewports)
         {
             //const int dpi = HIWORD(wParam);

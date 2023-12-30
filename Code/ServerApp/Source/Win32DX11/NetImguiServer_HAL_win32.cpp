@@ -10,9 +10,9 @@
 
 #include <windows.h>
 #include <tchar.h>
+#include <shlobj_core.h> 
 #include <WinSock2.h>
 #include <WS2tcpip.h>
-#include <shellapi.h>	// To open webpage link
 #include "../resource.h"
 #include "imgui.h"
 #include "imgui_impl_win32.h"
@@ -81,7 +81,7 @@ void NetImguiNamedPipeMsgReceive( HANDLE& hNamedPipe )
 			cbBytesReadTotal += cbBytesRead;
 		
 		ComPipeBuffer[cbBytesReadTotal] = 0;
-        NetImguiServer::App::AddClientConfigFromString(ComPipeBuffer, true);
+        NetImguiServer::App::AddTransientClientConfigFromString(ComPipeBuffer);
 		CloseHandle(hNamedPipe); // Will recreate the pipe, since it seems only 1 per remote application can exist
 		hNamedPipe = INVALID_HANDLE_VALUE;
 	}
@@ -150,15 +150,6 @@ void HAL_Shutdown()
 }
 
 //=================================================================================================
-// HAL SHELL COMMAND
-// Receive a command to execute by the OS. Used to open our weblink to the NetImgui Github
-//=================================================================================================
-void HAL_ShellCommand(const char* aCommandline)
-{
-	ShellExecuteA(0, 0, aCommandline, 0, 0 , SW_SHOW );
-}
-
-//=================================================================================================
 // HAL GET SOCKET INFO
 // Take a platform specific socket (based on the NetImguiNetworkXXX.cpp implementation) and
 // fetch informations about the client IP connected
@@ -176,6 +167,54 @@ bool HAL_GetSocketInfo(NetImgui::Internal::Network::SocketInfo* pClientSocket, c
 			outPort = atoi(zPortBuffer);
 			return true;
 		}
+	}
+	return false;
+}
+
+//=================================================================================================
+// HAL GET USER SETTING FOLDER
+// Request the directory where to the 'shared config' clients should be saved
+// Return 'nullptr' to disable this feature
+//=================================================================================================
+const char* HAL_GetUserSettingFolder()
+{
+	static char sUserSettingFolder[1024]={};
+	if(sUserSettingFolder[0] == 0)
+	{
+		WCHAR* UserPath;
+		HRESULT Ret = SHGetKnownFolderPath(FOLDERID_LocalAppData, 0, NULL, &UserPath);
+		if( SUCCEEDED(Ret) ){
+			sprintf_s(sUserSettingFolder, "%ws\\NetImgui", UserPath); // convert from wchar to char
+			DWORD ftyp = GetFileAttributesA(sUserSettingFolder);
+			if (ftyp != INVALID_FILE_ATTRIBUTES && (ftyp & FILE_ATTRIBUTE_DIRECTORY) ){
+				return sUserSettingFolder;
+			}
+			else if (ftyp == INVALID_FILE_ATTRIBUTES && CreateDirectoryA(sUserSettingFolder, nullptr) ){
+				return sUserSettingFolder;
+			}
+		}
+		sUserSettingFolder[0] = 0;
+		return nullptr;
+	}
+	return sUserSettingFolder;
+}
+
+//=================================================================================================
+// HAL GET CLIPBOARD UPDATED
+// Detect when clipboard had a content change and we should refetch it on the Server and
+// forward it to the Clients
+// 
+// Note: We rely on Dear ImGui for Clipboard Get/Set but want to avoid constantly reading then
+// converting it to a UTF8 text. If the Server platform doesn't support tracking change, 
+// return true. If the Server platform doesn't support any clipboard, return false;
+//=================================================================================================
+bool HAL_GetClipboardUpdated()
+{
+	static DWORD sClipboardSequence(0);
+	DWORD clipboardSequence = GetClipboardSequenceNumber();
+	if (sClipboardSequence != clipboardSequence){
+		sClipboardSequence = clipboardSequence;
+		return true;
 	}
 	return false;
 }

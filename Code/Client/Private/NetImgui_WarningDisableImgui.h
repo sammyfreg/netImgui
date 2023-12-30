@@ -1,3 +1,4 @@
+#pragma once
 //
 // Deactivate a few warnings to allow Imgui header includes,  
 // without generating warnings in '-Wall' compile actions enabled

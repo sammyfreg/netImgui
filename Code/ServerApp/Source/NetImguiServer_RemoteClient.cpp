@@ -15,8 +15,7 @@ NetImguiImDrawData::NetImguiImDrawData()
 : mCommandList(nullptr)
 {
 	CmdListsCount	= 1;	// All draws collapsed in same CmdList
-	mpCommandList	= &mCommandList;
-	CmdLists		= &mpCommandList;
+	CmdLists.push_back(&mCommandList);
 }
 
 
@@ -88,38 +87,41 @@ void Client::ReceiveTexture(NetImgui::Internal::CmdTexture* pTextureCmd)
 
 void Client::ProcessPendingTextures()
 {
+	bool textureChanged(false);
 	while( mPendingTextureReadIndex != mPendingTextureWriteIndex )
 	{
 		NetImgui::Internal::CmdTexture* pTextureCmd = mpPendingTextures[(mPendingTextureReadIndex++) % IM_ARRAYSIZE(mpPendingTextures)];
-		size_t foundIdx								= static_cast<size_t>(-1);
-		bool isRemoval								= pTextureCmd->mFormat == NetImgui::eTexFormat::kTexFmt_Invalid;
-		for(size_t i=0; foundIdx == static_cast<size_t>(-1) && i<mvTextures.size(); i++)
-		{
-			if( mvTextures[i].mImguiId == pTextureCmd->mTextureId )
-			{
-				foundIdx = i;
-				NetImguiServer::App::HAL_DestroyTexture(mvTextures[foundIdx]);
-				if( isRemoval )
-				{
-					mvTextures[foundIdx] = mvTextures.back();
-					mvTextures.pop_back();
-				}
+		bool isRemoval		= pTextureCmd->mFormat == NetImgui::eTexFormat::kTexFmt_Invalid;
+		uint32_t dataSize	= pTextureCmd->mHeader.mSize - sizeof(NetImgui::Internal::CmdTexture);
+		auto texIt			= mTextureTable.find(pTextureCmd->mTextureId) ;
+		textureChanged 		|= texIt != mTextureTable.end();
+		// Delete texture when format/size changed or asked to remove
+		if ( isRemoval && texIt != mTextureTable.end() ) {
+			DestroyTexture(texIt->second, *pTextureCmd, dataSize);
+			mTextureTable.erase(texIt);
+		}
+		// Add texture when new imgui id
+		else if (texIt == mTextureTable.end() ) {
+			texIt = mTextureTable.insert({pTextureCmd->mTextureId,App::ServerTexture()}).first;
+		}
+		
+		// Try creating the texture (and free it if failed)
+		if( !isRemoval && texIt != mTextureTable.end() ) {
+			if( !CreateTexture(texIt->second, *pTextureCmd, dataSize) )	{
+				mTextureTable.erase(texIt);
 			}
 		}
-
-		if( !isRemoval )
-		{		
-			if( foundIdx == static_cast<size_t>(-1))
-			{
-				foundIdx = mvTextures.size();
-				mvTextures.resize(foundIdx+1);
-			}
-			
-			NetImguiServer::App::HAL_CreateTexture(pTextureCmd->mWidth, pTextureCmd->mHeight, static_cast<NetImgui::eTexFormat>(pTextureCmd->mFormat), pTextureCmd->mpTextureData.Get(), mvTextures[foundIdx]);
-			mvTextures[foundIdx].mImguiId = pTextureCmd->mTextureId;
-		}
-
 		NetImgui::Internal::netImguiDeleteSafe(pTextureCmd);
+	}
+
+	// Must invalidate last resolved Dear ImGui draw data,
+	// since some texture pointers are now invalid
+	// Note: if there's frequent texture removal/update and it could cause
+	//		 flickering. This could be fixed by saving the last received 
+	//		 draw command and resolving it every frame 
+	// 		 (with ProcessPendingTextures) instead
+	if (textureChanged) {
+		NetImgui::Internal::netImguiDeleteSafe( mpImguiDrawData );
 	}
 }
 
@@ -146,15 +148,17 @@ void Client::Initialize()
 void Client::Uninitialize()
 {
 	NetImguiServer::App::HAL_DestroyRenderTarget(mpHAL_AreaRT, mpHAL_AreaTexture);
-	for(auto& texEntry : mvTextures )
-	{
-		NetImguiServer::App::HAL_DestroyTexture(texEntry);
+	NetImgui::Internal::CmdTexture cmdDelete;
+	for(auto& texIt : mTextureTable ){
+		cmdDelete.mTextureId = texIt.second.mImguiId;
+		NetImguiServer::App::DestroyTexture(texIt.second, cmdDelete, 0);
 	}
-	mvTextures.clear();
+	mTextureTable.clear();
 
 	mPendingImguiDrawDataIn.Free();
 	mPendingBackgroundIn.Free();
 	mPendingInputOut.Free();
+	mPendingClipboardOut.Free();
 
 	NetImgui::Internal::netImguiDeleteSafe(mpImguiDrawData);
 	NetImgui::Internal::netImguiDeleteSafe(mpFrameDrawPrev);
@@ -229,8 +233,7 @@ NetImguiImDrawData*	Client::GetImguiDrawData(void* pEmtpyTextureHAL)
 	if( pPendingDrawData )
 	{
 		NetImgui::Internal::netImguiDeleteSafe( mpImguiDrawData );
-		mpImguiDrawData				= pPendingDrawData;
-		const size_t clientTexCount = mvTextures.size();
+		mpImguiDrawData	= pPendingDrawData;
 		
 		// When a new drawdata is available, need to convert the textureid from NetImgui Id
 		// to the backend renderer format (texture view pointer). 
@@ -241,16 +244,10 @@ NetImguiImDrawData*	Client::GetImguiDrawData(void* pEmtpyTextureHAL)
 			ImDrawList* pCmdList = pPendingDrawData->CmdLists[i];
 			for(int drawIdx(0), drawCount(pCmdList->CmdBuffer.size()); drawIdx<drawCount; ++drawIdx)
 			{
-				uint64_t wantedTexID					= NetImgui::Internal::TextureCastFromID(pCmdList->CmdBuffer[drawIdx].TextureId);
-				pCmdList->CmdBuffer[drawIdx].TextureId	= NetImgui::Internal::TextureCastFromPtr(pEmtpyTextureHAL); // Default to empty texture
-				for(size_t texIdx=0; texIdx<clientTexCount; ++texIdx)
-				{
-					if( mvTextures[texIdx].mImguiId == wantedTexID )
-					{
-						pCmdList->CmdBuffer[drawIdx].TextureId	= NetImgui::Internal::TextureCastFromPtr(mvTextures[texIdx].mpHAL_Texture);
-						break;
-					}
-				}
+				uint64_t wantedTexID	= NetImgui::Internal::TextureCastFromID(pCmdList->CmdBuffer[drawIdx].TextureId);
+				auto texIt				= mTextureTable.find(wantedTexID);
+				auto texHALPtr			= texIt == mTextureTable.end() ? pEmtpyTextureHAL : texIt->second.mpHAL_Texture;
+				pCmdList->CmdBuffer[drawIdx].TextureId	= NetImgui::Internal::TextureCastFromPtr( texHALPtr );
 			}
 		}
 	}	
@@ -358,6 +355,11 @@ NetImgui::Internal::CmdInput* Client::TakePendingInput()
 	return mPendingInputOut.Release();
 }
 
+NetImgui::Internal::CmdClipboard* Client::TakePendingClipboard()
+{
+	return mPendingClipboardOut.Release();
+}
+
 //=================================================================================================
 // Capture current received Dear ImGui input, and forward it to the active client
 // Note:	Even if a client is not focused, we are still sending it the mouse position, 
@@ -407,6 +409,8 @@ void Client::CaptureImguiInput()
 	pNewInput								= pNewInput ? pNewInput : NetImgui::Internal::netImguiNew<NetImgui::Internal::CmdInput>();
 
 	// Create new Input command to send to client
+	NetImguiServer::Config::Client config;
+	NetImguiServer::Config::Client::GetConfigByID(mClientConfigID, config);
 	pNewInput->mScreenSize[0]		= static_cast<uint16_t>(ImGui::GetContentRegionAvail().x);
 	pNewInput->mScreenSize[1]		= static_cast<uint16_t>(ImGui::GetContentRegionAvail().y);
 	pNewInput->mMousePos[0]			= static_cast<int16_t>(mMousePos[0]);
@@ -415,6 +419,7 @@ void Client::CaptureImguiInput()
 	pNewInput->mMouseWheelHoriz		= mMouseWheelPos[1];
 	pNewInput->mCompressionUse		= NetImguiServer::Config::Server::sCompressionEnable;
 	pNewInput->mCompressionSkip		= mbCompressionSkipOncePending;
+	pNewInput->mFontDPIScaling		= config.mDPIScaleEnabled ? NetImguiServer::UI::GetFontDPIScale() : 1.f;
 	mbCompressionSkipOncePending	= false;
 
 	if( ImGui::IsWindowFocused() )
@@ -468,7 +473,7 @@ void Client::CaptureImguiInput()
 	}
 
 	// Copy waiting characters inputs
-	size_t addedKeyCount	= std::min<size_t>(NetImgui::Internal::ArrayCount(pNewInput->mKeyChars)-pNewInput->mKeyCharCount, mPendingInputChars.size());
+	size_t addedKeyCount = std::min<size_t>(NetImgui::Internal::ArrayCount(pNewInput->mKeyChars)-pNewInput->mKeyCharCount, mPendingInputChars.size());
 	if( addedKeyCount ){
 		memcpy(&pNewInput->mKeyChars[pNewInput->mKeyCharCount], &mPendingInputChars[0], addedKeyCount*sizeof(ImWchar));
 		pNewInput->mKeyCharCount	+= static_cast<uint16_t>(addedKeyCount);

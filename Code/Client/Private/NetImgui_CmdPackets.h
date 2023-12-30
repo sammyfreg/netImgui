@@ -10,7 +10,7 @@ namespace NetImgui { namespace Internal
 
 struct CmdHeader
 {
-	enum class eCommands : uint8_t { Invalid, Ping, Disconnect, Version, Texture, Input, DrawFrame, Background };
+	enum class eCommands : uint8_t { Invalid, Ping, Disconnect, Version, Texture, Input, DrawFrame, Background, Clipboard };
 				CmdHeader(){}
 				CmdHeader(eCommands CmdType, uint16_t Size) : mSize(Size), mType(CmdType){}
 	uint32_t	mSize		= 0;
@@ -43,6 +43,9 @@ struct alignas(8) CmdVersion
 		VertexUVRange		= 9,	// Changed vertices UV value range to [0,1] for increased precision on large font texture
 		Imgui_1_87			= 10,	// Added Dear ImGui Input refactor
 		OffetPointer		= 11,	// Updated the handling of OffsetPoint. Moved flag bit from last bit to first bit. Addresses and data are always at least 4 bytes aligned, so should never conflict with potential address space
+		CustomTexture		= 12,	// Added a 'custom' texture format to let user potentially handle their how format
+		DPIScale			= 13,	// Server now handle monitor DPI
+		Clipboard			= 14,	// Added clipboard support between server/client
 		// Insert new version here
 
 		//--------------------------------
@@ -104,6 +107,8 @@ struct alignas(8) CmdInput
 		ImGuiKey_U, ImGuiKey_V, ImGuiKey_W, ImGuiKey_X, ImGuiKey_Y, ImGuiKey_Z,
 		ImGuiKey_F1, ImGuiKey_F2, ImGuiKey_F3, ImGuiKey_F4, ImGuiKey_F5, ImGuiKey_F6,
 		ImGuiKey_F7, ImGuiKey_F8, ImGuiKey_F9, ImGuiKey_F10, ImGuiKey_F11, ImGuiKey_F12,
+		ImGuiKey_F13, ImGuiKey_F14, ImGuiKey_F15, ImGuiKey_F16, ImGuiKey_F17, ImGuiKey_F18,
+		ImGuiKey_F19, ImGuiKey_F20, ImGuiKey_F21, ImGuiKey_F22, ImGuiKey_F23, ImGuiKey_F24,
 		ImGuiKey_Apostrophe,        // '
 		ImGuiKey_Comma,             // ,
 		ImGuiKey_Minus,             // -
@@ -123,12 +128,10 @@ struct alignas(8) CmdInput
 		ImGuiKey_Keypad0, ImGuiKey_Keypad1, ImGuiKey_Keypad2, ImGuiKey_Keypad3, ImGuiKey_Keypad4,
 		ImGuiKey_Keypad5, ImGuiKey_Keypad6, ImGuiKey_Keypad7, ImGuiKey_Keypad8, ImGuiKey_Keypad9,
 		ImGuiKey_KeypadDecimal,
-		ImGuiKey_KeypadDivide,
-		ImGuiKey_KeypadMultiply,
-		ImGuiKey_KeypadSubtract,
-		ImGuiKey_KeypadAdd,
-		ImGuiKey_KeypadEnter,
-		ImGuiKey_KeypadEqual,
+		ImGuiKey_KeypadDivide, ImGuiKey_KeypadMultiply, ImGuiKey_KeypadSubtract, 
+		ImGuiKey_KeypadAdd, ImGuiKey_KeypadEnter, ImGuiKey_KeypadEqual,
+		ImGuiKey_AppBack,               // Available on some keyboard/mouses. Often referred as "Browser Back"
+		ImGuiKey_AppForward,
 
 		// Gamepad (some of those are analog values, 0.0f to 1.0f)                          // GAME NAVIGATION ACTION
 		// (download controller mapping PNG/PSD at http://dearimgui.org/controls_sheets)
@@ -190,7 +193,7 @@ struct alignas(8) CmdInput
 	uint16_t						mKeyCharCount					= 0;		// Number of valid input characters
 	bool							mCompressionUse					= false;	// Server would like client to compress the communication data
 	bool							mCompressionSkip				= false;	// Server forcing next client's frame data to be uncompressed
-	uint8_t							PADDING[4]						= {};
+	float							mFontDPIScaling					= 1.f;		// Font scaling request by Server accounting for monitor DPI
 	uint64_t						mMouseDownMask					= 0;
 	uint64_t						mInputDownMask[(ImGuiKey_COUNT+63)/64]={};
 	float							mInputAnalog[kAnalog_Count]		= {};
@@ -221,7 +224,7 @@ struct alignas(8) CmdDrawFrame
 	uint32_t						mTotalDrawCount		= 0;
 	uint32_t						mUncompressedSize	= 0;
 	uint8_t							mCompressed			= false;
-	uint8_t							PADDING[3];
+	uint8_t							PADDING[3]			= {};
 	OffsetPointer<ImguiDrawGroup>	mpDrawGroups;
 	inline void						ToPointers();
 	inline void						ToOffsets();
@@ -238,6 +241,15 @@ struct alignas(8) CmdBackground
 	inline bool operator!=(const CmdBackground& cmp)const;
 };
 
+struct alignas(8) CmdClipboard
+{
+	CmdHeader						mHeader				= CmdHeader(CmdHeader::eCommands::Clipboard, sizeof(CmdClipboard));
+	size_t							mByteSize			= 0;
+	OffsetPointer<char>				mContentUTF8;
+	inline void						ToPointers();
+	inline void						ToOffsets();
+	inline static CmdClipboard*		Create(const char* clipboard);
+};
 
 }} // namespace NetImgui::Internal
 
