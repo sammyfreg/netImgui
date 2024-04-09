@@ -255,7 +255,18 @@ NETIMGUI_API	eCompressionMode	GetCompressionMode();
 NETIMGUI_API	uint8_t				GetTexture_BitsPerPixel	(eTexFormat eFormat);
 NETIMGUI_API	uint32_t			GetTexture_BytePerLine	(eTexFormat eFormat, uint32_t pixelWidth);
 NETIMGUI_API	uint32_t			GetTexture_BytePerImage	(eTexFormat eFormat, uint32_t pixelWidth, uint32_t pixelHeight);
-} 
+
+} // namespace NetImgui
+
+//=================================================================================================
+// Texture Cast Helper functions (not part of the API per se, but useful for user code)
+// Note: ImTextureID could be anything (void *, uint64_t, uint_16t, GLuint, etc.)
+//       so that using reinterpret_cast / static_cast can generate warnings or errors in some compilers,
+//       so we resort to a C style double cast.
+//=================================================================================================
+inline ImTextureID ToImTextureID(void* pTexture) { return (ImTextureID)(intptr_t)pTexture; }
+inline ImTextureID ToImTextureID(uint64_t texture) { return (ImTextureID)(intptr_t)texture; }
+
 
 //=================================================================================================
 // Optional single include compiling option

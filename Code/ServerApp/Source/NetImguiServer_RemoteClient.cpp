@@ -335,7 +335,7 @@ NetImguiImDrawData* Client::ConvertToImguiDrawData(const NetImgui::Internal::Cmd
 			pCommandDst[drawIdx].ElemCount			= pDrawSrc[drawIdx].mIdxCount;
 			pCommandDst[drawIdx].UserCallback		= nullptr;
 			pCommandDst[drawIdx].UserCallbackData	= nullptr;
-			pCommandDst[drawIdx].TextureId			= NetImgui::Internal::TextureCastFromID(pDrawSrc[drawIdx].mTextureId);
+			pCommandDst[drawIdx].TextureId			= ToImTextureID(pDrawSrc[drawIdx].mTextureId);
 		}
 	
 		pIndexDst		+= drawGroup.mIndiceCount;

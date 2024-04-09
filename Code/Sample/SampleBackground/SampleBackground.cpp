@@ -59,7 +59,7 @@ bool SampleBackground::Startup()
 		}
 	}
 	TextureCreate(reinterpret_cast<uint8_t*>(pixels), kSize, kSize, mTextureView);													// For local display
-	NetImgui::SendDataTexture(static_cast<ImTextureID>(mTextureView), pixels, kSize, kSize, NetImgui::eTexFormat::kTexFmtRGBA8);	// For remote display
+	NetImgui::SendDataTexture(ToImTextureID(mTextureView), pixels, kSize, kSize, NetImgui::eTexFormat::kTexFmtRGBA8);	// For remote display
 	return true;
 }
 
@@ -99,13 +99,13 @@ ImDrawData* SampleBackground::Draw()
 			ImGui::ColorEdit4("Background", reinterpret_cast<float*>(&sBgColor), ImGuiColorEditFlags_Float | ImGuiColorEditFlags_DisplayRGB | ImGuiColorEditFlags_InputRGB | ImGuiColorEditFlags_PickerHueWheel);
 			ImGui::ColorEdit4("Logo Tint", reinterpret_cast<float*>(&sTextureTint), ImGuiColorEditFlags_Float | ImGuiColorEditFlags_DisplayRGB | ImGuiColorEditFlags_InputRGB | ImGuiColorEditFlags_PickerHueWheel);			
 			ImGui::Checkbox("Replace Background Texture", &sUseTextureOverride);
-			ImGui::Image(mTextureView, ImVec2(64,64));
+			ImGui::Image(ToImTextureID(mTextureView), ImVec2(64, 64));
 			ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.5f, 0.5f, 1.f));
 			ImGui::TextWrapped("(Note: Custom background settings only applied on remote server)");
 			ImGui::PopStyleColor();
 			if( sUseTextureOverride )
 			{
-				NetImgui::SetBackground(sBgColor, sTextureTint, static_cast<ImTextureID>(mTextureView));
+				NetImgui::SetBackground(sBgColor, sTextureTint, ToImTextureID(mTextureView));
 			}
 			else
 			{ 
