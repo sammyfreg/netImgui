@@ -6,6 +6,7 @@
 
 #include <NetImgui_Api.h>
 #include <array>
+#include <cmath>
 #include "../Common/Sample.h"
 
 // Methods declared in main.cpp, extern declare to avoid having to include 'd3d11.h' here
