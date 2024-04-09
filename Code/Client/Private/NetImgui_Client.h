@@ -53,7 +53,7 @@ struct SavedImguiContext
 struct ClientInfo
 {
 	using VecTexture	= ImVector<ClientTexture>;
-	using BufferKeys	= Ringbuffer<uint16_t, 1024>;
+	using BufferKeys	= Ringbuffer<ImWchar, 1024>;
 	using Time			= std::chrono::time_point<std::chrono::high_resolution_clock>;
 
 	struct InputState

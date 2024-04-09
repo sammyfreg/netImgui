@@ -724,7 +724,7 @@ bool ProcessInputData(Client::ClientInfo& client)
 			}
 		}
 #endif
-		uint16_t character;
+		ImWchar character;
 		io.InputQueueCharacters.resize(0);
 		while (client.mPendingKeyIn.ReadData(&character)){
 			io.AddInputCharacter(character);
