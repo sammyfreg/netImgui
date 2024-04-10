@@ -163,6 +163,7 @@ void Client::Uninitialize()
 	NetImgui::Internal::netImguiDeleteSafe(mpImguiDrawData);
 	NetImgui::Internal::netImguiDeleteSafe(mpFrameDrawPrev);
 	if (mpBGContext) {
+		mpBGContext->IO.BackendRendererUserData = nullptr;
 		ImGui::DestroyContext(mpBGContext);
 		mpBGContext	= nullptr;
 	}
