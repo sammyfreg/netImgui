@@ -153,7 +153,10 @@ bool NewFrame(bool bSupportFrameSkip)
 
 	Client::ClientInfo& client = *gpClientInfo;	
 	ScopedBool scopedInside(client.mbInsideNewEnd, true);
-	assert(!client.mbIsDrawing);
+
+	//assert(!client.mbIsDrawing);
+    if (client.mbIsDrawing)
+        return false;
 
 	// ImGui Newframe handled by remote connection settings
 	if( NetImgui::IsConnected() )
