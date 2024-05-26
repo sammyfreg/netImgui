@@ -5,11 +5,11 @@
 //=================================================================================================
 //! @author		: Sammy Fatnassi
 //! @date		: 2024/05/26
-//!	@version	: v1.9.7
+//!	@version	: v1.11.0
 //! @Details	: For integration info : https://github.com/sammyfreg/netImgui/wiki
 //=================================================================================================
-#define NETIMGUI_VERSION		"1.9.8"	// Added 'TakeOver' connection option
-#define NETIMGUI_VERSION_NUM	10908
+#define NETIMGUI_VERSION		"1.11"	// Version 1.1 Release
+#define NETIMGUI_VERSION_NUM	11100
 
 
 
