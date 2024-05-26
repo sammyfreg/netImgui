@@ -319,7 +319,7 @@ void NetworkConnectRequest_Receive()
 		{
 			serverPort		= NetImguiServer::Config::Server::sPort;
 			gListenSocket	= NetImgui::Internal::Network::ListenStart(serverPort);
-			if( gListenSocket.load() != nullptr )
+			if( gListenSocket.load() == nullptr )
 			{
 				printf("Failed to start connection listen on port : %i", serverPort);
 				std::this_thread::sleep_for(std::chrono::milliseconds(500)); // Reduce Server listening socket open attempt frequency

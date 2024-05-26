@@ -197,7 +197,7 @@ struct alignas(8) CmdInput
 	int16_t							mMousePos[2]					= {};
 	float							mMouseWheelVert					= 0.f;
 	float							mMouseWheelHoriz				= 0.f;
-	ImWchar							mKeyChars[256]					= {};		// Input characters		
+	uint16_t						mKeyChars[256]					= {};		// Input characters		
 	uint16_t						mKeyCharCount					= 0;		// Number of valid input characters
 	bool							mCompressionUse					= false;	// Server would like client to compress the communication data
 	bool							mCompressionSkip				= false;	// Server forcing next client's frame data to be uncompressed

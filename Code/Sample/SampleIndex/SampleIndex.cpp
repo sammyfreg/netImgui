@@ -18,10 +18,10 @@
 //=================================================================================================
 // SAMPLE CLASS
 //=================================================================================================
-class SampleIndex : public SampleClient_Base
+class SampleIndex : public Sample::Base
 {
 public:
-					SampleIndex() : SampleClient_Base(sizeof(ImDrawIdx) == 2 ? "SampleIndex16Bits" : "SampleIndex32Bits") {}
+					SampleIndex() : Base(sizeof(ImDrawIdx) == 2 ? "SampleIndex16Bits" : "SampleIndex32Bits") {}
 virtual ImDrawData* Draw() override;
 };
 
@@ -29,7 +29,7 @@ virtual ImDrawData* Draw() override;
 // GET SAMPLE
 // Each project must return a valid sample object
 //=================================================================================================
-SampleClient_Base& GetSample()
+Sample::Base& GetSample()
 {
 	static SampleIndex sample;
 	return sample;
@@ -48,7 +48,7 @@ ImDrawData* SampleIndex::Draw()
 		//-----------------------------------------------------------------------------------------
 		// (2) Draw ImGui Content 		
 		//-----------------------------------------------------------------------------------------
-		SampleClient_Base::Draw_Connect(); //Note: Connection to remote server done in there
+		Base::Draw_Connect(); //Note: Connection to remote server done in there
 
 		ImGui::SetNextWindowPos(ImVec2(32, 48), ImGuiCond_Once);
 		ImGui::SetNextWindowSize(ImVec2(525, 820), ImGuiCond_Once);

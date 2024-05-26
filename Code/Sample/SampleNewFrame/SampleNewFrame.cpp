@@ -12,10 +12,10 @@
 //=================================================================================================
 // SAMPLE CLASS
 //=================================================================================================
-class SampleNewFrame : public SampleClient_Base
+class SampleNewFrame : public Sample::Base
 {
 public:
-						SampleNewFrame() : SampleClient_Base("SampleNewFrame") {}
+						SampleNewFrame() : Base("SampleNewFrame") {}
 	virtual ImDrawData* Draw() override;
 
 protected:
@@ -33,7 +33,7 @@ protected:
 // GET SAMPLE
 // Each project must return a valid sample object
 //=================================================================================================
-SampleClient_Base& GetSample()
+Sample::Base& GetSample()
 {
 	static SampleNewFrame sample;
 	return sample;
@@ -46,7 +46,7 @@ void SampleNewFrame::Draw_Content()
 {
 	bool bModeChanged(false);
 
-	SampleClient_Base::Draw_Connect(); //Note: Connection to remote server done in there
+	Base::Draw_Connect(); //Note: Connection to remote server done in there
 
 	ImGui::SetNextWindowPos(ImVec2(32,48), ImGuiCond_Once);
 	ImGui::SetNextWindowSize(ImVec2(700,450), ImGuiCond_Once);

@@ -15,7 +15,7 @@
 //=================================================================================================
 // SAMPLE CLASS
 //=================================================================================================
-class SampleFontDPI : public SampleClient_Base
+class SampleFontDPI : public Sample::Base
 {
 public:
 						SampleFontDPI();
@@ -30,7 +30,7 @@ protected:
 // GET SAMPLE
 // Each project must return a valid sample object
 //=================================================================================================
-SampleClient_Base& GetSample()
+Sample::Base& GetSample()
 {
 	static SampleFontDPI sample;
 	return sample;
@@ -75,7 +75,7 @@ void FontCreationCallback(float PreviousDPIScale, float NewDPIScale)
 // CONSTRUCTOR
 //=================================================================================================
 SampleFontDPI::SampleFontDPI()
-: SampleClient_Base("SampleFontDPI") 
+: Base("SampleFontDPI") 
 {
 	// For demonstration purposes, we replaced the default NetImgui Font DPI callback
 	// used by our samples, to a new one, to demonstrate its usage
@@ -119,14 +119,14 @@ bool SampleFontDPI::UpdateFont(float fontScaleDPI, bool isLocal)
 		FontConfig.SizePixels = roundf(sDefaultFontSize * fontScaleDPI);
 		FontAtlas->AddFontDefault(&FontConfig);
 		// 2nd Font is Roboto Font using the DPI awareness
-		StringCopy(FontConfig.Name, "Roboto Medium");
+		Sample::StringCopy(FontConfig.Name, "Roboto Medium");
 		ImGui::GetIO().Fonts->AddFontFromMemoryCompressedTTF(Roboto_Medium_compressed_data, Roboto_Medium_compressed_size, sRobotoFontSize * fontScaleDPI, &FontConfig);
 
 		// 3nd Font is Default Font without using the DPI awareness
 		FontConfig.SizePixels	= sDefaultFontSize;
 		FontAtlas->AddFontDefault(&FontConfig);
 		// 4th Font is Roboto Font without using the DPI awareness
-		StringCopy(FontConfig.Name, "Roboto Medium");
+		Sample::StringCopy(FontConfig.Name, "Roboto Medium");
 		ImGui::GetIO().Fonts->AddFontFromMemoryCompressedTTF(Roboto_Medium_compressed_data, Roboto_Medium_compressed_size, sRobotoFontSize, &FontConfig);
 		
 		// Regenerate the Font Texture (only if used by local context)
@@ -186,7 +186,7 @@ ImDrawData* SampleFontDPI::Draw()
 	//-----------------------------------------------------------------------------------------
 	// (2) Draw ImGui Content
 	//-----------------------------------------------------------------------------------------
-	SampleClient_Base::Draw_Connect(); //Note: Connection to remote server done in there
+	Base::Draw_Connect(); //Note: Connection to remote server done in there
 
 	ImGui::SetNextWindowPos(ImVec2(32,48), ImGuiCond_Once);
 	ImGui::SetNextWindowSize(ImVec2(400,400), ImGuiCond_Once);

@@ -15,10 +15,10 @@
 //=================================================================================================
 // SAMPLE CLASS
 //=================================================================================================
-class SampleDualUI : public SampleClient_Base
+class SampleDualUI : public Sample::Base
 {
 public:
-						SampleDualUI() : SampleClient_Base("SampleDualUI") {}
+						SampleDualUI() : Base("SampleDualUI") {}
 	virtual bool		Startup() override;
 	virtual void		Shutdown() override;
 	virtual ImDrawData* Draw() override;
@@ -41,7 +41,7 @@ protected:
 // GET SAMPLE
 // Each project must return a valid sample object
 //=================================================================================================
-SampleClient_Base& GetSample()
+Sample::Base& GetSample()
 {
 	static SampleDualUI sample;
 	return sample;
@@ -52,7 +52,7 @@ SampleClient_Base& GetSample()
 //=================================================================================================
 bool SampleDualUI::Startup()
 {
-	if( SampleClient_Base::Startup() )
+	if( Base::Startup() )
 	{
 		mpContextMain	= ImGui::GetCurrentContext();	// Dear ImGui backend already creates a default context
 		mpContextExtra	= ImGui::CreateContext();		// Creates an extra context that can be used as a secondary display
@@ -85,7 +85,7 @@ void SampleDualUI::Shutdown()
 	ImGui::SetCurrentContext(mpContextMain);
 	mpContextMain		= nullptr;
 	mpContextExtra	= nullptr;
-	SampleClient_Base::Shutdown();
+	Base::Shutdown();
 }
 
 //=================================================================================================
@@ -102,13 +102,13 @@ bool SampleDualUI::UpdateFont(float fontScaleDPI, bool isLocal)
 	if (isLocal && NetImgui::IsConnected() && mDisplayMode == eDisplayMode::DualUI) {
 		ImGui::SetCurrentContext(mpContextExtra);
 		mGeneratedFontScaleDPI		= mGeneratedFontScaleDPIExtra;
-		result						= SampleClient_Base::UpdateFont(fontScaleDPI, isLocal);
+		result						= Base::UpdateFont(fontScaleDPI, isLocal);
 		mGeneratedFontScaleDPIExtra	= mGeneratedFontScaleDPI;
 	}
 	else {
 		ImGui::SetCurrentContext(mpContextMain);
 		mGeneratedFontScaleDPI		= mGeneratedFontScaleDPIMain;
-		result						= SampleClient_Base::UpdateFont(fontScaleDPI, isLocal);
+		result						= Base::UpdateFont(fontScaleDPI, isLocal);
 		mGeneratedFontScaleDPIMain	= mGeneratedFontScaleDPI;
 	}
 	return result;
@@ -165,7 +165,7 @@ ImDrawData* SampleDualUI::Draw()
 		//-----------------------------------------------------------------------------------------
 		// This is the main content that we are always displaying. When connected, it will appear
 		// on the remote server, otherwise will appear in the local window
-		SampleClient_Base::Draw_Connect(); //Note: Connection to remote server done in there
+		Base::Draw_Connect(); //Note: Connection to remote server done in there
 
 		ImGui::SetNextWindowPos(ImVec2(32,48), ImGuiCond_Once);
 		ImGui::SetNextWindowSize(ImVec2(400,500), ImGuiCond_Once);

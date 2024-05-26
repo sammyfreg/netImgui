@@ -6,6 +6,7 @@
 
 #include <NetImgui_Api.h>
 #include <array>
+#include <cmath>
 #include "../Common/Sample.h"
 
 // Methods declared in main.cpp, extern declare to avoid having to include 'd3d11.h' here
@@ -15,10 +16,10 @@ extern void TextureDestroy(void*& pTextureView);
 //=================================================================================================
 // SAMPLE CLASS
 //=================================================================================================
-class SampleBackground : public SampleClient_Base
+class SampleBackground : public Sample::Base
 {
 public:
-						SampleBackground() : SampleClient_Base("SampleBackground") {}
+						SampleBackground() : Base("SampleBackground") {}
 	virtual bool		Startup() override;
 	virtual void		Shutdown() override;
 	virtual ImDrawData* Draw() override;
@@ -30,18 +31,18 @@ protected:
 // GET SAMPLE
 // Each project must return a valid sample object
 //=================================================================================================
-SampleClient_Base& GetSample()
+Sample::Base& GetSample()
 {
 	static SampleBackground sample;
 	return sample;
-}
+};
 
 //=================================================================================================
 // STARTUP
 //=================================================================================================
 bool SampleBackground::Startup()
 {
-	if (!SampleClient_Base::Startup())
+	if (!Base::Startup())
 		return false;
 
 	constexpr uint16_t kSize	= 256;
@@ -58,7 +59,7 @@ bool SampleBackground::Startup()
 		}
 	}
 	TextureCreate(reinterpret_cast<uint8_t*>(pixels), kSize, kSize, mTextureView);													// For local display
-	NetImgui::SendDataTexture(static_cast<ImTextureID>(mTextureView), pixels, kSize, kSize, NetImgui::eTexFormat::kTexFmtRGBA8);	// For remote display
+	NetImgui::SendDataTexture(Sample::TextureCastFromPtr(mTextureView), pixels, kSize, kSize, NetImgui::eTexFormat::kTexFmtRGBA8);	// For remote display
 	return true;
 }
 
@@ -84,7 +85,7 @@ ImDrawData* SampleBackground::Draw()
 		//-----------------------------------------------------------------------------------------
 		// (2) Draw ImGui Content
 		//-----------------------------------------------------------------------------------------
-		SampleClient_Base::Draw_Connect(); //Note: Connection to remote server done in there
+		Base::Draw_Connect(); //Note: Connection to remote server done in there
 
 		ImGui::SetNextWindowPos(ImVec2(32, 48), ImGuiCond_Once);
 		ImGui::SetNextWindowSize(ImVec2(400, 400), ImGuiCond_Once);
@@ -104,7 +105,7 @@ ImDrawData* SampleBackground::Draw()
 			ImGui::PopStyleColor();
 			if( sUseTextureOverride )
 			{
-				NetImgui::SetBackground(sBgColor, sTextureTint, static_cast<ImTextureID>(mTextureView));
+				NetImgui::SetBackground(sBgColor, sTextureTint, Sample::TextureCastFromPtr(mTextureView));
 			}
 			else
 			{ 

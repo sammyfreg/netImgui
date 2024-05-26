@@ -104,8 +104,8 @@ int main(int, char**)
 
     // Main loop
     bool done = false;
-	SampleClient_Base& sample = GetSample();	// @SAMPLE_EDIT
-	done = !sample.Startup();					// @SAMPLE_EDIT
+	Sample::Base& sample = GetSample();	// @SAMPLE_EDIT
+	done = !sample.Startup();			// @SAMPLE_EDIT
     while (!done)
     {
         // Poll and handle messages (inputs, window resize, etc.)

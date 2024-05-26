@@ -35,12 +35,15 @@ void FontCreationCallback_Default(float PreviousDPIScale, float NewDPIScale)
 #endif
 }
 
+namespace Sample
+{
+
 //=================================================================================================
 // Constructor
 //-------------------------------------------------------------------------------------------------
 //
 //=================================================================================================
-SampleClient_Base::SampleClient_Base(const char* sampleName)
+Base::Base(const char* sampleName)
 : mSampleName(sampleName)
 {
 #if NETIMGUI_ENABLED
@@ -55,7 +58,7 @@ SampleClient_Base::SampleClient_Base(const char* sampleName)
 //-------------------------------------------------------------------------------------------------
 //
 //=================================================================================================
-bool SampleClient_Base::Startup()
+bool Base::Startup()
 {
 	mpContextLocal = mpContextMain = ImGui::GetCurrentContext();
 #if NETIMGUI_ENABLED
@@ -70,7 +73,7 @@ bool SampleClient_Base::Startup()
 //-------------------------------------------------------------------------------------------------
 //
 //=================================================================================================
-void SampleClient_Base::Shutdown()
+void Base::Shutdown()
 {
 #if NETIMGUI_ENABLED
 	NetImgui::Shutdown();
@@ -88,7 +91,7 @@ void SampleClient_Base::Shutdown()
 // to a fixed size, paired with 'ImGui::GetIO().FontGlobalScale' for the text size increase.
 // However, this create blurier text. See 'SampleFontDPI' for more details
 //=================================================================================================
-bool SampleClient_Base::UpdateFont(float fontScaleDPI, bool isLocal)
+bool Base::UpdateFont(float fontScaleDPI, bool isLocal)
 {
 	IM_UNUSED(isLocal);
 	constexpr float kFontPixelSize = 16.f;
@@ -138,7 +141,7 @@ bool SampleClient_Base::UpdateFont(float fontScaleDPI, bool isLocal)
 // Function called by all samples, to display the Connection Options, and some other default
 // MainMenu entries. 
 //=================================================================================================
-void SampleClient_Base::Draw_Connect()
+void Base::Draw_Connect()
 {
 #if NETIMGUI_ENABLED
 	ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(3,6) );
@@ -238,3 +241,5 @@ void SampleClient_Base::Draw_Connect()
 	}
 #endif // #if NETIMGUI_ENABLED
 }
+
+}; // namespace Sample

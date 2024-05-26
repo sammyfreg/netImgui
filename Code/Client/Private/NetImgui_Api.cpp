@@ -149,12 +149,11 @@ bool IsDrawingRemote(void)
 bool NewFrame(bool bSupportFrameSkip)
 //=================================================================================================
 {	
-	if (!gpClientInfo) return false;
+	if (!gpClientInfo || gpClientInfo->mbIsDrawing) return false;
 
 	Client::ClientInfo& client = *gpClientInfo;	
 	ScopedBool scopedInside(client.mbInsideNewEnd, true);
-	assert(!client.mbIsDrawing);
-
+	
 	// ImGui Newframe handled by remote connection settings
 	if( NetImgui::IsConnected() )
 	{		
@@ -727,7 +726,8 @@ bool ProcessInputData(Client::ClientInfo& client)
 		uint16_t character;
 		io.InputQueueCharacters.resize(0);
 		while (client.mPendingKeyIn.ReadData(&character)){
-			io.AddInputCharacter(character);
+			ImWchar ConvertedKey = static_cast<ImWchar>(character);
+			io.AddInputCharacter(ConvertedKey);
 		}
 
 		static_assert(sizeof(client.mPreviousInputState.mInputDownMask) == sizeof(pCmdInput->mInputDownMask), "Array size should match");
