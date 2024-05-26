@@ -115,7 +115,7 @@ struct ClientInfo
 	bool								mServerCompressionSkip		= false;	// Force ignore compression setting for 1 frame
 	bool 								mServerForceConnectEnabled	= true;		// If another NetImguiServer can take connection away from the one currently active
 	ThreadFunctPtr						mThreadFunction				= nullptr;	// Function to use when laucnhing new threads
-	FontCreationFuncPtr					mFontCreationFunction		= nullptr;	// Method to call to generate the remote ImGui font. By default, re-use the local font, but this doesn't handle native DPI scaling on remote server
+	FontCreateFuncPtr					mFontCreationFunction		= nullptr;	// Method to call to generate the remote ImGui font. By default, re-use the local font, but this doesn't handle native DPI scaling on remote server
 	float								mFontCreationScaling		= 1.f;		// Last font scaling used when generating the NetImgui font
 	InputState							mPreviousInputState;					// Keeping track of last keyboard/mouse state
 	ImGuiID								mhImguiHookNewframe			= 0;

@@ -135,7 +135,7 @@ enum eCompressionMode {
 // Function typedefs
 //-------------------------------------------------------------------------------------------------
 typedef void (*ThreadFunctPtr)(void threadedFunction(void* pClientInfo), void* pClientInfo);
-typedef void (*FontCreationFuncPtr)(float PreviousDPIScale, float NewDPIScale);
+typedef void (*FontCreateFuncPtr)(float PreviousDPIScale, float NewDPIScale);
 
 //=================================================================================================
 // Initialize the Network Library
@@ -157,15 +157,19 @@ NETIMGUI_API	void				Shutdown();
 // Note:	Start a new communication thread using std::Thread by default, but can receive custom 
 //			thread start function instead (Look at ClientExample 'CustomCommunicationThread').
 //-------------------------------------------------------------------------------------------------
-// clientName		: Client name displayed in the Server's clients list
-// serverHost		: Address of the NetImgui Server application (Ex1: 127.0.0.2, Ex2: localhost)
-// serverPort		: PortID of the NetImgui Server application to connect to
-// clientPort		: PortID this Client should wait for connection from Server application
-// threadFunction	: User provided function to launch new networking thread.
-//					  Use 'DefaultStartCommunicationThread' by default (relying on 'std::thread').
+// clientName			: Client name displayed in the Server's clients list
+// serverHost			: NetImgui Server Application address (Ex1: 127.0.0.2, Ex2: localhost)
+// serverPort			: PortID of the NetImgui Server application to connect to
+// clientPort			: PortID this Client should wait for connection from Server application
+// threadFunction		: User provided function to launch new networking thread.
+//						  Use 'DefaultStartCommunicationThread' by default (uses 'std::thread').
+// fontCreateFunction	: User provided function to call when the Server expect an update of
+//						  the font atlas, because of a monitor DPI change. When left to nullptr,
+//						  uses 'ImGuiIO.FontGlobalScale' instead to increase text size,
+//						  with blurier results.
 //=================================================================================================
-NETIMGUI_API	bool				ConnectToApp(const char* clientName, const char* serverHost, uint32_t serverPort=kDefaultServerPort, ThreadFunctPtr threadFunction=0, FontCreationFuncPtr FontCreateFunction = 0);
-NETIMGUI_API	bool				ConnectFromApp(const char* clientName, uint32_t clientPort=kDefaultClientPort, ThreadFunctPtr threadFunction=0, FontCreationFuncPtr FontCreateFunction  = 0);
+NETIMGUI_API	bool				ConnectToApp(const char* clientName, const char* serverHost, uint32_t serverPort=kDefaultServerPort, ThreadFunctPtr threadFunction=0, FontCreateFuncPtr FontCreateFunction=0);
+NETIMGUI_API	bool				ConnectFromApp(const char* clientName, uint32_t clientPort=kDefaultClientPort, ThreadFunctPtr threadFunction=0, FontCreateFuncPtr fontCreateFunction=0);
 
 //=================================================================================================
 // Request a disconnect from the NetImguiServer application
@@ -198,6 +202,8 @@ NETIMGUI_API	bool				IsDrawingRemote(void);
 //=================================================================================================
 // Send an updated texture used by imgui, to the NetImguiServer application
 // Note: To remove a texture, set pData to nullptr
+// Note: User needs to provide a valid 'dataSize' when using format 'kTexFmtCustom', 
+//		 can be ignored otherwise
 //=================================================================================================
 NETIMGUI_API	void				SendDataTexture(ImTextureID textureId, void* pData, uint16_t width, uint16_t height, eTexFormat format, uint32_t dataSize=0);
 

@@ -9,7 +9,7 @@
 	namespace NetImgui 
 	{ 
 		using ThreadFunctPtr = void*;
-		using FontCreationFuncPtr = void*;
+		using FontCreateFuncPtr = void*;
 	}
 #endif
 
@@ -26,17 +26,17 @@ public:
 	virtual ImDrawData*				Draw() = 0;											//!< Each sample should have their Dear ImGui drawing routines in this overloaded method
 
 protected:	
-	void							Draw_Connect();										//!< Display UI for initiating a connection to the remote NetImgui server application
-	const char*						mSampleName						= nullptr;			//!< Name displayed in the Main Menu bar (must receive string pointer in constructor that remains valid)
-	ImGuiContext*					mpContextMain					= nullptr;			//!< Pointer to main context created in main.cpp (used to detect when to update font texture)
-	ImGuiContext*					mpContextLocal					= nullptr;			//!< Pointer to context used for local draw. Most sample leave it to the same as mpContextMain (used to detect when to update font texture)
-	NetImgui::ThreadFunctPtr		mCallback_ThreadLaunch			= nullptr;			//!< [Optional] Thread launcher callback assigned on NetImgui connection. Used to start a new thread for coms with NetImgui server
-	NetImgui::FontCreationFuncPtr	mCallback_FontGenerate			= nullptr;			//!< [Optional] Font generation callback assigned on NetImgui connection. Used to adjust the font data to remote server DPI
-	float							mGeneratedFontScaleDPI			= 0.f;				//!< Current generated font texture DPI
-	bool							mbShowDemoWindow				= false;			//!< If we should show the Dear ImGui demo window
-	char							mConnect_HostnameServer[128]	= {"localhost"};	//!< IP/Hostname used to send a connection request when when trying to reach the server
-	int								mConnect_PortServer				= 0;				//!< Port used to send a connection request when when trying to reach the server
-	int								mConnect_PortClient				= 0;				//!< Port opened when waiting for a server connection request
+	void						Draw_Connect();										//!< Display UI for initiating a connection to the remote NetImgui server application
+	const char*					mSampleName						= nullptr;			//!< Name displayed in the Main Menu bar (must receive string pointer in constructor that remains valid)
+	ImGuiContext*				mpContextMain					= nullptr;			//!< Pointer to main context created in main.cpp (used to detect when to update font texture)
+	ImGuiContext*				mpContextLocal					= nullptr;			//!< Pointer to context used for local draw. Most sample leave it to the same as mpContextMain (used to detect when to update font texture)
+	NetImgui::ThreadFunctPtr	mCallback_ThreadLaunch			= nullptr;			//!< [Optional] Thread launcher callback assigned on NetImgui connection. Used to start a new thread for coms with NetImgui server
+	NetImgui::FontCreateFuncPtr	mCallback_FontGenerate			= nullptr;			//!< [Optional] Font generation callback assigned on NetImgui connection. Used to adjust the font data to remote server DPI
+	float						mGeneratedFontScaleDPI			= 0.f;				//!< Current generated font texture DPI
+	bool						mbShowDemoWindow				= false;			//!< If we should show the Dear ImGui demo window
+	char						mConnect_HostnameServer[128]	= {"localhost"};	//!< IP/Hostname used to send a connection request when when trying to reach the server
+	int							mConnect_PortServer				= 0;				//!< Port used to send a connection request when when trying to reach the server
+	int							mConnect_PortClient				= 0;				//!< Port opened when waiting for a server connection request
 };
 
 //=============================================================================

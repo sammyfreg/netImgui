@@ -36,7 +36,7 @@ void DefaultStartCommunicationThread(void ComFunctPtr(void*), void* pClient)
 
 
 //=================================================================================================
-bool ConnectToApp(const char* clientName, const char* ServerHost, uint32_t serverPort, ThreadFunctPtr threadFunction, FontCreationFuncPtr FontCreateFunction)
+bool ConnectToApp(const char* clientName, const char* ServerHost, uint32_t serverPort, ThreadFunctPtr threadFunction, FontCreateFuncPtr FontCreateFunction)
 //=================================================================================================
 {
 	if (!gpClientInfo) return false;
@@ -64,7 +64,7 @@ bool ConnectToApp(const char* clientName, const char* ServerHost, uint32_t serve
 }
 
 //=================================================================================================
-bool ConnectFromApp(const char* clientName, uint32_t serverPort, ThreadFunctPtr threadFunction, FontCreationFuncPtr FontCreateFunction)
+bool ConnectFromApp(const char* clientName, uint32_t serverPort, ThreadFunctPtr threadFunction, FontCreateFuncPtr FontCreateFunction)
 //=================================================================================================
 {
 	if (!gpClientInfo) return false;

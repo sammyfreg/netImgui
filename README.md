@@ -89,8 +89,9 @@ The NetImgui Server application currently compiles under Windows and Mac, but fe
 - `NetImgui::IsConnected()` and `NetImgui::IsDrawingRemote()` can be used during Dear ImGui drawing, helping to make selective decisions on the content to draw based on where it will be displayed.
 
 #### Dear Imgui versions
-- Tested against **Dear ImGui** versions: **1.71, 1.72, 1.73, 1.74, 1.75, 1.76, 1.76** (docking)**, 1.77, 1.78, 1.79, 1.80, 1.80** (docking)**, 1.81, 1.82, 1.83, 1.84, 1.85, 1.86, 1.87, 1.87, 1.88, 1.89** (docking)**, 1.89.1, 189.2, 189.2, 189.5**.
+- Tested against **Dear ImGui** versions **1.71** to **1.90**.
 - *Note*: Should support other versions without too much difficulties.
+- *Note*: See **Build\GenerateCompatibilityTest.bat** for an exact list of tested versions.
 
 # Related
 Related projects making use of **NetImgui**.
@@ -103,18 +104,46 @@ Related projects making use of **NetImgui**.
 ### To do
 - Support of additional texture formats
 - Handle Linear/sRGB vertex color format
-- Add logging information in netImgui server application
-- Profile and optimize performances
+- Add logging information to NetImgui Server Application
 - Add new **Dear ImGui** multi windows support (docking branch)
 - ~~Commands to assign custom backgrounds~~
 - ~~Add compression to data between Client and Server~~
+- ~~Support of monitor DPI~~
 
-### Version 1.9
-(2023/05/04)
+### Version 1.10
+(2023/12/30)
 - **API Changes**
-  - None
-- **Upgraded Dear ImGui support to 1.89.5**
+  - **ConnectToApp()** and **ConnectFromApp()** functions now accept a callback to be used by the NetImgui Server when wanting to update the font to a specific DPI scale.
+    - Can be left untouched, with *null* used by default.
+    - Without a callback, we apply the text scaling to **ImGuiIO.FontGlobalScale** instead of requesting the generation of a new font with increased pixel size.
+    - Using **ImGuiIO.FontGlobalScale** gives a blurier text result than recreating the font with the exact DPI needed.
+    - See **SampleFontDPI** for more info.
+  - **SendDataTexture()** now support a new texture format **kTexFmtCustom**.
+    - It requires that the **dataSize** parameter is specified since we can't deduce it anymore *(but not used for other formats)*
+    - It allows user to send a texture command with custom data that also needs to be added to NetImguiServer codebase.
+    - This could be used for movie streaming, etc...
+    - See **SampleTexture** for more info.
+- **Upgraded Dear ImGui support to 1.90**
+- **Added monitor DPI support**
+  - The Server now scale the text up on a high resolution monitor, so it can still be read
+  - The Server font atlas is regenerated with a higher pixel size to match the resolution
+  - The Client connected will be asked to regenerate their font atlas if they provided a callback when connecting
+    - When this callback is received, the client codebase should regenerate the font atlas using the provided scale
+    - When no callback has been assigned, the client automatically relies on **ImGuiIO.FontGlobalScale** when drawing *(blurier results)*
+    - See **SampleFontDPI** for more info.
+- **Added Clipboard support**
+  - Can now seamlessly use text clipboard between Client and Server!
+  - Text copied on the Server PC is now sent over to the NetImgui Clients and can be pasted inside their Dear ImGui content
+  - Text copied inside the Client's Dear ImGui content is now received by the Server PC and can be used on it
+- **Shared Client configs**
+  - When adding a Client configuration on the NetImgui Server application, the property *Shared* can now be specified
+  - When enabled, it will save the config in a *User Directory* instead of the current *Working Directory*
+  - This means that user can have NetImgui Server applications in various locations, but they can all still share the same *Client Configs*.
+  - *Note:* Requires that the function **HAL_GetUserSettingFolder()** is implemented in the NetImgui Server codebase. It has been done for Windows.
 - **Various small changes and fixes**
+    - When the NetImgui Server config file **netImgui.cfg** is detected **readonly**, now tries to create a second one. This should help if user submit the default config file to perforce but still want to add new Clients.
+    - Quickly typed text was dropping characters when received by Client
+    - DirectX textures error when quickly recreating them
 
 ### Older
 [Release Notes](https://github.com/sammyfreg/netImgui/wiki/Release-notes)
