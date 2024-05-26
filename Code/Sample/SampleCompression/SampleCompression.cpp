@@ -90,7 +90,7 @@ void CustomThreadLauncher(void ComFunctPtr(void*), void* pClient)
 #endif
 	//=========================================================================================
 	// @SAMPLE_EDIT	
-	if( ComFunctPtr == NetImgui::Internal::Client::CommunicationsClient ){
+	if( ComFunctPtr == NetImgui::Internal::Client::CommunicationsConnect ){
 		std::thread(CustomCommunicationsClient, pClient).detach();
 		gMetric_ConnectTo = true;
 		return;

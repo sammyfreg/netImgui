@@ -56,8 +56,8 @@ bool ConnectToApp(const char* clientName, const char* ServerHost, uint32_t serve
 	if (client.mpSocketPending.load() != nullptr)
 	{				
 		client.ContextInitialize();
-		threadFunction		= threadFunction == nullptr ? DefaultStartCommunicationThread : threadFunction;
-		threadFunction(Client::CommunicationsClient, &client);
+		threadFunction = threadFunction == nullptr ? DefaultStartCommunicationThread : threadFunction;
+		threadFunction(Client::CommunicationsConnect, &client);
 	}
 	
 	return client.IsActive();
@@ -81,11 +81,11 @@ bool ConnectFromApp(const char* clientName, uint32_t serverPort, ThreadFunctPtr 
 	StringCopy(client.mName, (clientName == nullptr || clientName[0] == 0 ? "Unnamed" : clientName));
 	client.mpSocketPending			= Network::ListenStart(serverPort);
 	client.mFontCreationFunction	= FontCreateFunction;
+	client.mThreadFunction			= (threadFunction == nullptr) ? DefaultStartCommunicationThread : threadFunction;
 	if (client.mpSocketPending.load() != nullptr)
 	{				
 		client.ContextInitialize();
-		threadFunction		= threadFunction == nullptr ? DefaultStartCommunicationThread : threadFunction;
-		threadFunction(Client::CommunicationsHost, &client);
+		client.mThreadFunction(Client::CommunicationsHost, &client);
 	}
 
 	return client.IsActive();

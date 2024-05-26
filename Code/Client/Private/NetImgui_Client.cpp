@@ -76,35 +76,6 @@ static void SetClipboardTextFn_NetImguiImpl(void* user_data_ctx, const char* tex
 }
 
 //=================================================================================================
-// COMMUNICATIONS INITIALIZE
-// Initialize a new connection to a RemoteImgui server
-//=================================================================================================
-bool Communications_Initialize(ClientInfo& client)
-{
-	CmdVersion cmdVersionSend, cmdVersionRcv;
-	StringCopy(cmdVersionSend.mClientName, client.mName);
-	bool bResultSend	= Network::DataSend(client.mpSocketPending, &cmdVersionSend, cmdVersionSend.mHeader.mSize);
-	bool bResultRcv		= Network::DataReceive(client.mpSocketPending, &cmdVersionRcv, sizeof(cmdVersionRcv));
-	bool mbConnected	= bResultRcv && bResultSend && 
-						  cmdVersionRcv.mHeader.mType	== cmdVersionSend.mHeader.mType && 
-						  cmdVersionRcv.mVersion		== cmdVersionSend.mVersion &&
-						  cmdVersionRcv.mWCharSize		== cmdVersionSend.mWCharSize;	
-	if(mbConnected)
-	{				
-		for(auto& texture : client.mTextures)
-		{
-			texture.mbSent = false;
-		}
-
-		client.mbHasTextureUpdate			= true;								// Force sending the client textures
-		client.mBGSettingSent.mTextureId	= client.mBGSetting.mTextureId-1u;	// Force sending the Background settings (by making different than current settings)
-		client.mpSocketComs					= client.mpSocketPending.exchange(nullptr);
-		client.mFrameIndex					= 0;
-	}
-	return client.mpSocketComs.load() != nullptr;
-}
-
-//=================================================================================================
 // INCOM: INPUT
 // Receive new keyboard/mouse/screen resolution input to pass on to dearImgui
 //=================================================================================================
@@ -332,16 +303,66 @@ bool Communications_Outgoing(ClientInfo& client)
 }
 
 //=================================================================================================
-// COMMUNICATIONS THREAD 
+// COMMUNICATIONS INITIALIZE
+// Initialize a new connection to a RemoteImgui server
 //=================================================================================================
-void CommunicationsClient(void* pClientVoid)
-{	
+bool Communications_Initialize(ClientInfo& client)
+{
+	CmdVersion cmdVersionSend, cmdVersionRcv;
+	bool bResultRcv		= Network::DataReceive(client.mpSocketPending, &cmdVersionRcv, sizeof(cmdVersionRcv));
+	bool bForceConnect	= client.mServerForceConnectEnabled && (cmdVersionRcv.mFlags & static_cast<uint8_t>(CmdVersion::eFlags::ConnectForce)) != 0;
+	bool bCanConnect	= bResultRcv && 
+					 	  cmdVersionRcv.mHeader.mType	== cmdVersionSend.mHeader.mType && 
+					 	  cmdVersionRcv.mVersion		== cmdVersionSend.mVersion &&
+						  cmdVersionRcv.mWCharSize		== cmdVersionSend.mWCharSize &&
+						  (!client.IsConnected() || bForceConnect);
+
+	StringCopy(cmdVersionSend.mClientName, client.mName);
+	cmdVersionSend.mFlags	= client.IsConnected() && !bCanConnect ? static_cast<uint8_t>(CmdVersion::eFlags::IsConnected): 0;
+	cmdVersionSend.mFlags	|= client.IsConnected() && !client.mServerForceConnectEnabled ? static_cast<uint8_t>(CmdVersion::eFlags::IsUnavailable) : 0;
+	bool bResultSend		= Network::DataSend(client.mpSocketPending, &cmdVersionSend, cmdVersionSend.mHeader.mSize);
+
+	if(bCanConnect && bResultSend)
+	{
+		Network::SocketInfo* pNewConnect = client.mpSocketPending.exchange(nullptr);
+		if( client.IsConnected() )
+		{
+			if( bForceConnect )
+			{
+				client.mbDisconnectRequest = true;
+				while( client.IsConnected() );
+			}
+			else
+			{
+				NetImgui::Internal::Network::Disconnect(pNewConnect);
+				return false;
+			}
+		}
+
+		for(auto& texture : client.mTextures)
+		{
+			texture.mbSent = false;
+		}
+		client.mbHasTextureUpdate			= true;								// Force sending the client textures
+		client.mBGSettingSent.mTextureId	= client.mBGSetting.mTextureId-1u;	// Force sending the Background settings (by making different than current settings)
+		client.mpSocketComs					= pNewConnect;
+		client.mFrameIndex					= 0;
+		client.mServerForceConnectEnabled	= (cmdVersionRcv.mFlags & static_cast<uint8_t>(CmdVersion::eFlags::ConnectExclusive)) == 0;
+	}
+	return client.mpSocketPending.load() == nullptr;
+}
+
+//=================================================================================================
+// COMMUNICATIONS MAIN LOOP 
+//=================================================================================================
+void Communications_Loop(void* pClientVoid)
+{
+	IM_ASSERT(pClientVoid != nullptr);
 	ClientInfo* pClient				= reinterpret_cast<ClientInfo*>(pClientVoid);
-	pClient->mbClientThreadActive	= true;
-	pClient->mbDisconnectRequest	= false;
-	Communications_Initialize(*pClient);
 	bool bConnected					= pClient->IsConnected();
-	
+	pClient->mbDisconnectRequest 	= false;
+	pClient->mbClientThreadActive 	= true;
+
 	while( bConnected && !pClient->mbDisconnectRequest )
 	{
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -350,11 +371,27 @@ void CommunicationsClient(void* pClientVoid)
 	}
 
 	pClient->KillSocketComs();
-	pClient->mbClientThreadActive	= false;
+	pClient->mbClientThreadActive = false;
 }
 
 //=================================================================================================
-// COMMUNICATIONS WAIT THREAD 
+// COMMUNICATIONS CONNECT THREAD : Reach out and connect to a NetImGuiServer
+//=================================================================================================
+void CommunicationsConnect(void* pClientVoid)
+{
+	IM_ASSERT(pClientVoid != nullptr);
+	ClientInfo* pClient				= reinterpret_cast<ClientInfo*>(pClientVoid);
+	pClient->mbClientThreadActive 	= true;
+	if( Communications_Initialize(*pClient) )
+	{
+		Communications_Loop(pClientVoid);
+	}
+	pClient->mbClientThreadActive 	= false;
+}
+
+//=================================================================================================
+// COMMUNICATIONS HOST THREAD : Waiting NetImGuiServer reaching out to us. 
+//								Launch a new com loop when connection is established
 //=================================================================================================
 void CommunicationsHost(void* pClientVoid)
 {
@@ -366,18 +403,13 @@ void CommunicationsHost(void* pClientVoid)
 	while( pClient->mpSocketListen.load() != nullptr && !pClient->mbDisconnectRequest )
 	{
 		pClient->mpSocketPending = Network::ListenConnect(pClient->mpSocketListen);
-		if( pClient->mpSocketPending.load() != nullptr )
+		if( !pClient->mbDisconnectRequest &&
+			pClient->mpSocketPending.load() != nullptr &&
+			Communications_Initialize(*pClient) )
 		{
-			bool bConnected = Communications_Initialize(*pClient);
-			while (bConnected && !pClient->mbDisconnectRequest)
-			{
-				std::this_thread::sleep_for(std::chrono::milliseconds(1));
-				//std::this_thread::yield();
-				bConnected	= Communications_Outgoing(*pClient) && Communications_Incoming(*pClient);
-			}
-			pClient->KillSocketComs();
+			pClient->mThreadFunction(Client::Communications_Loop, pClient);
 		}
-		std::this_thread::sleep_for(std::chrono::milliseconds(10));	// Prevents this thread from taking entire core, waiting on server connection
+		std::this_thread::sleep_for(std::chrono::milliseconds(16));	// Prevents this thread from taking entire core, waiting on server connection
 	}
 	pClient->KillSocketListen();
 	pClient->mbListenThreadActive	= false;

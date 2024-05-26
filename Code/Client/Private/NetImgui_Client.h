@@ -113,7 +113,8 @@ struct ClientInfo
 	uint8_t								mClientCompressionMode		= eCompressionMode::kUseServerSetting;
 	bool								mServerCompressionEnabled	= false;	// If Server would like compression to be enabled (mClientCompressionMode value can override this value)
 	bool								mServerCompressionSkip		= false;	// Force ignore compression setting for 1 frame
-	char								PADDING[1];
+	bool 								mServerForceConnectEnabled	= true;		// If another NetImguiServer can take connection away from the one currently active
+	ThreadFunctPtr						mThreadFunction				= nullptr;	// Function to use when laucnhing new threads
 	FontCreationFuncPtr					mFontCreationFunction		= nullptr;	// Method to call to generate the remote ImGui font. By default, re-use the local font, but this doesn't handle native DPI scaling on remote server
 	float								mFontCreationScaling		= 1.f;		// Last font scaling used when generating the NetImgui font
 	InputState							mPreviousInputState;					// Keeping track of last keyboard/mouse state
@@ -136,9 +137,9 @@ protected:
 };
 
 //=============================================================================
-// Main communication thread, that should be started in its own thread
+// Main communication loop threads that are run in separate threads
 //=============================================================================
-void CommunicationsClient(void* pClientVoid);
+void CommunicationsConnect(void* pClientVoid);
 void CommunicationsHost(void* pClientVoid);
 
 }}} //namespace NetImgui::Internal::Client
