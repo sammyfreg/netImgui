@@ -1,3 +1,4 @@
+
  <p align="center"><img src="https://raw.githubusercontent.com/wiki/sammyfreg/netImgui/Web/img/netImguiLogo.png" width=128 height=128></p>
 
 
@@ -109,41 +110,18 @@ Related projects making use of **NetImgui**.
 - ~~Commands to assign custom backgrounds~~
 - ~~Add compression to data between Client and Server~~
 - ~~Support of monitor DPI~~
+- ~~Support for connection takeover~~
 
-### Version 1.10
-(2023/12/30)
+### Version 1.11
+(2024/05/26)
 - **API Changes**
-  - **ConnectToApp()** and **ConnectFromApp()** functions now accept a callback to be used by the NetImgui Server when wanting to update the font to a specific DPI scale.
-    - Can be left untouched, with *null* used by default.
-    - Without a callback, we apply the text scaling to **ImGuiIO.FontGlobalScale** instead of requesting the generation of a new font with increased pixel size.
-    - Using **ImGuiIO.FontGlobalScale** gives a blurier text result than recreating the font with the exact DPI needed.
-    - See **SampleFontDPI** for more info.
-  - **SendDataTexture()** now support a new texture format **kTexFmtCustom**.
-    - It requires that the **dataSize** parameter is specified since we can't deduce it anymore *(but not used for other formats)*
-    - It allows user to send a texture command with custom data that also needs to be added to NetImguiServer codebase.
-    - This could be used for movie streaming, etc...
-    - See **SampleTexture** for more info.
-- **Upgraded Dear ImGui support to 1.90**
-- **Added monitor DPI support**
-  - The Server now scale the text up on a high resolution monitor, so it can still be read
-  - The Server font atlas is regenerated with a higher pixel size to match the resolution
-  - The Client connected will be asked to regenerate their font atlas if they provided a callback when connecting
-    - When this callback is received, the client codebase should regenerate the font atlas using the provided scale
-    - When no callback has been assigned, the client automatically relies on **ImGuiIO.FontGlobalScale** when drawing *(blurier results)*
-    - See **SampleFontDPI** for more info.
-- **Added Clipboard support**
-  - Can now seamlessly use text clipboard between Client and Server!
-  - Text copied on the Server PC is now sent over to the NetImgui Clients and can be pasted inside their Dear ImGui content
-  - Text copied inside the Client's Dear ImGui content is now received by the Server PC and can be used on it
-- **Shared Client configs**
-  - When adding a Client configuration on the NetImgui Server application, the property *Shared* can now be specified
-  - When enabled, it will save the config in a *User Directory* instead of the current *Working Directory*
-  - This means that user can have NetImgui Server applications in various locations, but they can all still share the same *Client Configs*.
-  - *Note:* Requires that the function **HAL_GetUserSettingFolder()** is implemented in the NetImgui Server codebase. It has been done for Windows.
+  - None
+- **Added Connection 'Take Over' support**
+  - When a **NetImgui Client** is already connected to a **NetImgui Server**, user of a second instance of a **NetImgui Server** now have the option of *Taking over* the connection.
+  - This is useful when the *Client Config* on a **NetImgui Server** is set to *Auto Connect* and a user on a second PC wish to still connect to the client.
+  - Users can enable the option *Block TakerOver* in their *Client Config* to prevent this possibility. 
 - **Various small changes and fixes**
-    - When the NetImgui Server config file **netImgui.cfg** is detected **readonly**, now tries to create a second one. This should help if user submit the default config file to perforce but still want to add new Clients.
-    - Quickly typed text was dropping characters when received by Client
-    - DirectX textures error when quickly recreating them
+    - Tested **Dear ImGui** versions up to 1.90.6 and updated the **NetImgui Server** to it (docking branch).
 
 ### Older
 [Release Notes](https://github.com/sammyfreg/netImgui/wiki/Release-notes)
@@ -161,3 +139,4 @@ Support of Solutions generation via [**Sharpmake**](https://github.com/ubisoft/S
 Support of Posix sockets thanks to [Aaron Lieberman](https://github.com/AaronLieberman).
 
 Support of json save file via [**nlohmann json**](https://github.com/nlohmann/json)
+ <p align="center"><img src="https://raw.githubusercontent.com/wiki/sammyfreg/netImgui/Web/img/netImguiLogo.png" width=128 height=128></p>
