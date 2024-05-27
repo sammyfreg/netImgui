@@ -13,14 +13,17 @@
 	}
 #endif
 
-class SampleClient_Base
+namespace Sample
+{
+
+class Base
 {
 public:
-								SampleClient_Base(const char* sampleName);			//!< Constructor receiving pointer to constant string that must remains valid
-	virtual bool				Startup();											//!< Called once when starting
-	virtual void				Shutdown();											//!< Called once when exiting
-	virtual bool				UpdateFont(float fontScaleDPI, bool isLocal);		//!< Receive command to create/update the Font Atlas and its texture data
-	virtual ImDrawData*			Draw() = 0;											//!< Each sample should have their Dear ImGui drawing routines in this overloaded method
+									Base(const char* sampleName);						//!< Constructor receiving pointer to constant string that must remains valid
+	virtual bool					Startup();											//!< Called once when starting
+	virtual void					Shutdown();											//!< Called once when exiting
+	virtual bool					UpdateFont(float fontScaleDPI, bool isLocal);		//!< Receive command to create/update the Font Atlas and its texture data
+	virtual ImDrawData*				Draw() = 0;											//!< Each sample should have their Dear ImGui drawing routines in this overloaded method
 
 protected:	
 	void						Draw_Connect();										//!< Display UI for initiating a connection to the remote NetImgui server application
@@ -66,6 +69,41 @@ inline void StringCopy(char (&output)[charCount], const char* pSrc, size_t srcCh
 #endif
 }
 
-SampleClient_Base& GetSample(); // Each Sample must implement this function and return a valid sample object
+#if NETIMGUI_ENABLED
+
+union TextureCastHelperUnion
+{
+	ImTextureID TextureID;
+	uint64_t	TextureUint;
+	const void*	TexturePtr;
+};
+
+inline uint64_t TextureCastFromID(ImTextureID textureID)
+{
+	TextureCastHelperUnion textureUnion;
+	textureUnion.TextureUint	= 0;
+	textureUnion.TextureID		= textureID;
+	return textureUnion.TextureUint;
+}
+
+inline ImTextureID TextureCastFromPtr(void* pTexture)
+{
+	TextureCastHelperUnion textureUnion;
+	textureUnion.TextureUint	= 0;
+	textureUnion.TexturePtr		= pTexture;
+	return textureUnion.TextureID;
+}
+
+inline ImTextureID TextureCastFromUInt(uint64_t textureID)
+{
+	TextureCastHelperUnion textureUnion;
+	textureUnion.TextureUint = textureID;
+	return textureUnion.TextureID;
+}
+#endif // NETIMGUI_ENABLED
+
+}; // namespace Sample
+
+Sample::Base& GetSample(); // Each Sample must implement this function and return a valid sample object
 
 #include <Client/Private/NetImgui_WarningDisable.h>

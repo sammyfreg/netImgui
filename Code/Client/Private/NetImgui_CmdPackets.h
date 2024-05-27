@@ -46,13 +46,20 @@ struct alignas(8) CmdVersion
 		CustomTexture		= 12,	// Added a 'custom' texture format to let user potentially handle their how format
 		DPIScale			= 13,	// Server now handle monitor DPI
 		Clipboard			= 14,	// Added clipboard support between server/client
+		ForceReconnect		= 15,	// Server can now take over the connection from another server
 		// Insert new version here
 
 		//--------------------------------
 		_count,
 		_current			= _count -1
 	};
-
+	enum class eFlags : uint8_t
+	{
+		IsUnavailable 		= 0x01,	// Client telling Server it cannot be used
+		IsConnected 		= 0x02,	// Client telling Server there's already a valid connection (can potentially be taken over if !IsUnavailable)
+		ConnectForce		= 0x04,	// Server telling Client it want to take over connection if there's already one
+		ConnectExclusive	= 0x08,	// Server telling Client that once connected, others servers should be denied access
+	};
 	CmdHeader	mHeader					= CmdHeader(CmdHeader::eCommands::Version, sizeof(CmdVersion));
 	eVersion	mVersion				= eVersion::_current;
 	char		mClientName[64]			= {};
@@ -61,7 +68,8 @@ struct alignas(8) CmdVersion
 	uint32_t	mImguiVerID				= IMGUI_VERSION_NUM;
 	uint32_t	mNetImguiVerID			= NETIMGUI_VERSION_NUM;
 	uint8_t		mWCharSize				= static_cast<uint8_t>(sizeof(ImWchar));
-	char		PADDING[3];
+	uint8_t 	mFlags 					= 0;
+	char		PADDING[2];
 };
 
 struct alignas(8) CmdInput
@@ -189,7 +197,7 @@ struct alignas(8) CmdInput
 	int16_t							mMousePos[2]					= {};
 	float							mMouseWheelVert					= 0.f;
 	float							mMouseWheelHoriz				= 0.f;
-	ImWchar							mKeyChars[256]					= {};		// Input characters		
+	uint16_t						mKeyChars[256]					= {};		// Input characters		
 	uint16_t						mKeyCharCount					= 0;		// Number of valid input characters
 	bool							mCompressionUse					= false;	// Server would like client to compress the communication data
 	bool							mCompressionSkip				= false;	// Server forcing next client's frame data to be uncompressed

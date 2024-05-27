@@ -4,12 +4,12 @@
 //! @Name		: NetImgui
 //=================================================================================================
 //! @author		: Sammy Fatnassi
-//! @date		: 2023/12/30
-//!	@version	: v1.10.0
+//! @date		: 2024/05/26
+//!	@version	: v1.11.0
 //! @Details	: For integration info : https://github.com/sammyfreg/netImgui/wiki
 //=================================================================================================
-#define NETIMGUI_VERSION		"1.10.0"	// Version 1.10 Release
-#define NETIMGUI_VERSION_NUM	11000
+#define NETIMGUI_VERSION		"1.11"	// Version 1.1 Release
+#define NETIMGUI_VERSION_NUM	11100
 
 
 
@@ -62,7 +62,7 @@
 // (either always included in NetImgui_config.h or have it included after Imgui.h in your cpp)
 #if !defined(IMGUI_VERSION)
 	#undef	NETIMGUI_ENABLED
-	#define	NETIMGUI_ENABLED 0
+	#define NETIMGUI_ENABLED 0
 #endif
 
 #if NETIMGUI_ENABLED

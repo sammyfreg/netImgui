@@ -70,7 +70,7 @@ void init() {
 
     bool ok = NetImguiServer::App::Startup(cmdArgs.c_str());
     IM_ASSERT(ok);
-    (VOID)ok;
+    (void)ok;
 
     // IMGUI Font texture init
     {

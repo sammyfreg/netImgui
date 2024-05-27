@@ -20,9 +20,10 @@ public:
 	static constexpr RuntimeID kInvalidRuntimeID	= static_cast<RuntimeID>(0);
 	
 	enum class eVersion : uint32_t {
-		Initial		= 1,			// First version save file deployed
-		Refresh		= 2,			// Added refresh rate support
-		DPIScale	= 3,			// Added DPI scaling
+		Initial			= 1,			// First version save file deployed
+		Refresh			= 2,			// Added refresh rate support
+		DPIScale		= 3,			// Added DPI scaling
+		BlockTakeOver	= 4,			// Added Takeover Block
 		_Count, 
 		_Latest = _Count-1
 	};
@@ -34,23 +35,33 @@ public:
 		Shared,			// Config fetched from the shared user folder
 		Transient,		// Config created from connection request (command line, OS pipes), cannot be saved
 	};
+	enum class eStatus : uint8_t
+	{
+		Disconnected,	// No connection detected on client
+		Connected,		// This server is connect to client
+		Available,		// Client already taken, but this server can take over
+		ErrorBusy,		// Client already taken
+		ErrorVer,		// Server/Client network api mismatch
+	};
 					Client();
 					Client(const Client& Copy);
 
-	char			mClientName[128];			//!< Client display name
-	char			mHostName[128];				//!< Client IP or remote host address to attempt connection at	
-	uint32_t		mHostPort;					//!< Client Port to attempt connection at
-	RuntimeID		mRuntimeID;					//!< Unique RuntimeID used to find this Config
-	bool			mConnectAuto;				//!< Try automatically connecting to client
-	bool			mConnectRequest;			//!< Attempt connecting to Client, after user request
-	bool			mConnected;					//!< Associated client is connected to this server
-	eConfigType		mConfigType;				//!< Type of the configuration
-	bool			mDPIScaleEnabled;			//!< Enable support of Font DPI scaling requests by Server
-	bool			mReadOnly;					//!< Config comes from read only file, can't be modified
+	char			mClientName[128];	//!< Client display name
+	char			mHostName[128];		//!< Client IP or remote host address to attempt connection at	
+	uint32_t		mHostPort;			//!< Client Port to attempt connection at
+	RuntimeID		mRuntimeID;			//!< Unique RuntimeID used to find this Config
+	bool			mConnectAuto;		//!< Try automatically connecting to client
+	eConfigType		mConfigType;		//!< Type of the configuration
+	bool			mDPIScaleEnabled;	//!< Enable support of Font DPI scaling requests by Server
+	bool 			mBlockTakeover;		//!< If another NetImguiServer is allowed to forcefully disconnect this client to connect to it
+	bool			mReadOnly;			//!< Config comes from read only file, can't be modified
+	mutable bool	mConnectRequest;	//!< Attempt connecting to Client, after user request
+	mutable bool	mConnectForce;		//!< Attempt connecting to Client, after user request, even if already connected
+	mutable eStatus	mStatus;			//!< Status of associated client
 
 	inline bool		IsReadOnly()const { return mReadOnly; };
 	inline bool		IsTransient()const { return mConfigType == eConfigType::Transient; };
-		
+	inline bool 	IsConnected()const { return mStatus == eStatus::Connected; }
 	// Add/Edit/Remove config
 	static void		SetConfig(const Client& config);						//!< Add or replace a client configuration info
 	static void		DelConfig(uint32_t configID);							//!< Remove a client configuration
@@ -59,10 +70,11 @@ public:
 	static uint32_t	GetConfigCount();
 
 	// Set property value directly (without having to copy entire structure)
-	static void		SetProperty_Connected(uint32_t configID, bool value);	
+	static bool		GetProperty_BlockTakeover(uint32_t configID);
+	static void		SetProperty_Status(uint32_t configID, eStatus Status);
 	static void		SetProperty_ConnectAuto(uint32_t configID, bool value);
-	static void		SetProperty_ConnectRequest(uint32_t configID, bool value);
-	
+	static void		SetProperty_ConnectRequest(uint32_t configID, bool value, bool force);
+
 	// Client Config list management
 	static void		SaveAll();
 	static void		LoadAll();

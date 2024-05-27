@@ -24,10 +24,10 @@
 //=================================================================================================
 // SAMPLE CLASS
 //=================================================================================================
-class SampleSingleInclude : public SampleClient_Base
+class SampleSingleInclude : public Sample::Base
 {
 public:
-					SampleSingleInclude() : SampleClient_Base("SampleSingleInclude") {}
+					SampleSingleInclude() : Base("SampleSingleInclude") {}
 virtual ImDrawData* Draw() override;
 };
 
@@ -35,7 +35,7 @@ virtual ImDrawData* Draw() override;
 // GET SAMPLE
 // Each project must return a valid sample object
 //=================================================================================================
-SampleClient_Base& GetSample()
+Sample::Base& GetSample()
 {
 	static SampleSingleInclude sample;
 	return sample;
@@ -54,7 +54,7 @@ ImDrawData* SampleSingleInclude::Draw()
 	//-----------------------------------------------------------------------------------------
 	// (2) Draw ImGui Content 		
 	//-----------------------------------------------------------------------------------------
-	SampleClient_Base::Draw_Connect(); //Note: Connection to remote server done in there
+	Base::Draw_Connect(); //Note: Connection to remote server done in there
 
 	ImGui::SetNextWindowPos(ImVec2(32,48), ImGuiCond_Once);
 	ImGui::SetNextWindowSize(ImVec2(600,500), ImGuiCond_Once);

@@ -373,6 +373,12 @@ void Popup_ClientConfigEdit()
 				ImGui::SetTooltip("Text content will be scaled up on high resolution monitors for increased readability.");
 			}
 
+			// --- Takeover Config ---
+			ImGui::Checkbox("Block Takeover", &gPopup_ClientConfig_pConfig->mBlockTakeover);
+			if (ImGui::IsItemHovered()) {
+				ImGui::SetTooltip("Enabled this if you want to prevent other NetImguiServers to forcefully disconnect this client and take over the connection.");
+			}
+
 			// --- Shared Config ---
 			if( NetImguiServer::App::HAL_GetUserSettingFolder() != nullptr ){
 				bool isShared = gPopup_ClientConfig_pConfig->mConfigType == NetImguiServer::Config::Client::eConfigType::Shared;
@@ -383,6 +389,7 @@ void Popup_ClientConfigEdit()
 					ImGui::SetTooltip("Client's settings are saved in 'Working Directory' by default.\nEnabling this option saves their settings in the 'User Directory', making it available no matter which folder the Server Application is launched from.");
 				}
 			}
+
 			// --- Save/Cancel ---
 			ImGui::NewLine();
 			ImGui::Separator();
@@ -655,7 +662,13 @@ void DrawImguiContent_MainMenu_Clients_Entry(RemoteClient::Client* pClient, NetI
 	ImGui::TableSetColumnIndex(0);
 		
 	// Name / Status
-	ImGui::PushStyleColor(ImGuiCol_CheckMark, pClient && pClient->mbIsConnected ? ImVec4(0.7f, 1.f, 0.25f, 1.f) : ImVec4(1.f, 0.35f, 0.35f, 1.f));
+	auto ConfigStatus 	= pClientConfig ? pClientConfig->mStatus : NetImguiServer::Config::Client::eStatus::Disconnected;
+	ImVec4 StatusColor 	= pClient && pClient->mbIsConnected ? ImVec4(0.7f, 1.f, 0.25f, 1.f)
+						: ConfigStatus == NetImguiServer::Config::Client::eStatus::ErrorVer ? ImVec4(1.f, 0.7f, 0.25f, 1.f)
+						: ConfigStatus == NetImguiServer::Config::Client::eStatus::ErrorBusy ? ImVec4(1.f, 0.7f, 0.25f, 1.f)
+						: ConfigStatus == NetImguiServer::Config::Client::eStatus::Available ? ImVec4(1.f, 0.9f, 0.1f, 1.f)
+						: ImVec4(0.0f, 0.0f, 0.0f, 0.f);
+	ImGui::PushStyleColor(ImGuiCol_CheckMark, StatusColor);
 	ImGui::BeginDisabled(pClientConfig && pClientConfig->IsReadOnly());
 	ImGui::RadioButton("##Connected", true);
 	ImGui::PopStyleColor();	
@@ -720,8 +733,31 @@ void DrawImguiContent_MainMenu_Clients_Entry(RemoteClient::Client* pClient, NetI
 		if( pClientConfig->IsTransient() ){
 			ImGui::TextUnformatted("(Request)");
 		}
-		else if (!pClientConfig->mConnected && !pClientConfig->mConnectRequest && ImGui::Button("Connect", ImVec2(80 * GetFontDPIScale(),0 )) ){
-			NetImguiServer::Config::Client::SetProperty_ConnectRequest(pClientConfig->mRuntimeID, true);
+		else if (!pClientConfig->IsConnected() && !pClientConfig->mConnectRequest && !pClientConfig->mConnectForce)
+		{
+			if( ConfigStatus ==	NetImguiServer::Config::Client::eStatus::Disconnected )
+			{
+				if( ImGui::Button("Connect", ImVec2(80 * GetFontDPIScale(),0 )) ){
+					NetImguiServer::Config::Client::SetProperty_ConnectRequest(pClientConfig->mRuntimeID, true, false);
+				}
+			}
+			else if( ConfigStatus == NetImguiServer::Config::Client::eStatus::Available )
+			{
+				if( ImGui::Button("Takeover", ImVec2(80 * GetFontDPIScale(),0 )) ){
+					NetImguiServer::Config::Client::SetProperty_ConnectRequest(pClientConfig->mRuntimeID, true, true);
+				}
+				ImGui::SetItemTooltip("Client already connected to another NetImguiServer, disconnect it and force connect this Server");
+			}
+			else if( ConfigStatus == NetImguiServer::Config::Client::eStatus::ErrorBusy )
+			{
+				ImGui::TextUnformatted("(In Use)");
+				ImGui::SetItemTooltip("Client already connected to another NetImguiServer and doesn't allow taking over the connection");
+			}
+			else if( ConfigStatus == NetImguiServer::Config::Client::eStatus::ErrorVer )
+			{
+				ImGui::TextUnformatted("(Version)");
+				ImGui::SetItemTooltip("Client is using a different network protocol than this NetImguiServer. Update the client code to match the Server.");
+			}
 		}
 	}
 }
@@ -778,7 +814,7 @@ void DrawImguiContent_MainMenu_Clients()
 		ImGui::PushID("ConfigUnconnected");
 		for (int i = 0; NetImguiServer::Config::Client::GetConfigByIndex(i, clientConfig); ++i)
 		{
-			if( !clientConfig.mConnected ){
+			if( !clientConfig.IsConnected() ){
 				ImGui::PushID(i);
 				DrawImguiContent_MainMenu_Clients_Entry(nullptr, &clientConfig);
 				ImGui::PopID();

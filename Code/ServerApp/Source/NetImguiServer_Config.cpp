@@ -25,6 +25,7 @@ static constexpr char kConfigField_Name[]						= "Name";
 static constexpr char kConfigField_Hostname[]					= "Hostname";
 static constexpr char kConfigField_Hostport[]					= "HostPort";
 static constexpr char kConfigField_AutoConnect[]				= "Auto";
+static constexpr char kConfigField_BlockTakeover[]				= "BlockTakeover";
 static constexpr char kConfigField_DPIScaleEnabled[]			= "DPIScaleEnabled";
 
 uint32_t	Server::sPort				= NetImgui::kDefaultServerPort;
@@ -87,9 +88,11 @@ Client::Client()
 , mRuntimeID(kInvalidRuntimeID)
 , mConnectAuto(false)
 , mConnectRequest(false)
-, mConnected(false)
+, mConnectForce(false)
 , mConfigType(NetImguiServer::Config::Client::eConfigType::Pending)
 , mDPIScaleEnabled(true)
+, mBlockTakeover(false)
+, mStatus(eStatus::Disconnected)
 {
 	NetImgui::Internal::StringCopy(mClientName, "New Client");
 	NetImgui::Internal::StringCopy(mHostName, "localhost");
@@ -159,10 +162,6 @@ bool Client::GetConfigByID(uint32_t configID, Client& config)
 }
 
 //=================================================================================================
-// Warning: This is not multithread safe. 
-// While no crash will occurs, it is possible for a config  to change position between 2 calls.
-// 
-// Only use if there's no problem iterating over the same item 2x, or miss it entirely
 bool Client::GetConfigByIndex(uint32_t index, Client& config)
 //=================================================================================================
 {
@@ -184,31 +183,49 @@ uint32_t Client::GetConfigCount()
 }
 
 //=================================================================================================
-void Client::SetProperty_Connected(uint32_t configID, bool value)
+bool Client::GetProperty_BlockTakeover(uint32_t configID)
 //=================================================================================================
 {
 	std::lock_guard<std::mutex> guard(gConfigLock);
 	int index = FindClientIndex(configID);
-	if( index != -1 )
-		gConfigList[index]->mConnected = value;
+	if( index != -1 ){
+		return gConfigList[index]->mBlockTakeover;
+	}
+	return false;
+}
+
+//=================================================================================================
+void Client::SetProperty_Status(uint32_t configID, eStatus Status)
+//=================================================================================================
+{
+	std::lock_guard<std::mutex> guard(gConfigLock);
+	int index = FindClientIndex(configID);
+	if( index != -1 ){
+		gConfigList[index]->mStatus = Status;
+	}
 }
 
 //=================================================================================================
 void Client::SetProperty_ConnectAuto(uint32_t configID, bool value)
 //=================================================================================================
 {
+	std::lock_guard<std::mutex> guard(gConfigLock);
 	int index = FindClientIndex(configID);
-	if (index != -1)
+	if (index != -1){
 		gConfigList[index]->mConnectAuto = value;
+	}
 }
 
 //=================================================================================================
-void Client::SetProperty_ConnectRequest(uint32_t configID, bool value)
+void Client::SetProperty_ConnectRequest(uint32_t configID, bool value, bool force)
 //=================================================================================================
 {
+	std::lock_guard<std::mutex> guard(gConfigLock);
 	int index = FindClientIndex(configID);
-	if (index != -1)
-		gConfigList[index]->mConnectRequest = value;
+	if (index != -1){
+		gConfigList[index]->mConnectRequest = value && !force;
+		gConfigList[index]->mConnectForce = value && force;
+	}
 }
 
 //=================================================================================================
@@ -266,6 +283,7 @@ void Client::SaveConfigFile(eConfigType configFileType, bool writeServerSettings
 			config[kConfigField_Hostname] = pConfig->mHostName;
 			config[kConfigField_Hostport] = pConfig->mHostPort;
 			config[kConfigField_AutoConnect] = pConfig->mConnectAuto;
+			config[kConfigField_BlockTakeover] = pConfig->mBlockTakeover;
 			config[kConfigField_DPIScaleEnabled] = pConfig->mDPIScaleEnabled;
 		}
 	}
@@ -299,7 +317,7 @@ void Client::LoadAll()
 //=================================================================================================
 void Client::LoadConfigFile(eConfigType configFileType)
 //=================================================================================================
-{	
+{
 	nlohmann::json configRoot;
 	const char* filename = GetConfigFilename(configFileType);
 	std::ifstream inputFile(filename);
@@ -333,10 +351,11 @@ void Client::LoadConfigFile(eConfigType configFileType)
 				
 			if( config.find(kConfigField_Hostname) != config.end() )
 				NetImgui::Internal::StringCopy(pConfig->mHostName, config[kConfigField_Hostname].get<std::string>().c_str());
-				
+
 			pConfig->mHostPort			= GetPropertyValue(config, kConfigField_Hostport, pConfig->mHostPort);
 			pConfig->mConnectAuto		= GetPropertyValue(config, kConfigField_AutoConnect, pConfig->mConnectAuto);
 			pConfig->mDPIScaleEnabled	= GetPropertyValue(config, kConfigField_DPIScaleEnabled, pConfig->mDPIScaleEnabled);
+			pConfig->mBlockTakeover		= GetPropertyValue(config, kConfigField_BlockTakeover, pConfig->mBlockTakeover);
 			pConfig->mConfigType		= configFileType;
 			pConfig->mReadOnly			= !isWritable;
 		}

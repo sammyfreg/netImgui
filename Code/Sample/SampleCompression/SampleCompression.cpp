@@ -14,7 +14,7 @@
 //=================================================================================================
 // SAMPLE CLASS
 //=================================================================================================
-class SampleCompression : public SampleClient_Base
+class SampleCompression : public Sample::Base
 {
 public:
 						SampleCompression();
@@ -27,7 +27,7 @@ protected:
 // GET SAMPLE
 // Each project must return a valid sample object
 //=================================================================================================
-SampleClient_Base& GetSample()
+Sample::Base& GetSample()
 {
 	static SampleCompression sample;
 	return sample;
@@ -90,7 +90,7 @@ void CustomThreadLauncher(void ComFunctPtr(void*), void* pClient)
 #endif
 	//=========================================================================================
 	// @SAMPLE_EDIT	
-	if( ComFunctPtr == NetImgui::Internal::Client::CommunicationsClient ){
+	if( ComFunctPtr == NetImgui::Internal::Client::CommunicationsConnect ){
 		std::thread(CustomCommunicationsClient, pClient).detach();
 		gMetric_ConnectTo = true;
 		return;
@@ -108,7 +108,7 @@ void CustomThreadLauncher(void ComFunctPtr(void*), void* pClient)
 // CONSTRUCTOR
 //=================================================================================================
 SampleCompression::SampleCompression() 
-: SampleClient_Base("SampleCompression") 
+: Base("SampleCompression") 
 {
 	mCallback_ThreadLaunch = CustomThreadLauncher;
 }
@@ -164,7 +164,7 @@ ImDrawData* SampleCompression::Draw()
 	//-----------------------------------------------------------------------------------------
 	// (2) Draw ImGui Content
 	//-----------------------------------------------------------------------------------------
-	SampleClient_Base::Draw_Connect(); //Note: Connection to remote server done in there
+	Base::Draw_Connect(); //Note: Connection to remote server done in there
 
 	ImGui::SetNextWindowPos(ImVec2(32,48), ImGuiCond_Once);
 	ImGui::SetNextWindowSize(ImVec2(400,500), ImGuiCond_Once);
