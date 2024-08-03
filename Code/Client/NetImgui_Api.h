@@ -4,12 +4,12 @@
 //! @Name		: NetImgui
 //=================================================================================================
 //! @author		: Sammy Fatnassi
-//! @date		: 2024/05/26
-//!	@version	: v1.11.0
+//! @date		: 2024/08/03
+//!	@version	: v1.11.1
 //! @Details	: For integration info : https://github.com/sammyfreg/netImgui/wiki
 //=================================================================================================
-#define NETIMGUI_VERSION		"1.11"	// Version 1.1 Release
-#define NETIMGUI_VERSION_NUM	11100
+#define NETIMGUI_VERSION		"1.11.1"	// Fix for rare disconnect issue (Github issue #59)
+#define NETIMGUI_VERSION_NUM	11101
 
 
 

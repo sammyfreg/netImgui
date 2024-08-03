@@ -411,7 +411,9 @@ void CommunicationsHost(void* pClientVoid)
 		}
 		std::this_thread::sleep_for(std::chrono::milliseconds(16));	// Prevents this thread from taking entire core, waiting on server connection
 	}
-	pClient->KillSocketListen();
+
+	Network::SocketInfo* pSocket 	= pClient->mpSocketListen.exchange(nullptr);
+	NetImgui::Internal::Network::Disconnect(pSocket);
 	pClient->mbListenThreadActive	= false;
 }
 

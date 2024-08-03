@@ -85,6 +85,7 @@ bool ConnectFromApp(const char* clientName, uint32_t serverPort, ThreadFunctPtr 
 	if (client.mpSocketPending.load() != nullptr)
 	{				
 		client.ContextInitialize();
+		client.mSocketListenPort = serverPort;
 		client.mThreadFunction(Client::CommunicationsHost, &client);
 	}
 
@@ -97,9 +98,16 @@ void Disconnect(void)
 {
 	if (!gpClientInfo) return;
 	
+	// Attempt fake connection on local socket waiting for a Server connection, 
+	// so the blocking operation can terminate and release the communication thread
 	Client::ClientInfo& client	= *gpClientInfo;
 	client.mbDisconnectRequest	= true;
-	client.KillSocketListen();
+	if( client.mSocketListenPort != 0 )
+	{
+		Network::SocketInfo* FakeSocket = Network::Connect("127.0.0.1", client.mSocketListenPort);
+		client.mSocketListenPort		= 0;
+		Network::Disconnect(FakeSocket);
+	}
 }
 
 //=================================================================================================

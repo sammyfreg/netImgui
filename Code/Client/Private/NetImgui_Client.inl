@@ -45,15 +45,6 @@ void ClientInfo::KillSocketComs()
 	}
 }
 
-void ClientInfo::KillSocketListen()
-{
-	Network::SocketInfo* pSocket = mpSocketListen.exchange(nullptr);
-	if (pSocket)
-	{
-		NetImgui::Internal::Network::Disconnect(pSocket);
-	}
-}
-
 bool ClientInfo::IsContextOverriden()const
 {
 	return mSavedContextValues.mSavedContext;

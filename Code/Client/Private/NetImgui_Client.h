@@ -75,6 +75,7 @@ struct ClientInfo
 	std::atomic<Network::SocketInfo*>	mpSocketPending;						// Hold socket info until communication is established
 	std::atomic<Network::SocketInfo*>	mpSocketComs;							// Socket used for communications with server
 	std::atomic<Network::SocketInfo*>	mpSocketListen;							// Socket used to wait for communication request from server
+	uint32_t							mSocketListenPort			= 0;		// Socket Port number used to wait for communication request from server
 	VecTexture							mTextures;								// List if textures created by this client (used un main thread)
 	char								mName[64]					= {};
 	uint64_t							mFrameIndex					= 0;		// Incremented everytime we send a DrawFrame Command	
@@ -127,7 +128,6 @@ struct ClientInfo
 	inline bool							IsConnectPending()const;
 	inline bool							IsActive()const;
 	inline void							KillSocketComs();						// Kill communication sockets (should only be called from communication thread)
-	inline void							KillSocketListen();						// Kill connecting listening socket (should only be called from communication thread)
 
 // Prevent warnings about implicitly created copy
 protected:
