@@ -330,11 +330,12 @@ void Popup_ClientConfigEdit()
 		windowClass.ViewportFlagsOverrideSet = ImGuiViewportFlags_TopMost;
 		ImGui::SetNextWindowClass(&windowClass);
 
-		static ImVec2 sPopupSize				= ImVec2(250.f,200.f);
-		ImGuiViewport* pViewport				= ImGui::GetWindowViewport();
-		ImVec2 popupPos							= pViewport->Pos;
-		popupPos.x								+= pViewport->Size.x/2.f - sPopupSize.x/2.f;
-		popupPos.y								+= pViewport->Size.y/2.f - sPopupSize.y/2.f;
+		static ImVec2 sPopupSize		= ImVec2(250.f,200.f);
+		static bool sAnyItemWasActive	= false;	// Keep track if any item was in 'edit' mode the previous frame
+		bool bSkipEscapeKey				= false;	// Ignore 'Esc key' when it was used to revert field change/stop editing a field
+		ImGuiViewport* pViewport		= ImGui::GetWindowViewport();
+		ImVec2 popupPos					= ImVec2(	pViewport->Pos.x + pViewport->Size.x/2.f - sPopupSize.x/2.f,
+													pViewport->Pos.y + pViewport->Size.y/2.f - sPopupSize.y/2.f);
 		ImGui::SetNextWindowPos(popupPos, ImGuiCond_Appearing);
 
 		ImGui::OpenPopup("Edit Client Info");
@@ -344,7 +345,7 @@ void Popup_ClientConfigEdit()
 			ImGui::NewLine();
 			// --- Name ---
 			ImGui::InputText("Display Name", gPopup_ClientConfig_pConfig->mClientName, sizeof(gPopup_ClientConfig_pConfig->mClientName));
-			
+
 			// --- IP Address ---
 			ImGui::InputText("Host Name", gPopup_ClientConfig_pConfig->mHostName, sizeof(gPopup_ClientConfig_pConfig->mHostName));
 			if( ImGui::IsItemHovered() ){
@@ -353,7 +354,7 @@ void Popup_ClientConfigEdit()
 
 			// --- Port ---
 			int port = static_cast<int>(gPopup_ClientConfig_pConfig->mHostPort);
-			if( ImGui::InputInt("Host Port", &port, 1, 100, ImGuiInputTextFlags_EnterReturnsTrue) ){
+			if( ImGui::InputInt("Host Port", &port, 1, 100, ImGuiInputTextFlags_None) ){
 				gPopup_ClientConfig_pConfig->mHostPort = std::min<int>(0xFFFF, std::max<int>(1, port));
 			}
 			ImGui::SameLine();
@@ -401,12 +402,15 @@ void Popup_ClientConfigEdit()
 				NetImguiServer::Config::Client::SaveAll();
 				bOpenEdit = false;
 			}
-			sPopupSize = ImGui::GetWindowSize();
+
+			bSkipEscapeKey		= sAnyItemWasActive != ImGui::IsAnyItemActive();
+			sAnyItemWasActive	= ImGui::IsAnyItemActive();
+			sPopupSize			= ImGui::GetWindowSize();
 			ImGui::EndPopup();
 		}
 
-		bool wantExit = ImGui::IsKeyPressed(ImGuiKey_Escape);
-		bOpenEdit &= !wantExit;
+		bool wantExit	 = !bSkipEscapeKey && ImGui::IsKeyPressed(ImGuiKey_Escape);
+		bOpenEdit		&= !wantExit;
 	}	
 
 	if( !bOpenEdit ){
