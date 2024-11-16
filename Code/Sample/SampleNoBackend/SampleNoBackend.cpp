@@ -166,13 +166,13 @@ int main(int, char**)
 	while (!bQuit)
 	{
 		// Avoids high CPU/GPU usage by releasing this thread until enough time has passed
-		static auto sLastTime = std::chrono::high_resolution_clock::now();
-		std::chrono::duration<float> elapsedSec	= std::chrono::high_resolution_clock::now() - sLastTime;
+		static auto sLastTime = std::chrono::steady_clock::now();
+		std::chrono::duration<float> elapsedSec	= std::chrono::steady_clock::now() - sLastTime;
 		if( elapsedSec.count() < 1.f/120.f ){
 			std::this_thread::sleep_for(std::chrono::microseconds(250));
 			continue;
 		}
-		sLastTime = std::chrono::high_resolution_clock::now();
+		sLastTime = std::chrono::steady_clock::now();
 		
 		// Sample Update
 		SampleNoBackend::Client_Connect(sampleState);

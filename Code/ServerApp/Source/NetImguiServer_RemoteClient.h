@@ -93,15 +93,15 @@ struct Client
 	std::chrono::steady_clock::time_point	mLastUpdateTime;					//!< When the client last send a content refresh request
 	std::chrono::steady_clock::time_point	mLastDrawFrame;						//!< When we last receive a new drawframe commant
 	std::chrono::steady_clock::time_point 	mLastIncomingComTime;				//!< When we last received a valid command from client (to detect timeout)
-	uint32_t								mClientConfigID;					//!< ID of ClientConfig that connected (if connection came from our list of ClientConfigs)	
+	uint32_t								mClientConfigID			= 0;		//!< ID of ClientConfig that connected (if connection came from our list of ClientConfigs)	
 	uint32_t								mClientIndex			= 0;		//!< Entry idx into table of connected clients
-	uint64_t								mStatsDataRcvd;						//!< Current amount of Bytes received since connected
-	uint64_t								mStatsDataSent;						//!< Current amount of Bytes sent to client since connected
-	uint64_t								mStatsDataRcvdPrev;					//!< Last amount of Bytes received since connected
-	uint64_t								mStatsDataSentPrev;					//!< Last amount of Bytes sent to client since connected
+	uint64_t								mStatsDataRcvd			= 0;		//!< Current amount of Bytes received since connected
+	uint64_t								mStatsDataSent			= 0;		//!< Current amount of Bytes sent to client since connected
+	uint64_t								mStatsDataRcvdPrev		= 0;		//!< Last amount of Bytes received since connected
+	uint64_t								mStatsDataSentPrev		= 0;		//!< Last amount of Bytes sent to client since connected
 	std::chrono::steady_clock::time_point	mStatsTime;							//!< Time when info was collected (with history of last x values)
-	uint32_t								mStatsRcvdBps;						//!< Average Bytes received per second
-	uint32_t								mStatsSentBps;						//!< Average Bytes sent per second
+	uint32_t								mStatsRcvdBps			= 0;		//!< Average Bytes received per second
+	uint32_t								mStatsSentBps			= 0;		//!< Average Bytes sent per second
 	float									mStatsDrawElapsedMs		= 0.f;		//!< Average milliseconds between 2 draw requests
 	uint32_t								mStatsIndex				= 0;
 	float									mMousePos[2]			= {0,0};

@@ -190,15 +190,15 @@ int main(int, char**)
 		IM_UNUSED(show_another_window);
         
         // Avoids high CPU/GPU usage by releasing this thread until enough time has passed
-        static auto sLastTime                   = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<float> elapsedSec	= std::chrono::high_resolution_clock::now() - sLastTime;
+        static auto sLastTime                   = std::chrono::steady_clock::now();
+        std::chrono::duration<float> elapsedSec	= std::chrono::steady_clock::now() - sLastTime;
         if( elapsedSec.count() < 1.f/120.f ){
             std::this_thread::sleep_for(std::chrono::microseconds(250));
             continue;
         }
 
         // Draw the Local Imgui UI and remote imgui UI
-        sLastTime                               = std::chrono::high_resolution_clock::now();
+        sLastTime                               = std::chrono::steady_clock::now();
         const float clear_color_with_alpha[4] = { clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w };
         g_pd3dDeviceContext->OMSetRenderTargets(1, &g_mainRenderTargetView, NULL);
         g_pd3dDeviceContext->ClearRenderTargetView(g_mainRenderTargetView, clear_color_with_alpha);

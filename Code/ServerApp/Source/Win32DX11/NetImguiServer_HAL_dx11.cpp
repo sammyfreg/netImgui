@@ -134,7 +134,7 @@ bool HAL_CreateTexture(uint16_t Width, uint16_t Height, NetImgui::eTexFormat For
 	uint32_t* pPixelDataAlloc = nullptr;
 	if(Format == NetImgui::eTexFormat::kTexFmtA8)
 	{
-		pPixelDataAlloc = NetImgui::Internal::netImguiSizedNew<uint32_t>(Width*Height*4);
+		pPixelDataAlloc = NetImgui::Internal::netImguiSizedNew<uint32_t>(static_cast<size_t>(Width)*static_cast<size_t>(Height)*4);
 		for (int i = 0; i < Width * Height; ++i){
 			pPixelDataAlloc[i] = 0x00FFFFFF | (static_cast<uint32_t>(pPixelData[i])<<24);
 		}

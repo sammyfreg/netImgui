@@ -10,11 +10,11 @@ namespace NetImgui { namespace Internal
 
 struct alignas(8) CmdHeader
 {
-	enum class eCommands : uint8_t { Disconnect, Version, Texture, Input, DrawFrame, Background, Clipboard, _Invalid };
+	enum class eCommands : uint8_t { Disconnect, Version, Texture, Input, DrawFrame, Background, Clipboard, Count };
 				CmdHeader(){}
 				CmdHeader(eCommands CmdType, uint16_t Size) : mSize(Size), mType(CmdType){}
 	uint32_t	mSize		= 0;
-	eCommands	mType		= eCommands::_Invalid;
+	eCommands	mType		= eCommands::Count;
 	uint8_t		mPadding[3]	= {};
 };
 

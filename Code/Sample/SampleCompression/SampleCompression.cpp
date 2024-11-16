@@ -45,34 +45,43 @@ static bool		gMetric_ConnectTo		= false;
 using namespace NetImgui::Internal::Client;
 void CustomCommunicationsClient(void* pClientVoid)
 {	
+	IM_ASSERT(pClientVoid != nullptr);
 	ClientInfo* pClient				= reinterpret_cast<ClientInfo*>(pClientVoid);
-	pClient->mbClientThreadActive	= true;
-	pClient->mbDisconnectRequest	= false;
-	Communications_Initialize(*pClient);
-	bool bConnected					= pClient->IsConnected();
-	
-	while( bConnected && !pClient->mbDisconnectRequest )
+	pClient->mbDisconnectRequest 	= false;
+	pClient->mbDisconnectProcessed	= false;
+	pClient->mbClientThreadActive 	= true;
+
+	//=============================================================================
+	//@SAMPLE_EDIT
+	pClient->mbDisconnectProcessed = !Communications_Initialize(*pClient);
+	//=============================================================================	
+
+	while( !pClient->mbDisconnectProcessed )
 	{
-		std::this_thread::sleep_for(std::chrono::milliseconds(1));
-		//std::this_thread::yield();
-		
 		//=============================================================================
 		//@SAMPLE_EDIT
+		// Making sure the Communications_Incoming sleeping when there's no data, 
+		// is not included in timing stats
+		while( !NetImgui::Internal::Network::DataReceivePending(pClient->mpSocketComs) )
+		{
+			std::this_thread::yield();
+		}
 		auto startComs = std::chrono::steady_clock::now();
 		//=============================================================================
 
-		bConnected = Communications_Outgoing(*pClient) && Communications_Incoming(*pClient);
+		Communications_Outgoing(*pClient);
+		Communications_Incoming(*pClient);
 
 		//=============================================================================
 		//@SAMPLE_EDIT
 		constexpr float kHysteresis	= 1.f; // out of 100
-		auto elapsed			= std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - startComs);
-		gMetric_SentDataTimeUS	= (gMetric_SentDataTimeUS*(100.f-kHysteresis) + static_cast<float>(elapsed.count()) / 1000.f * kHysteresis) / 100.f;
+		auto elapsed				= std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - startComs);
+		gMetric_SentDataTimeUS		= (gMetric_SentDataTimeUS*(100.f-kHysteresis) + static_cast<float>(elapsed.count()) / 1000.f * kHysteresis) / 100.f;
 		//=============================================================================
 	}
 
 	pClient->KillSocketComs();
-	pClient->mbClientThreadActive	= false;
+	pClient->mbClientThreadActive = false;
 }
 
 //=================================================================================================

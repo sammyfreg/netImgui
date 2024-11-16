@@ -89,7 +89,7 @@ void Communications_Incoming(NetImgui::Internal::Network::SocketInfo* pClientSoc
 		//---------------------------------------------------------------------
 		uint8_t* pCmdData	= nullptr;
 		bOk					= NetImgui::Internal::Network::DataReceive(pClientSocket, &cmdHeader, sizeof(cmdHeader));
-		bOk					&= cmdHeader.mType < NetImgui::Internal::CmdHeader::eCommands::_Invalid;
+		bOk					&= cmdHeader.mType < NetImgui::Internal::CmdHeader::eCommands::Count;
 		if( bOk && cmdHeader.mSize > sizeof(cmdHeader) )
 		{
 			pCmdData													= NetImgui::Internal::netImguiSizedNew<uint8_t>(cmdHeader.mSize);
@@ -115,7 +115,7 @@ void Communications_Incoming(NetImgui::Internal::Network::SocketInfo* pClientSoc
 					// Commands not received in main loop, by Server
 				case NetImgui::Internal::CmdHeader::eCommands::Version:
 				case NetImgui::Internal::CmdHeader::eCommands::Input:
-				case NetImgui::Internal::CmdHeader::eCommands::_Invalid: 	break;
+				case NetImgui::Internal::CmdHeader::eCommands::Count: 	break;
 			}
 		}
 		else

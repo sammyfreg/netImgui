@@ -105,8 +105,8 @@ bool CreateTexture_Custom( ServerTexture& serverTexture, const NetImgui::Interna
 					float dist = sinVal - ratioY;
 					float r = dist > 0.f ? 1.f - dist/2.f : 0.f;
 					float b = dist < 0.f ? 1.f + dist/2.f : 0.f;
-					ImColor colorCurrent	= ImColor(	r, 0.f, b, 1.f);
-					pTempData[y*cmdTexture.mWidth+x] = colorCurrent;
+					ImColor colorCurrent	= ImColor(r, 0.f, b, 1.f);
+					pTempData[y*static_cast<size_t>(cmdTexture.mWidth)+x] = (ImU32)colorCurrent;
 				}
 			}
 			NetImguiServer::App::HAL_CreateTexture(cmdTexture.mWidth, cmdTexture.mHeight, NetImgui::eTexFormat::kTexFmtRGBA8, reinterpret_cast<uint8_t*>(pTempData), serverTexture);

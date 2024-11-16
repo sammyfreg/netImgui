@@ -229,7 +229,7 @@ void Communications_Incoming(ClientInfo& client)
 		CmdHeader cmdHeader;
 		uint8_t* pCmdData(nullptr);
 		bool bCmdRcv = Network::DataReceive(client.mpSocketComs, &cmdHeader, sizeof(cmdHeader));
-		bCmdRcv		&=  cmdHeader.mType < NetImgui::Internal::CmdHeader::eCommands::_Invalid;
+		bCmdRcv		&=  cmdHeader.mType < NetImgui::Internal::CmdHeader::eCommands::Count;
 	
 		if( bCmdRcv && cmdHeader.mSize > sizeof(CmdHeader) )
 		{
@@ -250,7 +250,7 @@ void Communications_Incoming(ClientInfo& client)
 				case CmdHeader::eCommands::Texture:
 				case CmdHeader::eCommands::DrawFrame:
 				case CmdHeader::eCommands::Background:
-				case CmdHeader::eCommands::_Invalid: break;
+				case CmdHeader::eCommands::Count: break;
 			}
 		}
 		else
@@ -495,7 +495,7 @@ void ClientInfo::ContextOverride()
 
 	// Keep a copy of original settings of this context	
 	mSavedContextValues.Save(mpContext);
-	mLastOutgoingDrawCheckTime = std::chrono::high_resolution_clock::now();
+	mLastOutgoingDrawCheckTime = std::chrono::steady_clock::now();
 
 	// Override some settings
 	// Note: Make sure every setting overwritten here, are handled in 'SavedImguiContext::Save(...)'

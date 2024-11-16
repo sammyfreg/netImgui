@@ -35,6 +35,8 @@ void FontCreationCallback_Default(float PreviousDPIScale, float NewDPIScale)
 #endif
 }
 
+extern void ExtraSampleBackend_UpdateFontTexture();
+
 namespace Sample
 {
 
@@ -125,7 +127,6 @@ bool Base::UpdateFont(float fontScaleDPI, bool isLocal)
 			
 			FontAtlas->Build();
 			// Regenerate the Font Texture (only if used by local context)
-			extern void ExtraSampleBackend_UpdateFontTexture();
 			if( ImGui::GetCurrentContext() == mpContextLocal ){
 				ExtraSampleBackend_UpdateFontTexture();
 			}

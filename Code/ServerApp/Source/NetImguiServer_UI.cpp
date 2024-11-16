@@ -677,7 +677,7 @@ void DrawImguiContent_MainMenu_Clients_Entry(RemoteClient::Client* pClient, NetI
 	ImGui::BeginDisabled(pClientConfig && pClientConfig->IsReadOnly());
 	ImGui::RadioButton("##Connected", true);
 	ImGui::PopStyleColor();	
-	if( pClient && pClient->mbIsConnected  ){
+	if( pClient && pClient->mbIsConnected ){
 		bool selected(false);
 		ImGui::SameLine();
 		if (ImGui::Selectable(pClient->mInfoName, &selected, ImGuiSelectableFlags_DontClosePopups/* | ImGuiSelectableFlags_SpanAllColumns*/)) {
@@ -691,7 +691,7 @@ void DrawImguiContent_MainMenu_Clients_Entry(RemoteClient::Client* pClient, NetI
 	ImGui::TableNextColumn();
 
 	// Hostname info IP/Port
-	ImGui::Text("%s : %i", pClientConfig ? pClientConfig->mHostName : pClient->mConnectHost, pClientConfig ? pClientConfig->mHostPort : pClient->mConnectPort);
+	ImGui::Text("%s : %i", pClientConfig ? pClientConfig->mHostName : pClient ? pClient->mConnectHost : "", pClientConfig ? pClientConfig->mHostPort : pClient ? pClient->mConnectPort : 0);
 	if( ImGui::IsItemHovered() && pClient ){
 		ImGui::SetTooltip("Communications assigned port: %i", pClient->mConnectPort );
 	}
