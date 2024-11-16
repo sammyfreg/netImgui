@@ -86,23 +86,17 @@ Client::Client()
 //=================================================================================================
 : mHostPort(NetImgui::kDefaultClientPort)
 , mRuntimeID(kInvalidRuntimeID)
-, mConnectAuto(false)
-, mConnectRequest(false)
-, mConnectForce(false)
 , mConfigType(NetImguiServer::Config::Client::eConfigType::Pending)
 , mDPIScaleEnabled(true)
 , mBlockTakeover(false)
+, mReadOnly(false)
+, mConnectAuto(false)
+, mConnectRequest(false)
+, mConnectForce(false)
 , mStatus(eStatus::Disconnected)
 {
 	NetImgui::Internal::StringCopy(mClientName, "New Client");
 	NetImgui::Internal::StringCopy(mHostName, "localhost");
-}
-
-//=================================================================================================
- Client::Client(const Client& Copy)
-//=================================================================================================
-{
-	memcpy(this, &Copy, sizeof(*this));
 }
 
 //=================================================================================================

@@ -44,17 +44,17 @@ public:
 		ErrorVer,		// Server/Client network api mismatch
 	};
 					Client();
-					Client(const Client& Copy);
+					Client(const Client& Copy) = default;
 
 	char			mClientName[128];	//!< Client display name
 	char			mHostName[128];		//!< Client IP or remote host address to attempt connection at	
 	uint32_t		mHostPort;			//!< Client Port to attempt connection at
 	RuntimeID		mRuntimeID;			//!< Unique RuntimeID used to find this Config
-	bool			mConnectAuto;		//!< Try automatically connecting to client
 	eConfigType		mConfigType;		//!< Type of the configuration
 	bool			mDPIScaleEnabled;	//!< Enable support of Font DPI scaling requests by Server
 	bool 			mBlockTakeover;		//!< If another NetImguiServer is allowed to forcefully disconnect this client to connect to it
 	bool			mReadOnly;			//!< Config comes from read only file, can't be modified
+	bool			mConnectAuto;		//!< Try automatically connecting to client
 	mutable bool	mConnectRequest;	//!< Attempt connecting to Client, after user request
 	mutable bool	mConnectForce;		//!< Attempt connecting to Client, after user request, even if already connected
 	mutable eStatus	mStatus;			//!< Status of associated client

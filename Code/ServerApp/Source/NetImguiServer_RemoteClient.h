@@ -91,7 +91,8 @@ struct Client
 	std::atomic_bool						mbCompressionSkipOncePending;		//!< When we detect invalid previous DrawFrame command, cancel compression for 1 frame, to get good data
 	std::chrono::steady_clock::time_point	mConnectedTime;						//!< When the connection was established with this remote client
 	std::chrono::steady_clock::time_point	mLastUpdateTime;					//!< When the client last send a content refresh request
-	std::chrono::steady_clock::time_point	mLastDrawFrame;						//!< When we last receive a new drawframe commant	
+	std::chrono::steady_clock::time_point	mLastDrawFrame;						//!< When we last receive a new drawframe commant
+	std::chrono::steady_clock::time_point 	mLastIncomingComTime;				//!< When we last received a valid command from client (to detect timeout)
 	uint32_t								mClientConfigID;					//!< ID of ClientConfig that connected (if connection came from our list of ClientConfigs)	
 	uint32_t								mClientIndex			= 0;		//!< Entry idx into table of connected clients
 	uint64_t								mStatsDataRcvd;						//!< Current amount of Bytes received since connected
@@ -101,14 +102,14 @@ struct Client
 	std::chrono::steady_clock::time_point	mStatsTime;							//!< Time when info was collected (with history of last x values)
 	uint32_t								mStatsRcvdBps;						//!< Average Bytes received per second
 	uint32_t								mStatsSentBps;						//!< Average Bytes sent per second
-	float									mStatsFPS;							//!< Average refresh rate of content
-	uint32_t								mStatsIndex;
-	float									mMousePos[2]				= {0,0};
-	float									mMouseWheelPos[2]			= {0,0};
-	ImGuiMouseCursor						mMouseCursor				= ImGuiMouseCursor_None;	// Last mosue cursor remote client requested
-	ImGuiContext*							mpBGContext					= nullptr;					// Special Imgui Context used to render the background (only updated when needed)	
-	bool									mBGNeedUpdate				= true;						// Let engine know that we should regenerate the background draw commands
-	NetImgui::Internal::CmdBackground		mBGSettings;											// Settings for client background drawing settings
+	float									mStatsDrawElapsedMs		= 0.f;		//!< Average milliseconds between 2 draw requests
+	uint32_t								mStatsIndex				= 0;
+	float									mMousePos[2]			= {0,0};
+	float									mMouseWheelPos[2]		= {0,0};
+	ImGuiMouseCursor						mMouseCursor			= ImGuiMouseCursor_None;	// Last mosue cursor remote client requested
+	ImGuiContext*							mpBGContext				= nullptr;					// Special Imgui Context used to render the background (only updated when needed)	
+	bool									mBGNeedUpdate			= true;						// Let engine know that we should regenerate the background draw commands
+	NetImgui::Internal::CmdBackground		mBGSettings;										// Settings for client background drawing settings
 	
 	static bool								Startup(uint32_t clientCountMax);
 	static void								Shutdown();

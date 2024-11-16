@@ -67,8 +67,8 @@ bool CreateTexture_Custom( ServerTexture& serverTexture, const NetImgui::Interna
 		{
 			ImColor colorStart			= pCustomData1->m_ColorStart;
 			ImColor colorEnd			= pCustomData1->m_ColorEnd;
-			uint32_t* pTempData			= static_cast<uint32_t*>(malloc(cmdTexture.mWidth*cmdTexture.mHeight*sizeof(uint32_t)));
-			for(uint32_t x=0; x<cmdTexture.mWidth; ++x){
+			uint32_t* pTempData			= static_cast<uint32_t*>(malloc((size_t)cmdTexture.mWidth*(size_t)cmdTexture.mHeight*sizeof(uint32_t)));
+			for(uint32_t x=0; pTempData && x<cmdTexture.mWidth; ++x){
 				float ratio				= static_cast<float>(x) / static_cast<float>(cmdTexture.mWidth);
 				ImColor colorCurrent	= ImColor(	colorStart.Value.x  * ratio + colorEnd.Value.x * (1.f - ratio),
 													colorStart.Value.y  * ratio + colorEnd.Value.y * (1.f - ratio),
@@ -92,7 +92,7 @@ bool CreateTexture_Custom( ServerTexture& serverTexture, const NetImgui::Interna
 		const customTextureData2* pCustomData2 = reinterpret_cast<const customTextureData2*>(cmdTexture.mpTextureData.Get());
 		if( customDataSize == sizeof(customTextureData2) && pCustomData2->m_Stamp == customTextureData2::kStamp )
 		{
-			uint32_t* pTempData	= static_cast<uint32_t*>(malloc(cmdTexture.mWidth*cmdTexture.mHeight*sizeof(uint32_t)));
+			uint32_t* pTempData	= static_cast<uint32_t*>(malloc((size_t)cmdTexture.mWidth*(size_t)cmdTexture.mHeight*sizeof(uint32_t)));
 			for(uint32_t x=0; pTempData && x<cmdTexture.mWidth; ++x)
 			{
 				constexpr uint64_t kLoopTimeUS	= 1000 * 1000 * 3; // 1 Loop per 10 seconds

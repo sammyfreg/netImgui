@@ -54,15 +54,15 @@ struct ClientInfo
 {
 	using VecTexture	= ImVector<ClientTexture>;
 	using BufferKeys	= Ringbuffer<uint16_t, 1024>;
-	using Time			= std::chrono::time_point<std::chrono::high_resolution_clock>;
+	using TimePoint		= std::chrono::time_point<std::chrono::steady_clock>;
 
 	struct InputState
 	{
-		uint64_t						mInputDownMask[(CmdInput::ImGuiKey_COUNT+63)/64] = {};
-		float							mInputAnalog[CmdInput::kAnalog_Count] = {};
-		uint64_t						mMouseDownMask				= 0;
-		float							mMouseWheelVertPrev			= 0.f;
-		float							mMouseWheelHorizPrev		= 0.f;
+		uint64_t	mInputDownMask[(CmdInput::ImGuiKey_COUNT+63)/64] = {};
+		float		mInputAnalog[CmdInput::kAnalog_Count] 	= {};
+		uint64_t	mMouseDownMask							= 0;
+		float		mMouseWheelVertPrev						= 0.f;
+		float		mMouseWheelHorizPrev					= 0.f;
 	};
 										ClientInfo();
 										~ClientInfo();
@@ -79,7 +79,7 @@ struct ClientInfo
 	VecTexture							mTextures;								// List if textures created by this client (used un main thread)
 	char								mName[64]					= {};
 	uint64_t							mFrameIndex					= 0;		// Incremented everytime we send a DrawFrame Command	
-	CmdTexture*							mTexturesPending[16];
+	CmdTexture*							mTexturesPending[16]		= {};
 	ExchangePtr<CmdDrawFrame>			mPendingFrameOut;
 	ExchangePtr<CmdBackground>			mPendingBackgroundOut;
 	ExchangePtr<CmdInput>				mPendingInputIn;
@@ -92,15 +92,17 @@ struct ClientInfo
 	CmdBackground						mBGSetting;								// Current value assigned to background appearance by user
 	CmdBackground						mBGSettingSent;							// Last sent value to remote server
 	BufferKeys							mPendingKeyIn;							// Keys pressed received. Results of 2 CmdInputs are concatenated if received before being processed
+	TimePoint							mLastOutgoingDrawCheckTime;				// When we last checked if we have a pending draw command to send
+	TimePoint							mLastOutgoingDrawTime;					// When we last sent an updated draw command to the server
 	ImVec2								mSavedDisplaySize			= {0, 0};	// Save original display size on 'NewFrame' and restore it on 'EndFrame' (making sure size is still valid after a disconnect)
 	const void*							mpFontTextureData			= nullptr;	// Last font texture data send to server (used to detect if font was changed)
 	ImTextureID							mFontTextureID;
 	SavedImguiContext					mSavedContextValues;
-	Time								mTimeTracking;							// Used to update Dear ImGui time delta on remote context
 	std::atomic_uint32_t				mTexturesPendingSent;
 	std::atomic_uint32_t				mTexturesPendingCreated;
-	
+	                                    	
 	bool								mbDisconnectRequest			= false;	// Waiting to Disconnect
+	bool								mbDisconnectProcessed		= false;	// Disconnect command sent to server, ready to disconnect
 	bool								mbClientThreadActive		= false;
 	bool								mbListenThreadActive		= false;
 	bool								mbHasTextureUpdate			= false;
@@ -118,6 +120,7 @@ struct ClientInfo
 	ThreadFunctPtr						mThreadFunction				= nullptr;	// Function to use when laucnhing new threads
 	FontCreateFuncPtr					mFontCreationFunction		= nullptr;	// Method to call to generate the remote ImGui font. By default, re-use the local font, but this doesn't handle native DPI scaling on remote server
 	float								mFontCreationScaling		= 1.f;		// Last font scaling used when generating the NetImgui font
+	float 								mDesiredFps					= 30.f;		// How often we should update the remote drawing. Received from server
 	InputState							mPreviousInputState;					// Keeping track of last keyboard/mouse state
 	ImGuiID								mhImguiHookNewframe			= 0;
 	ImGuiID								mhImguiHookEndframe			= 0;

@@ -17,10 +17,26 @@
 namespace NetImgui { namespace Internal { namespace Network 
 {
 
+//=================================================================================================
+// Wrapper around native socket object and init some socket options
+//=================================================================================================
 struct SocketInfo
 {
-	SocketInfo(FSocket* pSocket) : mpSocket(pSocket) {}
-	~SocketInfo() { Close(); }
+	SocketInfo(FSocket* pSocket) 
+	: mpSocket(pSocket) 
+	{
+		if( mpSocket )
+		{
+			mpSocket->SetNonBlocking(true);
+			mpSocket->SetNoDelay(true);
+		}
+	}
+
+	~SocketInfo() 
+	{ 
+		Close(); 
+	}
+
 	void Close()
 	{
 		if(mpSocket )
@@ -30,7 +46,7 @@ struct SocketInfo
 			mpSocket = nullptr;
 		}
 	}
-	FSocket* mpSocket;
+	FSocket* mpSocket = nullptr;
 };
 
 bool Startup()
@@ -42,28 +58,32 @@ void Shutdown()
 {
 }
 
+//=================================================================================================
+// Try establishing a connection to a remote client at given address
+//=================================================================================================
 SocketInfo* Connect(const char* ServerHost, uint32_t ServerPort)
 {
-	SocketInfo* pSocketInfo					= nullptr;
-	ISocketSubsystem* SocketSubSystem		= ISocketSubsystem::Get();
-	auto ResolveInfo						= SocketSubSystem->GetHostByName(ServerHost);	
-	while( !ResolveInfo->IsComplete() ){
+	SocketInfo* pSocketInfo				= nullptr;
+	ISocketSubsystem* SocketSubSystem	= ISocketSubsystem::Get();
+	auto ResolveInfo					= SocketSubSystem->GetHostByName(ServerHost);
+
+	while( ResolveInfo && !ResolveInfo->IsComplete() ){
 		FPlatformProcess::YieldThread();
 	}
 
-	if (ResolveInfo->GetErrorCode() == 0)
+	if ( ResolveInfo && ResolveInfo->GetErrorCode() == 0)
 	{
 		TSharedRef<FInternetAddr> IpAddress	= ResolveInfo->GetResolvedAddress().Clone();
 		IpAddress->SetPort(ServerPort);
 		if (IpAddress->IsValid())
 		{
-			FSocket* pNewSocket				= SocketSubSystem->CreateSocket(NAME_Stream, "netImgui", IpAddress->GetProtocolType());
+			FSocket* pNewSocket	= SocketSubSystem->CreateSocket(NAME_Stream, "NetImgui", IpAddress->GetProtocolType());
 			if (pNewSocket)
 			{
-				pNewSocket->SetNonBlocking(false);
-				pSocketInfo = netImguiNew<SocketInfo>(pNewSocket);
+				pNewSocket->SetNonBlocking(true);
 				if (pNewSocket->Connect(IpAddress.Get()))
 				{
+					pSocketInfo = netImguiNew<SocketInfo>(pNewSocket);
 					return pSocketInfo;
 				}
 			}
@@ -73,13 +93,16 @@ SocketInfo* Connect(const char* ServerHost, uint32_t ServerPort)
 	return nullptr;
 }
 
+//=================================================================================================
+// Start waiting for connection request on this socket
+//=================================================================================================
 SocketInfo* ListenStart(uint32_t ListenPort)
 {
 	ISocketSubsystem* PlatformSocketSub = ISocketSubsystem::Get(PLATFORM_SOCKETSUBSYSTEM);
 	TSharedPtr<FInternetAddr> IpAddress = PlatformSocketSub->GetLocalBindAddr(*GLog);
 	IpAddress->SetPort(ListenPort);
 
-	FSocket* pNewListenSocket			= PlatformSocketSub->CreateSocket(NAME_Stream, "netImguiListen", IpAddress->GetProtocolType());
+	FSocket* pNewListenSocket			= PlatformSocketSub->CreateSocket(NAME_Stream, "NetImguiListen", IpAddress->GetProtocolType());
 	if( pNewListenSocket )
 	{
 		SocketInfo* pListenSocketInfo	= netImguiNew<SocketInfo>(pNewListenSocket);
@@ -100,14 +123,16 @@ SocketInfo* ListenStart(uint32_t ListenPort)
 	return nullptr;
 }
 
+//=================================================================================================
+// Establish a new connection to a remote request
+//=================================================================================================
 SocketInfo* ListenConnect(SocketInfo* pListenSocket)
 {
 	if (pListenSocket)
 	{
-		FSocket* pNewSocket = pListenSocket->mpSocket->Accept(FString("netImgui"));
+		FSocket* pNewSocket = pListenSocket->mpSocket->Accept(FString("NetImgui"));
 		if( pNewSocket )
 		{
-			pNewSocket->SetNonBlocking(false);
 			SocketInfo* pSocketInfo = netImguiNew<SocketInfo>(pNewSocket);
 			return pSocketInfo;
 		}
@@ -115,23 +140,70 @@ SocketInfo* ListenConnect(SocketInfo* pListenSocket)
 	return nullptr;
 }
 
+//=================================================================================================
+// Close a connection and free allocated object
+//=================================================================================================
 void Disconnect(SocketInfo* pClientSocket)
 {
-	netImguiDelete(pClientSocket);	
+	netImguiDelete(pClientSocket);
 }
 
+//=================================================================================================
+// Return true if data has been received (or there's a connection error)
+//=================================================================================================
+bool DataReceivePending(SocketInfo* pClientSocket)
+{
+	// Note: return true on a connection error, to exit code looping on the data wait. Will handle error after DataReceive()
+	uint32 PendingDataSize;
+	return pClientSocket->mpSocket->HasPendingData(PendingDataSize) || (pClientSocket->mpSocket->GetConnectionState() != ESocketConnectionState::SCS_Connected);
+}
+
+//=================================================================================================
+// Block until all requested data has been received from the remote connection
+//=================================================================================================
 bool DataReceive(SocketInfo* pClientSocket, void* pDataIn, size_t Size)
 {
-	int32 sizeRcv(0);
-	bool bResult = pClientSocket->mpSocket->Recv(reinterpret_cast<uint8*>(pDataIn), Size, sizeRcv, ESocketReceiveFlags::WaitAll);
-	return bResult && static_cast<int32>(Size) == sizeRcv;
+	int32 totalRcv(0), sizeRcv(0);
+	while( totalRcv < static_cast<int>(Size) )
+	{
+		if( pClientSocket->mpSocket->Recv(&reinterpret_cast<uint8*>(pDataIn)[totalRcv], static_cast<int>(Size)-totalRcv, sizeRcv, ESocketReceiveFlags::None) )
+		{
+			totalRcv += sizeRcv;
+		}
+		else
+		{
+			if( pClientSocket->mpSocket->GetConnectionState() != ESocketConnectionState::SCS_Connected )
+			{
+				return false; // Connection error, abort transmission
+			}
+			std::this_thread::yield();
+		}
+	}
+	return totalRcv == static_cast<int32>(Size);
 }
 
+//=================================================================================================
+// Block until all requested data has been sent to remote connection
+//=================================================================================================
 bool DataSend(SocketInfo* pClientSocket, void* pDataOut, size_t Size)
 {
-	int32 sizeSent(0);
-	bool bResult = pClientSocket->mpSocket->Send(reinterpret_cast<uint8*>(pDataOut), Size, sizeSent);
-	return bResult && static_cast<int32>(Size) == sizeSent;
+	int32 totalSent(0), sizeSent(0);
+	while( totalSent < static_cast<int>(Size) )
+	{
+		if( pClientSocket->mpSocket->Send(&reinterpret_cast<uint8*>(pDataOut)[totalSent], Size-totalSent, sizeSent) )
+		{
+			totalSent += sizeSent;
+		}
+		else
+		{
+			if( pClientSocket->mpSocket->GetConnectionState() != ESocketConnectionState::SCS_Connected )
+			{
+				return false; // Connection error, abort transmission
+			}
+			std::this_thread::yield();
+		}
+	}
+	return totalSent == static_cast<int32>(Size);
 }
 
 }}} // namespace NetImgui::Internal::Network
@@ -141,6 +213,5 @@ bool DataSend(SocketInfo* pClientSocket, void* pDataOut, size_t Size)
 // Prevents Linker warning LNK4221 in Visual Studio (This object file does not define any previously undefined public symbols, so it will not be used by any link operation that consumes this library)
 extern int sSuppresstLNK4221_NetImgui_NetworkUE4; 
 int sSuppresstLNK4221_NetImgui_NetworkUE4(0);
-
 
 #endif // #if NETIMGUI_ENABLED && defined(__UNREAL__)

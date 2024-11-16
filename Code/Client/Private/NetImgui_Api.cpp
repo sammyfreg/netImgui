@@ -98,15 +98,37 @@ void Disconnect(void)
 {
 	if (!gpClientInfo) return;
 	
-	// Attempt fake connection on local socket waiting for a Server connection, 
+	// Attempt fake connection on local socket waiting for a Server connection,
 	// so the blocking operation can terminate and release the communication thread
 	Client::ClientInfo& client	= *gpClientInfo;
 	client.mbDisconnectRequest	= true;
-	if( client.mSocketListenPort != 0 )
+	if( client.mpSocketListen.load() != nullptr )
 	{
-		Network::SocketInfo* FakeSocket = Network::Connect("127.0.0.1", client.mSocketListenPort);
-		client.mSocketListenPort		= 0;
-		Network::Disconnect(FakeSocket);
+		Network::SocketInfo* pFakeSocket(nullptr);
+		if( client.mSocketListenPort != 0 )
+		{
+			pFakeSocket = Network::Connect("127.0.0.1", client.mSocketListenPort);
+			client.mSocketListenPort = 0;
+		}
+
+		if(pFakeSocket)
+		{
+			Network::Disconnect(pFakeSocket);
+			pFakeSocket = nullptr;
+		}
+		// If fake connection creation fails, disconnect the listen socket directly
+		// even though it might potentially cause a race condition
+		else
+		{
+			Network::SocketInfo* pSocket = client.mpSocketListen.exchange(nullptr);
+			Network::Disconnect(pSocket);
+		}
+	}
+
+	if( client.mpSocketPending.load() != nullptr )
+	{
+		Network::Disconnect(client.mpSocketPending);
+		client.mpSocketPending = nullptr;
 	}
 }
 
@@ -173,9 +195,16 @@ bool NewFrame(bool bSupportFrameSkip)
 			client.ContextOverride();
 		}
 		
+		auto elapsedCheck					= std::chrono::steady_clock::now() - client.mLastOutgoingDrawCheckTime;
+		auto elapsedDraw					= std::chrono::steady_clock::now() - client.mLastOutgoingDrawTime;
+		auto elapsedCheckMs					= static_cast<float>(std::chrono::duration_cast<std::chrono::microseconds>(elapsedCheck).count()) / 1000.f;
+		auto elapsedDrawMs					= static_cast<float>(std::chrono::duration_cast<std::chrono::microseconds>(elapsedDraw).count()) / 1000.f;
+		client.mLastOutgoingDrawCheckTime	= std::chrono::steady_clock::now();
+		
 		// Update input and see if remote netImgui expect a new frame
 		client.mSavedDisplaySize	= ImGui::GetIO().DisplaySize;
-		client.mbValidDrawFrame		= ProcessInputData(client);
+		client.mbValidDrawFrame		= client.mDesiredFps > 0.f && (elapsedDrawMs + elapsedCheckMs*1.25f) > (1000.f/client.mDesiredFps); // Take into account delay until next method call, for more precise fps
+		ProcessInputData(client);
 		
 		// We are about to start drawing for remote context, check for font data update
 		const ImFontAtlas* pFonts = ImGui::GetIO().Fonts;
@@ -193,10 +222,7 @@ bool NewFrame(bool bSupportFrameSkip)
 		assert(client.mbFontUploaded);
 			
 		// Update current active content with our time
-		const auto TimeNow						= std::chrono::high_resolution_clock::now();
-		std::chrono::duration<float> elapsedSec	= TimeNow - client.mTimeTracking;
-		ImGui::GetIO().DeltaTime				= std::max<float>(1.f / 1000.f, elapsedSec.count());
-		client.mTimeTracking					= TimeNow;
+		ImGui::GetIO().DeltaTime = std::max<float>(1.f / 1000.f, elapsedCheckMs/1000.f);
 		
 		// NetImgui isn't waiting for a new frame, try to skip drawing when caller supports it
 		if( !client.mbValidDrawFrame && bSupportFrameSkip )

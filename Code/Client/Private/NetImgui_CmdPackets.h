@@ -8,19 +8,14 @@ namespace NetImgui { namespace Internal
 
 //Note: If updating any of these commands data structure, increase 'CmdVersion::eVersion'
 
-struct CmdHeader
+struct alignas(8) CmdHeader
 {
-	enum class eCommands : uint8_t { Invalid, Ping, Disconnect, Version, Texture, Input, DrawFrame, Background, Clipboard };
+	enum class eCommands : uint8_t { Disconnect, Version, Texture, Input, DrawFrame, Background, Clipboard, _Invalid };
 				CmdHeader(){}
 				CmdHeader(eCommands CmdType, uint16_t Size) : mSize(Size), mType(CmdType){}
 	uint32_t	mSize		= 0;
-	eCommands	mType		= eCommands::Invalid;
-	uint8_t		mPadding[3]	= {0,0,0};
-};
-
-struct alignas(8) CmdPing
-{
-	CmdHeader mHeader = CmdHeader(CmdHeader::eCommands::Ping, sizeof(CmdPing));
+	eCommands	mType		= eCommands::_Invalid;
+	uint8_t		mPadding[3]	= {};
 };
 
 struct alignas(8) CmdDisconnect
@@ -47,6 +42,7 @@ struct alignas(8) CmdVersion
 		DPIScale			= 13,	// Server now handle monitor DPI
 		Clipboard			= 14,	// Added clipboard support between server/client
 		ForceReconnect		= 15,	// Server can now take over the connection from another server
+		UpdatedComs 		= 16,	// Faster protocol by removing blocking coms
 		// Insert new version here
 
 		//--------------------------------
@@ -61,10 +57,10 @@ struct alignas(8) CmdVersion
 		ConnectExclusive	= 0x08,	// Server telling Client that once connected, others servers should be denied access
 	};
 	CmdHeader	mHeader					= CmdHeader(CmdHeader::eCommands::Version, sizeof(CmdVersion));
-	eVersion	mVersion				= eVersion::_current;
 	char		mClientName[64]			= {};
 	char		mImguiVerName[16]		= {IMGUI_VERSION};
 	char		mNetImguiVerName[16]	= {NETIMGUI_VERSION};
+	eVersion	mVersion				= eVersion::_current;
 	uint32_t	mImguiVerID				= IMGUI_VERSION_NUM;
 	uint32_t	mNetImguiVerID			= NETIMGUI_VERSION_NUM;
 	uint8_t		mWCharSize				= static_cast<uint8_t>(sizeof(ImWchar));
@@ -202,6 +198,7 @@ struct alignas(8) CmdInput
 	bool							mCompressionUse					= false;	// Server would like client to compress the communication data
 	bool							mCompressionSkip				= false;	// Server forcing next client's frame data to be uncompressed
 	float							mFontDPIScaling					= 1.f;		// Font scaling request by Server accounting for monitor DPI
+	float 							mDesiredFps						= 30.f;		// Requested redraw speed
 	uint64_t						mMouseDownMask					= 0;
 	uint64_t						mInputDownMask[(ImGuiKey_COUNT+63)/64]={};
 	float							mInputAnalog[kAnalog_Count]		= {};

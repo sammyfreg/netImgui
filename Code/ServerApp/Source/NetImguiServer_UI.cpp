@@ -101,7 +101,7 @@ void ClientInfoTooltip(const RemoteClient::Client& Client)
 		ImGui::TextUnformatted("Port");		ImGui::SameLine(width); ImGui::TextColored(kColorContent, ": %i", Client.mConnectPort);
 		ImGui::TextUnformatted("ImGui");	ImGui::SameLine(width); ImGui::TextColored(kColorContent, ": %s", Client.mInfoImguiVerName);
 		ImGui::TextUnformatted("Time");		ImGui::SameLine(width); ImGui::TextColored(kColorContent, ": %03ih%02i:%02i", tmHour,tmMin,tmSec );
-		ImGui::TextUnformatted("Fps");		ImGui::SameLine(width); ImGui::TextColored(kColorContent, ": %04.1f", Client.mStatsFPS );
+		ImGui::TextUnformatted("Fps");		ImGui::SameLine(width); ImGui::TextColored(kColorContent, ": %04.1f", Client.mbIsVisible ? 1000.f/Client.mStatsDrawElapsedMs : 0.f);
 		ImGui::TextUnformatted("Data");		ImGui::SameLine(width); ImGui::TextColored(kColorContent, ": (Rx) %7i KB/s \t(Tx) %7i KB/s", Client.mStatsRcvdBps/1024, Client.mStatsSentBps/1024);
 		ImGui::NewLine();					ImGui::SameLine(width); ImGui::TextColored(kColorContent, ": (Rx) %7i %s   \t(Tx) %7i %s", static_cast<int>(rxData), kDataSizeUnits[rxUnitIdx], static_cast<int>(txData), kDataSizeUnits[txUnitIdx]);
 		ImGui::EndTooltip();
@@ -540,14 +540,15 @@ void DrawImguiContent_Clients()
 			ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.f, 8.f));
 			ClientInfoTooltip(client);
 			ImGui::PopStyleVar(1);
+
+			// Capture input to forward to remote client, and update drawing area size
+			ImVec2 areaSize		= ImGui::GetContentRegionAvail();
+			client.mAreaSizeX	= static_cast<uint16_t>(std::max<float>(8.f,areaSize.x)); // Prevents issue with render target of size 0
+			client.mAreaSizeY	= static_cast<uint16_t>(std::max<float>(8.f,areaSize.y));
+			client.CaptureImguiInput();
+
 			if( client.mbIsVisible )
 			{
-				// Capture input to forward to remote client, and update drawing area size
-				ImVec2 areaSize		= ImGui::GetContentRegionAvail();
-				client.mAreaSizeX	= static_cast<uint16_t>(std::max<float>(8.f,areaSize.x)); // Prevents issue with render target of size 0
-				client.mAreaSizeY	= static_cast<uint16_t>(std::max<float>(8.f,areaSize.y));
-				client.CaptureImguiInput();
-
 				// Display remote client drawing results
 				if (client.mpHAL_AreaTexture && areaSize.x > 0 && areaSize.y > 0) 
 				{					
@@ -889,9 +890,9 @@ void DrawImguiContent_MainMenu_Stats()
 	if (ImGui::IsItemHovered())
 	{
 		uint64_t txData(NetImguiServer::Network::GetStatsDataSent());
-		uint64_t rxData(NetImguiServer::Network::GetStatsDataRcvd());		
+		uint64_t rxData(NetImguiServer::Network::GetStatsDataRcvd());
 		uint8_t txUnitIdx = ConvertDataAmount(txData);
-		uint8_t rxUnitIdx = ConvertDataAmount(rxData);	
+		uint8_t rxUnitIdx = ConvertDataAmount(rxData);
 		ImGui::BeginTooltip();
 		{
 			float width = ImGui::CalcTextSize("Data Received  ").x;

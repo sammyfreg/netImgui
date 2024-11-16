@@ -86,8 +86,9 @@ void Communications_Incoming_Input(ClientInfo& client, uint8_t*& pCmdData)
 		auto pCmdInput	= reinterpret_cast<CmdInput*>(pCmdData);
 		pCmdData		= nullptr; // Take ownership of the data, prevent Free
 		size_t keyCount(pCmdInput->mKeyCharCount);
+		client.mDesiredFps = pCmdInput->mDesiredFps > 0.f ? pCmdInput->mDesiredFps : 0.f;
 		client.mPendingKeyIn.AddData(pCmdInput->mKeyChars, keyCount);
-		client.mPendingInputIn.Assign(pCmdInput);	
+		client.mPendingInputIn.Assign(pCmdInput);
 	}
 }
 
@@ -110,12 +111,12 @@ void Communications_Incoming_Clipboard(ClientInfo& client, uint8_t*& pCmdData)
 // OUTCOM: TEXTURE
 // Transmit all pending new/updated texture
 //=================================================================================================
-bool Communications_Outgoing_Textures(ClientInfo& client)
+void Communications_Outgoing_Textures(ClientInfo& client)
 {	
-	bool bSuccess(true);
 	client.ProcessTexturePending();
 	if( client.mbHasTextureUpdate )
 	{
+		bool bSuccess(true);
 		for(auto& cmdTexture : client.mTextures)
 		{
 			if( !cmdTexture.mbSent && cmdTexture.mpCmdTexture )
@@ -128,36 +129,32 @@ bool Communications_Outgoing_Textures(ClientInfo& client)
 		}
 		client.mbHasTextureUpdate = !bSuccess;
 	}
-	return bSuccess;
 }
 
 //=================================================================================================
 // OUTCOM: BACKGROUND
 // Transmit the current client background settings
 //=================================================================================================
-bool Communications_Outgoing_Background(ClientInfo& client)
+void Communications_Outgoing_Background(ClientInfo& client)
 {	
-	bool bSuccess(true);
 	CmdBackground* pPendingBackground = client.mPendingBackgroundOut.Release();
 	if( pPendingBackground )
 	{
-		bSuccess = Network::DataSend(client.mpSocketComs, pPendingBackground, pPendingBackground->mHeader.mSize);
+		Network::DataSend(client.mpSocketComs, pPendingBackground, pPendingBackground->mHeader.mSize);
 		netImguiDeleteSafe(pPendingBackground);
 	}
-	return bSuccess;
 }
 
 //=================================================================================================
 // OUTCOM: FRAME
 // Transmit a new dearImgui frame to render
 //=================================================================================================
-bool Communications_Outgoing_Frame(ClientInfo& client)
+void Communications_Outgoing_Frame(ClientInfo& client)
 {
-	bool bSuccess(true);
 	CmdDrawFrame* pPendingDraw = client.mPendingFrameOut.Release();
 	if( pPendingDraw )
 	{
-		pPendingDraw->mFrameIndex	= client.mFrameIndex++;
+		pPendingDraw->mFrameIndex = client.mFrameIndex++;
 		//---------------------------------------------------------------------
 		// Apply delta compression to DrawCommand, when requested
 		if( pPendingDraw->mCompressed )
@@ -181,7 +178,10 @@ bool Communications_Outgoing_Frame(ClientInfo& client)
 		//---------------------------------------------------------------------
 		// Send Command to server
 		pPendingDraw->ToOffsets();
-		bSuccess = Network::DataSend(client.mpSocketComs, pPendingDraw, pPendingDraw->mHeader.mSize);
+		if( Network::DataSend(client.mpSocketComs, pPendingDraw, pPendingDraw->mHeader.mSize) )
+		{
+			client.mLastOutgoingDrawTime = std::chrono::steady_clock::now();
+		}
 
 		//---------------------------------------------------------------------
 		// Free created data once sent (when not used in next frame)
@@ -189,117 +189,94 @@ bool Communications_Outgoing_Frame(ClientInfo& client)
 			netImguiDeleteSafe(pPendingDraw);
 		}
 	}
-	return bSuccess;
 }
 
 //=================================================================================================
 // OUTCOM: DISCONNECT
 // Signal that we will be disconnecting
 //=================================================================================================
-bool Communications_Outgoing_Disconnect(ClientInfo& client)
+void Communications_Outgoing_Disconnect(ClientInfo& client)
 {
 	if( client.mbDisconnectRequest )
 	{
 		CmdDisconnect cmdDisconnect;
 		Network::DataSend(client.mpSocketComs, &cmdDisconnect, cmdDisconnect.mHeader.mSize);
-		return false;
+		client.mbDisconnectProcessed = true;
 	}
-	return true;
-}
-
-//=================================================================================================
-// OUTCOM: PING
-// Signal end of outgoing communications and still alive
-//=================================================================================================
-bool Communications_Outgoing_Ping(ClientInfo& client)
-{
-	CmdPing cmdPing;
-	return Network::DataSend(client.mpSocketComs, &cmdPing, cmdPing.mHeader.mSize);
 }
 
 //=================================================================================================
 // OUTCOM: Clipboard
 // Send client 'Copy' clipboard content to Server
 //=================================================================================================
-bool Communications_Outgoing_Clipboard(ClientInfo& client)
+void Communications_Outgoing_Clipboard(ClientInfo& client)
 {
-	bool bResult(true);
 	CmdClipboard* pPendingClipboard = client.mPendingClipboardOut.Release();
 	if( pPendingClipboard ){
 		pPendingClipboard->ToOffsets();
-		bResult = Network::DataSend(client.mpSocketComs, pPendingClipboard, pPendingClipboard->mHeader.mSize);
+		Network::DataSend(client.mpSocketComs, pPendingClipboard, pPendingClipboard->mHeader.mSize);
 		netImguiDeleteSafe(pPendingClipboard);
-
 	}
-	return bResult;
 }
 
 //=================================================================================================
 // INCOMING COMMUNICATIONS
 //=================================================================================================
-bool Communications_Incoming(ClientInfo& client)
+void Communications_Incoming(ClientInfo& client)
 {
-	bool bOk(true);
-	bool bPingReceived(false);
-	while( bOk && !bPingReceived )
+	if( Network::DataReceivePending(client.mpSocketComs) )
 	{
 		CmdHeader cmdHeader;
-		uint8_t* pCmdData	= nullptr;
-		bOk					= Network::DataReceive(client.mpSocketComs, &cmdHeader, sizeof(cmdHeader));
-		if( bOk && cmdHeader.mSize > sizeof(CmdHeader) )
+		uint8_t* pCmdData(nullptr);
+		bool bCmdRcv = Network::DataReceive(client.mpSocketComs, &cmdHeader, sizeof(cmdHeader));
+		bCmdRcv		&=  cmdHeader.mType < NetImgui::Internal::CmdHeader::eCommands::_Invalid;
+	
+		if( bCmdRcv && cmdHeader.mSize > sizeof(CmdHeader) )
 		{
 			pCmdData								= netImguiSizedNew<uint8_t>(cmdHeader.mSize);
 			*reinterpret_cast<CmdHeader*>(pCmdData) = cmdHeader;
-			bOk										= Network::DataReceive(client.mpSocketComs, &pCmdData[sizeof(cmdHeader)], cmdHeader.mSize-sizeof(cmdHeader));	
+			bCmdRcv									= Network::DataReceive(client.mpSocketComs, &pCmdData[sizeof(cmdHeader)], cmdHeader.mSize-sizeof(cmdHeader));
 		}
-
-		if( bOk )
+	
+		if( bCmdRcv )
 		{
 			switch( cmdHeader.mType )
 			{
-			case CmdHeader::eCommands::Ping:		bPingReceived = true; break;
-			case CmdHeader::eCommands::Disconnect:	bOk = false; break;
-			case CmdHeader::eCommands::Input:		Communications_Incoming_Input(client, pCmdData); break;
-			case CmdHeader::eCommands::Clipboard:	Communications_Incoming_Clipboard(client, pCmdData); break;
-			// Commands not received in main loop, by Client
-			case CmdHeader::eCommands::Invalid:
-			case CmdHeader::eCommands::Version:
-			case CmdHeader::eCommands::Texture:
-			case CmdHeader::eCommands::DrawFrame:	
-			case CmdHeader::eCommands::Background:	break;
+				case CmdHeader::eCommands::Disconnect:	client.mbDisconnectProcessed = true; break;
+				case CmdHeader::eCommands::Input:		Communications_Incoming_Input(client, pCmdData); break;
+				case CmdHeader::eCommands::Clipboard:	Communications_Incoming_Clipboard(client, pCmdData); break;
+					// Commands not received in main loop, by Client
+				case CmdHeader::eCommands::Version:
+				case CmdHeader::eCommands::Texture:
+				case CmdHeader::eCommands::DrawFrame:
+				case CmdHeader::eCommands::Background:
+				case CmdHeader::eCommands::_Invalid: break;
 			}
-		}		
+		}
+		else
+		{
+			client.mbDisconnectRequest = true;
+		}
 		netImguiDeleteSafe(pCmdData);
 	}
-	return bOk;
+	else
+	{
+		// Prevent high CPU usage when waiting for new data
+		//std::this_thread::yield(); 
+		std::this_thread::sleep_for(std::chrono::microseconds(250));
+	}
 }
 
 //=================================================================================================
 // OUTGOING COMMUNICATIONS
 //=================================================================================================
-bool Communications_Outgoing(ClientInfo& client)
+void Communications_Outgoing(ClientInfo& client)
 {
-	bool bSuccess(true);
-	if( bSuccess ){
-		bSuccess = Communications_Outgoing_Textures(client);
-	}
-	if( bSuccess ){
-		bSuccess = Communications_Outgoing_Background(client);
-	}
-	if( bSuccess ){
-		bSuccess = Communications_Outgoing_Clipboard(client);
-	}
-	if( bSuccess ){
-		bSuccess = Communications_Outgoing_Frame(client);
-	}
-	if( bSuccess ){
-		bSuccess = Communications_Outgoing_Disconnect(client);
-	}
-	if( bSuccess ){
-		bSuccess = Communications_Outgoing_Ping(client); // Always finish with a ping
-	}
-
-	return bSuccess;
+	Communications_Outgoing_Textures(client);
+	Communications_Outgoing_Background(client);
+	Communications_Outgoing_Clipboard(client);
+	Communications_Outgoing_Frame(client);
+	Communications_Outgoing_Disconnect(client);
 }
 
 //=================================================================================================
@@ -309,19 +286,30 @@ bool Communications_Outgoing(ClientInfo& client)
 bool Communications_Initialize(ClientInfo& client)
 {
 	CmdVersion cmdVersionSend, cmdVersionRcv;
-	bool bResultRcv		= Network::DataReceive(client.mpSocketPending, &cmdVersionRcv, sizeof(cmdVersionRcv));
+
+	//---------------------------------------------------------------------
+	// Handshake confirming connection validity
+	//---------------------------------------------------------------------
+	while( !Network::DataReceivePending(client.mpSocketPending) )
+	{
+		std::this_thread::yield(); // Idle until we receive the remote data
+	}
+	bool bResultRcv 	= Network::DataReceive(client.mpSocketPending, &cmdVersionRcv, sizeof(cmdVersionRcv));
 	bool bForceConnect	= client.mServerForceConnectEnabled && (cmdVersionRcv.mFlags & static_cast<uint8_t>(CmdVersion::eFlags::ConnectForce)) != 0;
 	bool bCanConnect	= bResultRcv && 
-					 	  cmdVersionRcv.mHeader.mType	== cmdVersionSend.mHeader.mType && 
-					 	  cmdVersionRcv.mVersion		== cmdVersionSend.mVersion &&
-						  cmdVersionRcv.mWCharSize		== cmdVersionSend.mWCharSize &&
-						  (!client.IsConnected() || bForceConnect);
+							cmdVersionRcv.mHeader.mType	== cmdVersionSend.mHeader.mType && 
+							cmdVersionRcv.mVersion		== cmdVersionSend.mVersion &&
+							cmdVersionRcv.mWCharSize	== cmdVersionSend.mWCharSize &&
+							(!client.IsConnected() || bForceConnect);
 
 	StringCopy(cmdVersionSend.mClientName, client.mName);
 	cmdVersionSend.mFlags	= client.IsConnected() && !bCanConnect ? static_cast<uint8_t>(CmdVersion::eFlags::IsConnected): 0;
 	cmdVersionSend.mFlags	|= client.IsConnected() && !client.mServerForceConnectEnabled ? static_cast<uint8_t>(CmdVersion::eFlags::IsUnavailable) : 0;
 	bool bResultSend		= Network::DataSend(client.mpSocketPending, &cmdVersionSend, cmdVersionSend.mHeader.mSize);
 
+	//---------------------------------------------------------------------
+	// Connection established, init client
+	//---------------------------------------------------------------------
 	if(bCanConnect && bResultSend)
 	{
 		Network::SocketInfo* pNewConnect = client.mpSocketPending.exchange(nullptr);
@@ -359,15 +347,14 @@ void Communications_Loop(void* pClientVoid)
 {
 	IM_ASSERT(pClientVoid != nullptr);
 	ClientInfo* pClient				= reinterpret_cast<ClientInfo*>(pClientVoid);
-	bool bConnected					= pClient->IsConnected();
 	pClient->mbDisconnectRequest 	= false;
+	pClient->mbDisconnectProcessed	= false;
 	pClient->mbClientThreadActive 	= true;
 
-	while( bConnected && !pClient->mbDisconnectRequest )
+	while( !pClient->mbDisconnectProcessed )
 	{
-		std::this_thread::sleep_for(std::chrono::milliseconds(1));
-		//std::this_thread::yield();
-		bConnected = Communications_Outgoing(*pClient) && Communications_Incoming(*pClient);
+		Communications_Outgoing(*pClient);
+		Communications_Incoming(*pClient);
 	}
 
 	pClient->KillSocketComs();
@@ -403,13 +390,11 @@ void CommunicationsHost(void* pClientVoid)
 	while( pClient->mpSocketListen.load() != nullptr && !pClient->mbDisconnectRequest )
 	{
 		pClient->mpSocketPending = Network::ListenConnect(pClient->mpSocketListen);
-		if( !pClient->mbDisconnectRequest &&
-			pClient->mpSocketPending.load() != nullptr &&
-			Communications_Initialize(*pClient) )
+		if( pClient->mpSocketPending.load() != nullptr && Communications_Initialize(*pClient) )
 		{
 			pClient->mThreadFunction(Client::Communications_Loop, pClient);
 		}
-		std::this_thread::sleep_for(std::chrono::milliseconds(16));	// Prevents this thread from taking entire core, waiting on server connection
+		std::this_thread::sleep_for(std::chrono::milliseconds(16));	// Prevents this thread from taking entire core, waiting on server connection requests
 	}
 
 	Network::SocketInfo* pSocket 	= pClient->mpSocketListen.exchange(nullptr);
@@ -510,7 +495,7 @@ void ClientInfo::ContextOverride()
 
 	// Keep a copy of original settings of this context	
 	mSavedContextValues.Save(mpContext);
-	mTimeTracking = std::chrono::high_resolution_clock::now();
+	mLastOutgoingDrawCheckTime = std::chrono::high_resolution_clock::now();
 
 	// Override some settings
 	// Note: Make sure every setting overwritten here, are handled in 'SavedImguiContext::Save(...)'

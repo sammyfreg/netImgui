@@ -62,13 +62,12 @@ void Client::ReceiveDrawFrame(NetImgui::Internal::CmdDrawFrame* pFrameData)
 		mpFrameDrawPrev						= pFrameData;
 		NetImguiImDrawData*	pNewDrawData	= ConvertToImguiDrawData(pFrameData);
 		mPendingImguiDrawDataIn.Assign(pNewDrawData);
-		
+
 		// Update framerate
-		constexpr float kHysteresis	= 0.05f; // Between 0 to 1.0
+		constexpr float kHysteresis	= 0.025f; // Between 0 to 1.0
 		auto elapsedTime			= std::chrono::steady_clock::now() - mLastDrawFrame;
-		float tmMicroS				= static_cast<float>(std::chrono::duration_cast<std::chrono::microseconds>(elapsedTime).count());
-		float newFPS				= 1000000.f / tmMicroS;
-		mStatsFPS					= mStatsFPS * (1.f-kHysteresis) + newFPS*kHysteresis;
+		float elapsedMs				= static_cast<float>(std::chrono::duration_cast<std::chrono::microseconds>(elapsedTime).count()) / 1000.f;
+		mStatsDrawElapsedMs			= mStatsDrawElapsedMs * (1.f-kHysteresis) + elapsedMs*kHysteresis;
 		mLastDrawFrame				= std::chrono::steady_clock::now();
 	}
 }
@@ -127,20 +126,21 @@ void Client::ProcessPendingTextures()
 
 void Client::Initialize()
 {
-	mConnectedTime		= std::chrono::steady_clock::now();
-	mLastUpdateTime		= std::chrono::steady_clock::now() - std::chrono::hours(1);
-	mLastDrawFrame		= std::chrono::steady_clock::now();
-	mStatsIndex			= 0;
-	mStatsRcvdBps		= 0;
-	mStatsSentBps		= 0;
-	mStatsFPS			= 0.f;
-	mStatsDataRcvd		= 0;
-	mStatsDataSent		= 0;
-	mStatsDataRcvdPrev	= 0;
-	mStatsDataSentPrev	= 0;
-	mbIsReleased		= false;
-	mStatsTime			= std::chrono::steady_clock::now();
-	mBGSettings			= NetImgui::Internal::CmdBackground();	// Assign background default value, until we receive first update from client
+	mConnectedTime			= std::chrono::steady_clock::now();
+	mLastUpdateTime			= std::chrono::steady_clock::now() - std::chrono::hours(1);
+	mLastDrawFrame			= std::chrono::steady_clock::now();
+	mLastIncomingComTime	= std::chrono::steady_clock::now();
+	mStatsIndex				= 0;
+	mStatsRcvdBps			= 0;
+	mStatsSentBps			= 0;
+	mStatsDrawElapsedMs		= 0.f;
+	mStatsDataRcvd			= 0;
+	mStatsDataSent			= 0;
+	mStatsDataRcvdPrev		= 0;
+	mStatsDataSentPrev		= 0;
+	mbIsReleased			= false;
+	mStatsTime				= std::chrono::steady_clock::now();
+	mBGSettings				= NetImgui::Internal::CmdBackground();	// Assign background default value, until we receive first update from client
 	NetImgui::Internal::netImguiDeleteSafe(mpImguiDrawData);
 	NetImgui::Internal::netImguiDeleteSafe(mpFrameDrawPrev);
 }
@@ -371,34 +371,35 @@ void Client::CaptureImguiInput()
 {
 	// Capture input from Dear ImGui (when this Client is in focus)
 	const ImGuiIO& io = ImGui::GetIO();
-	if( ImGui::IsWindowFocused() ) {
-		const size_t initialSize	= mPendingInputChars.size();
-		const size_t addedChar		= io.InputQueueCharacters.size();
-		if( addedChar ){
-			mPendingInputChars.resize(initialSize+addedChar);
-			memcpy(&mPendingInputChars[initialSize], io.InputQueueCharacters.Data, addedChar*sizeof(ImWchar));
+	if( mbIsVisible ){
+		if( ImGui::IsWindowFocused() ){
+			const size_t initialSize	= mPendingInputChars.size();
+			const size_t addedChar		= io.InputQueueCharacters.size();
+			if( addedChar ){
+				mPendingInputChars.resize(initialSize+addedChar);
+				memcpy(&mPendingInputChars[initialSize], io.InputQueueCharacters.Data, addedChar*sizeof(ImWchar));
+			}
+
+			mMouseWheelPos[0] += io.MouseWheel;
+			mMouseWheelPos[1] += io.MouseWheelH;
 		}
 
-		mMouseWheelPos[0] += io.MouseWheel;
-		mMouseWheelPos[1] += io.MouseWheelH;
-	}
-
-	// Update persistent mouse status	
-	if( ImGui::IsMousePosValid(&io.MousePos)){
-		mMousePos[0] = io.MousePos.x - ImGui::GetCursorScreenPos().x;
-		mMousePos[1] = io.MousePos.y - ImGui::GetCursorScreenPos().y;
+		// Update persistent mouse status	
+		if( ImGui::IsMousePosValid(&io.MousePos)){
+			mMousePos[0] = io.MousePos.x - ImGui::GetCursorScreenPos().x;
+			mMousePos[1] = io.MousePos.y - ImGui::GetCursorScreenPos().y;
+		}
 	}
 
 	// This method is tied to the Server VSync setting, which might not match our client desired refresh setting
 	// When client refresh drops too much, take into consideration the lenght of the Server frame, to evaluate if we should update or not
 	bool wasActive		= mbIsActive;
 	mbIsActive			= ImGui::IsWindowFocused();
-	float refreshFPS	= mbIsActive ? NetImguiServer::Config::Server::sRefreshFPSActive : NetImguiServer::Config::Server::sRefreshFPSInactive;	
+	float clientFPS		= !mbIsVisible 	? 0.f 
+						: !mbIsActive	? NetImguiServer::Config::Server::sRefreshFPSInactive
+										: NetImguiServer::Config::Server::sRefreshFPSActive;
 	float elapsedMs		= static_cast<float>(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - mLastUpdateTime).count()) / 1000.f;
-	elapsedMs			+= mStatsFPS < refreshFPS ? 1000.f / (NetImguiServer::UI::GetDisplayFPS()/2.f) : 0.f;
-	bool bRefresh		=	wasActive != mbIsActive ||						// Important to sent input to client losing focus, making sure it knows to release the keypress
-							(elapsedMs > 60000.f)	||						// Keep 1 refresh per minute minimum
-							(refreshFPS >= 0.01f && elapsedMs > 1000.f/refreshFPS);	
+	bool bRefresh		= (wasActive != mbIsActive)	|| elapsedMs > 1000.f/60.f;
 
 	if( !bRefresh ){
 		return;
@@ -420,9 +421,10 @@ void Client::CaptureImguiInput()
 	pNewInput->mCompressionUse		= NetImguiServer::Config::Server::sCompressionEnable;
 	pNewInput->mCompressionSkip		= mbCompressionSkipOncePending;
 	pNewInput->mFontDPIScaling		= config.mDPIScaleEnabled ? NetImguiServer::UI::GetFontDPIScale() : 1.f;
+	pNewInput->mDesiredFps			= clientFPS;
 	mbCompressionSkipOncePending	= false;
 
-	if( ImGui::IsWindowFocused() )
+	if( (mbIsVisible && mbIsActive) && ImGui::IsWindowFocused() )
 	{
 		// Mouse Buttons Inputs
 		// If Dear ImGui Update this enum, must also adjust our enum copy

@@ -7,7 +7,10 @@
 //=================================================================================================
 
 #include <NetImgui_Api.h>
-#include "imgui.h" // Since NetImgui is disabled in this sample, it will not include this header
+// Since NetImgui is disabled in this sample, NetImgui_Api.h will not include this header, 
+// so must include it manually
+#include "imgui.h" 
+
 #include "../Common/Sample.h"
 
 //=================================================================================================

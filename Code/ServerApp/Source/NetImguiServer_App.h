@@ -41,9 +41,9 @@ namespace NetImguiServer { namespace App
 		ServerTexture*	mpDeleteNext		= nullptr;	// Used to insert in a list of textures to be deleted next frame
 		uint64_t		mImguiId			= 0u;		// Associated ImGui TextureId in Imgui commandlist
 		uint64_t		mCustomData			= 0u;		// Memory available to custom command
-		uint16_t		mSize[2]			= {0, 0};
+		uint16_t		mSize[2]			= {0,0};
 		uint8_t			mFormat				= 0;
-		uint8_t			mPadding[3];
+		uint8_t			mPadding[3]			= {};
 	};
 
 	//=============================================================================================
