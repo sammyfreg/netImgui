@@ -380,7 +380,7 @@ void NetworkConnectRequest_Send()
 			{
 				NetImguiServer::Config::Client::SetProperty_ConnectRequest(clientConfig.mRuntimeID, false, false);	// Reset the Connection request, we are processing it
 				NetImguiServer::Config::Client::SetProperty_Status(clientConfig.mRuntimeID, NetImguiServer::Config::Client::eStatus::Disconnected);
-				clientConfigID	= clientConfig.mRuntimeID;													// Keep track of ClientConfig we are attempting to connect to
+				clientConfigID	= clientConfig.mRuntimeID;															// Keep track of ClientConfig we are attempting to connect to
 				pClientSocket	= NetImgui::Internal::Network::Connect(clientConfig.mHostName, clientConfig.mHostPort);
 			}
 		}			

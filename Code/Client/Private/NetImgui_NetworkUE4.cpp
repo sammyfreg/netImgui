@@ -1,6 +1,6 @@
 #include "NetImgui_Shared.h"
 
-// Tested with Unreal Engine 4.27, 5.0, 5.2
+// Tested with Unreal Engine 4.27, 5.0, 5.2, 5.3, 5.4
 
 #if NETIMGUI_ENABLED && defined(__UNREAL__)
 
@@ -63,17 +63,12 @@ void Shutdown()
 //=================================================================================================
 SocketInfo* Connect(const char* ServerHost, uint32_t ServerPort)
 {
-	SocketInfo* pSocketInfo				= nullptr;
-	ISocketSubsystem* SocketSubSystem	= ISocketSubsystem::Get();
-	auto ResolveInfo					= SocketSubSystem->GetHostByName(ServerHost);
-
-	while( ResolveInfo && !ResolveInfo->IsComplete() ){
-		FPlatformProcess::YieldThread();
-	}
-
-	if ( ResolveInfo && ResolveInfo->GetErrorCode() == 0)
+	SocketInfo* pSocketInfo					= nullptr;
+	ISocketSubsystem* SocketSubSystem		= ISocketSubsystem::Get(PLATFORM_SOCKETSUBSYSTEM);
+	TSharedPtr<FInternetAddr> IpAddressFind	= SocketSubSystem->GetAddressFromString((TCHAR*)StringCast<TCHAR>(static_cast<const ANSICHAR*>(ServerHost)).Get());
+	if(IpAddressFind)
 	{
-		TSharedRef<FInternetAddr> IpAddress	= ResolveInfo->GetResolvedAddress().Clone();
+		TSharedRef<FInternetAddr> IpAddress	= IpAddressFind->Clone();
 		IpAddress->SetPort(ServerPort);
 		if (IpAddress->IsValid())
 		{
@@ -81,13 +76,18 @@ SocketInfo* Connect(const char* ServerHost, uint32_t ServerPort)
 			if (pNewSocket)
 			{
 				pNewSocket->SetNonBlocking(true);
-				if (pNewSocket->Connect(IpAddress.Get()))
+				if (pNewSocket->Connect(*IpAddress))
 				{
-					pSocketInfo = netImguiNew<SocketInfo>(pNewSocket);
-					return pSocketInfo;
+					bool bConnectionReady = false;
+					pNewSocket->WaitForPendingConnection(bConnectionReady, FTimespan::FromSeconds(1.0f));
+					if( bConnectionReady )
+					{
+						pSocketInfo = netImguiNew<SocketInfo>(pNewSocket);
+						return pSocketInfo;
+					}
 				}
 			}
-		}		
+		}
 	}
 	netImguiDelete(pSocketInfo);
 	return nullptr;
