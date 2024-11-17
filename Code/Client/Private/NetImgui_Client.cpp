@@ -178,10 +178,7 @@ void Communications_Outgoing_Frame(ClientInfo& client)
 		//---------------------------------------------------------------------
 		// Send Command to server
 		pPendingDraw->ToOffsets();
-		if( Network::DataSend(client.mpSocketComs, pPendingDraw, pPendingDraw->mHeader.mSize) )
-		{
-			client.mLastOutgoingDrawTime = std::chrono::steady_clock::now();
-		}
+		Network::DataSend(client.mpSocketComs, pPendingDraw, pPendingDraw->mHeader.mSize);
 
 		//---------------------------------------------------------------------
 		// Free created data once sent (when not used in next frame)
@@ -385,9 +382,10 @@ void CommunicationsHost(void* pClientVoid)
 	ClientInfo* pClient				= reinterpret_cast<ClientInfo*>(pClientVoid);
 	pClient->mbListenThreadActive	= true;
 	pClient->mbDisconnectRequest	= false;
+	pClient->mbDisconnectListen		= false;
 	pClient->mpSocketListen			= pClient->mpSocketPending.exchange(nullptr);
 	
-	while( pClient->mpSocketListen.load() != nullptr && !pClient->mbDisconnectRequest )
+	while( pClient->mpSocketListen.load() != nullptr && !pClient->mbDisconnectListen )
 	{
 		pClient->mpSocketPending = Network::ListenConnect(pClient->mpSocketListen);
 		if( pClient->mpSocketPending.load() != nullptr && Communications_Initialize(*pClient) )
@@ -607,6 +605,7 @@ void ClientInfo::ProcessDrawData(const ImDrawData* pDearImguiData, ImGuiMouseCur
 
 	CmdDrawFrame* pDrawFrameNew = ConvertToCmdDrawFrame(pDearImguiData, mouseCursor);
 	pDrawFrameNew->mCompressed	= mClientCompressionMode == eCompressionMode::kForceEnable || (mClientCompressionMode == eCompressionMode::kUseServerSetting && mServerCompressionEnabled);
+	mLastOutgoingDrawTime 		= std::chrono::steady_clock::now();
 	mPendingFrameOut.Assign(pDrawFrameNew);
 }
 

@@ -102,6 +102,7 @@ void Disconnect(void)
 	// so the blocking operation can terminate and release the communication thread
 	Client::ClientInfo& client	= *gpClientInfo;
 	client.mbDisconnectRequest	= true;
+	client.mbDisconnectListen	= true;
 	if( client.mpSocketListen.load() != nullptr )
 	{
 		Network::SocketInfo* pFakeSocket(nullptr);
@@ -202,10 +203,10 @@ bool NewFrame(bool bSupportFrameSkip)
 		client.mLastOutgoingDrawCheckTime	= std::chrono::steady_clock::now();
 		
 		// Update input and see if remote netImgui expect a new frame
-		client.mSavedDisplaySize	= ImGui::GetIO().DisplaySize;
-		client.mbValidDrawFrame		= client.mDesiredFps > 0.f && (elapsedDrawMs + elapsedCheckMs*1.25f) > (1000.f/client.mDesiredFps); // Take into account delay until next method call, for more precise fps
+		client.mSavedDisplaySize			= ImGui::GetIO().DisplaySize;
+		client.mbValidDrawFrame				= client.mDesiredFps > 0.f && (elapsedDrawMs + elapsedCheckMs/2.f) > (1000.f/client.mDesiredFps); // Take into account delay until next method call, for more precise fps
 		ProcessInputData(client);
-		
+
 		// We are about to start drawing for remote context, check for font data update
 		const ImFontAtlas* pFonts = ImGui::GetIO().Fonts;
 		if( pFonts->TexPixelsAlpha8 && 
@@ -293,9 +294,9 @@ void EndFrame(void)
 		}
 	}
 
-	client.mbIsRemoteDrawing		= false;
-	client.mbIsDrawing				= false;
-	client.mbValidDrawFrame			= false;
+	client.mbIsRemoteDrawing	= false;
+	client.mbIsDrawing			= false;
+	client.mbValidDrawFrame		= false;
 }
 
 //=================================================================================================

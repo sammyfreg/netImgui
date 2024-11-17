@@ -199,14 +199,14 @@ int main(int, char**)
 
         // Draw the Local Imgui UI and remote imgui UI
         sLastTime                               = std::chrono::steady_clock::now();
-        const float clear_color_with_alpha[4] = { clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w };
+        const float clear_color_with_alpha[4]	= { clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w };
         g_pd3dDeviceContext->OMSetRenderTargets(1, &g_mainRenderTargetView, NULL);
         g_pd3dDeviceContext->ClearRenderTargetView(g_mainRenderTargetView, clear_color_with_alpha);
         ImDrawData* pDrawData = sample.Draw();
         if( pDrawData ){
             ImGui_ImplDX11_RenderDrawData(pDrawData);
         }
-		// Update and Render additional Platform Windows
+		// Update and render additional Platform Windows
 		static int sLastFrame   = -1;
 		int newFrame            = ImGui::GetFrameCount();
         if (sLastFrame != newFrame && io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)

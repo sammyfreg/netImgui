@@ -403,7 +403,7 @@ void NetworkConnectRequest_Send()
 				NetworkConnectionNew(pClientSocket, &newClient, ConnectForce);
 			}
 		}
-		std::this_thread::sleep_for(std::chrono::milliseconds(500));
+		std::this_thread::sleep_for(std::chrono::milliseconds(500)); // There's already a wait time in Connect attempt, so no need to sleep for too long here
 	}
 	gActiveThreadConnectOut = false;
 }

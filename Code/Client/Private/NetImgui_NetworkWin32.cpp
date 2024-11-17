@@ -61,22 +61,41 @@ void Shutdown()
 //=================================================================================================
 SocketInfo* Connect(const char* ServerHost, uint32_t ServerPort)
 {
+	const timeval kConnectTimeout	= {1, 0}; // Waiting 1 seconds before failing connection attempt
+	u_long kNonBlocking				= true;
+	
 	SOCKET ClientSocket = socket(AF_INET , SOCK_STREAM , 0);
 	if(ClientSocket == INVALID_SOCKET)
 		return nullptr;
 	
-	char zPortName[32]={};
-	addrinfo*	pResults	= nullptr;
-	SocketInfo* pSocketInfo	= nullptr;
+	char		zPortName[32]	= {};
+	addrinfo*	pResults		= nullptr;
+	SocketInfo* pSocketInfo		= nullptr;
 	NetImgui::Internal::StringFormat(zPortName, "%i", ServerPort);
 	getaddrinfo(ServerHost, zPortName, nullptr, &pResults);
-	addrinfo*	pResultCur	= pResults;
+	addrinfo*	pResultCur		= pResults;
+	fd_set 		SocketSet;
+
+	ioctlsocket(ClientSocket, static_cast<long>(FIONBIO), &kNonBlocking);
 	while( pResultCur && !pSocketInfo )
 	{
-		if( connect(ClientSocket, pResultCur->ai_addr, static_cast<int>(pResultCur->ai_addrlen)) == 0 )
+		int Result 		= connect(ClientSocket, pResultCur->ai_addr, static_cast<int>(pResultCur->ai_addrlen));
+		bool Connected 	= Result != SOCKET_ERROR;
+		
+		// Not connected yet, wait some time before bailing out
+		if( Result == SOCKET_ERROR && WSAGetLastError() == WSAEWOULDBLOCK )
+		{
+			FD_ZERO(&SocketSet);
+			FD_SET(ClientSocket, &SocketSet); 
+			Result 		= select(0, nullptr, &SocketSet, nullptr, &kConnectTimeout);
+			Connected	= Result != SOCKET_ERROR;
+		}
+
+		if( Connected )
 		{
 			pSocketInfo = netImguiNew<SocketInfo>(ClientSocket);
-		}		
+		}
+		
 		pResultCur = pResultCur->ai_next;
 	}
 	freeaddrinfo(pResults);

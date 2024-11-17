@@ -100,7 +100,8 @@ struct ClientInfo
 	SavedImguiContext					mSavedContextValues;
 	std::atomic_uint32_t				mTexturesPendingSent;
 	std::atomic_uint32_t				mTexturesPendingCreated;
-	                                    	
+	
+	bool								mbDisconnectListen			= false;	// Waiting to Stop listening to connection request
 	bool								mbDisconnectRequest			= false;	// Waiting to Disconnect
 	bool								mbDisconnectProcessed		= false;	// Disconnect command sent to server, ready to disconnect
 	bool								mbClientThreadActive		= false;
