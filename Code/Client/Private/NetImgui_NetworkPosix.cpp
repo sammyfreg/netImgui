@@ -11,6 +11,17 @@
 #include <unistd.h>
 #include <fcntl.h>
 
+//NOTE: The socket handling has been modified to improve speed, but the Posix version 
+//		has not been updated. Please review the changes made to 'NetImgui_NetworkWin32.cpp'
+//		between version 1.11 and 1.12 and bring them over to this file. In particular :
+//			-Sockets set to non blocking and immediate sending
+//			-Added 'DataReceivePending' function
+//			-Reworked 'DataReceive' and 'DataSend' to be non blocking socket operation
+//			 but wait until all data has been processed
+//			-Connect now handle timeout instead of letting the socket timeout internally
+//			 after a long time
+static_assert(0)
+
 namespace NetImgui { namespace Internal { namespace Network 
 {
 

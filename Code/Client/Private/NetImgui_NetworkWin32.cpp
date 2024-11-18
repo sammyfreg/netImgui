@@ -174,7 +174,7 @@ bool DataReceivePending(SocketInfo* pClientSocket)
 	char Unused[4];
 	int resultRcv = recv(pClientSocket->mSocket, Unused, 1, MSG_PEEK);
 	// Note: return true on a connection error, to exit code looping on the data wait
-	return resultRcv > 0 || (resultRcv == SOCKET_ERROR && WSAGetLastError() != WSAEWOULDBLOCK);
+	return !pClientSocket || resultRcv > 0 || (resultRcv == SOCKET_ERROR && WSAGetLastError() != WSAEWOULDBLOCK);
 }
 
 //=================================================================================================
@@ -182,6 +182,8 @@ bool DataReceivePending(SocketInfo* pClientSocket)
 //=================================================================================================
 bool DataReceive(SocketInfo* pClientSocket, void* pDataIn, size_t Size)
 {
+	if( !pClientSocket ) return false;
+
 	int totalRcv(0);
 	while( totalRcv < static_cast<int>(Size) )
 	{
@@ -207,6 +209,8 @@ bool DataReceive(SocketInfo* pClientSocket, void* pDataIn, size_t Size)
 //=================================================================================================
 bool DataSend(SocketInfo* pClientSocket, void* pDataOut, size_t Size)
 {
+	if( !pClientSocket ) return false;
+
 	int totalSent(0);
 	while( totalSent < static_cast<int>(Size) )
 	{
