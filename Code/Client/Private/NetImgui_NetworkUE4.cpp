@@ -1,6 +1,6 @@
 #include "NetImgui_Shared.h"
 
-// Tested with Unreal Engine 4.27, 5.0, 5.2, 5.3, 5.4
+// Tested with Unreal Engine 4.27, 5.3, 5.4, 5.5
 
 #if NETIMGUI_ENABLED && defined(__UNREAL__)
 
@@ -14,7 +14,7 @@
 #include "IPAddressAsyncResolve.h"
 #endif
 
-namespace NetImgui { namespace Internal { namespace Network 
+namespace NetImgui { namespace Internal { namespace Network
 {
 
 //=================================================================================================
@@ -155,7 +155,7 @@ bool DataReceivePending(SocketInfo* pClientSocket)
 {
 	// Note: return true on a connection error, to exit code looping on the data wait. Will handle error after DataReceive()
 	uint32 PendingDataSize;
-	return pClientSocket->mpSocket->HasPendingData(PendingDataSize) || (pClientSocket->mpSocket->GetConnectionState() != ESocketConnectionState::SCS_Connected);
+	return !pClientSocket || pClientSocket->mpSocket->HasPendingData(PendingDataSize) || (pClientSocket->mpSocket->GetConnectionState() != ESocketConnectionState::SCS_Connected);
 }
 
 //=================================================================================================
@@ -163,6 +163,8 @@ bool DataReceivePending(SocketInfo* pClientSocket)
 //=================================================================================================
 bool DataReceive(SocketInfo* pClientSocket, void* pDataIn, size_t Size)
 {
+	if( !pClientSocket ) return false;
+
 	int32 totalRcv(0), sizeRcv(0);
 	while( totalRcv < static_cast<int>(Size) )
 	{
@@ -187,6 +189,8 @@ bool DataReceive(SocketInfo* pClientSocket, void* pDataIn, size_t Size)
 //=================================================================================================
 bool DataSend(SocketInfo* pClientSocket, void* pDataOut, size_t Size)
 {
+	if( !pClientSocket ) return false;
+
 	int32 totalSent(0), sizeSent(0);
 	while( totalSent < static_cast<int>(Size) )
 	{
