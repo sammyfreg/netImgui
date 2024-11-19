@@ -440,8 +440,7 @@ void Client::CaptureImguiInput()
 		// Keyboard / Gamepads Inputs
 		// If Dear ImGui Update their enum, must also adjust our enum copy, 
 		// so adding a few check to detect a change
-		#define EnumKeynameTest(KEYNAME) static_cast<int>(NetImgui::Internal::CmdInput::NetImguiKeys::KEYNAME) == static_cast<int>(ImGuiKey::KEYNAME-ImGuiKey::ImGuiKey_NamedKey_BEGIN), "Update the NetImgui enum to match the updated Dear ImGui enum"
-		static_assert(EnumKeynameTest(ImGuiKey_COUNT));
+		#define EnumKeynameTest(KEYNAME) static_cast<int>(NetImgui::Internal::CmdInput::NetImguiKeys::KEYNAME) == static_cast<int>(ImGuiKey::KEYNAME-ImGuiKey::ImGuiKey_NamedKey_BEGIN), "Update the NetImgui enum to match the updated Dear ImGui enum"		
 		static_assert(EnumKeynameTest(ImGuiKey_Tab));
 		static_assert(EnumKeynameTest(ImGuiKey_Escape));
 		static_assert(EnumKeynameTest(ImGuiKey_RightSuper));
@@ -458,6 +457,7 @@ void Client::CaptureImguiInput()
 		static_assert(EnumKeynameTest(ImGuiKey_GamepadR3));
 		static_assert(EnumKeynameTest(ImGuiKey_GamepadLStickUp));
 		static_assert(EnumKeynameTest(ImGuiKey_GamepadRStickRight));
+		static_assert(NetImgui::Internal::CmdInput::NetImguiKeys::ImGuiKey_COUNT == (ImGuiKey_NamedKey_END-ImGuiKey_NamedKey_BEGIN));
 
 		// Save every keydown status to out bitmask
 		uint64_t valueMask(0);

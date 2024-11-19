@@ -231,11 +231,11 @@ ImDrawData* SampleTextures::Draw()
 			#if TEXTURE_CUSTOM_SAMPLE
 				customTextureData2 customTextureData;
 				customTextureData.m_TimeUS = static_cast<uint64_t>(ImGui::GetTime() * 1000.f * 1000.f);
-				NetImgui::SendDataTexture(reinterpret_cast<ImTextureID>(0x02020202), &customTextureData, 128, 64, NetImgui::eTexFormat::kTexFmtCustom, sizeof(customTextureData));
+				NetImgui::SendDataTexture(ImTextureID(0x02020202), &customTextureData, 128, 64, NetImgui::eTexFormat::kTexFmtCustom, sizeof(customTextureData));
 
 				ImGui::NewLine();
 				ImGui::TextUnformatted("Custom Texture");
-				ImGui::Image(reinterpret_cast<ImTextureID>(0x02020202), ImVec2(128, 64), ImVec2(0, 0), ImVec2(1, 1), tint_col, border_col);
+				ImGui::Image(ImTextureID(0x02020202), ImVec2(128, 64), ImVec2(0, 0), ImVec2(1, 1), tint_col, border_col);
 				ImGui::SameLine();
 				ImGui::TextWrapped("Server regenerate this texture every frame using a custom texture update and a time parameter. This behavior is custom implemented by library user on both the Client and Server codebase.");
 			#endif
@@ -243,7 +243,7 @@ ImDrawData* SampleTextures::Draw()
 
 				ImGui::NewLine();
 				ImGui::TextUnformatted("Invalid Texture");
-				ImGui::Image(reinterpret_cast<ImTextureID>(0x01010101), ImVec2(128, 64), ImVec2(0, 0), ImVec2(1, 1), tint_col, border_col);
+				ImGui::Image(ImTextureID(0x01010101), ImVec2(128, 64), ImVec2(0, 0), ImVec2(1, 1), tint_col, border_col);
 				ImGui::SameLine();
 				ImGui::TextWrapped("Invalid textures handled by netImgui server by using a default invisible texture.");
 		

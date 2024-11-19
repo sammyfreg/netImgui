@@ -11,11 +11,28 @@
 #include "imgui_impl_dx11.h"
 #include <d3d11.h>
 
-extern ID3D11Device*&           g_pd3dDeviceExtern;
-extern ID3D11DeviceContext*&    g_pd3dDeviceContextExtern;
-
 namespace NetImguiServer { namespace App
 {
+
+//Copied over from 'backends\imgui_impl_dx11.cpp'
+struct ImGui_ImplDX11_Data
+{
+    ID3D11Device*               pd3dDevice;
+    ID3D11DeviceContext*        pd3dDeviceContext;
+    // Removed other member we are not interested in
+};
+
+inline ID3D11Device* GetD3DDevice()
+{
+	return ImGui::GetIO().BackendRendererUserData ? reinterpret_cast<ImGui_ImplDX11_Data*>(ImGui::GetIO().BackendRendererUserData)->pd3dDevice : nullptr;
+	//return reinterpret_cast<ImGui_ImplDX11_RenderState*>(ImGui::GetPlatformIO().Renderer_RenderState)->Device; // Only valid during ImGui_ImplDX11_RenderDrawData() atm
+}
+
+inline ID3D11DeviceContext* GetD3DContext()
+{
+	return ImGui::GetIO().BackendRendererUserData ? reinterpret_cast<ImGui_ImplDX11_Data*>(ImGui::GetIO().BackendRendererUserData)->pd3dDeviceContext : nullptr;
+	//return reinterpret_cast<ImGui_ImplDX11_RenderState*>(ImGui::GetPlatformIO().Renderer_RenderState)->DeviceContext;
+}
 
 //=================================================================================================
 // HAL RENDER DRAW DATA
@@ -26,8 +43,8 @@ void HAL_RenderDrawData(RemoteClient::Client& client, ImDrawData* pDrawData)
 {
 	if( client.mpHAL_AreaRT )
 	{
-		g_pd3dDeviceContextExtern->OMSetRenderTargets(1, reinterpret_cast<ID3D11RenderTargetView**>(&client.mpHAL_AreaRT), NULL);
-		g_pd3dDeviceContextExtern->ClearRenderTargetView(reinterpret_cast<ID3D11RenderTargetView*>(client.mpHAL_AreaRT), client.mBGSettings.mClearColor);
+		GetD3DContext()->OMSetRenderTargets(1, reinterpret_cast<ID3D11RenderTargetView**>(&client.mpHAL_AreaRT), NULL);
+		GetD3DContext()->ClearRenderTargetView(reinterpret_cast<ID3D11RenderTargetView*>(client.mpHAL_AreaRT), client.mBGSettings.mClearColor);
 		{
 			void* mainBackend = ImGui::GetIO().BackendRendererUserData;
 			NetImgui::Internal::ScopedImguiContext scopedCtx(client.mpBGContext);
@@ -69,17 +86,17 @@ bool HAL_CreateRenderTarget(uint16_t Width, uint16_t Height, void*& pOutRT, void
 	texDesc.Usage						= D3D11_USAGE_DEFAULT;
 	texDesc.BindFlags					= D3D11_BIND_RENDER_TARGET|D3D11_BIND_SHADER_RESOURCE;
 	texDesc.CPUAccessFlags				= 0;
-	HRESULT Result						= g_pd3dDeviceExtern->CreateTexture2D(&texDesc, nullptr, &pTexture);
+	HRESULT Result						= GetD3DDevice()->CreateTexture2D(&texDesc, nullptr, &pTexture);
 	if( Result == S_OK )
 	{
-		Result = g_pd3dDeviceExtern->CreateRenderTargetView(pTexture, nullptr, &pRenderTargetView );
+		Result = GetD3DDevice()->CreateRenderTargetView(pTexture, nullptr, &pRenderTargetView );
 		if( Result == S_OK )
 		{
 			srvDesc.Format						= texDesc.Format;
 			srvDesc.ViewDimension				= D3D11_SRV_DIMENSION_TEXTURE2D;
 			srvDesc.Texture2D.MipLevels			= texDesc.MipLevels;
 			srvDesc.Texture2D.MostDetailedMip	= 0;
-			Result                              = g_pd3dDeviceExtern->CreateShaderResourceView(pTexture, &srvDesc, &pTextureView);
+			Result                              = GetD3DDevice()->CreateShaderResourceView(pTexture, &srvDesc, &pTextureView);
 			
 			if( Result == S_OK )
 			{
@@ -169,7 +186,7 @@ bool HAL_CreateTexture(uint16_t Width, uint16_t Height, NetImgui::eTexFormat For
 	subResource.pSysMem					= pPixelData;
 	subResource.SysMemPitch				= Width * 4;
 	subResource.SysMemSlicePitch		= 0;
-	HRESULT Result						= g_pd3dDeviceExtern->CreateTexture2D(&texDesc, &subResource, &pTexture);
+	HRESULT Result						= GetD3DDevice()->CreateTexture2D(&texDesc, &subResource, &pTexture);
 	
 	if( Result == S_OK )
 	{
@@ -179,7 +196,7 @@ bool HAL_CreateTexture(uint16_t Width, uint16_t Height, NetImgui::eTexFormat For
 		srvDesc.ViewDimension				= D3D11_SRV_DIMENSION_TEXTURE2D;
 		srvDesc.Texture2D.MipLevels			= texDesc.MipLevels;
 		srvDesc.Texture2D.MostDetailedMip	= 0;
-		g_pd3dDeviceExtern->CreateShaderResourceView(pTexture, &srvDesc, &pTextureView);
+		GetD3DDevice()->CreateShaderResourceView(pTexture, &srvDesc, &pTextureView);
 		if( Result == S_OK )
 		{
 			pTexture->Release();

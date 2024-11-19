@@ -680,7 +680,7 @@ void DrawImguiContent_MainMenu_Clients_Entry(RemoteClient::Client* pClient, NetI
 	if( pClient && pClient->mbIsConnected ){
 		bool selected(false);
 		ImGui::SameLine();
-		if (ImGui::Selectable(pClient->mInfoName, &selected, ImGuiSelectableFlags_DontClosePopups/* | ImGuiSelectableFlags_SpanAllColumns*/)) {
+		if (ImGui::Selectable(pClient->mInfoName, &selected, ImGuiSelectableFlags_NoAutoClosePopups/* | ImGuiSelectableFlags_SpanAllColumns*/)) {
 			ImGui::SetWindowCollapsed(pClient->mWindowID, false);
 			ImGui::SetWindowFocus(pClient->mWindowID);
 		}

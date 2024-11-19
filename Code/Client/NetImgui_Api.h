@@ -4,12 +4,12 @@
 //! @Name		: NetImgui
 //=================================================================================================
 //! @author		: Sammy Fatnassi
-//! @date		: 2024/11/16
-//!	@version	: v1.11.2
+//! @date		: 2024/11/19
+//!	@version	: v1.11.3
 //! @Details	: For integration info : https://github.com/sammyfreg/netImgui/wiki
 //=================================================================================================
-#define NETIMGUI_VERSION		"1.11.2"	// Improved connection speed
-#define NETIMGUI_VERSION_NUM	11102
+#define NETIMGUI_VERSION		"1.11.3"	// Upgrade to Dear ImGui 1.Improved connection speed
+#define NETIMGUI_VERSION_NUM	11103
 
 
 

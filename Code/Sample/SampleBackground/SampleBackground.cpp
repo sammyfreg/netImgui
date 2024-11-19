@@ -99,7 +99,7 @@ ImDrawData* SampleBackground::Draw()
 			ImGui::ColorEdit4("Background", reinterpret_cast<float*>(&sBgColor), ImGuiColorEditFlags_Float | ImGuiColorEditFlags_DisplayRGB | ImGuiColorEditFlags_InputRGB | ImGuiColorEditFlags_PickerHueWheel);
 			ImGui::ColorEdit4("Logo Tint", reinterpret_cast<float*>(&sTextureTint), ImGuiColorEditFlags_Float | ImGuiColorEditFlags_DisplayRGB | ImGuiColorEditFlags_InputRGB | ImGuiColorEditFlags_PickerHueWheel);			
 			ImGui::Checkbox("Replace Background Texture", &sUseTextureOverride);
-			ImGui::Image(mTextureView, ImVec2(64,64));
+			ImGui::Image(ImTextureID(mTextureView), ImVec2(64,64));
 			ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.5f, 0.5f, 1.f));
 			ImGui::TextWrapped("(Note: Custom background settings only applied on remote server)");
 			ImGui::PopStyleColor();
