@@ -200,6 +200,14 @@ struct ImGui_ImplGlfw_Data
     ImGui_ImplGlfw_Data()   { memset((void*)this, 0, sizeof(*this)); }
 };
 
+//-------------------------------------------------------------------------------------------------
+// @SAMPLE_EDIT : Fix for multi application crash
+#ifdef _WIN32
+#include <stdio.h> 
+char HWND_PROP_VIEWPORT_KEY[64]={};
+#endif
+//-------------------------------------------------------------------------------------------------
+
 // Backend data stored in io.BackendPlatformUserData to allow support for multiple Dear ImGui contexts
 // It is STRONGLY preferred that you use docking branch with multi-viewports (== single Dear ImGui context + multiple windows) instead of multiple Dear ImGui contexts.
 // FIXME: multi-context support is not well tested and probably dysfunctional in this backend.
@@ -610,6 +618,13 @@ static bool ImGui_ImplGlfw_Init(GLFWwindow* window, bool install_callbacks, Glfw
     IMGUI_CHECKVERSION();
     IM_ASSERT(io.BackendPlatformUserData == nullptr && "Already initialized a platform backend!");
     //printf("GLFW_VERSION: %d.%d.%d (%d)", GLFW_VERSION_MAJOR, GLFW_VERSION_MINOR, GLFW_VERSION_REVISION, GLFW_VERSION_COMBINED);
+	
+	//-------------------------------------------------------------------------------------------------
+    // @SAMPLE_EDIT : Fix for multi application crash
+#ifdef _WIN32
+    snprintf(HWND_PROP_VIEWPORT_KEY, sizeof(HWND_PROP_VIEWPORT_KEY), "IMGUI_VIEWPORT_%016llX", reinterpret_cast<unsigned long long>(window));
+#endif
+    //-------------------------------------------------------------------------------------------------
 
     // Setup backend capabilities flags
     ImGui_ImplGlfw_Data* bd = IM_NEW(ImGui_ImplGlfw_Data)();
@@ -1204,7 +1219,7 @@ static void ImGui_ImplGlfw_ShowWindow(ImGuiViewport* viewport)
 
     // GLFW hack: install hook for WM_NCHITTEST message handler
 #if !GLFW_HAS_MOUSE_PASSTHROUGH && GLFW_HAS_WINDOW_HOVERED && defined(_WIN32)
-    ::SetPropA(hwnd, "IMGUI_VIEWPORT", viewport);
+    ::SetPropA(hwnd, HWND_PROP_VIEWPORT_KEY, viewport); // @SAMPLE_EDIT : Fix for multi application crash
     vd->PrevWndProc = (WNDPROC)::GetWindowLongPtrW(hwnd, GWLP_WNDPROC);
     ::SetWindowLongPtrW(hwnd, GWLP_WNDPROC, (LONG_PTR)ImGui_ImplGlfw_WndProc);
 #endif
@@ -1408,7 +1423,7 @@ static LRESULT CALLBACK ImGui_ImplGlfw_WndProc(HWND hWnd, UINT msg, WPARAM wPara
 {
     ImGui_ImplGlfw_Data* bd = ImGui_ImplGlfw_GetBackendData();
     WNDPROC prev_wndproc = bd->PrevWndProc;
-    ImGuiViewport* viewport = (ImGuiViewport*)::GetPropA(hWnd, "IMGUI_VIEWPORT");
+    ImGuiViewport* viewport = (ImGuiViewport*)::GetPropA(hWnd, HWND_PROP_VIEWPORT_KEY); // @SAMPLE_EDIT : Fix for multi application crash
     if (viewport != NULL)
         if (ImGui_ImplGlfw_ViewportData* vd = (ImGui_ImplGlfw_ViewportData*)viewport->PlatformUserData)
             prev_wndproc = vd->PrevWndProc;
