@@ -38,6 +38,7 @@ public:
 	enum class eStatus : uint8_t
 	{
 		Disconnected,	// No connection detected on client
+		Connecting,		// This server is connecting to client
 		Connected,		// This server is connect to client
 		Available,		// Client already taken, but this server can take over
 		ErrorBusy,		// Client already taken
@@ -62,6 +63,8 @@ public:
 	inline bool		IsReadOnly()const { return mReadOnly; };
 	inline bool		IsTransient()const { return mConfigType == eConfigType::Transient; };
 	inline bool 	IsConnected()const { return mStatus == eStatus::Connected; }
+	inline bool 	IsAvailable()const { return mStatus != eStatus::Connected && mStatus != eStatus::Connecting;}
+
 	// Add/Edit/Remove config
 	static void		SetConfig(const Client& config);						//!< Add or replace a client configuration info
 	static void		DelConfig(uint32_t configID);							//!< Remove a client configuration

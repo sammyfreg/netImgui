@@ -81,9 +81,14 @@ bool SampleDualUI::Startup()
 //=================================================================================================
 void SampleDualUI::Shutdown()
 {
+	ImGui::SetCurrentContext(mpContextExtra);
+	ImGui::GetIO().BackendRendererUserData = nullptr;
+	ImGui::GetIO().BackendPlatformUserData = nullptr;
+	ImGui::GetIO().BackendLanguageUserData = nullptr;
 	ImGui::DestroyContext(mpContextExtra);
+	
 	ImGui::SetCurrentContext(mpContextMain);
-	mpContextMain		= nullptr;
+	mpContextMain	= nullptr;
 	mpContextExtra	= nullptr;
 	Base::Shutdown();
 }

@@ -251,7 +251,7 @@ bool Communications_InitializeClient(NetImgui::Internal::Network::SocketInfo* pC
 			{
 				bool bAvailable = (cmdVersionRcv.mFlags & static_cast<uint8_t>(NetImgui::Internal::CmdVersion::eFlags::IsUnavailable)) == 0;
 				NetImguiServer::Config::Client::SetProperty_Status(pClient->mClientConfigID, bAvailable ? NetImguiServer::Config::Client::eStatus::Available 
-																   : NetImguiServer::Config::Client::eStatus::ErrorBusy);
+																   										: NetImguiServer::Config::Client::eStatus::ErrorBusy);
 				return false;
 			}
 
@@ -272,6 +272,7 @@ bool Communications_InitializeClient(NetImgui::Internal::Network::SocketInfo* pC
 			return true;
 		}
 	}
+	NetImguiServer::Config::Client::SetProperty_Status(pClient->mClientConfigID, NetImguiServer::Config::Client::eStatus::Disconnected);
 	return false;
 }
 
@@ -285,9 +286,12 @@ void NetworkConnectionNew(NetImgui::Internal::Network::SocketInfo* pClientSocket
 	if (pNewClient == nullptr) {
 		zErrorMsg = "Too many connection on server already";
 	}
-		
-	if (zErrorMsg == nullptr && !gbShutdown && Communications_InitializeClient(pClientSocket, pNewClient, ConnectForce) == false) {
-		zErrorMsg = "Initialization failed. Wrong communication version?";
+	else
+	{
+		NetImguiServer::Config::Client::SetProperty_Status(pNewClient->mClientConfigID, NetImguiServer::Config::Client::eStatus::Connecting);
+		if (zErrorMsg == nullptr && !gbShutdown && Communications_InitializeClient(pClientSocket, pNewClient, ConnectForce) == false) {
+			zErrorMsg = "Initialization failed. Wrong communication version?";
+		}
 	}
 
 	if (zErrorMsg == nullptr && !gbShutdown){
@@ -296,6 +300,7 @@ void NetworkConnectionNew(NetImgui::Internal::Network::SocketInfo* pClientSocket
 	}
 	else{
 		NetImgui::Internal::Network::Disconnect(pClientSocket);
+		NetImguiServer::Config::Client::SetProperty_Status(pNewClient->mClientConfigID, NetImguiServer::Config::Client::eStatus::Disconnected);
 		if (!gbShutdown) {
 			if (pNewClient){
 				pNewClient->mbIsFree = true;
@@ -376,7 +381,7 @@ void NetworkConnectRequest_Send()
 		if( NetImguiServer::Config::Client::GetConfigByIndex(configIdx, clientConfig) )
 		{
 			ConnectForce = clientConfig.mConnectForce;
-			if( (clientConfig.mConnectAuto || clientConfig.mConnectRequest || clientConfig.mConnectForce) && !clientConfig.IsConnected() && clientConfig.mHostPort != NetImguiServer::Config::Server::sPort)
+			if( (clientConfig.mConnectAuto || clientConfig.mConnectRequest || clientConfig.mConnectForce) && clientConfig.IsAvailable() && clientConfig.mHostPort != NetImguiServer::Config::Server::sPort)
 			{
 				NetImguiServer::Config::Client::SetProperty_ConnectRequest(clientConfig.mRuntimeID, false, false);	// Reset the Connection request, we are processing it
 				NetImguiServer::Config::Client::SetProperty_Status(clientConfig.mRuntimeID, NetImguiServer::Config::Client::eStatus::Disconnected);
@@ -387,7 +392,7 @@ void NetworkConnectRequest_Send()
 	
 		// Connection successful, find an available client slot
 		if( pClientSocket )
-		{			
+		{	
 			uint32_t freeIndex = RemoteClient::Client::GetFreeIndex();
 			if( freeIndex != RemoteClient::Client::kInvalidClient )
 			{			
@@ -401,6 +406,11 @@ void NetworkConnectRequest_Send()
 				}
 				NetImguiServer::App::HAL_GetSocketInfo(pClientSocket, newClient.mConnectHost, sizeof(newClient.mConnectHost), newClient.mConnectPort);
 				NetworkConnectionNew(pClientSocket, &newClient, ConnectForce);
+			}
+			else
+			{
+				NetImgui::Internal::Network::Disconnect(pClientSocket);
+				NetImguiServer::Config::Client::SetProperty_Status(clientConfigID, NetImguiServer::Config::Client::eStatus::Disconnected);
 			}
 		}
 		std::this_thread::sleep_for(std::chrono::milliseconds(500)); // There's already a wait time in Connect attempt, so no need to sleep for too long here
