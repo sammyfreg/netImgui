@@ -93,7 +93,7 @@ Client::Client()
 , mConnectAuto(false)
 , mConnectRequest(false)
 , mConnectForce(false)
-, mStatus(eStatus::Disconnected)
+, mConnectStatus(eStatus::Disconnected)
 {
 	NetImgui::Internal::StringCopy(mClientName, "New Client");
 	NetImgui::Internal::StringCopy(mHostName, "localhost");
@@ -195,7 +195,7 @@ void Client::SetProperty_Status(uint32_t configID, eStatus Status)
 	std::lock_guard<std::mutex> guard(gConfigLock);
 	int index = FindClientIndex(configID);
 	if( index != -1 ){
-		gConfigList[index]->mStatus = Status;
+		gConfigList[index]->mConnectStatus = Status;
 	}
 }
 
@@ -217,8 +217,9 @@ void Client::SetProperty_ConnectRequest(uint32_t configID, bool value, bool forc
 	std::lock_guard<std::mutex> guard(gConfigLock);
 	int index = FindClientIndex(configID);
 	if (index != -1){
-		gConfigList[index]->mConnectRequest = value && !force;
-		gConfigList[index]->mConnectForce = value && force;
+		gConfigList[index]->mConnectRequest 	= value && !force;
+		gConfigList[index]->mConnectForce 		= value && force;
+		gConfigList[index]->mConnectLastTime	= std::chrono::steady_clock::now();
 	}
 }
 

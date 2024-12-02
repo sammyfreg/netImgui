@@ -24,213 +24,230 @@ uint64_t gMetric_SentDataUncompressed	= 0u;
 #pragma comment(lib, "ws2_32")
 #endif
 
+//#include "NetImgui_CmdPackets.h"
 
 namespace NetImgui { namespace Internal { namespace Network 
 {
-	//=================================================================================================
-	// Wrapper around native socket object and init some socket options
-	//=================================================================================================
-	struct SocketInfo
+//=================================================================================================
+// Wrapper around native socket object and init some socket options
+//=================================================================================================
+struct SocketInfo
+{
+	SocketInfo(SOCKET socket) 
+	: mSocket(socket)
 	{
-		SocketInfo(SOCKET socket) 
-		: mSocket(socket)
-		{
-			u_long kNonBlocking = true;
-			ioctlsocket(mSocket, static_cast<long>(FIONBIO), &kNonBlocking);
+		u_long kNonBlocking = true;
+		ioctlsocket(mSocket, static_cast<long>(FIONBIO), &kNonBlocking);
 		
-			constexpr DWORD	kComsNoDelay = 1;
-			setsockopt(mSocket, SOL_SOCKET, TCP_NODELAY, reinterpret_cast<const char*>(&kComsNoDelay), sizeof(kComsNoDelay));
+		constexpr DWORD	kComsNoDelay = 1;
+		setsockopt(mSocket, SOL_SOCKET, TCP_NODELAY, reinterpret_cast<const char*>(&kComsNoDelay), sizeof(kComsNoDelay));
 
-			//constexpr int	kComsSendBuffer = 1014*1024;
-			//setsockopt(mSocket, SOL_SOCKET, SO_SNDBUF, reinterpret_cast<const char*>(&kComsSendBuffer), sizeof(kComsSendBuffer));
+		//constexpr int	kComsSendBuffer = 1014*1024;
+		//setsockopt(mSocket, SOL_SOCKET, SO_SNDBUF, reinterpret_cast<const char*>(&kComsSendBuffer), sizeof(kComsSendBuffer));
 
-			//constexpr int	kComsRcvBuffer = 1014*1024;
-			//setsockopt(mSocket, SOL_SOCKET, SO_RCVBUF, reinterpret_cast<const char*>(&kComsRcvBuffer), sizeof(kComsRcvBuffer));
+		//constexpr int	kComsRcvBuffer = 1014*1024;
+		//setsockopt(mSocket, SOL_SOCKET, SO_RCVBUF, reinterpret_cast<const char*>(&kComsRcvBuffer), sizeof(kComsRcvBuffer));
+	}
 
-			#if 0 // @sammyfreg : No timeout useful when debugging, to keep connection alive while code breakpoint
-			constexpr DWORD	kComsTimeoutMs	= 10000;
-			setsockopt(mSocket, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<const char*>(&kComsTimeoutMs), sizeof(kComsTimeoutMs));
-			setsockopt(mSocket, SOL_SOCKET, SO_SNDTIMEO, reinterpret_cast<const char*>(&kComsTimeoutMs), sizeof(kComsTimeoutMs));
-			#endif
-		}
+	SOCKET mSocket;
+};
 
-		SOCKET mSocket;
-	};
-
-	bool Startup()
-	{
-		WSADATA wsa;
-		if (WSAStartup(MAKEWORD(2,2),&wsa) != 0)
+bool Startup()
+{
+	WSADATA wsa;
+	if (WSAStartup(MAKEWORD(2,2),&wsa) != 0)
 		return false;
 	
-		return true;
-	}
+	return true;
+}
 
-	void Shutdown()
-	{
-		WSACleanup();
-	}
+void Shutdown()
+{
+	WSACleanup();
+}
 
-	//=================================================================================================
-	// Try establishing a connection to a remote client at given address
-	//=================================================================================================
-	SocketInfo* Connect(const char* ServerHost, uint32_t ServerPort)
-	{
-		SOCKET ClientSocket = socket(AF_INET , SOCK_STREAM , 0);
-		if(ClientSocket == INVALID_SOCKET)
+//=================================================================================================
+// Try establishing a connection to a remote client at given address
+//=================================================================================================
+SocketInfo* Connect(const char* ServerHost, uint32_t ServerPort)
+{
+	const timeval kConnectTimeout	= {1, 0}; // Waiting 1 seconds before failing connection attempt
+	u_long kNonBlocking				= true;
+	
+	SOCKET ClientSocket = socket(AF_INET , SOCK_STREAM , 0);
+	if(ClientSocket == INVALID_SOCKET)
 		return nullptr;
 	
-		char zPortName[32]={};
-		addrinfo*	pResults	= nullptr;
-		SocketInfo* pSocketInfo	= nullptr;
-		NetImgui::Internal::StringFormat(zPortName, "%i", ServerPort);
-		getaddrinfo(ServerHost, zPortName, nullptr, &pResults);
-		addrinfo*	pResultCur	= pResults;
-		while( pResultCur && !pSocketInfo )
-		{
-			if( connect(ClientSocket, pResultCur->ai_addr, static_cast<int>(pResultCur->ai_addrlen)) == 0 )
-			{
-				pSocketInfo = netImguiNew<SocketInfo>(ClientSocket);
-			}		
-			pResultCur = pResultCur->ai_next;
-		}
-		freeaddrinfo(pResults);
-		if( !pSocketInfo )
-		{
-			closesocket(ClientSocket);
-		}
-		return pSocketInfo;
-	}
+	char		zPortName[32]	= {};
+	addrinfo*	pResults		= nullptr;
+	SocketInfo* pSocketInfo		= nullptr;
+	NetImgui::Internal::StringFormat(zPortName, "%i", ServerPort);
+	getaddrinfo(ServerHost, zPortName, nullptr, &pResults);
+	addrinfo*	pResultCur		= pResults;
+	fd_set 		SocketSet;
 
-	//=================================================================================================
-	// Start waiting for connection request on this socket
-	//=================================================================================================
-	SocketInfo* ListenStart(uint32_t ListenPort)
+	ioctlsocket(ClientSocket, static_cast<long>(FIONBIO), &kNonBlocking);
+	while( pResultCur && !pSocketInfo )
 	{
-		SOCKET ListenSocket = INVALID_SOCKET;
-		if( (ListenSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) != INVALID_SOCKET )
-		{
-			sockaddr_in server;
-			server.sin_family		= AF_INET;
-			server.sin_addr.s_addr	= INADDR_ANY;
-			server.sin_port			= htons(static_cast<USHORT>(ListenPort));
+		int Result 		= connect(ClientSocket, pResultCur->ai_addr, static_cast<int>(pResultCur->ai_addrlen));
+		bool Connected 	= Result != SOCKET_ERROR;
 		
-			#if NETIMGUI_FORCE_TCP_LISTEN_BINDING
-			constexpr BOOL ReUseAdrValue(true);
-			setsockopt(ListenSocket, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<const char*>(&ReUseAdrValue), sizeof(ReUseAdrValue));
-			#endif
-			if(	bind(ListenSocket, reinterpret_cast<sockaddr*>(&server), sizeof(server)) != SOCKET_ERROR &&
-				listen(ListenSocket, 0) != SOCKET_ERROR )
-			{
-				u_long kIsNonBlocking = false;
-				ioctlsocket(ListenSocket, static_cast<long>(FIONBIO), &kIsNonBlocking);
-				return netImguiNew<SocketInfo>(ListenSocket);
-			}
-			closesocket(ListenSocket);
-		}
-		return nullptr;
-	}
-
-	//=================================================================================================
-	// Establish a new connection to a remote request
-	//=================================================================================================
-	SocketInfo* ListenConnect(SocketInfo* ListenSocket)
-	{
-		if( ListenSocket )
+		// Not connected yet, wait some time before bailing out
+		if( Result == SOCKET_ERROR && WSAGetLastError() == WSAEWOULDBLOCK )
 		{
-			sockaddr ClientAddress;
-			int	Size(sizeof(ClientAddress));
-			SOCKET ClientSocket = accept(ListenSocket->mSocket, &ClientAddress, &Size) ;
-			if (ClientSocket != INVALID_SOCKET)
-			{
-				return netImguiNew<SocketInfo>(ClientSocket);
-			}
+			FD_ZERO(&SocketSet);
+			FD_SET(ClientSocket, &SocketSet); 
+			Result 		= select(0, nullptr, &SocketSet, nullptr, &kConnectTimeout);
+			Connected	= Result != SOCKET_ERROR;
 		}
-		return nullptr;
-	}
 
-	//=================================================================================================
-	// Close a connection and free allocated object
-	//=================================================================================================
-	void Disconnect(SocketInfo* pClientSocket)
-	{
-		if( pClientSocket )
+		if( Connected )
 		{
-			shutdown(pClientSocket->mSocket, SD_BOTH);
-			closesocket(pClientSocket->mSocket);
-			netImguiDelete(pClientSocket);
+			pSocketInfo = netImguiNew<SocketInfo>(ClientSocket);
 		}
+		
+		pResultCur = pResultCur->ai_next;
 	}
-
-	//=================================================================================================
-	// Return trie if data has been received, or there's a connection error
-	//=================================================================================================
-	bool DataReceivePending(SocketInfo* pClientSocket)
+	freeaddrinfo(pResults);
+	if( !pSocketInfo )
 	{
-		char Unused[4];
-		int resultRcv = recv(pClientSocket->mSocket, Unused, 1, MSG_PEEK);
-		// Note: return true on a connection error, to exit code looping on the data wait
-		return resultRcv > 0 || (resultRcv == SOCKET_ERROR && WSAGetLastError() != WSAEWOULDBLOCK);
+		closesocket(ClientSocket);
 	}
+	return pSocketInfo;
+}
 
-	//=================================================================================================
-	// Block until all requested data has been received from the remote connection
-	//=================================================================================================
-	bool DataReceive(SocketInfo* pClientSocket, void* pDataIn, size_t Size)
+//=================================================================================================
+// Start waiting for connection request on this socket
+//=================================================================================================
+SocketInfo* ListenStart(uint32_t ListenPort)
+{
+	SOCKET ListenSocket = INVALID_SOCKET;
+	if( (ListenSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) != INVALID_SOCKET )
 	{
-		int totalRcv(0);
-		while( totalRcv < static_cast<int>(Size) )
+		sockaddr_in server;
+		server.sin_family		= AF_INET;
+		server.sin_addr.s_addr	= INADDR_ANY;
+		server.sin_port			= htons(static_cast<USHORT>(ListenPort));
+		
+	#if NETIMGUI_FORCE_TCP_LISTEN_BINDING
+		constexpr BOOL ReUseAdrValue(true);
+		setsockopt(ListenSocket, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<const char*>(&ReUseAdrValue), sizeof(ReUseAdrValue));
+	#endif
+		if(	bind(ListenSocket, reinterpret_cast<sockaddr*>(&server), sizeof(server)) != SOCKET_ERROR &&
+			listen(ListenSocket, 0) != SOCKET_ERROR )
 		{
-			int resultRcv = recv(pClientSocket->mSocket, &reinterpret_cast<char*>(pDataIn)[totalRcv], static_cast<int>(Size)-totalRcv, 0);
-			if( resultRcv != SOCKET_ERROR )
-			{
-				totalRcv += resultRcv;
-			}
-			else
-			{
-				if( WSAGetLastError() != WSAEWOULDBLOCK )
-				{
-					return false;	// Connection error, abort transmission
-				}
-				std::this_thread::yield();
-			}
+			u_long kIsNonBlocking = false;
+			ioctlsocket(ListenSocket, static_cast<long>(FIONBIO), &kIsNonBlocking);
+			return netImguiNew<SocketInfo>(ListenSocket);
 		}
-		return totalRcv == static_cast<int>(Size);
+		closesocket(ListenSocket);
+	}
+	return nullptr;
+}
+
+//=================================================================================================
+// Establish a new connection to a remote request
+//=================================================================================================
+SocketInfo* ListenConnect(SocketInfo* ListenSocket)
+{
+	if( ListenSocket )
+	{
+		sockaddr ClientAddress;
+		int	Size(sizeof(ClientAddress));
+		SOCKET ClientSocket = accept(ListenSocket->mSocket, &ClientAddress, &Size) ;
+		if (ClientSocket != INVALID_SOCKET)
+		{
+			return netImguiNew<SocketInfo>(ClientSocket);
+		}
+	}
+	return nullptr;
+}
+
+//=================================================================================================
+// Close a connection and free allocated object
+//=================================================================================================
+void Disconnect(SocketInfo* pClientSocket)
+{
+	if( pClientSocket )
+	{
+		shutdown(pClientSocket->mSocket, SD_BOTH);
+		closesocket(pClientSocket->mSocket);
+		netImguiDelete(pClientSocket);
+	}
+}
+
+//=================================================================================================
+// Return trie if data has been received, or there's a connection error
+//=================================================================================================
+bool DataReceivePending(SocketInfo* pClientSocket)
+{
+	char Unused[4];
+	int resultRcv = recv(pClientSocket->mSocket, Unused, 1, MSG_PEEK);
+	// Note: return true on a connection error, to exit code looping on the data wait
+	return !pClientSocket || resultRcv > 0 || (resultRcv == SOCKET_ERROR && WSAGetLastError() != WSAEWOULDBLOCK);
+}
+
+//=================================================================================================
+// Try receiving data from remote connection
+//=================================================================================================
+void DataReceive(SocketInfo* pClientSocket, NetImgui::Internal::PendingCom& PendingComRcv)
+{
+	// Invalid command
+	if( !pClientSocket || !PendingComRcv.pCommand ){
+		PendingComRcv.bError = true;
 	}
 
-	//=================================================================================================
-	// Block until all requested data has been sent to remote connection
-	//=================================================================================================
-	bool DataSend(SocketInfo* pClientSocket, void* pDataOut, size_t Size)
-	{
-		//=============================================================================
-		//@SAMPLE_EDIT 
-		// Intercept data transmission metrics used in compression sample
-		auto* pCmdHeader				= reinterpret_cast<NetImgui::Internal::CmdHeader*>(pDataOut);
-		gMetric_SentDataCompressed		+= Size;
-		gMetric_SentDataUncompressed	+= (pCmdHeader->mType == NetImgui::Internal::CmdHeader::eCommands::DrawFrame) ?
-											reinterpret_cast<const NetImgui::Internal::CmdDrawFrame*>(pDataOut)->mUncompressedSize :
-											Size;
-		//=============================================================================
-		int totalSent(0);
-		while( totalSent < static_cast<int>(Size) )
-		{
-			int resultSent = send(pClientSocket->mSocket, &reinterpret_cast<char*>(pDataOut)[totalSent], static_cast<int>(Size)-totalSent, 0);
-			if( resultSent != SOCKET_ERROR )
-			{
-				totalSent += resultSent;
-			}
-			else
-			{
-				if( WSAGetLastError() != WSAEWOULDBLOCK )
-				{
-					return false;	// Connection error, abort transmission
-				}
-				std::this_thread::yield();
-			}
-		}
-		return totalSent == static_cast<int>(Size);
+	// Receive data from remote connection
+	int resultRcv = recv(	pClientSocket->mSocket,
+						 	&reinterpret_cast<char*>(PendingComRcv.pCommand)[PendingComRcv.SizeCurrent],
+						 	static_cast<int>(PendingComRcv.pCommand->mSize-PendingComRcv.SizeCurrent),
+						 	0);
+	
+	if( resultRcv != SOCKET_ERROR ){
+		PendingComRcv.SizeCurrent += static_cast<size_t>(resultRcv);
 	}
+	// Connection error, abort transmission
+	else if( WSAGetLastError() != WSAEWOULDBLOCK ){
+		PendingComRcv.bError = true; 
+	}
+}
+
+//=================================================================================================
+// Block until all requested data has been sent to remote connection
+//=================================================================================================
+void DataSend(SocketInfo* pClientSocket, NetImgui::Internal::PendingCom& PendingComSend)
+{
+	// Invalid command
+	if( !pClientSocket || !PendingComSend.pCommand ){
+		PendingComSend.bError = true;
+	}
+
+	//=============================================================================
+	//@SAMPLE_EDIT 
+	// Intercept data transmission metrics used in compression sample
+	if( PendingComSend.SizeCurrent == 0 )
+	{
+		gMetric_SentDataCompressed		+= PendingComSend.pCommand->mSize;
+		gMetric_SentDataUncompressed	+= (PendingComSend.pCommand->mType == NetImgui::Internal::CmdHeader::eCommands::DrawFrame) ?
+											reinterpret_cast<const NetImgui::Internal::CmdDrawFrame*>(PendingComSend.pCommand)->mUncompressedSize :
+											PendingComSend.pCommand->mSize;
+	}
+	//=============================================================================
+
+	// Send data to remote connection
+	int resultSent = send(	pClientSocket->mSocket, 
+						  	&reinterpret_cast<char*>(PendingComSend.pCommand)[PendingComSend.SizeCurrent],
+						  	static_cast<int>(PendingComSend.pCommand->mSize-PendingComSend.SizeCurrent),
+						  	0);
+
+	if( resultSent != SOCKET_ERROR ){
+		PendingComSend.SizeCurrent += static_cast<size_t>(resultSent);
+	}
+	// Connection error, abort transmission
+	else if( WSAGetLastError() != WSAEWOULDBLOCK ){
+		PendingComSend.bError = true; 
+	}
+}
 
 }}} // namespace NetImgui::Internal::Network
 

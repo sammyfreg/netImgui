@@ -1,6 +1,8 @@
 #pragma once
 
-namespace NetImgui { namespace Internal { namespace Network 
+namespace NetImgui { namespace Internal { struct PendingCom; }}
+
+namespace NetImgui { namespace Internal { namespace Network
 {
 
 struct SocketInfo;
@@ -14,7 +16,7 @@ SocketInfo* ListenStart			(uint32_t ListenPort);							// Listening Socket expec
 void		Disconnect			(SocketInfo* pClientSocket);
 
 bool		DataReceivePending	(SocketInfo* pClientSocket);								// True if some new data if waiting to be processed from remote connection
-bool		DataReceive			(SocketInfo* pClientSocket, void* pDataIn, size_t Size);	// Read X amount of bytes to remote connection. Will idle until size request is fullfilled.
-bool		DataSend			(SocketInfo* pClientSocket, void* pDataOut, size_t Size);	// Send x amount of bytes to remote connection. Will idle until size request is fullfilled.
+void		DataReceive			(SocketInfo* pClientSocket, PendingCom& PendingComRcv);		// Try reading X amount of bytes from remote connection, but can fall short.
+void		DataSend			(SocketInfo* pClientSocket, PendingCom& PendingComSend);	// Try sending X amount of bytes to remote connection, but can fall short.
 
 }}} //namespace NetImgui::Internal::Network

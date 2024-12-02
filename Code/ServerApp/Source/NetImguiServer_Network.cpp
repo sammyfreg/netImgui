@@ -7,9 +7,11 @@
 #include "NetImguiServer_RemoteClient.h"
 #include "NetImguiServer_Config.h"
 
+using namespace NetImgui::Internal;
+
 namespace NetImguiServer { namespace Network
 {
-using atomic_SocketInfo			= std::atomic<NetImgui::Internal::Network::SocketInfo*>;
+using atomic_SocketInfo			= std::atomic<::Network::SocketInfo*>;
 static bool						gbShutdown(false);				// Set to true when NetImguiServer exiting
 static atomic_SocketInfo		gListenSocket(nullptr);			// Need global access to kill socket on shutdown
 static std::atomic_uint32_t		gActiveClientThreadCount(0);	// How many active client connection currently running
@@ -21,112 +23,117 @@ static std::atomic_uint64_t		gStatsDataRcvd(0);
 //=================================================================================================
 // (IN) COMMAND TEXTURE
 //=================================================================================================
-void Communications_Incoming_CmdTexture(RemoteClient::Client* pClient, uint8_t*& pCmdData)
+void Communications_Incoming_CmdTexture(RemoteClient::Client& Client)
 {
-	if( pCmdData )
-	{
-		auto pCmdTexture	= reinterpret_cast<NetImgui::Internal::CmdTexture*>(pCmdData);
-		pCmdData			= nullptr; // Take ownership of the data, preventing freeing
-		pCmdTexture->mpTextureData.ToPointer();
-		pClient->ReceiveTexture(pCmdTexture);
-	}
+	auto pCmdTexture				= reinterpret_cast<NetImgui::Internal::CmdTexture*>(Client.mPendingRcv.pCommand);
+	Client.mPendingRcv.bAutoFree 	= false; // Taking ownership of the data
+	pCmdTexture->mpTextureData.ToPointer();
+	Client.ReceiveTexture(pCmdTexture);
 }
 
 //=================================================================================================
 // (IN) COMMAND BACKGROUND
 //=================================================================================================
-void Communications_Incoming_CmdBackground(RemoteClient::Client* pClient, uint8_t*& pCmdData)
+void Communications_Incoming_CmdBackground(RemoteClient::Client& Client)
 {
-	if( pCmdData )
-	{
-		auto pCmdBackground		= reinterpret_cast<NetImgui::Internal::CmdBackground*>(pCmdData);
-		pCmdData				= nullptr; // Take ownership of the data, preventing freeing
-		pClient->mPendingBackgroundIn.Assign(pCmdBackground);
-	}
+	auto pCmdBackground				= reinterpret_cast<NetImgui::Internal::CmdBackground*>(Client.mPendingRcv.pCommand);
+	Client.mPendingRcv.bAutoFree 	= false; // Taking ownership of the data
+	Client.mPendingBackgroundIn.Assign(pCmdBackground);
 }
 
 //=================================================================================================
 // (IN) COMMAND DRAW FRAME
 //=================================================================================================
-void Communications_Incoming_CmdDrawFrame(RemoteClient::Client* pClient, uint8_t*& pCmdData)
+void Communications_Incoming_CmdDrawFrame(RemoteClient::Client& Client)
 {
-	if( pCmdData )
-	{
-		auto pCmdDraw	= reinterpret_cast<NetImgui::Internal::CmdDrawFrame*>(pCmdData);
-		pCmdData		= nullptr; // Take ownership of the data, preventing freeing
-		pCmdDraw->ToPointers();
-		pClient->ReceiveDrawFrame(pCmdDraw);
-	}
+	auto pCmdDraw					= reinterpret_cast<NetImgui::Internal::CmdDrawFrame*>(Client.mPendingRcv.pCommand);
+	Client.mPendingRcv.bAutoFree 	= false; // Taking ownership of the data
+	pCmdDraw->ToPointers();
+	Client.ReceiveDrawFrame(pCmdDraw);
 }
 
 //=================================================================================================
 // (IN) COMMAND CLIPBOARD
 //=================================================================================================
-void Communications_Incoming_CmdClipboard(RemoteClient::Client* pClient, uint8_t*& pCmdData)
+void Communications_Incoming_CmdClipboard(RemoteClient::Client& Client)
 {
-	if( pCmdData )
-	{
-		auto pCmdClipboard	= reinterpret_cast<NetImgui::Internal::CmdClipboard*>(pCmdData);
-		pCmdData			= nullptr; // Take ownership of the data, preventing freeing
-		pCmdClipboard->ToPointers();
-		pClient->mPendingClipboardIn.Assign(pCmdClipboard);
-	}
+	auto pCmdClipboard				= reinterpret_cast<NetImgui::Internal::CmdClipboard*>(Client.mPendingRcv.pCommand);
+	Client.mPendingRcv.bAutoFree 	= false; // Taking ownership of the data
+	pCmdClipboard->ToPointers();
+	Client.mPendingClipboardIn.Assign(pCmdClipboard);
 }
 
 //=================================================================================================
 // Receive every commands sent by remote client and process them
 // We keep receiving until we detect a ping command (signal end of commands)
 //=================================================================================================
-void Communications_Incoming(NetImgui::Internal::Network::SocketInfo* pClientSocket, RemoteClient::Client* pClient)
+void Communications_Incoming(RemoteClient::Client& Client)
 {
-	if( NetImgui::Internal::Network::DataReceivePending(pClientSocket) )
+	if( ::Network::DataReceivePending(Client.mpSocket) )
 	{
-		bool bOk(true);
-		NetImgui::Internal::CmdHeader cmdHeader;
-		//---------------------------------------------------------------------
-		// Receive all of the data from client, 
-		// and allocate memory to receive it if needed
-		//---------------------------------------------------------------------
-		uint8_t* pCmdData	= nullptr;
-		bOk					= NetImgui::Internal::Network::DataReceive(pClientSocket, &cmdHeader, sizeof(cmdHeader));
-		bOk					&= cmdHeader.mType < NetImgui::Internal::CmdHeader::eCommands::Count;
-		if( bOk && cmdHeader.mSize > sizeof(cmdHeader) )
+		//-----------------------------------------------------------------------------------------
+		// 1. Ready to receive new command, starts the process by reading Header
+		//-----------------------------------------------------------------------------------------
+		if( Client.mPendingRcv.IsReady() )
 		{
-			pCmdData													= NetImgui::Internal::netImguiSizedNew<uint8_t>(cmdHeader.mSize);
-			*reinterpret_cast<NetImgui::Internal::CmdHeader*>(pCmdData) = cmdHeader;
-			char* pDataRemaining										= reinterpret_cast<char*>(&pCmdData[sizeof(cmdHeader)]);
-			bOk															= NetImgui::Internal::Network::DataReceive(pClientSocket, pDataRemaining, cmdHeader.mSize - sizeof(cmdHeader));
+			Client.mCmdPendingRead			= NetImgui::Internal::CmdPendingRead();
+			Client.mPendingRcv.pCommand		= &Client.mCmdPendingRead;
+			Client.mPendingRcv.bAutoFree	= false;
 		}
 
-		//---------------------------------------------------------------------
-		// Process the command type
-		//---------------------------------------------------------------------
-		if( bOk )
+		//-----------------------------------------------------------------------------------------
+		// 2. Read incoming command from server
+		//-----------------------------------------------------------------------------------------
+		if( Client.mPendingRcv.IsPending() )
 		{
-			pClient->mStatsDataRcvd 		+= cmdHeader.mSize;
-			pClient->mLastIncomingComTime	= std::chrono::steady_clock::now();
-			switch( cmdHeader.mType )
+			::Network::DataReceive(Client.mpSocket, Client.mPendingRcv);
+			
+			// Detected a new command bigger than header, allocate memory for it
+			if( Client.mPendingRcv.pCommand->mSize > sizeof(NetImgui::Internal::CmdPendingRead) && 
+				Client.mPendingRcv.pCommand == &Client.mCmdPendingRead )
 			{
-				case NetImgui::Internal::CmdHeader::eCommands::Disconnect:	pClient->mbIsConnected = false; break;
-				case NetImgui::Internal::CmdHeader::eCommands::Texture:		Communications_Incoming_CmdTexture(pClient, pCmdData);		break;
-				case NetImgui::Internal::CmdHeader::eCommands::Background: 	Communications_Incoming_CmdBackground(pClient, pCmdData);	break;
-				case NetImgui::Internal::CmdHeader::eCommands::DrawFrame:	Communications_Incoming_CmdDrawFrame(pClient, pCmdData);	break;
-				case NetImgui::Internal::CmdHeader::eCommands::Clipboard:	Communications_Incoming_CmdClipboard(pClient, pCmdData);	break;
-					// Commands not received in main loop, by Server
-				case NetImgui::Internal::CmdHeader::eCommands::Version:
-				case NetImgui::Internal::CmdHeader::eCommands::Input:
-				case NetImgui::Internal::CmdHeader::eCommands::Count: 	break;
+				CmdPendingRead* pCmdHeader 		= reinterpret_cast<NetImgui::Internal::CmdPendingRead*>(netImguiSizedNew<uint8_t>(Client.mPendingRcv.pCommand->mSize));
+				*pCmdHeader						= Client.mCmdPendingRead;
+				Client.mPendingRcv.pCommand		= pCmdHeader;
+				Client.mPendingRcv.bAutoFree	= true;
 			}
 		}
-		else
+
+		//-----------------------------------------------------------------------------------------
+		// 3. Command fully received from Server, process it
+		//-----------------------------------------------------------------------------------------
+		if( Client.mPendingRcv.IsDone() )
 		{
-			pClient->mbDisconnectPending = true; // Connection problem detected, close connection
+			if( !Client.mPendingRcv.IsError() )
+			{
+				Client.mStatsDataRcvd 		+= Client.mPendingRcv.pCommand->mSize;
+				Client.mLastIncomingComTime	= std::chrono::steady_clock::now();
+				switch( Client.mPendingRcv.pCommand->mType )
+				{
+					case NetImgui::Internal::CmdHeader::eCommands::Texture:		Communications_Incoming_CmdTexture(Client);	break;
+					case NetImgui::Internal::CmdHeader::eCommands::Background: 	Communications_Incoming_CmdBackground(Client);	break;
+					case NetImgui::Internal::CmdHeader::eCommands::DrawFrame:	Communications_Incoming_CmdDrawFrame(Client);	break;
+					case NetImgui::Internal::CmdHeader::eCommands::Clipboard:	Communications_Incoming_CmdClipboard(Client);	break;
+						// Commands not received in main loop, by Server
+					case NetImgui::Internal::CmdHeader::eCommands::Version:
+					case NetImgui::Internal::CmdHeader::eCommands::Input:
+					case NetImgui::Internal::CmdHeader::eCommands::Count: 	break;
+				}
+			}
+
+			// Reset pending read
+			if( Client.mPendingRcv.IsError() ){
+				Client.mbDisconnectPending = true;
+			}
+			if( Client.mPendingRcv.bAutoFree ){
+				netImguiDeleteSafe(Client.mPendingRcv.pCommand);
+			}
+			Client.mPendingRcv = PendingCom();
 		}
-		NetImgui::Internal::netImguiDeleteSafe(pCmdData);
 	}
+	// Prevent high CPU usage when waiting for new data
 	else
 	{
-		// Prevent high CPU usage when waiting for new data
 		//std::this_thread::yield(); 
 		std::this_thread::sleep_for(std::chrono::microseconds(250));
 	}
@@ -136,35 +143,41 @@ void Communications_Incoming(NetImgui::Internal::Network::SocketInfo* pClientSoc
 // Send the updates to RemoteClient
 // Ends with a Ping Command (signal a end of commands)
 //=================================================================================================
-void Communications_Outgoing(NetImgui::Internal::Network::SocketInfo* pClientSocket, RemoteClient::Client* pClient)
+void Communications_Outgoing(RemoteClient::Client& Client)
 {
-	NetImgui::Internal::CmdInput* pInputCmd			= pClient->TakePendingInput();
-	NetImgui::Internal::CmdClipboard* pClipboardCmd = pClient->TakePendingClipboard();
-
-	if( pInputCmd )
+	//---------------------------------------------------------------------------------------------
+	// Try finishing sending a pending command to Server
+	//---------------------------------------------------------------------------------------------
+	if( Client.mPendingSend.IsPending() )
 	{
-		if( NetImgui::Internal::Network::DataSend(pClientSocket, reinterpret_cast<void*>(pInputCmd), pInputCmd->mHeader.mSize) )
+		::Network::DataSend(Client.mpSocket, Client.mPendingSend);
+		
+		// Free allocated memory for command
+		if( Client.mPendingSend.IsDone() )
 		{
-			pClient->mStatsDataSent += pInputCmd->mHeader.mSize;
-			NetImgui::Internal::netImguiDeleteSafe(pInputCmd);
+			if( Client.mPendingSend.IsError() ){
+				Client.mbDisconnectPending = true;
+			}
+			Client.mStatsDataSent += Client.mPendingSend.pCommand->mSize;
+			if( Client.mPendingSend.bAutoFree ){
+				netImguiDeleteSafe(Client.mPendingSend.pCommand);
+			}
+			Client.mPendingSend = PendingCom();
 		}
 	}
 
-	if( pClipboardCmd )
+	if( Client.mPendingSend.IsReady() )
 	{
-		pClipboardCmd->ToOffsets();
-		if(NetImgui::Internal::Network::DataSend(pClientSocket, reinterpret_cast<void*>(pClipboardCmd), pClipboardCmd->mHeader.mSize) )
-		{
-			pClient->mStatsDataSent += pClipboardCmd->mHeader.mSize;
-			NetImgui::Internal::netImguiDeleteSafe(pClipboardCmd);
-		}
+		NetImgui::Internal::CmdClipboard* pClipboardCmd = Client.TakePendingClipboard();
+		Client.mPendingSend.pCommand 					= pClipboardCmd;
+		Client.mPendingSend.bAutoFree					= true;
 	}
 
-	if( gbShutdown || pClient->mbDisconnectPending )
+	if( Client.mPendingSend.IsReady() )
 	{
-		NetImgui::Internal::CmdDisconnect cmdDisconnect;
-		NetImgui::Internal::Network::DataSend(pClientSocket, reinterpret_cast<void*>(&cmdDisconnect), cmdDisconnect.mHeader.mSize);
-		pClient->mbIsConnected = false;
+		NetImgui::Internal::CmdInput* pInputCmd			= Client.TakePendingInput();
+		Client.mPendingSend.pCommand 					= pInputCmd;
+		Client.mPendingSend.bAutoFree					= true;
 	}
 }
 
@@ -196,21 +209,23 @@ void Communications_UpdateClientStats(RemoteClient::Client& Client)
 //=================================================================================================
 // Keep sending/receiving commands to Remote Client, until disconnection occurs
 //=================================================================================================
-void Communications_ClientExchangeLoop(NetImgui::Internal::Network::SocketInfo* pClientSocket, RemoteClient::Client* pClient)
+void Communications_ClientExchangeLoop(RemoteClient::Client* pClient)
 {	
 	gActiveClientThreadCount++;
 
 	NetImguiServer::Config::Client::SetProperty_Status(pClient->mClientConfigID, NetImguiServer::Config::Client::eStatus::Connected);
-	while ( pClient->mbIsConnected )
+	pClient->mbDisconnectPending 	= false;
+	pClient->mbIsConnected			= true;
+	while ( !gbShutdown && !pClient->mbDisconnectPending )
 	{	
-		Communications_Outgoing(pClientSocket, pClient);
-		Communications_Incoming(pClientSocket, pClient);
+		Communications_Outgoing(*pClient);
+		Communications_Incoming(*pClient);
 		Communications_UpdateClientStats(*pClient);
 	}
-
 	NetImguiServer::Config::Client::SetProperty_Status(pClient->mClientConfigID, NetImguiServer::Config::Client::eStatus::Disconnected);
-	NetImgui::Internal::Network::Disconnect(pClientSocket);
+	NetImgui::Internal::Network::Disconnect(pClient->mpSocket);
 	pClient->Release();
+	pClient->mbIsConnected			= false;
 	gActiveClientThreadCount--;
 }
 
@@ -220,28 +235,38 @@ void Communications_ClientExchangeLoop(NetImgui::Internal::Network::SocketInfo* 
 //=================================================================================================
 bool Communications_InitializeClient(NetImgui::Internal::Network::SocketInfo* pClientSocket, RemoteClient::Client* pClient, bool ConnectForce)
 {
-	NetImgui::Internal::CmdVersion cmdVersionSend;
-	NetImgui::Internal::CmdVersion cmdVersionRcv;
-	NetImgui::Internal::StringCopy(cmdVersionSend.mClientName, "Server");
-	bool ConnectExclusive = NetImguiServer::Config::Client::GetProperty_BlockTakeover(pClient->mClientConfigID);
-	cmdVersionSend.mFlags |= ConnectExclusive ? static_cast<uint8_t>(NetImgui::Internal::CmdVersion::eFlags::ConnectExclusive) : 0;
-	cmdVersionSend.mFlags |= ConnectForce ? static_cast<uint8_t>(NetImgui::Internal::CmdVersion::eFlags::ConnectForce) : 0;
+	NetImgui::Internal::CmdVersion cmdVersionSend, cmdVersionRcv;
+	NetImgui::Internal::PendingCom PendingRcv, PendingSend;
 
 	//---------------------------------------------------------------------
 	// Handshake confirming connection validity
 	//---------------------------------------------------------------------
-	if( NetImgui::Internal::Network::DataSend(pClientSocket, reinterpret_cast<void*>(&cmdVersionSend), cmdVersionSend.mHeader.mSize) )
+	NetImgui::Internal::StringCopy(cmdVersionSend.mClientName, "Server");
+	const bool ConnectExclusive	= NetImguiServer::Config::Client::GetProperty_BlockTakeover(pClient->mClientConfigID);
+	cmdVersionSend.mFlags 		|= ConnectExclusive ? static_cast<uint8_t>(NetImgui::Internal::CmdVersion::eFlags::ConnectExclusive) : 0;
+	cmdVersionSend.mFlags 		|= ConnectForce ? static_cast<uint8_t>(NetImgui::Internal::CmdVersion::eFlags::ConnectForce) : 0;
+	PendingSend.pCommand 		= reinterpret_cast<CmdPendingRead*>(&cmdVersionSend);
+	while( !PendingSend.IsDone() ){
+		::Network::DataSend(pClientSocket, PendingSend);
+	}
+
+	if( !PendingSend.IsError() )
 	{
-		while( !NetImgui::Internal::Network::DataReceivePending(pClientSocket) )
+		PendingRcv.pCommand	= reinterpret_cast<CmdPendingRead*>(&cmdVersionRcv);
+		while( !PendingRcv.IsDone() && cmdVersionRcv.mType == CmdHeader::eCommands::Version )
 		{
-			std::this_thread::yield(); // Idle until we receive the remote data
+			while( !::Network::DataReceivePending(pClientSocket) ){
+				std::this_thread::yield(); // Idle until we receive the remote data
+			}
+			::Network::DataReceive(pClientSocket, PendingRcv);
 		}
-		if( NetImgui::Internal::Network::DataReceive(pClientSocket, reinterpret_cast<void*>(&cmdVersionRcv), sizeof(cmdVersionRcv)) )
+
+		if( !PendingRcv.IsError() )
 		{
 			//---------------------------------------------------------------------
 			// Connection accepted, initialize client
 			//---------------------------------------------------------------------
-			if( cmdVersionRcv.mHeader.mType != NetImgui::Internal::CmdHeader::eCommands::Version ||
+			if( cmdVersionRcv.mType != NetImgui::Internal::CmdHeader::eCommands::Version ||
 				cmdVersionRcv.mVersion != NetImgui::Internal::CmdVersion::eVersion::_current )
 			{
 				NetImguiServer::Config::Client::SetProperty_Status(pClient->mClientConfigID, NetImguiServer::Config::Client::eStatus::ErrorVer);
@@ -250,14 +275,16 @@ bool Communications_InitializeClient(NetImgui::Internal::Network::SocketInfo* pC
 			else if(cmdVersionRcv.mFlags & static_cast<uint8_t>(NetImgui::Internal::CmdVersion::eFlags::IsConnected) )
 			{
 				bool bAvailable = (cmdVersionRcv.mFlags & static_cast<uint8_t>(NetImgui::Internal::CmdVersion::eFlags::IsUnavailable)) == 0;
-				NetImguiServer::Config::Client::SetProperty_Status(pClient->mClientConfigID, bAvailable ? NetImguiServer::Config::Client::eStatus::Available 
-																   										: NetImguiServer::Config::Client::eStatus::ErrorBusy);
+				NetImguiServer::Config::Client::SetProperty_Status(pClient->mClientConfigID, bAvailable ? NetImguiServer::Config::Client::eStatus::Available
+																										: NetImguiServer::Config::Client::eStatus::ErrorBusy);
 				return false;
 			}
 
 			pClient->Initialize();
 			pClient->mInfoImguiVerID	= cmdVersionRcv.mImguiVerID;
 			pClient->mInfoNetImguiVerID = cmdVersionRcv.mNetImguiVerID;
+			pClient->mPendingRcv		= PendingCom();
+			pClient->mPendingSend		= PendingCom();
 			NetImgui::Internal::StringCopy(pClient->mInfoName,				cmdVersionRcv.mClientName);
 			NetImgui::Internal::StringCopy(pClient->mInfoImguiVerName,		cmdVersionRcv.mImguiVerName);
 			NetImgui::Internal::StringCopy(pClient->mInfoNetImguiVerName,	cmdVersionRcv.mNetImguiVerName);
@@ -272,6 +299,7 @@ bool Communications_InitializeClient(NetImgui::Internal::Network::SocketInfo* pC
 			return true;
 		}
 	}
+
 	NetImguiServer::Config::Client::SetProperty_Status(pClient->mClientConfigID, NetImguiServer::Config::Client::eStatus::Disconnected);
 	return false;
 }
@@ -295,12 +323,11 @@ void NetworkConnectionNew(NetImgui::Internal::Network::SocketInfo* pClientSocket
 	}
 
 	if (zErrorMsg == nullptr && !gbShutdown){
-		pNewClient->mbIsConnected = true;
-		std::thread(Communications_ClientExchangeLoop, pClientSocket, pNewClient).detach();
+		pNewClient->mpSocket = pClientSocket;
+		std::thread(Communications_ClientExchangeLoop, pNewClient).detach();
 	}
 	else{
 		NetImgui::Internal::Network::Disconnect(pClientSocket);
-		NetImguiServer::Config::Client::SetProperty_Status(pNewClient->mClientConfigID, NetImguiServer::Config::Client::eStatus::Disconnected);
 		if (!gbShutdown) {
 			if (pNewClient){
 				pNewClient->mbIsFree = true;
@@ -381,7 +408,7 @@ void NetworkConnectRequest_Send()
 		if( NetImguiServer::Config::Client::GetConfigByIndex(configIdx, clientConfig) )
 		{
 			ConnectForce = clientConfig.mConnectForce;
-			if( (clientConfig.mConnectAuto || clientConfig.mConnectRequest || clientConfig.mConnectForce) && clientConfig.IsAvailable() && clientConfig.mHostPort != NetImguiServer::Config::Server::sPort)
+			if( (clientConfig.IsConnectReady() || clientConfig.IsAutoConnectReady()) && clientConfig.mHostPort != NetImguiServer::Config::Server::sPort )
 			{
 				NetImguiServer::Config::Client::SetProperty_ConnectRequest(clientConfig.mRuntimeID, false, false);	// Reset the Connection request, we are processing it
 				NetImguiServer::Config::Client::SetProperty_Status(clientConfig.mRuntimeID, NetImguiServer::Config::Client::eStatus::Disconnected);

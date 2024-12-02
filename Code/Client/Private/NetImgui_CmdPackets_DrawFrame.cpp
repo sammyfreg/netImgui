@@ -205,7 +205,7 @@ CmdDrawFrame* CompressCmdDrawFrame(const CmdDrawFrame* pDrawFramePrev, const Cmd
 	//-----------------------------------------------------------------------------------------
 	// Allocate memory for worst case scenario (no compression possible)
 	// New DrawFrame size + 2 'compression block info' per data stream
-	size_t neededDataCount			= DivUp<size_t>(pDrawFrameNew->mHeader.mSize, ComDataSize) + 6*static_cast<size_t>(pDrawFrameNew->mDrawGroupCount);
+	size_t neededDataCount			= DivUp<size_t>(pDrawFrameNew->mSize, ComDataSize) + 6*static_cast<size_t>(pDrawFrameNew->mDrawGroupCount);
 	CmdDrawFrame* pDrawFramePacked	= netImguiSizedNew<CmdDrawFrame>(neededDataCount*ComDataSize);
 	*pDrawFramePacked				= *pDrawFrameNew;
 	pDrawFramePacked->mCompressed	= true;
@@ -259,7 +259,7 @@ CmdDrawFrame* CompressCmdDrawFrame(const CmdDrawFrame* pDrawFramePrev, const Cmd
 	}
 
 	// Adjust data transfert amount to memory that has been actually needed
-	pDrawFramePacked->mHeader.mSize = static_cast<uint32_t>((pDataOutput - reinterpret_cast<ComDataType*>(pDrawFramePacked)))*static_cast<uint32_t>(sizeof(uint64_t));
+	pDrawFramePacked->mSize = static_cast<uint32_t>((pDataOutput - reinterpret_cast<ComDataType*>(pDrawFramePacked)))*static_cast<uint32_t>(sizeof(uint64_t));
 	return pDrawFramePacked;
 }
 
@@ -370,8 +370,8 @@ CmdDrawFrame* ConvertToCmdDrawFrame(const ImDrawData* pDearImguiData, ImGuiMouse
 		pDrawFrame->mTotalDrawCount		+= drawGroup.mDrawCount;
 	}
 
-	pDrawFrame->mHeader.mSize		= static_cast<uint32_t>(pDataOutput - reinterpret_cast<const ComDataType*>(pDrawFrame)) * ComDataSize;
-	pDrawFrame->mUncompressedSize	= pDrawFrame->mHeader.mSize;	// No compression with this item, so same value
+	pDrawFrame->mSize				= static_cast<uint32_t>(pDataOutput - reinterpret_cast<const ComDataType*>(pDrawFrame)) * ComDataSize;
+	pDrawFrame->mUncompressedSize	= pDrawFrame->mSize;	// No compression with this item, so same value
 	return pDrawFrame;
 }
 

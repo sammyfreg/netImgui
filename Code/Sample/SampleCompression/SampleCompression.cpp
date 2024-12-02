@@ -47,26 +47,30 @@ void CustomCommunicationsClient(void* pClientVoid)
 {	
 	IM_ASSERT(pClientVoid != nullptr);
 	ClientInfo* pClient				= reinterpret_cast<ClientInfo*>(pClientVoid);
-	pClient->mbDisconnectRequest 	= false;
-	pClient->mbDisconnectProcessed	= false;
+	pClient->mbDisconnectPending 	= false;
 	pClient->mbClientThreadActive 	= true;
 
 	//=============================================================================
 	//@SAMPLE_EDIT
-	pClient->mbDisconnectProcessed = !Communications_Initialize(*pClient);
+	pClient->mbDisconnectPending = !Communications_Initialize(*pClient);
 	//=============================================================================	
 
-	while( !pClient->mbDisconnectProcessed )
+	while( !pClient->mbDisconnectPending )
 	{
 		//=============================================================================
 		//@SAMPLE_EDIT
-		// Making sure the Communications_Incoming sleeping when there's no data, 
+		// Making sure the Communications_Incoming sleeping when there's no data,
 		// is not included in timing stats
-		while( !NetImgui::Internal::Network::DataReceivePending(pClient->mpSocketComs) )
-		{
+		auto startComs = std::chrono::steady_clock::now();
+		while( !NetImgui::Internal::Network::DataReceivePending(pClient->mpSocketComs) ){
+			// Timeout wait after 1 sec
+			auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - startComs);
+			if( elapsed.count() > 1000 ){
+				break;
+			}
 			std::this_thread::yield();
 		}
-		auto startComs = std::chrono::steady_clock::now();
+		startComs = std::chrono::steady_clock::now();
 		//=============================================================================
 
 		Communications_Outgoing(*pClient);

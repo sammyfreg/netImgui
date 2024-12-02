@@ -2,6 +2,9 @@
 #define SOKOL_IMGUI_IMPL
 #endif
 #ifndef SOKOL_IMGUI_INCLUDED
+
+// @SAMPLE_EDIT NOTE: 	This needs to be updated to latest Solol Version.
+//						for now, just fixed 2 compile errors linked to clipboard
 /*
     sokol_imgui.h -- drop-in Dear ImGui renderer/event-handler for sokol_gfx.h
 
@@ -1672,13 +1675,11 @@ static const char* _simgui_fs_source_dummy = "";
 #endif
 
 #if !defined(SOKOL_IMGUI_NO_SOKOL_APP)
-static void _simgui_set_clipboard(void* user_data, const char* text) {
-    (void)user_data;
+static void _simgui_set_clipboard(ImGuiContext *, const char* text) {
     sapp_set_clipboard_string(text);
 }
 
-static const char* _simgui_get_clipboard(void* user_data) {
-    (void)user_data;
+static const char* _simgui_get_clipboard(ImGuiContext *) {
     return sapp_get_clipboard_string();
 }
 #endif
@@ -1782,8 +1783,11 @@ SOKOL_API_IMPL void simgui_setup(const simgui_desc_t* desc) {
         if (!_simgui.desc.disable_set_mouse_cursor) {
             io->BackendFlags |= ImGuiBackendFlags_HasMouseCursors;
         }
-        io->SetClipboardTextFn = _simgui_set_clipboard;
-        io->GetClipboardTextFn = _simgui_get_clipboard;
+		// @SAMPLE_EDIT Disabled Clipboard
+		// Latest Imgui moved clipboard functionalities to 
+		// ImGui::GetPlatformIO(), and changed the signature
+        ImGui::GetPlatformIO().Platform_SetClipboardTextFn = _simgui_set_clipboard;
+        ImGui::GetPlatformIO().Platform_GetClipboardTextFn = _simgui_get_clipboard;
     #endif
     io->ConfigWindowsResizeFromEdges = !_simgui.desc.disable_windows_resize_from_edges;
 

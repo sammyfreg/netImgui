@@ -82,6 +82,8 @@ struct ClientInfo
 	std::atomic<Network::SocketInfo*>	mpSocketPending;						// Hold socket info until communication is established
 	std::atomic<Network::SocketInfo*>	mpSocketComs;							// Socket used for communications with server
 	std::atomic<Network::SocketInfo*>	mpSocketListen;							// Socket used to wait for communication request from server
+	std::atomic_bool					mbDisconnectPending;					// Terminate Client/Server coms
+	std::atomic_bool					mbDisconnectListen;						// Terminate waiting connection from Server
 	uint32_t							mSocketListenPort			= 0;		// Socket Port number used to wait for communication request from server
 	VecTexture							mTextures;								// List if textures created by this client (used un main thread)
 	char								mName[64]					= {};
@@ -93,6 +95,10 @@ struct ClientInfo
 	ExchangePtr<CmdClipboard>			mPendingClipboardIn;					// Clipboard content received from Server and waiting to be taken by client
 	ExchangePtr<CmdClipboard>			mPendingClipboardOut;					// Clipboard content copied on Client and waiting to be sent to Server
 	ImGuiContext*						mpContext					= nullptr;	// Context that the remote drawing should use (either the one active when connection request happened, or a clone)
+	PendingCom 							mPendingRcv;							// Data being currently received from Server
+	PendingCom 							mPendingSend;							// Data being currently sent to Server
+	uint32_t							mPendingSendNext			= 0;		// Type of Cmd to next attempt sending, when channel is available
+	CmdPendingRead 						mCmdPendingRead;						// Used to get info on the next incoming command from Server
 	CmdInput*							mpCmdInputPending			= nullptr;	// Last Input Command from server, waiting to be processed by client
 	CmdClipboard*						mpCmdClipboard				= nullptr;	// Last received clipboad command
 	CmdDrawFrame*						mpCmdDrawLast				= nullptr;	// Last sent Draw Command. Used by data compression, to generate delta between previous and current frame
@@ -107,12 +113,9 @@ struct ClientInfo
 	SavedImguiContext					mSavedContextValues;
 	std::atomic_uint32_t				mTexturesPendingSent;
 	std::atomic_uint32_t				mTexturesPendingCreated;
-	
-	bool								mbDisconnectListen			= false;	// Waiting to Stop listening to connection request
-	bool								mbDisconnectRequest			= false;	// Waiting to Disconnect
-	bool								mbDisconnectProcessed		= false;	// Disconnect command sent to server, ready to disconnect
-	bool								mbClientThreadActive		= false;
-	bool								mbListenThreadActive		= false;
+
+	bool								mbClientThreadActive		= false;	// True when connected and communicating with Server
+	bool								mbListenThreadActive		= false;	// True when listening from connection request from Server
 	bool								mbHasTextureUpdate			= false;
 	bool								mbIsDrawing					= false;	// We are inside a 'NetImgui::NewFrame' / 'NetImgui::EndFrame' (even if not for a remote draw)
 	bool								mbIsRemoteDrawing			= false;	// True if the rendering it meant for the remote netImgui server

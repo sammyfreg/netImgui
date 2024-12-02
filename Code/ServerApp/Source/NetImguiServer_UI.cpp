@@ -249,7 +249,7 @@ void Popup_ServerConfig()
 
 			// --- Port ---
 			ImGui::TextUnformatted("Port waiting for connection requests");
-			if (ImGui::InputInt("Port", &sEditPort, 1, 100, ImGuiInputTextFlags_EnterReturnsTrue)) {
+			if (ImGui::InputInt("Port", &sEditPort, 1, 100, 0)) {
 				sEditPort = std::min<int>(0xFFFF, std::max<int>(1, sEditPort));
 			}
 			ImGui::SameLine();
@@ -567,7 +567,7 @@ void DrawImguiContent_Clients()
 				}
 			}
 			ImGui::End();
-			if(!bOpened && !client.mbDisconnectPending )
+			if(!bOpened && client.mbIsConnected )
 			{
 				gPopup_ConfirmDisconnect_ClientIdx = i;
 			}
@@ -667,7 +667,7 @@ void DrawImguiContent_MainMenu_Clients_Entry(RemoteClient::Client* pClient, NetI
 	ImGui::TableSetColumnIndex(0);
 		
 	// Name / Status
-	auto ConfigStatus 	= pClientConfig ? pClientConfig->mStatus : NetImguiServer::Config::Client::eStatus::Disconnected;
+	auto ConfigStatus 	= pClientConfig ? pClientConfig->mConnectStatus : NetImguiServer::Config::Client::eStatus::Disconnected;
 	ImVec4 StatusColor 	= pClient && pClient->mbIsConnected ? ImVec4(0.7f, 1.f, 0.25f, 1.f)
 						: ConfigStatus == NetImguiServer::Config::Client::eStatus::ErrorVer ? ImVec4(1.f, 0.7f, 0.25f, 1.f)
 						: ConfigStatus == NetImguiServer::Config::Client::eStatus::ErrorBusy ? ImVec4(1.f, 0.7f, 0.25f, 1.f)
@@ -729,37 +729,46 @@ void DrawImguiContent_MainMenu_Clients_Entry(RemoteClient::Client* pClient, NetI
 	ImGui::EndDisabled();	
 
 	// Config: Connection
-	if( pClient && !pClient->mbDisconnectPending && ImGui::Button("Disconnect", ImVec2(80 * GetFontDPIScale(),0 )) )
+	const float kButtonWidth = 100.f * GetFontDPIScale();
+	if( pClient && !pClient->mbDisconnectPending && ImGui::Button("Disconnect", ImVec2(kButtonWidth, 0)) )
 	{
 		gPopup_ConfirmDisconnect_ClientIdx = pClient->mClientIndex;
 	}
 	else if( pClientConfig )
 	{
-		if( pClientConfig->IsTransient() ){
+		if( pClientConfig->IsConnecting() )
+		{
+			ImGui::SetNextItemWidth(kButtonWidth);
+			ImGui::TextUnformatted("(Connecting)");
+		}
+		else if( pClientConfig->IsTransient() ){
+			ImGui::SetNextItemWidth(kButtonWidth);
 			ImGui::TextUnformatted("(Request)");
 		}
 		else if (!pClientConfig->IsConnected() && !pClientConfig->mConnectRequest && !pClientConfig->mConnectForce)
 		{
 			if( ConfigStatus ==	NetImguiServer::Config::Client::eStatus::Disconnected )
 			{
-				if( ImGui::Button("Connect", ImVec2(80 * GetFontDPIScale(),0 )) ){
+				if( ImGui::Button("Connect", ImVec2(kButtonWidth,0 )) ){
 					NetImguiServer::Config::Client::SetProperty_ConnectRequest(pClientConfig->mRuntimeID, true, false);
 				}
 			}
 			else if( ConfigStatus == NetImguiServer::Config::Client::eStatus::Available )
 			{
-				if( ImGui::Button("Takeover", ImVec2(80 * GetFontDPIScale(),0 )) ){
+				if( ImGui::Button("Takeover", ImVec2(kButtonWidth,0 )) ){
 					NetImguiServer::Config::Client::SetProperty_ConnectRequest(pClientConfig->mRuntimeID, true, true);
 				}
 				ImGui::SetItemTooltip("Client already connected to another NetImguiServer, disconnect it and force connect this Server");
 			}
 			else if( ConfigStatus == NetImguiServer::Config::Client::eStatus::ErrorBusy )
 			{
+				ImGui::SetNextItemWidth(kButtonWidth);
 				ImGui::TextUnformatted("(In Use)");
 				ImGui::SetItemTooltip("Client already connected to another NetImguiServer and doesn't allow taking over the connection");
 			}
 			else if( ConfigStatus == NetImguiServer::Config::Client::eStatus::ErrorVer )
 			{
+				ImGui::SetNextItemWidth(kButtonWidth);
 				ImGui::TextUnformatted("(Version)");
 				ImGui::SetItemTooltip("Client is using a different network protocol than this NetImguiServer. Update the client code to match the Server.");
 			}

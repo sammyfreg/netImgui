@@ -22,11 +22,9 @@ NetImguiImDrawData::NetImguiImDrawData()
 Client::Client()
 : mPendingTextureReadIndex(0)
 , mPendingTextureWriteIndex(0)
-, mbIsVisible(false)
 , mbIsFree(true)
-, mbIsConnected(false)
-, mbDisconnectPending(false)
 , mbCompressionSkipOncePending(false)
+, mbDisconnectPending(false)
 , mClientConfigID(NetImguiServer::Config::Client::kInvalidRuntimeID)
 {
 }
@@ -91,7 +89,7 @@ void Client::ProcessPendingTextures()
 	{
 		NetImgui::Internal::CmdTexture* pTextureCmd = mpPendingTextures[(mPendingTextureReadIndex++) % IM_ARRAYSIZE(mpPendingTextures)];
 		bool isRemoval		= pTextureCmd->mFormat == NetImgui::eTexFormat::kTexFmt_Invalid;
-		uint32_t dataSize	= pTextureCmd->mHeader.mSize - sizeof(NetImgui::Internal::CmdTexture);
+		uint32_t dataSize	= pTextureCmd->mSize - sizeof(NetImgui::Internal::CmdTexture);
 		auto texIt			= mTextureTable.find(pTextureCmd->mTextureId) ;
 		textureChanged 		|= texIt != mTextureTable.end();
 		// Delete texture when format/size changed or asked to remove
@@ -141,6 +139,8 @@ void Client::Initialize()
 	mbIsReleased			= false;
 	mStatsTime				= std::chrono::steady_clock::now();
 	mBGSettings				= NetImgui::Internal::CmdBackground();	// Assign background default value, until we receive first update from client
+	mPendingRcv				= NetImgui::Internal::PendingCom();
+	mPendingSend			= NetImgui::Internal::PendingCom();
 	NetImgui::Internal::netImguiDeleteSafe(mpImguiDrawData);
 	NetImgui::Internal::netImguiDeleteSafe(mpFrameDrawPrev);
 }

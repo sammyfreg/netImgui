@@ -9,6 +9,7 @@
 #pragma comment(lib, "ws2_32")
 #endif
 
+#include "NetImgui_CmdPackets.h"
 
 namespace NetImgui { namespace Internal { namespace Network 
 {
@@ -31,12 +32,6 @@ struct SocketInfo
 
 		//constexpr int	kComsRcvBuffer = 1014*1024;
 		//setsockopt(mSocket, SOL_SOCKET, SO_RCVBUF, reinterpret_cast<const char*>(&kComsRcvBuffer), sizeof(kComsRcvBuffer));
-
-	#if 0 // @sammyfreg : No timeout useful when debugging, to keep connection alive while code breakpoint
-		constexpr DWORD	kComsTimeoutMs	= 10000;
-		setsockopt(mSocket, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<const char*>(&kComsTimeoutMs), sizeof(kComsTimeoutMs));
-		setsockopt(mSocket, SOL_SOCKET, SO_SNDTIMEO, reinterpret_cast<const char*>(&kComsTimeoutMs), sizeof(kComsTimeoutMs));
-	#endif
 	}
 
 	SOCKET mSocket;
@@ -178,57 +173,53 @@ bool DataReceivePending(SocketInfo* pClientSocket)
 }
 
 //=================================================================================================
-// Block until all requested data has been received from the remote connection
+// Try receiving data from remote connection
 //=================================================================================================
-bool DataReceive(SocketInfo* pClientSocket, void* pDataIn, size_t Size)
+void DataReceive(SocketInfo* pClientSocket, NetImgui::Internal::PendingCom& PendingComRcv)
 {
-	if( !pClientSocket ) return false;
-
-	int totalRcv(0);
-	while( totalRcv < static_cast<int>(Size) )
-	{
-		int resultRcv = recv(pClientSocket->mSocket, &reinterpret_cast<char*>(pDataIn)[totalRcv], static_cast<int>(Size)-totalRcv, 0);
-		if( resultRcv != SOCKET_ERROR )
-		{
-			totalRcv += resultRcv;
-		}
-		else
-		{
-			if( WSAGetLastError() != WSAEWOULDBLOCK )
-			{
-				return false;	// Connection error, abort transmission
-			}
-			std::this_thread::yield();
-		}
+	// Invalid command
+	if( !pClientSocket || !PendingComRcv.pCommand ){
+		PendingComRcv.bError = true;
 	}
-	return totalRcv == static_cast<int>(Size);
+
+	// Receive data from remote connection
+	int resultRcv = recv(	pClientSocket->mSocket,
+						 	&reinterpret_cast<char*>(PendingComRcv.pCommand)[PendingComRcv.SizeCurrent],
+						 	static_cast<int>(PendingComRcv.pCommand->mSize-PendingComRcv.SizeCurrent),
+						 	0);
+	
+	if( resultRcv != SOCKET_ERROR ){
+		PendingComRcv.SizeCurrent += static_cast<size_t>(resultRcv);
+	}
+	// Connection error, abort transmission
+	else if( WSAGetLastError() != WSAEWOULDBLOCK ){
+		PendingComRcv.bError = true; 
+	}
 }
 
 //=================================================================================================
 // Block until all requested data has been sent to remote connection
 //=================================================================================================
-bool DataSend(SocketInfo* pClientSocket, void* pDataOut, size_t Size)
+void DataSend(SocketInfo* pClientSocket, NetImgui::Internal::PendingCom& PendingComSend)
 {
-	if( !pClientSocket ) return false;
-
-	int totalSent(0);
-	while( totalSent < static_cast<int>(Size) )
-	{
-		int resultSent = send(pClientSocket->mSocket, &reinterpret_cast<char*>(pDataOut)[totalSent], static_cast<int>(Size)-totalSent, 0);
-		if( resultSent != SOCKET_ERROR )
-		{
-			totalSent += resultSent;
-		}
-		else
-		{
-			if( WSAGetLastError() != WSAEWOULDBLOCK )
-			{
-				return false;	// Connection error, abort transmission
-			}
-			std::this_thread::yield();
-		}
+	// Invalid command
+	if( !pClientSocket || !PendingComSend.pCommand ){
+		PendingComSend.bError = true;
 	}
-	return totalSent == static_cast<int>(Size);
+	
+	// Send data to remote connection
+	int resultSent = send(	pClientSocket->mSocket, 
+						  	&reinterpret_cast<char*>(PendingComSend.pCommand)[PendingComSend.SizeCurrent],
+						  	static_cast<int>(PendingComSend.pCommand->mSize-PendingComSend.SizeCurrent),
+						  	0);
+
+	if( resultSent != SOCKET_ERROR ){
+		PendingComSend.SizeCurrent += static_cast<size_t>(resultSent);
+	}
+	// Connection error, abort transmission
+	else if( WSAGetLastError() != WSAEWOULDBLOCK ){
+		PendingComSend.bError = true; 
+	}
 }
 
 }}} // namespace NetImgui::Internal::Network

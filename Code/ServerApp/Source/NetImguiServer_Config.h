@@ -17,6 +17,7 @@ class Client
 {
 public:
 	using RuntimeID									= uint32_t;
+	using TimeStamp 								= std::chrono::steady_clock::time_point;
 	static constexpr RuntimeID kInvalidRuntimeID	= static_cast<RuntimeID>(0);
 	
 	enum class eVersion : uint32_t {
@@ -44,26 +45,44 @@ public:
 		ErrorBusy,		// Client already taken
 		ErrorVer,		// Server/Client network api mismatch
 	};
+
+	// Config settings
+	char				mClientName[128];	//!< Client display name
+	char				mHostName[128];		//!< Client IP or remote host address to attempt connection at	
+	uint32_t			mHostPort;			//!< Client Port to attempt connection at
+	RuntimeID			mRuntimeID;			//!< Unique RuntimeID used to find this Config
+	eConfigType			mConfigType;		//!< Type of the configuration
+	bool				mDPIScaleEnabled;	//!< Enable support of Font DPI scaling requests by Server
+	bool 				mBlockTakeover;		//!< If another NetImguiServer is allowed to forcefully disconnect this client to connect to it
+	bool				mReadOnly;			//!< Config comes from read only file, can't be modified
+	bool				mConnectAuto;		//!< Try automatically connecting to client
+
+	// Transient values used while running
+	mutable bool		mConnectRequest;	//!< Attempt connecting to Client, after user request
+	mutable bool		mConnectForce;		//!< Attempt connecting to Client, after user request, even if already connected
+	mutable eStatus		mConnectStatus;		//!< Connection status of associated client
+	mutable TimeStamp	mConnectLastTime;	//!< Last connection attempt time (avoid quickly retrying same client)
+					
+	// Access methods
+public:
 					Client();
 					Client(const Client& Copy) = default;
 
-	char			mClientName[128];	//!< Client display name
-	char			mHostName[128];		//!< Client IP or remote host address to attempt connection at	
-	uint32_t		mHostPort;			//!< Client Port to attempt connection at
-	RuntimeID		mRuntimeID;			//!< Unique RuntimeID used to find this Config
-	eConfigType		mConfigType;		//!< Type of the configuration
-	bool			mDPIScaleEnabled;	//!< Enable support of Font DPI scaling requests by Server
-	bool 			mBlockTakeover;		//!< If another NetImguiServer is allowed to forcefully disconnect this client to connect to it
-	bool			mReadOnly;			//!< Config comes from read only file, can't be modified
-	bool			mConnectAuto;		//!< Try automatically connecting to client
-	mutable bool	mConnectRequest;	//!< Attempt connecting to Client, after user request
-	mutable bool	mConnectForce;		//!< Attempt connecting to Client, after user request, even if already connected
-	mutable eStatus	mStatus;			//!< Status of associated client
-
 	inline bool		IsReadOnly()const { return mReadOnly; };
 	inline bool		IsTransient()const { return mConfigType == eConfigType::Transient; };
-	inline bool 	IsConnected()const { return mStatus == eStatus::Connected; }
-	inline bool 	IsAvailable()const { return mStatus != eStatus::Connected && mStatus != eStatus::Connecting;}
+	inline bool 	IsConnected()const { return mConnectStatus == eStatus::Connected; }
+	inline bool 	IsConnecting()const { return mConnectStatus == eStatus::Connecting || mConnectRequest || mConnectForce; }
+	inline bool 	IsConnectReady()const { 
+		bool bAvailable = mConnectStatus != eStatus::Connected && mConnectStatus != eStatus::Connecting;
+		return bAvailable && (mConnectRequest || mConnectForce);
+	}
+	inline bool 	IsAutoConnectReady()const { 
+		bool bAvailable 	= mConnectStatus != eStatus::Connected && mConnectStatus != eStatus::Connecting;
+		auto elapsedTime 	= std::chrono::steady_clock::now() - mConnectLastTime;
+		int durationSec		= static_cast<int>(std::chrono::duration_cast<std::chrono::seconds>(elapsedTime).count());
+		bool elapseOk		= durationSec > (mConnectStatus == eStatus::Disconnected ? 5 : 30);
+		return bAvailable && mConnectAuto && elapseOk;
+	}
 
 	// Add/Edit/Remove config
 	static void		SetConfig(const Client& config);						//!< Add or replace a client configuration info

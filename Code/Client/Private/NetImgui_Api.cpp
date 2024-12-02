@@ -101,7 +101,7 @@ void Disconnect(void)
 	// Attempt fake connection on local socket waiting for a Server connection,
 	// so the blocking operation can terminate and release the communication thread
 	Client::ClientInfo& client	= *gpClientInfo;
-	client.mbDisconnectRequest	= true;
+	client.mbDisconnectPending	= true;
 	client.mbDisconnectListen	= true;
 	if( client.mpSocketListen.load() != nullptr )
 	{
@@ -335,7 +335,7 @@ void SendDataTexture(ImTextureID textureId, void* pData, uint16_t width, uint16_
 		pCmdTexture->mpTextureData.SetPtr(reinterpret_cast<uint8_t*>(&pCmdTexture[1]));
 		memcpy(pCmdTexture->mpTextureData.Get(), pData, dataSize);
 
-		pCmdTexture->mHeader.mSize			= SizeNeeded;
+		pCmdTexture->mSize					= SizeNeeded;
 		pCmdTexture->mWidth					= width;
 		pCmdTexture->mHeight				= height;
 		pCmdTexture->mTextureId				= texId64;

@@ -89,11 +89,10 @@ CmdClipboard* CmdClipboard::Create(const char* clipboard)
 		while(clipboard[clipboardByteSize++] != 0);
 		size_t totalDataCount			= sizeof(CmdClipboard) + DivUp<size_t>(clipboardByteSize, ComDataSize);
 		auto pNewClipboard				= NetImgui::Internal::netImguiSizedNew<CmdClipboard>(totalDataCount*ComDataSize);
-		pNewClipboard->mHeader.mSize	= static_cast<uint32_t>(totalDataCount*ComDataSize);
+		pNewClipboard->mSize			= static_cast<uint32_t>(totalDataCount*ComDataSize);
 		pNewClipboard->mByteSize		= clipboardByteSize;
 		pNewClipboard->mContentUTF8.SetPtr(reinterpret_cast<char*>(&pNewClipboard[1]));
 		memcpy(pNewClipboard->mContentUTF8.Get(), clipboard, clipboardByteSize);
-		
 		return pNewClipboard;
 	}
 	return nullptr;
