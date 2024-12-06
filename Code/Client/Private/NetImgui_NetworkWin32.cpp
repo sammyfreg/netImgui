@@ -162,7 +162,7 @@ void Disconnect(SocketInfo* pClientSocket)
 }
 
 //=================================================================================================
-// Return trie if data has been received, or there's a connection error
+// Return true if data has been received, or there's a connection error
 //=================================================================================================
 bool DataReceivePending(SocketInfo* pClientSocket)
 {
@@ -173,7 +173,7 @@ bool DataReceivePending(SocketInfo* pClientSocket)
 }
 
 //=================================================================================================
-// Try receiving data from remote connection
+// Receive as much as possible a command and keep track of transfer status
 //=================================================================================================
 void DataReceive(SocketInfo* pClientSocket, NetImgui::Internal::PendingCom& PendingComRcv)
 {
@@ -198,7 +198,7 @@ void DataReceive(SocketInfo* pClientSocket, NetImgui::Internal::PendingCom& Pend
 }
 
 //=================================================================================================
-// Block until all requested data has been sent to remote connection
+// Receive as much as possible a command and keep track of transfer status
 //=================================================================================================
 void DataSend(SocketInfo* pClientSocket, NetImgui::Internal::PendingCom& PendingComSend)
 {

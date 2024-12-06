@@ -65,7 +65,6 @@ void Communications_Incoming_CmdClipboard(RemoteClient::Client& Client)
 
 //=================================================================================================
 // Receive every commands sent by remote client and process them
-// We keep receiving until we detect a ping command (signal end of commands)
 //=================================================================================================
 void Communications_Incoming(RemoteClient::Client& Client)
 {

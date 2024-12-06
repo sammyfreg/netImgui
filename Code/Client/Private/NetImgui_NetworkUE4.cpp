@@ -29,6 +29,12 @@ struct SocketInfo
 		{
 			mpSocket->SetNonBlocking(true);
 			mpSocket->SetNoDelay(true);
+
+			int32 NewSize(0);
+			while( !mpSocket->SetSendBufferSize(2*mSendSize, NewSize) ){
+				mSendSize /= 2;
+			}
+			mSendSize = NewSize/2;
 		}
 	}
 
@@ -46,7 +52,8 @@ struct SocketInfo
 			mpSocket = nullptr;
 		}
 	}
-	FSocket* mpSocket = nullptr;
+	FSocket* mpSocket	= nullptr;
+	int32 mSendSize		= 1024*1024;	// Limit tx data to avoid socket error on large amount (texture)
 };
 
 bool Startup()
@@ -149,7 +156,7 @@ void Disconnect(SocketInfo* pClientSocket)
 }
 
 //=================================================================================================
-// Return true if data has been received (or there's a connection error)
+// Return true if data has been received, or there's a connection error
 //=================================================================================================
 bool DataReceivePending(SocketInfo* pClientSocket)
 {
@@ -159,55 +166,62 @@ bool DataReceivePending(SocketInfo* pClientSocket)
 }
 
 //=================================================================================================
-// Block until all requested data has been received from the remote connection
+// Receive as much as possible a command and keep track of transfer status
 //=================================================================================================
-bool DataReceive(SocketInfo* pClientSocket, void* pDataIn, size_t Size)
+void DataReceive(SocketInfo* pClientSocket, NetImgui::Internal::PendingCom& PendingComRcv)
 {
-	if( !pClientSocket ) return false;
+	// Invalid command
+	if( !pClientSocket || !PendingComRcv.pCommand ){
+		PendingComRcv.bError = true;
+	}
 
-	int32 totalRcv(0), sizeRcv(0);
-	while( totalRcv < static_cast<int>(Size) )
+	int32 sizeRcv(0);
+	if( pClientSocket->mpSocket->Recv(	&reinterpret_cast<uint8*>(PendingComRcv.pCommand)[PendingComRcv.SizeCurrent],
+										static_cast<int>(PendingComRcv.pCommand->mSize-PendingComRcv.SizeCurrent),
+										sizeRcv,
+										ESocketReceiveFlags::None) )
 	{
-		if( pClientSocket->mpSocket->Recv(&reinterpret_cast<uint8*>(pDataIn)[totalRcv], static_cast<int>(Size)-totalRcv, sizeRcv, ESocketReceiveFlags::None) )
-		{
-			totalRcv += sizeRcv;
-		}
-		else
-		{
-			if( pClientSocket->mpSocket->GetConnectionState() != ESocketConnectionState::SCS_Connected )
-			{
-				return false; // Connection error, abort transmission
-			}
-			std::this_thread::yield();
+		PendingComRcv.SizeCurrent += static_cast<size_t>(sizeRcv);
+	}
+	// Connection error, abort transmission	
+	else
+	{
+		const ESocketErrors SocketError = ISocketSubsystem::Get(PLATFORM_SOCKETSUBSYSTEM)->GetLastErrorCode();
+		if( SocketError != ESocketErrors::SE_EWOULDBLOCK ){
+			PendingComRcv.bError = true; 
 		}
 	}
-	return totalRcv == static_cast<int32>(Size);
 }
 
 //=================================================================================================
-// Block until all requested data has been sent to remote connection
+// Receive as much as possible a command and keep track of transfer status
 //=================================================================================================
-bool DataSend(SocketInfo* pClientSocket, void* pDataOut, size_t Size)
+void DataSend(SocketInfo* pClientSocket, NetImgui::Internal::PendingCom& PendingComSend)
 {
-	if( !pClientSocket ) return false;
-
-	int32 totalSent(0), sizeSent(0);
-	while( totalSent < static_cast<int>(Size) )
-	{
-		if( pClientSocket->mpSocket->Send(&reinterpret_cast<uint8*>(pDataOut)[totalSent], Size-totalSent, sizeSent) )
-		{
-			totalSent += sizeSent;
-		}
-		else
-		{
-			if( pClientSocket->mpSocket->GetConnectionState() != ESocketConnectionState::SCS_Connected )
-			{
-				return false; // Connection error, abort transmission
-			}
-			std::this_thread::yield();
-		}
+	// Invalid command
+	if( !pClientSocket || !PendingComSend.pCommand ){
+		PendingComSend.bError = true;
 	}
-	return totalSent == static_cast<int32>(Size);
+
+	int32 sizeSent		= 0;
+	int32 sizeToSend	= PendingComSend.pCommand->mSize-PendingComSend.SizeCurrent;
+	sizeToSend			= sizeToSend > pClientSocket->mSendSize ? pClientSocket->mSendSize : sizeToSend;
+
+	if( pClientSocket->mpSocket->Send(	&reinterpret_cast<uint8*>(PendingComSend.pCommand)[PendingComSend.SizeCurrent],
+										static_cast<int>(sizeToSend),
+										sizeSent) )
+	{
+		PendingComSend.SizeCurrent += static_cast<size_t>(sizeSent);
+	}
+	// Connection error, abort transmission
+	else
+	{
+		const ESocketErrors SocketError = ISocketSubsystem::Get(PLATFORM_SOCKETSUBSYSTEM)->GetLastErrorCode();
+		if( SocketError != ESocketErrors::SE_EWOULDBLOCK )
+		{
+			PendingComSend.bError = true; 
+		}	
+	}
 }
 
 }}} // namespace NetImgui::Internal::Network

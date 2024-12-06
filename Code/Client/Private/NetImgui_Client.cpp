@@ -421,7 +421,14 @@ bool Communications_Initialize(ClientInfo& client)
 		client.mPendingRcv					= PendingCom();
 		client.mPendingSend					= PendingCom();
 	}
-	return client.mpSocketPending.load() == nullptr;
+	
+	// Disconnect pending socket if init failed
+	Network::SocketInfo* SocketPending = client.mpSocketPending.exchange(nullptr);
+	if( SocketPending ){
+		NetImgui::Internal::Network::Disconnect(SocketPending);
+		return false;
+	}
+	return true;
 }
 
 //=================================================================================================
