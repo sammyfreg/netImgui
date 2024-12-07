@@ -4,12 +4,12 @@
 //! @Name		: NetImgui
 //=================================================================================================
 //! @author		: Sammy Fatnassi
-//! @date		: 2024/12/01
-//!	@version	: v1.11.4
+//! @date		: 2024/12/07
+//!	@version	: v1.12
 //! @Details	: For integration info : https://github.com/sammyfreg/netImgui/wiki
 //=================================================================================================
-#define NETIMGUI_VERSION		"1.11.4"	// Handle partial com instead of blocking
-#define NETIMGUI_VERSION_NUM	11104
+#define NETIMGUI_VERSION		"1.12.0"	// New Release with faster communications protocol
+#define NETIMGUI_VERSION_NUM	11200
 
 
 
