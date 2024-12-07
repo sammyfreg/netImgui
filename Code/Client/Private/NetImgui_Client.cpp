@@ -359,6 +359,8 @@ bool Communications_Initialize(ClientInfo& client)
 {
 	CmdVersion cmdVersionSend, cmdVersionRcv;
 	PendingCom PendingRcv, PendingSend;
+	
+	client.mbComInitActive = true;
 
 	//---------------------------------------------------------------------
 	// Handshake confirming connection validity
@@ -391,30 +393,25 @@ bool Communications_Initialize(ClientInfo& client)
 	//---------------------------------------------------------------------
 	// Connection established, init client
 	//---------------------------------------------------------------------
-	if( bCanConnect && !PendingSend.IsError() )
+	if( bCanConnect && !PendingSend.IsError() && (!client.IsConnected() || bForceConnect) )
 	{
-		Network::SocketInfo* pNewConnect = client.mpSocketPending.exchange(nullptr);
+		Network::SocketInfo* pNewComSocket = client.mpSocketPending.exchange(nullptr);
+
+		// If we detect an active connection with Server and 'ForceConnect was requested, close it first
 		if( client.IsConnected() )
 		{
-			// Force connect requested, disconnect current client and wait until it is free to connect to new server
-			if( bForceConnect ){
-				client.mbDisconnectPending = true;
-				while( client.IsConnected() );
-			}
-			// Close communication with server, client isn't available to connect to it
-			else{
-				NetImgui::Internal::Network::Disconnect(pNewConnect);
-				return false;
-			}
+			client.mbDisconnectPending = true;
+			while( client.IsConnected() );
 		}
 
 		for(auto& texture : client.mTextures)
 		{
 			texture.mbSent = false;
 		}
+
+		client.mpSocketComs					= pNewComSocket;					// Take ownerhip of socket
 		client.mbHasTextureUpdate			= true;								// Force sending the client textures
 		client.mBGSettingSent.mTextureId	= client.mBGSetting.mTextureId-1u;	// Force sending the Background settings (by making different than current settings)
-		client.mpSocketComs					= pNewConnect;
 		client.mFrameIndex					= 0;
 		client.mPendingSendNext				= 0;
 		client.mServerForceConnectEnabled	= (cmdVersionRcv.mFlags & static_cast<uint8_t>(CmdVersion::eFlags::ConnectExclusive)) == 0;
@@ -423,12 +420,14 @@ bool Communications_Initialize(ClientInfo& client)
 	}
 	
 	// Disconnect pending socket if init failed
-	Network::SocketInfo* SocketPending = client.mpSocketPending.exchange(nullptr);
+	Network::SocketInfo* SocketPending	= client.mpSocketPending.exchange(nullptr);
+	bool bValidConnection				= SocketPending == nullptr;
 	if( SocketPending ){
 		NetImgui::Internal::Network::Disconnect(SocketPending);
-		return false;
 	}
-	return true;
+
+	client.mbComInitActive = false;
+	return bValidConnection;
 }
 
 //=================================================================================================
@@ -604,9 +603,9 @@ void ClientInfo::ContextOverride()
 		}
 #endif
 #if IMGUI_VERSION_NUM < 19110
-		newIO.GetClipboardTextFn			= GetClipboardTextFn_NetImguiImpl;
-		newIO.SetClipboardTextFn			= SetClipboardTextFn_NetImguiImpl;
-		newIO.ClipboardUserData				= this;
+		newIO.GetClipboardTextFn				= GetClipboardTextFn_NetImguiImpl;
+		newIO.SetClipboardTextFn				= SetClipboardTextFn_NetImguiImpl;
+		newIO.ClipboardUserData					= this;
 #else
 		ImGuiPlatformIO& platformIO 			= ImGui::GetPlatformIO();
 		platformIO.Platform_GetClipboardTextFn	= GetClipboardTextFn_NetImguiImpl;
@@ -614,7 +613,7 @@ void ClientInfo::ContextOverride()
 		platformIO.Platform_ClipboardUserData	= this;
 #endif
 #if defined(IMGUI_HAS_VIEWPORT)
-		newIO.ConfigFlags					&= ~(ImGuiConfigFlags_ViewportsEnable); // Viewport unsupported at the moment
+		newIO.ConfigFlags &= ~(ImGuiConfigFlags_ViewportsEnable); // Viewport unsupported at the moment
 #endif
 	}
 }

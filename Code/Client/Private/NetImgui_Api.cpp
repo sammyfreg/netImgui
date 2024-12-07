@@ -143,7 +143,7 @@ bool IsConnected(void)
 
 	// If disconnected in middle of a remote frame drawing,
 	// want to behave like it is still connected to finish frame properly
-	return client.IsConnected() || IsDrawingRemote(); 
+	return client.IsConnected() || IsDrawingRemote();
 }
 
 //=================================================================================================

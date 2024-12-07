@@ -22,7 +22,7 @@ bool ClientInfo::IsConnected()const
 
 bool ClientInfo::IsConnectPending()const
 {
-	return mpSocketPending.load() != nullptr || mpSocketListen.load() != nullptr;
+	return mbComInitActive || mpSocketPending.load() != nullptr || mpSocketListen.load() != nullptr;
 }
 
 bool ClientInfo::IsActive()const

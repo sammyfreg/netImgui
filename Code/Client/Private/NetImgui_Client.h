@@ -116,6 +116,7 @@ struct ClientInfo
 
 	bool								mbClientThreadActive		= false;	// True when connected and communicating with Server
 	bool								mbListenThreadActive		= false;	// True when listening from connection request from Server
+	bool								mbComInitActive				= false;	// True when attempting to initialize a new connection
 	bool								mbHasTextureUpdate			= false;
 	bool								mbIsDrawing					= false;	// We are inside a 'NetImgui::NewFrame' / 'NetImgui::EndFrame' (even if not for a remote draw)
 	bool								mbIsRemoteDrawing			= false;	// True if the rendering it meant for the remote netImgui server

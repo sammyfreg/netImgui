@@ -27,14 +27,15 @@ struct SocketInfo
 		constexpr DWORD	kComsNoDelay = 1;
 		setsockopt(mSocket, SOL_SOCKET, TCP_NODELAY, reinterpret_cast<const char*>(&kComsNoDelay), sizeof(kComsNoDelay));
 
-		//constexpr int	kComsSendBuffer = 1014*1024;
-		//setsockopt(mSocket, SOL_SOCKET, SO_SNDBUF, reinterpret_cast<const char*>(&kComsSendBuffer), sizeof(kComsSendBuffer));
+		const int kComsSendBuffer = 2*mSendSizeMax;
+		setsockopt(mSocket, SOL_SOCKET, SO_SNDBUF, reinterpret_cast<const char*>(&kComsSendBuffer), sizeof(kComsSendBuffer));
 
 		//constexpr int	kComsRcvBuffer = 1014*1024;
 		//setsockopt(mSocket, SOL_SOCKET, SO_RCVBUF, reinterpret_cast<const char*>(&kComsRcvBuffer), sizeof(kComsRcvBuffer));
 	}
 
 	SOCKET mSocket;
+	int mSendSizeMax = 1024*1024;	// Limit tx data to avoid socket error on large amount (texture)
 };
 
 bool Startup()
@@ -83,7 +84,7 @@ SocketInfo* Connect(const char* ServerHost, uint32_t ServerPort)
 			FD_ZERO(&SocketSet);
 			FD_SET(ClientSocket, &SocketSet); 
 			Result 		= select(0, nullptr, &SocketSet, nullptr, &kConnectTimeout);
-			Connected	= Result != SOCKET_ERROR;
+			Connected	= Result == 1; // when 1 socket ready for write, otherwise it's -1 or 0
 		}
 
 		if( Connected )
@@ -166,10 +167,21 @@ void Disconnect(SocketInfo* pClientSocket)
 //=================================================================================================
 bool DataReceivePending(SocketInfo* pClientSocket)
 {
-	char Unused[4];
-	int resultRcv = recv(pClientSocket->mSocket, Unused, 1, MSG_PEEK);
-	// Note: return true on a connection error, to exit code looping on the data wait
-	return !pClientSocket || resultRcv > 0 || (resultRcv == SOCKET_ERROR && WSAGetLastError() != WSAEWOULDBLOCK);
+	const timeval kConnectTimeout = {0, 0}; // No wait time
+	if( pClientSocket )
+	{
+		fd_set fdSetRead;
+		fd_set fdSetErr;
+		FD_ZERO(&fdSetRead);
+		FD_ZERO(&fdSetErr);
+		FD_SET(pClientSocket->mSocket, &fdSetRead);
+		FD_SET(pClientSocket->mSocket, &fdSetErr);
+	
+		// Note: return true if data ready or connection error (to exit parent loop waiting on data)
+		int result = select(0, &fdSetRead, nullptr, &fdSetErr, &kConnectTimeout);
+		return result != 0;
+	}
+	return true;
 }
 
 //=================================================================================================
@@ -188,7 +200,9 @@ void DataReceive(SocketInfo* pClientSocket, NetImgui::Internal::PendingCom& Pend
 						 	static_cast<int>(PendingComRcv.pCommand->mSize-PendingComRcv.SizeCurrent),
 						 	0);
 	
-	if( resultRcv != SOCKET_ERROR ){
+	// Note: 'DataReceive' is called after pending data has been confirm. 
+	//		 0 received data means connection lost
+	if( resultRcv != SOCKET_ERROR && resultRcv > 0 ){
 		PendingComRcv.SizeCurrent += static_cast<size_t>(resultRcv);
 	}
 	// Connection error, abort transmission
@@ -208,9 +222,11 @@ void DataSend(SocketInfo* pClientSocket, NetImgui::Internal::PendingCom& Pending
 	}
 	
 	// Send data to remote connection
-	int resultSent = send(	pClientSocket->mSocket, 
+	int sizeToSend	= static_cast<int>(PendingComSend.pCommand->mSize-PendingComSend.SizeCurrent);
+	sizeToSend		= sizeToSend > pClientSocket->mSendSizeMax ? pClientSocket->mSendSizeMax : sizeToSend;
+	int resultSent 	= send(	pClientSocket->mSocket,
 						  	&reinterpret_cast<char*>(PendingComSend.pCommand)[PendingComSend.SizeCurrent],
-						  	static_cast<int>(PendingComSend.pCommand->mSize-PendingComSend.SizeCurrent),
+							sizeToSend,
 						  	0);
 
 	if( resultSent != SOCKET_ERROR ){

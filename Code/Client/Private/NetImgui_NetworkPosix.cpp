@@ -17,9 +17,6 @@
 //			-Sockets set to non blocking and immediate sending
 //			-Added 'DataReceivePending' function
 //			-Reworked 'DataReceive' and 'DataSend' to be non blocking socket operation
-//			 but wait until all data has been processed
-//			-Connect now handle timeout instead of letting the socket timeout internally
-//			 after a long time
 static_assert(0)
 
 namespace NetImgui { namespace Internal { namespace Network 

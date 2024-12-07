@@ -91,7 +91,7 @@ struct Client
 	bool										mbIsVisible				= false;	//!< If currently shown
 	bool										mbIsActive				= false;	//!< Is the current active window (will receive input, only one is true at a time)
 	bool										mbIsReleased			= false;	//!< If released in com thread and main thread should delete resources
-	bool										mbIsConnected			= false;	//!< If connected to a remote client
+	bool										mbIsConnected			= false;	//!< If connected to a remote client. Set to false in Unitialize, after mIsRelease is set to unload resources
 	std::atomic_bool							mbIsFree;							//!< If available to use for a new connected client	
 	std::atomic_bool							mbCompressionSkipOncePending;		//!< When we detect invalid previous DrawFrame command, cancel compression for 1 frame, to get good data
 	std::atomic_bool							mbDisconnectPending;				//!< Terminate Client/Server coms

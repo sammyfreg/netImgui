@@ -224,7 +224,6 @@ void Communications_ClientExchangeLoop(RemoteClient::Client* pClient)
 	NetImguiServer::Config::Client::SetProperty_Status(pClient->mClientConfigID, NetImguiServer::Config::Client::eStatus::Disconnected);
 	NetImgui::Internal::Network::Disconnect(pClient->mpSocket);
 	pClient->Release();
-	pClient->mbIsConnected			= false;
 	gActiveClientThreadCount--;
 }
 
@@ -376,8 +375,9 @@ void NetworkConnectRequest_Receive()
 					NetImguiServer::App::HAL_GetSocketInfo(pClientSocket, newClient.mConnectHost, sizeof(newClient.mConnectHost), newClient.mConnectPort);
 					NetworkConnectionNew(pClientSocket, &newClient, false);
 				}
-				else
+				else{
 					NetImgui::Internal::Network::Disconnect(pClientSocket);
+				}
 			}
 		}
 		std::this_thread::sleep_for(std::chrono::milliseconds(16));

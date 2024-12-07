@@ -187,7 +187,7 @@ void DataReceive(SocketInfo* pClientSocket, NetImgui::Internal::PendingCom& Pend
 	else
 	{
 		const ESocketErrors SocketError = ISocketSubsystem::Get(PLATFORM_SOCKETSUBSYSTEM)->GetLastErrorCode();
-		if( SocketError != ESocketErrors::SE_EWOULDBLOCK ){
+		if( (SocketError != ESocketErrors::SE_EWOULDBLOCK) || (pClientSocket->mpSocket->GetConnectionState() != ESocketConnectionState::SCS_Connected) ){
 			PendingComRcv.bError = true; 
 		}
 	}
@@ -217,7 +217,7 @@ void DataSend(SocketInfo* pClientSocket, NetImgui::Internal::PendingCom& Pending
 	else
 	{
 		const ESocketErrors SocketError = ISocketSubsystem::Get(PLATFORM_SOCKETSUBSYSTEM)->GetLastErrorCode();
-		if( SocketError != ESocketErrors::SE_EWOULDBLOCK )
+		if( (SocketError != ESocketErrors::SE_EWOULDBLOCK) || (pClientSocket->mpSocket->GetConnectionState() != ESocketConnectionState::SCS_Connected))
 		{
 			PendingComSend.bError = true; 
 		}	
