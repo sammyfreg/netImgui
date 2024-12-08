@@ -112,16 +112,18 @@ Related projects making use of **NetImgui**.
 - ~~Support of monitor DPI~~
 - ~~Support for connection takeover~~
 
-### Version 1.11
-(2024/05/26)
+### Version 1.12
+(2024/12/08)
 - **API Changes**
   - None
-- **Added Connection 'Take Over' support**
-  - When a **NetImgui Client** is already connected to a **NetImgui Server**, user of a second instance of a **NetImgui Server** now have the option of *Taking over* the connection.
-  - This is useful when the *Client Config* on a **NetImgui Server** is set to *Auto Connect* and a user on a second PC wish to still connect to the client.
-  - Users can enable the option *Block TakerOver* in their *Client Config* to prevent this possibility. 
+- **Backend change**
+  - Networking protocol has been reworked
+  - If you are using our own networking layer, you will need to support changes made to *'DataReceive'* and *'DataSend'* and the addition of *'DataReceivePending'*
+  - This was done to drastically improve performances by using non-blocking sockets
+  - For more details, please look at the changes done to *NetImgui_NetworkWin32.cpp* or *NetImgui_NetworkUE4.cpp*
+  - ***Note:** The Posix network code has not been updated to new protocol yet, only Windows and UE4 have been done*
 - **Various small changes and fixes**
-    - Tested **Dear ImGui** versions up to 1.90.6 and updated the **NetImgui Server** to it (docking branch).
+    - Tested **Dear ImGui** versions up to 1.91.5 and updated the **NetImgui Server** to it (docking branch).
 
 ### Older
 [Release Notes](https://github.com/sammyfreg/netImgui/wiki/Release-notes)
