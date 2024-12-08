@@ -368,7 +368,7 @@ bool Communications_Initialize(ClientInfo& client)
 	PendingRcv.pCommand = reinterpret_cast<CmdPendingRead*>(&cmdVersionRcv);
 	while( !PendingRcv.IsDone() && cmdVersionRcv.mType == CmdHeader::eCommands::Version )
 	{
-		while( !Network::DataReceivePending(client.mpSocketPending) ){
+		while( !client.mbDisconnectPending && !Network::DataReceivePending(client.mpSocketPending) ){
 			std::this_thread::yield(); // Idle until we receive the remote data
 		}
 		Network::DataReceive(client.mpSocketPending, PendingRcv);
@@ -701,7 +701,6 @@ void ClientInfo::ProcessDrawData(const ImDrawData* pDearImguiData, ImGuiMouseCur
 
 	CmdDrawFrame* pDrawFrameNew = ConvertToCmdDrawFrame(pDearImguiData, mouseCursor);
 	pDrawFrameNew->mCompressed	= mClientCompressionMode == eCompressionMode::kForceEnable || (mClientCompressionMode == eCompressionMode::kUseServerSetting && mServerCompressionEnabled);
-	mLastOutgoingDrawTime 		= std::chrono::steady_clock::now();
 	mPendingFrameOut.Assign(pDrawFrameNew);
 }
 

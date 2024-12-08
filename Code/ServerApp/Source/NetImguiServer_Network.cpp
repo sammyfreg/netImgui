@@ -244,7 +244,7 @@ bool Communications_InitializeClient(NetImgui::Internal::Network::SocketInfo* pC
 	cmdVersionSend.mFlags 		|= ConnectExclusive ? static_cast<uint8_t>(NetImgui::Internal::CmdVersion::eFlags::ConnectExclusive) : 0;
 	cmdVersionSend.mFlags 		|= ConnectForce ? static_cast<uint8_t>(NetImgui::Internal::CmdVersion::eFlags::ConnectForce) : 0;
 	PendingSend.pCommand 		= reinterpret_cast<CmdPendingRead*>(&cmdVersionSend);
-	while( !PendingSend.IsDone() ){
+	while( !gbShutdown && !PendingSend.IsDone() ){
 		::Network::DataSend(pClientSocket, PendingSend);
 	}
 
@@ -253,13 +253,13 @@ bool Communications_InitializeClient(NetImgui::Internal::Network::SocketInfo* pC
 		PendingRcv.pCommand	= reinterpret_cast<CmdPendingRead*>(&cmdVersionRcv);
 		while( !PendingRcv.IsDone() && cmdVersionRcv.mType == CmdHeader::eCommands::Version )
 		{
-			while( !::Network::DataReceivePending(pClientSocket) ){
+			while( !gbShutdown && !::Network::DataReceivePending(pClientSocket) ){
 				std::this_thread::yield(); // Idle until we receive the remote data
 			}
 			::Network::DataReceive(pClientSocket, PendingRcv);
 		}
 
-		if( !PendingRcv.IsError() )
+		if( !gbShutdown && !PendingRcv.IsError() )
 		{
 			//---------------------------------------------------------------------
 			// Connection accepted, initialize client
@@ -450,8 +450,7 @@ void NetworkConnectRequest_Send()
 bool Startup( )
 {	
 	// Relying on shared network implementation for Winsock Init
-	if( !NetImgui::Internal::Network::Startup() )
-	{
+	if( !NetImgui::Internal::Network::Startup() ){
 		return false;
 	}
 	
@@ -470,8 +469,9 @@ void Shutdown()
 	gbShutdown = true;
 	NetImgui::Internal::Network::SocketInfo* socketDisconnect = gListenSocket.exchange(nullptr);
 	NetImgui::Internal::Network::Disconnect(socketDisconnect);
-	while( gActiveClientThreadCount > 0 || gActiveThreadConnectIn || gActiveThreadConnectOut )
+	while( gActiveClientThreadCount > 0 || gActiveThreadConnectIn || gActiveThreadConnectOut ){
 		std::this_thread::yield();
+	}
 
 	NetImgui::Internal::Network::Shutdown();
 }

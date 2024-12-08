@@ -204,7 +204,15 @@ bool NewFrame(bool bSupportFrameSkip)
 		
 		// Update input and see if remote netImgui expect a new frame
 		client.mSavedDisplaySize			= ImGui::GetIO().DisplaySize;
-		client.mbValidDrawFrame				= client.mDesiredFps > 0.f && (elapsedDrawMs + elapsedCheckMs/2.f) > (1000.f/client.mDesiredFps); // Take into account delay until next method call, for more precise fps
+		client.mbValidDrawFrame				= false;
+		
+		// Take into account delay until next method call, for more precise fps
+		if( client.mDesiredFps > 0.f && (elapsedDrawMs + elapsedCheckMs/2.f) > (1000.f/client.mDesiredFps) )
+		{
+			client.mLastOutgoingDrawTime	= std::chrono::steady_clock::now();
+			client.mbValidDrawFrame			= true;
+		}
+		
 		ProcessInputData(client);
 
 		// We are about to start drawing for remote context, check for font data update
