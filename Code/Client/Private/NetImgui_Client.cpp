@@ -529,6 +529,9 @@ ClientInfo::ClientInfo()
 , mFontTextureID(TextureCastFromUInt(uint64_t(0u)))
 , mTexturesPendingSent(0)
 , mTexturesPendingCreated(0)
+, mbClientThreadActive(false)
+, mbListenThreadActive(false)
+, mbComInitActive(false)
 {
 	memset(mTexturesPending, 0, sizeof(mTexturesPending));
 }

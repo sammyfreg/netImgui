@@ -114,9 +114,9 @@ struct ClientInfo
 	std::atomic_uint32_t				mTexturesPendingSent;
 	std::atomic_uint32_t				mTexturesPendingCreated;
 
-	std::atomic_bool					mbClientThreadActive		= false;	// True when connected and communicating with Server
-	std::atomic_bool					mbListenThreadActive		= false;	// True when listening from connection request from Server
-	std::atomic_bool					mbComInitActive				= false;	// True when attempting to initialize a new connection
+	std::atomic_bool					mbClientThreadActive;					// True when connected and communicating with Server
+	std::atomic_bool					mbListenThreadActive;					// True when listening from connection request from Server
+	std::atomic_bool					mbComInitActive;						// True when attempting to initialize a new connection
 	bool								mbHasTextureUpdate			= false;
 	bool								mbIsDrawing					= false;	// We are inside a 'NetImgui::NewFrame' / 'NetImgui::EndFrame' (even if not for a remote draw)
 	bool								mbIsRemoteDrawing			= false;	// True if the rendering it meant for the remote netImgui server
