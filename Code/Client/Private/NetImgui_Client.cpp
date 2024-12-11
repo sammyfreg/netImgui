@@ -446,7 +446,10 @@ void Communications_Loop(void* pClientVoid)
 		Communications_Incoming(*pClient);
 	}
 
-	pClient->KillSocketComs();
+	Network::SocketInfo* pSocket = pClient->mpSocketComs.exchange(nullptr);
+	if (pSocket){
+		NetImgui::Internal::Network::Disconnect(pSocket);
+	}
 	pClient->mbClientThreadActive 	= false;
 }
 

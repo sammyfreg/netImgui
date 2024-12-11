@@ -171,8 +171,9 @@ bool DataReceivePending(SocketInfo* pClientSocket)
 void DataReceive(SocketInfo* pClientSocket, NetImgui::Internal::PendingCom& PendingComRcv)
 {
 	// Invalid command
-	if( !pClientSocket || !PendingComRcv.pCommand ){
+	if( !pClientSocket || !PendingComRcv.pCommand || !pClientSocket->mpSocket  || (pClientSocket->mpSocket->GetConnectionState() != ESocketConnectionState::SCS_Connected)){
 		PendingComRcv.bError = true;
+		return;
 	}
 
 	int32 sizeRcv(0);
@@ -181,15 +182,14 @@ void DataReceive(SocketInfo* pClientSocket, NetImgui::Internal::PendingCom& Pend
 										sizeRcv,
 										ESocketReceiveFlags::None) )
 	{
-		PendingComRcv.SizeCurrent += static_cast<size_t>(sizeRcv);
+		PendingComRcv.SizeCurrent	+= static_cast<size_t>(sizeRcv);
+		PendingComRcv.bError		|= sizeRcv <= 0; // Error if no data read since DataReceivePending() said there was some available
 	}
-	// Connection error, abort transmission	
 	else
 	{
+		// Connection error, abort transmission
 		const ESocketErrors SocketError = ISocketSubsystem::Get(PLATFORM_SOCKETSUBSYSTEM)->GetLastErrorCode();
-		if( (SocketError != ESocketErrors::SE_EWOULDBLOCK) || (pClientSocket->mpSocket->GetConnectionState() != ESocketConnectionState::SCS_Connected) ){
-			PendingComRcv.bError = true; 
-		}
+		PendingComRcv.bError			= SocketError != SE_NO_ERROR && SocketError != ESocketErrors::SE_EWOULDBLOCK;
 	}
 }
 
@@ -199,8 +199,9 @@ void DataReceive(SocketInfo* pClientSocket, NetImgui::Internal::PendingCom& Pend
 void DataSend(SocketInfo* pClientSocket, NetImgui::Internal::PendingCom& PendingComSend)
 {
 	// Invalid command
-	if( !pClientSocket || !PendingComSend.pCommand ){
+	if( !pClientSocket || !PendingComSend.pCommand || !pClientSocket->mpSocket || (pClientSocket->mpSocket->GetConnectionState() != ESocketConnectionState::SCS_Connected) ){
 		PendingComSend.bError = true;
+		return;
 	}
 
 	int32 sizeSent		= 0;
@@ -213,14 +214,11 @@ void DataSend(SocketInfo* pClientSocket, NetImgui::Internal::PendingCom& Pending
 	{
 		PendingComSend.SizeCurrent += static_cast<size_t>(sizeSent);
 	}
-	// Connection error, abort transmission
 	else
 	{
+		// Connection error, abort transmission
 		const ESocketErrors SocketError = ISocketSubsystem::Get(PLATFORM_SOCKETSUBSYSTEM)->GetLastErrorCode();
-		if( (SocketError != ESocketErrors::SE_EWOULDBLOCK) || (pClientSocket->mpSocket->GetConnectionState() != ESocketConnectionState::SCS_Connected))
-		{
-			PendingComSend.bError = true; 
-		}	
+		PendingComSend.bError			= SocketError != SE_NO_ERROR && SocketError != ESocketErrors::SE_EWOULDBLOCK;
 	}
 }
 

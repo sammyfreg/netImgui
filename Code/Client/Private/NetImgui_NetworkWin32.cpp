@@ -190,8 +190,9 @@ bool DataReceivePending(SocketInfo* pClientSocket)
 void DataReceive(SocketInfo* pClientSocket, NetImgui::Internal::PendingCom& PendingComRcv)
 {
 	// Invalid command
-	if( !pClientSocket || !PendingComRcv.pCommand ){
+	if( !pClientSocket || !PendingComRcv.pCommand || !pClientSocket->mSocket ){
 		PendingComRcv.bError = true;
+		return;
 	}
 
 	// Receive data from remote connection
@@ -202,8 +203,9 @@ void DataReceive(SocketInfo* pClientSocket, NetImgui::Internal::PendingCom& Pend
 	
 	// Note: 'DataReceive' is called after pending data has been confirm. 
 	//		 0 received data means connection lost
-	if( resultRcv != SOCKET_ERROR && resultRcv > 0 ){
-		PendingComRcv.SizeCurrent += static_cast<size_t>(resultRcv);
+	if( resultRcv != SOCKET_ERROR ){
+		PendingComRcv.SizeCurrent	+= static_cast<size_t>(resultRcv);
+		PendingComRcv.bError		|= resultRcv <= 0; // Error if no data read since DataReceivePending() said there was some available
 	}
 	// Connection error, abort transmission
 	else if( WSAGetLastError() != WSAEWOULDBLOCK ){
@@ -217,8 +219,9 @@ void DataReceive(SocketInfo* pClientSocket, NetImgui::Internal::PendingCom& Pend
 void DataSend(SocketInfo* pClientSocket, NetImgui::Internal::PendingCom& PendingComSend)
 {
 	// Invalid command
-	if( !pClientSocket || !PendingComSend.pCommand ){
+	if( !pClientSocket || !PendingComSend.pCommand || !pClientSocket->mSocket ){
 		PendingComSend.bError = true;
+		return;
 	}
 	
 	// Send data to remote connection

@@ -103,33 +103,30 @@ void Disconnect(void)
 	Client::ClientInfo& client	= *gpClientInfo;
 	client.mbDisconnectPending	= true;
 	client.mbDisconnectListen	= true;
-	if( client.mpSocketListen.load() != nullptr )
+	if( client.mpSocketListen.load() != nullptr && client.mSocketListenPort != 0 )
 	{
-		Network::SocketInfo* pFakeSocket(nullptr);
-		if( client.mSocketListenPort != 0 )
-		{
-			pFakeSocket = Network::Connect("127.0.0.1", client.mSocketListenPort);
-			client.mSocketListenPort = 0;
-		}
+		Network::SocketInfo* pFakeSocket	= Network::Connect("127.0.0.1", client.mSocketListenPort);
+		client.mSocketListenPort			= 0;
+		client.mbDisconnectPending			= true;
 
-		if(pFakeSocket)
-		{
+		if(pFakeSocket){
 			Network::Disconnect(pFakeSocket);
-			pFakeSocket = nullptr;
-		}
-		// If fake connection creation fails, disconnect the listen socket directly
-		// even though it might potentially cause a race condition
-		else
-		{
-			Network::SocketInfo* pSocket = client.mpSocketListen.exchange(nullptr);
-			Network::Disconnect(pSocket);
 		}
 	}
 
-	if( client.mpSocketPending.load() != nullptr )
-	{
-		Network::Disconnect(client.mpSocketPending);
-		client.mpSocketPending = nullptr;
+	// Wait for connection attempt to complete and fail
+	while( client.mbComInitActive || client.mbClientThreadActive );
+	
+	// If fake connection to exit Listening failed, force disconnect socket directly
+	// even though it might potentially cause a race condition
+	Network::SocketInfo* pListenSocket =  client.mpSocketListen.exchange(nullptr);
+	if( pListenSocket ){
+		Network::Disconnect(pListenSocket);
+	}
+
+	Network::SocketInfo* pPendingSocket =  client.mpSocketPending.exchange(nullptr);
+	if( pPendingSocket ){
+		Network::Disconnect(pPendingSocket);
 	}
 }
 

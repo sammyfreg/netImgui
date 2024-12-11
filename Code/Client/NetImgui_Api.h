@@ -4,12 +4,12 @@
 //! @Name		: NetImgui
 //=================================================================================================
 //! @author		: Sammy Fatnassi
-//! @date		: 2024/12/08
-//!	@version	: v1.12
+//! @date		: 2024/12/10
+//!	@version	: v1.12.1
 //! @Details	: For integration info : https://github.com/sammyfreg/netImgui/wiki
 //=================================================================================================
-#define NETIMGUI_VERSION		"1.12.0"	// New Release with faster communications protocol
-#define NETIMGUI_VERSION_NUM	11200
+#define NETIMGUI_VERSION		"1.12.1"	// Fixed a disconnect thread contention issue on socket
+#define NETIMGUI_VERSION_NUM	11201
 
 
 

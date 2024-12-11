@@ -30,21 +30,6 @@ bool ClientInfo::IsActive()const
 	return mbClientThreadActive || mbListenThreadActive;
 }
 
-void ClientInfo::KillSocketComs()
-{
-	Network::SocketInfo* pSocket = mpSocketPending.exchange(nullptr);
-	if (pSocket)
-	{
-		NetImgui::Internal::Network::Disconnect(pSocket);
-	}
-
-	pSocket = mpSocketComs.exchange(nullptr);
-	if (pSocket)
-	{
-		NetImgui::Internal::Network::Disconnect(pSocket);
-	}
-}
-
 bool ClientInfo::IsContextOverriden()const
 {
 	return mSavedContextValues.mSavedContext;

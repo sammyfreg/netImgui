@@ -38,7 +38,7 @@ extern uint64_t gMetric_SentDataUncompressed;
 static float	gMetric_SentDataTimeUS	= 0.f;
 static bool		gMetric_ConnectTo		= false;
 //=================================================================================================
-// Replacement of original NetImgui 'CommunicationsClient' used to exchange data with server.
+// Replacement of original NetImgui 'Communications_Loop' used to exchange data with server.
 // Used to insert some metrics for our sample timing with/without compression
 // @Note: Keep this version identical original in 'NetImgui_Client.cpp' (minus the small edits)
 //=================================================================================================
@@ -84,7 +84,10 @@ void CustomCommunicationsClient(void* pClientVoid)
 		//=============================================================================
 	}
 
-	pClient->KillSocketComs();
+	Network::SocketInfo* pSocket = pClient->mpSocketComs.exchange(nullptr);
+	if (pSocket){
+		NetImgui::Internal::Network::Disconnect(pSocket);
+	}
 	pClient->mbClientThreadActive = false;
 }
 
