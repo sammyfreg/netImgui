@@ -168,8 +168,11 @@ void Communications_Outgoing(RemoteClient::Client& Client)
 	if( Client.mPendingSend.IsReady() )
 	{
 		NetImgui::Internal::CmdClipboard* pClipboardCmd = Client.TakePendingClipboard();
-		Client.mPendingSend.pCommand 					= pClipboardCmd;
-		Client.mPendingSend.bAutoFree					= true;
+		if( pClipboardCmd ){
+			pClipboardCmd->ToOffsets();
+			Client.mPendingSend.pCommand 				= pClipboardCmd;
+			Client.mPendingSend.bAutoFree				= true;
+		}
 	}
 
 	if( Client.mPendingSend.IsReady() )

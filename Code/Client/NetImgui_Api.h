@@ -8,7 +8,7 @@
 //!	@version	: v1.12.1
 //! @Details	: For integration info : https://github.com/sammyfreg/netImgui/wiki
 //=================================================================================================
-#define NETIMGUI_VERSION		"1.12.1"	// Fixed a disconnect thread contention issue on socket
+#define NETIMGUI_VERSION		"1.12.1"	// Fixed disconnect thread contention and clipboard command
 #define NETIMGUI_VERSION_NUM	11201
 
 
