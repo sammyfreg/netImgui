@@ -112,6 +112,13 @@ Related projects making use of **NetImgui**.
 - ~~Support of monitor DPI~~
 - ~~Support for connection takeover~~
 
+### Version 1.12.1
+(2024/12/10)
+- **API Changes**
+  - None
+- **Various small changes and fixes**
+  - Fixed a Copy/paste and a Disconnect crash
+	
 ### Version 1.12
 (2024/12/08)
 - **API Changes**
