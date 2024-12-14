@@ -12,8 +12,6 @@
 #define NETIMGUI_VERSION_NUM	11201
 
 
-
-
 //-------------------------------------------------------------------------------------------------
 // Deactivate a few warnings to allow Imgui header include
 // without generating warnings in maximum level '-Wall'
@@ -67,6 +65,12 @@
 #endif
 
 #if NETIMGUI_ENABLED
+
+#define IMGUI_IS_NEWFONT (IMGUI_VERSION_NUM >= 19161) //SF
+#if !IMGUI_IS_NEWFONT
+typedef ImTextureID ImTextureUserID;
+#endif
+
 
 #include <stdint.h>
 

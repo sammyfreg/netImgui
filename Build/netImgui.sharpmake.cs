@@ -13,12 +13,12 @@ namespace NetImgui
 	// PROJECTS
 	//=============================================================================================
 	// Generate the default Imgui/netImgui Libraries (used to link against with Samples/Server)
-	[Sharpmake.Generate] public class ProjectNetImgui16_Default : ProjectNetImgui 
+	[Sharpmake.Generate] public class ProjectNetImgui16_Default : ProjectNetImgui
 	{ 
 		public ProjectNetImgui16_Default() : base(NetImguiTarget.GetPath(ProjectImgui.sDefaultPath)) { Name = "NetImgui16Lib"; } 
 	}
 	
-	[Sharpmake.Generate] public class ProjectNetImgui32_Default : ProjectNetImgui 
+	[Sharpmake.Generate] public class ProjectNetImgui32_Default : ProjectNetImgui
 	{ 
 		public ProjectNetImgui32_Default() : base(NetImguiTarget.GetPath(ProjectImgui.sDefaultPath)) { Name = "NetImgui32Lib"; } 
 		
@@ -26,11 +26,12 @@ namespace NetImgui
         {
 			base.ConfigureAll(conf, target);
 			conf.Defines.Add("ImDrawIdx=unsigned int");
-		}
+            conf.Defines.Add("NETIMGUI_ENABLED=1");
+        }
 	}
 	
 	// Test compiling netImgui with the Disabled Define
-	[Sharpmake.Generate] public class ProjectNetImgui_Disabled : ProjectNetImgui 
+	[Sharpmake.Generate] public class ProjectNetImgui_Disabled : ProjectNetImgui
 	{ 
 		public ProjectNetImgui_Disabled() : base(NetImguiTarget.GetPath(ProjectImgui.sDefaultPath)) { Name = "NetImguiLib (Disabled)"; }
 		
@@ -64,7 +65,7 @@ namespace NetImgui
 			// For the OpenGL Server build
 			AdditionalSourceRootPaths.Add(NetImguiTarget.GetPath(@"\Code\ThirdParty\glfw\include"));
 			AdditionalSourceRootPaths.Add(NetImguiTarget.GetPath(@"\Code\ThirdParty\glad30core\include"));
-			AdditionalSourceRootPaths.Add(NetImguiTarget.GetPath(@"\Code\ThirdParty\glad30core\src"));			
+			AdditionalSourceRootPaths.Add(NetImguiTarget.GetPath(@"\Code\ThirdParty\glad30core\src"));
 			SourceFilesBuildExcludeRegex.Add(@"ThirdParty\\glfw\\");
 			//---------------------------------------------
 		}

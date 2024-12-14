@@ -9,12 +9,6 @@
 #include "Sample.h"
 #include "../../ServerApp/Source/Fonts/Roboto_Medium.cpp"
 
-// When NetImgui is disabled, it doesn't include these needed headers
-#if !NETIMGUI_ENABLED
-#include "imgui.h"
-#include <stdint.h>
-#endif
-
 //=================================================================================================
 // FontCreationCallback_Default
 //-------------------------------------------------------------------------------------------------
@@ -28,14 +22,17 @@ void FontCreationCallback_Default(float PreviousDPIScale, float NewDPIScale)
 #if NETIMGUI_ENABLED
 	if (GetSample().UpdateFont(NewDPIScale, false))
 	{
+	#if IMGUI_IS_NEWFONT
+	#else
 		uint8_t* pPixelData(nullptr); int width(0), height(0);
 		ImGui::GetIO().Fonts->GetTexDataAsAlpha8(&pPixelData, &width, &height);
 		NetImgui::SendDataTexture(ImGui::GetIO().Fonts->TexID, pPixelData, static_cast<uint16_t>(width), static_cast<uint16_t>(height), NetImgui::eTexFormat::kTexFmtA8);
+	#endif
 	}
 #endif
 }
 
-extern void ExtraSampleBackend_UpdateFontTexture();
+//SF extern void ExtraSampleBackend_UpdateFontTexture();
 
 namespace Sample
 {
@@ -116,19 +113,19 @@ bool Base::UpdateFont(float fontScaleDPI, bool isLocal)
 			FontConfig.SizePixels	= static_cast<float>(pixelSizeWanted);
 			FontAtlas->Clear();
 		
-		#if 1 
+		#if NETIMGUI_ENABLED
 			// Using Roboto Font with DPI awareness
-			StringCopy(FontConfig.Name, "Roboto Medium");
+			NetImgui::Internal::StringCopy(FontConfig.Name, "Roboto Medium");
 			ImGui::GetIO().Fonts->AddFontFromMemoryCompressedTTF(Roboto_Medium_compressed_data, Roboto_Medium_compressed_size, FontConfig.SizePixels, &FontConfig);
 		#else 
-			// But could as easily rely on the default font
+			// But can as easily rely on the default font
 			FontAtlas->AddFontDefault(&FontConfig);
 		#endif
 			
 			FontAtlas->Build();
 			// Regenerate the Font Texture (only if used by local context)
 			if( ImGui::GetCurrentContext() == mpContextLocal ){
-				ExtraSampleBackend_UpdateFontTexture();
+				//SF ExtraSampleBackend_UpdateFontTexture();
 			}
 			return true;
 		}
@@ -236,11 +233,10 @@ void Base::Draw_Connect()
 		ImGui::EndMainMenuBar();
 	}
 	ImGui::PopStyleVar();
-
+#endif // #if NETIMGUI_ENABLED
 	if( mbShowDemoWindow ){
 		ImGui::ShowDemoWindow(&mbShowDemoWindow);
 	}
-#endif // #if NETIMGUI_ENABLED
 }
 
 }; // namespace Sample

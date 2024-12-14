@@ -213,6 +213,9 @@ bool NewFrame(bool bSupportFrameSkip)
 		ProcessInputData(client);
 
 		// We are about to start drawing for remote context, check for font data update
+	//SF 
+	#if IMGUI_IS_NEWFONT
+	#else
 		const ImFontAtlas* pFonts = ImGui::GetIO().Fonts;
 		if( pFonts->TexPixelsAlpha8 && 
 			(pFonts->TexPixelsAlpha8 != client.mpFontTextureData || client.mFontTextureID != pFonts->TexID ))
@@ -221,6 +224,7 @@ bool NewFrame(bool bSupportFrameSkip)
 			ImGui::GetIO().Fonts->GetTexDataAsAlpha8(&pPixelData, &width, &height);
 			SendDataTexture(pFonts->TexID, pPixelData, static_cast<uint16_t>(width), static_cast<uint16_t>(height), eTexFormat::kTexFmtA8);
 		}
+	#endif
 
 		// No font texture has been sent to the netImgui server, you can either 
 		// 1. Leave font data available in ImGui (not call ImGui::ClearTexData) for netImgui to auto send it
@@ -315,7 +319,7 @@ ImGuiContext* GetContext()
 }
 
 //=================================================================================================
-void SendDataTexture(ImTextureID textureId, void* pData, uint16_t width, uint16_t height, eTexFormat format, uint32_t dataSize)
+void SendDataTexture(ImTextureUserID textureId, void* pData, uint16_t width, uint16_t height, eTexFormat format, uint32_t dataSize)
 //=================================================================================================
 {
 	if (!gpClientInfo) return;
@@ -325,8 +329,8 @@ void SendDataTexture(ImTextureID textureId, void* pData, uint16_t width, uint16_
 
 	// Makes sure even 32bits ImTextureID value are received properly as 64bits
 	uint64_t texId64(0);
-	static_assert(sizeof(uint64_t) >= sizeof(textureId), "ImTextureID is bigger than 64bits, CmdTexture::mTextureId needs to be updated to support it");
-	reinterpret_cast<ImTextureID*>(&texId64)[0] = textureId;
+	static_assert(sizeof(uint64_t) >= sizeof(ImTextureUserID), "ImTextureID is bigger than 64bits, CmdTexture::mTextureId needs to be updated to support it");
+	reinterpret_cast<ImTextureUserID*>(&texId64)[0] = textureId;
 
 	// Add/Update a texture
 	if( pData != nullptr )
@@ -352,8 +356,11 @@ void SendDataTexture(ImTextureID textureId, void* pData, uint16_t width, uint16_
 		if( ImGui::GetIO().Fonts && ImGui::GetIO().Fonts->TexID == textureId )
 		{
 			client.mbFontUploaded		|= true;
+		#if IMGUI_IS_NEWFONT //SF
+		#else
 			client.mpFontTextureData	= ImGui::GetIO().Fonts->TexPixelsAlpha8;
 			client.mFontTextureID		= textureId;
+		#endif
 		}		
 	}
 	// Texture to remove
