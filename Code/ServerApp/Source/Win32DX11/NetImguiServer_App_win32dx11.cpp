@@ -9,6 +9,7 @@
 #include "NetImguiServer_UI.h"
 #include "backends/imgui_impl_dx11.cpp"
 #include "backends/imgui_impl_win32.cpp"
+
 //=================================================================================================
 
 // Dear ImGui: standalone example application for DirectX 11
@@ -40,6 +41,8 @@ void CreateRenderTarget();
 void CleanupRenderTarget();
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
+extern void LoadFonts(float scale);
+
 // Main code
 int main(int, char**)
 {
@@ -67,27 +70,10 @@ int main(int, char**)
     ImGuiIO& io = ImGui::GetIO(); (void)io;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
-    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;         // Enable Docking
-    io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;       // Enable Multi-Viewport / Platform Windows
-    //io.ConfigViewportsNoAutoMerge = true;
-    //io.ConfigViewportsNoTaskBarIcon = true;
-    //io.ConfigViewportsNoDefaultParent = true;
-    //io.ConfigDockingAlwaysTabBar = true;
-    //io.ConfigDockingTransparentPayload = true;
-    //io.ConfigFlags |= ImGuiConfigFlags_DpiEnableScaleFonts;     // FIXME-DPI: Experimental. THIS CURRENTLY DOESN'T WORK AS EXPECTED. DON'T USE IN USER APP!
-    //io.ConfigFlags |= ImGuiConfigFlags_DpiEnableScaleViewports; // FIXME-DPI: Experimental.
 
     // Setup Dear ImGui style
     ImGui::StyleColorsDark();
     //ImGui::StyleColorsLight();
-
-    // When viewports are enabled we tweak WindowRounding/WindowBg so platform windows can look identical to regular ones.
-    ImGuiStyle& style = ImGui::GetStyle();
-    if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-    {
-        style.WindowRounding = 0.0f;
-        style.Colors[ImGuiCol_WindowBg].w = 1.0f;
-    }
 
     // Setup Platform/Renderer backends
     ImGui_ImplWin32_Init(hwnd);
@@ -108,6 +94,7 @@ int main(int, char**)
     //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Cousine-Regular.ttf", 15.0f);
     //ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, nullptr, io.Fonts->GetGlyphRangesJapanese());
     //IM_ASSERT(font != nullptr);
+	//LoadFonts(1.0); // @SAMPLE_EDIT (Load our own font instead of demo)
 
     // Our state
     bool show_demo_window = true;
@@ -145,10 +132,10 @@ int main(int, char**)
         }
         sLastTime = std::chrono::steady_clock::now();
         
-        // @SAMPLE_EDIT (DPI Awareness)
-        if( NetImguiServer::App::UpdateFont() ) {
-			ImGui_ImplDX11_CreateFontsTexture();
-        }
+        NetImguiServer::App::UpdateFonts(); // @SAMPLE_EDIT (DPI Awareness) //SF REMOVE ME?
+        //if(  ) {
+		//	ImGui_ImplDX11_CreateFontsTexture();
+        //}
 
         // @SAMPLE_EDIT (Request each client to update their drawing content )
         NetImguiServer::App::UpdateRemoteContent();
@@ -171,17 +158,24 @@ int main(int, char**)
             CreateRenderTarget();
         }
 
+		//SF REMOVE ME???
+        if (ImGui::IsKeyPressed(ImGuiKey_I))
+            ImGui_ImplDX11_InvalidateDeviceObjects();
+
         // Start the Dear ImGui frame
         ImGui_ImplDX11_NewFrame();
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
 
-        //=========================================================================================
+		//=========================================================================================
         // @SAMPLE_EDIT (Invoke our own Imgui content drawing, instead of the sample code)
         clear_color = NetImguiServer::UI::DrawImguiContent(); 
         IM_UNUSED(show_demo_window);
         IM_UNUSED(show_another_window);
 #if 0
+        //::Sleep(100);
+        //ImGui::GetStyle().FrameBorderSize = 3;
+        //ImGui::GetStyle().Colors[ImGuiCol_Border] = ImVec4(1,0,0,1);
 
         // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
         if (show_demo_window)
@@ -206,7 +200,7 @@ int main(int, char**)
             ImGui::SameLine();
             ImGui::Text("counter = %d", counter);
 
-            ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
+            //ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
             ImGui::End();
         }
 
@@ -221,7 +215,6 @@ int main(int, char**)
         }
 #endif
         //=========================================================================================
-        
 
         // Rendering
         ImGui::Render();
@@ -230,15 +223,10 @@ int main(int, char**)
         g_pd3dDeviceContext->ClearRenderTargetView(g_mainRenderTargetView, clear_color_with_alpha);
         ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
-        // Update and Render additional Platform Windows
-        if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-        {
-            ImGui::UpdatePlatformWindows();
-            ImGui::RenderPlatformWindowsDefault();
-        }
-
-        g_pSwapChain->Present(1, 0); // Present with vsync
-        //g_pSwapChain->Present(0, 0); // Present without vsync
+        // Present
+        HRESULT hr = g_pSwapChain->Present(1, 0);   // Present with vsync
+        //HRESULT hr = g_pSwapChain->Present(0, 0); // Present without vsync
+        g_SwapChainOccluded = (hr == DXGI_STATUS_OCCLUDED);
     }
 
     // Cleanup
@@ -255,6 +243,7 @@ int main(int, char**)
 }
 
 // Helper functions
+
 bool CreateDeviceD3D(HWND hWnd)
 {
     // Setup swap chain
@@ -309,10 +298,6 @@ void CleanupRenderTarget()
     if (g_mainRenderTargetView) { g_mainRenderTargetView->Release(); g_mainRenderTargetView = nullptr; }
 }
 
-#ifndef WM_DPICHANGED
-#define WM_DPICHANGED 0x02E0 // From Windows SDK 8.1+ headers
-#endif
-
 // Forward declare message handler from imgui_impl_win32.cpp
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
@@ -344,6 +329,7 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         return 0;
     case WM_DPICHANGED:
         NetImguiServer::UI::SetWindowDPI(GetDpiForWindow(hWnd)); // @SAMPLE_EDIT (DPI Awareness)
+#ifdef TMP_VIEWPORT_DISABLED //SF (REMOVE ME?)
         if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DpiEnableScaleViewports)
         {
             //const int dpi = HIWORD(wParam);
@@ -351,6 +337,7 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
             const RECT* suggested_rect = (RECT*)lParam;
             ::SetWindowPos(hWnd, nullptr, suggested_rect->left, suggested_rect->top, suggested_rect->right - suggested_rect->left, suggested_rect->bottom - suggested_rect->top, SWP_NOZORDER | SWP_NOACTIVATE);
         }
+#endif
         break;
     }
     return ::DefWindowProcW(hWnd, msg, wParam, lParam);

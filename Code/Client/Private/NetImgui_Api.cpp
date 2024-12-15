@@ -213,8 +213,7 @@ bool NewFrame(bool bSupportFrameSkip)
 		ProcessInputData(client);
 
 		// We are about to start drawing for remote context, check for font data update
-	//SF 
-	#if IMGUI_IS_NEWFONT
+	 #if IMGUI_IS_NEWFONT //SF
 	#else
 		const ImFontAtlas* pFonts = ImGui::GetIO().Fonts;
 		if( pFonts->TexPixelsAlpha8 && 

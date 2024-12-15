@@ -20,10 +20,10 @@ constexpr uint32_t			kClientRemoteInvalid				= 0xFFFFFFFF;
 constexpr char				kNetImguiURL[]						= "https://github.com/sammyfreg/netImgui";
 const char*					kDataSizeUnits[]					= {"B", "KB", "MB", "GB"};
 static const  ImVec4		kColorBGClear						= ImVec4(0.8f,0.8f,0.8f, 1.f);	// Background color of the main Server window
-static const  ImVec4		kColorBGTint						= ImVec4(1.f, 1.f, 1.f, 1.f);	// Tint applied to the main server window bg logo
+//SF static const  ImVec4		kColorBGTint						= ImVec4(1.f, 1.f, 1.f, 1.f);	// Tint applied to the main server window bg logo
 static const ImVec4			kColorTitle							= ImVec4(0.3f,1.0f,0.3f,1.f);	// Various Server title content color
 static const ImVec4			kColorContent						= ImVec4(0.7f,0.75f,0.7f,1.f);	// Various Server text content color
-static ImGuiID				gMainDockID							= 0;
+//SF static ImGuiID				gMainDockID							= 0;
 static float				gDisplayFPS							= 30.f;
 static uint32_t				gWindowDPI							= kWindowDPIDefault;
 static auto					gLastUIUpdate						= std::chrono::steady_clock::now();
@@ -69,7 +69,10 @@ void DrawCenteredBackground(const App::ServerTexture& Texture, const ImVec4& Tin
 	float uvOffsetY			= (areaSize.y - bgSizeY) / 2.f;
 	ImGui::SetCursorPos(ImVec2(savedPos.x+uvOffsetX, savedPos.y+uvOffsetY));
 	ImGui::Dummy(ImVec2(0,0));
-	ImGui::Image(reinterpret_cast<ImTextureID>(Texture.mpHAL_Texture), ImVec2(bgSizeX, bgSizeY), ImVec2(0, 0), ImVec2(1, 1), Tint);
+
+	(void)Texture; //SF
+	(void)Tint; //SF
+	//SF TODO ImGui::Image(reinterpret_cast<ImTextureID>(Texture.mpHAL_Texture), ImVec2(bgSizeX, bgSizeY), ImVec2(0, 0), ImVec2(1, 1), Tint);
 	ImGui::SetCursorPos(savedPos);
 	ImGui::Dummy(ImVec2(0,0));
 }
@@ -118,17 +121,18 @@ void Popup_ConfirmDisconnect()
 	{		
 		RemoteClient::Client& client			= RemoteClient::Client::Get(gPopup_ConfirmDisconnect_ClientIdx);
 		bool wantExit							= ImGui::IsKeyPressed(ImGuiKey_Escape);
+		static ImVec2 sPopupSize				= ImVec2(250.f,200.f);
+	#if TMP_VIEWPORT_DISABLED //SF
 		ImGuiWindowClass windowClass;
 		windowClass.ViewportFlagsOverrideSet	= ImGuiViewportFlags_TopMost;
 		ImGui::SetNextWindowClass(&windowClass);
 
-		static ImVec2 sPopupSize				= ImVec2(250.f,200.f);
 		ImGuiViewport* pViewport				= ImGui::GetWindowViewport();
 		ImVec2 popupPos							= pViewport->Pos;
 		popupPos.x								+= pViewport->Size.x/2.f - sPopupSize.x/2.f;
 		popupPos.y								+= pViewport->Size.y/2.f - sPopupSize.y/2.f;
 		ImGui::SetNextWindowPos(popupPos, ImGuiCond_Appearing);
-		
+	#endif	
 		ImGui::OpenPopup("Confirmation##DEL");
 		if (ImGui::BeginPopupModal("Confirmation##DEL", &pendingDisconnectOpen, ImGuiWindowFlags_AlwaysAutoResize))
 		{
@@ -173,18 +177,19 @@ void Popup_ConfirmDisconnect()
 void Popup_AboutNetImgui()
 {
 	if( gPopup_AboutNetImgui_Show )
-	{		
+	{	
+		static ImVec2 sPopupSize				= ImVec2(250.f,200.f);
+	#ifdef TMP_VIEWPORT_DISABLED //SF
 		ImGuiWindowClass windowClass;
 		windowClass.ViewportFlagsOverrideSet = ImGuiViewportFlags_TopMost;
 		ImGui::SetNextWindowClass(&windowClass);
-
-		static ImVec2 sPopupSize				= ImVec2(250.f,200.f);
+		
 		ImGuiViewport* pViewport				= ImGui::GetWindowViewport();
 		ImVec2 popupPos							= pViewport->Pos;
 		popupPos.x								+= pViewport->Size.x/2.f - sPopupSize.x/2.f;
 		popupPos.y								+= pViewport->Size.y/2.f - sPopupSize.y/2.f;
 		ImGui::SetNextWindowPos(popupPos, ImGuiCond_Appearing);
-
+	#endif
 		ImGui::OpenPopup("About NetImgui...");
 		if (ImGui::BeginPopupModal("About NetImgui...", &gPopup_AboutNetImgui_Show, ImGuiWindowFlags_AlwaysAutoResize))
 		{			
@@ -231,17 +236,19 @@ void Popup_ServerConfig()
 			sEditCompressionEnable		= NetImguiServer::Config::Server::sCompressionEnable;
 			sSavedDPIScalePourcentage	= NetImguiServer::Config::Server::sDPIScaleRatio;
 		}
+
+		static ImVec2 sPopupSize				= ImVec2(250.f,200.f);
+	#ifdef TMP_VIEWPORT_DISABLED //SF
 		ImGuiWindowClass windowClass;
 		windowClass.ViewportFlagsOverrideSet = ImGuiViewportFlags_TopMost;
 		ImGui::SetNextWindowClass(&windowClass);
 
-		static ImVec2 sPopupSize				= ImVec2(250.f,200.f);
 		ImGuiViewport* pViewport				= ImGui::GetWindowViewport();
 		ImVec2 popupPos							= pViewport->Pos;
 		popupPos.x								+= pViewport->Size.x/2.f - sPopupSize.x/2.f;
 		popupPos.y								+= pViewport->Size.y/2.f - sPopupSize.y/2.f;
 		ImGui::SetNextWindowPos(popupPos, ImGuiCond_Appearing);
-
+	#endif
 		ImGui::OpenPopup("Server Configuration");
 		if (ImGui::BeginPopupModal("Server Configuration", &gPopup_ServerConfig_Show, ImGuiWindowFlags_AlwaysAutoResize))
 		{
@@ -326,18 +333,19 @@ void Popup_ClientConfigEdit()
 	bool bOpenEdit(gPopup_ClientConfig_pConfig != nullptr);
 	if (bOpenEdit)
 	{
-		ImGuiWindowClass windowClass;
-		windowClass.ViewportFlagsOverrideSet = ImGuiViewportFlags_TopMost;
-		ImGui::SetNextWindowClass(&windowClass);
-
 		static ImVec2 sPopupSize		= ImVec2(250.f,200.f);
 		static bool sAnyItemWasActive	= false;	// Keep track if any item was in 'edit' mode the previous frame
 		bool bSkipEscapeKey				= false;	// Ignore 'Esc key' when it was used to revert field change/stop editing a field
+
+	#ifdef TMP_VIEWPORT_DISABLED //SF
+		ImGuiWindowClass windowClass;
+		windowClass.ViewportFlagsOverrideSet = ImGuiViewportFlags_TopMost;
+		ImGui::SetNextWindowClass(&windowClass);
 		ImGuiViewport* pViewport		= ImGui::GetWindowViewport();
 		ImVec2 popupPos					= ImVec2(	pViewport->Pos.x + pViewport->Size.x/2.f - sPopupSize.x/2.f,
 													pViewport->Pos.y + pViewport->Size.y/2.f - sPopupSize.y/2.f);
 		ImGui::SetNextWindowPos(popupPos, ImGuiCond_Appearing);
-
+	#endif
 		ImGui::OpenPopup("Edit Client Info");
 		if (ImGui::BeginPopupModal("Edit Client Info", &bOpenEdit, ImGuiWindowFlags_AlwaysAutoResize))
 		{
@@ -428,17 +436,18 @@ void Popup_ClientConfigDelete()
 	bool bOpenDelConfirm(NetImguiServer::Config::Client::GetConfigByID(gPopup_ConfirmDelete_ConfigIdx, config));
 	if( bOpenDelConfirm )
 	{
+		static ImVec2 sPopupSize				= ImVec2(250.f,200.f);
+	#ifdef TMP_VIEWPORT_DISABLED //SF
 		ImGuiWindowClass windowClass;
 		windowClass.ViewportFlagsOverrideSet = ImGuiViewportFlags_TopMost;
 		ImGui::SetNextWindowClass(&windowClass);
 
-		static ImVec2 sPopupSize				= ImVec2(250.f,200.f);
 		ImGuiViewport* pViewport				= ImGui::GetWindowViewport();
 		ImVec2 popupPos							= pViewport->Pos;
 		popupPos.x								+= pViewport->Size.x/2.f - sPopupSize.x/2.f;
 		popupPos.y								+= pViewport->Size.y/2.f - sPopupSize.y/2.f;
 		ImGui::SetNextWindowPos(popupPos, ImGuiCond_Appearing);
-
+	#endif
 		ImGui::OpenPopup("Confirmation##DEL");
 		if (ImGui::BeginPopupModal("Confirmation##DEL", &bOpenDelConfirm, ImGuiWindowFlags_AlwaysAutoResize))
 		{
@@ -479,6 +488,7 @@ void Popup_ClientConfigDelete()
 //=================================================================================================
 void DrawImguiContent_SetupDocking()
 {
+#ifdef TMP_VIEWPORT_DISABLED //SF
 	if (gMainDockID == 0 )
 	{
 		gMainDockID = ImGui::GetID("MainDockID");
@@ -511,6 +521,7 @@ void DrawImguiContent_SetupDocking()
 	}
 	
     ImGui::End();
+#endif
 }
 
 //=================================================================================================
@@ -533,7 +544,9 @@ void DrawImguiContent_Clients()
 		{
 			ImGui::PushID(i);
 			ImGui::SetNextWindowBgAlpha(1.0);
+		#ifdef TMP_VIEWPORT_DISABLED //SF
 			ImGui::SetNextWindowDockID(gMainDockID, ImGuiCond_Once);
+		#endif
 			bool bOpened		= true;
 			hasConnection		= true;
 			client.mbIsVisible	= ImGui::Begin(client.mWindowID, &bOpened, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
@@ -554,13 +567,13 @@ void DrawImguiContent_Clients()
 				{					
 					// Add fake button to discard mouse input (prevent window moving when draging inside client area)
 					ImVec2 savedPos			= ImGui::GetCursorPos();
-					const ImVec4 tint_col	= ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
-					const ImVec4 border_col = ImVec4(1.0f, 1.0f, 1.0f, 0.0f);
+					//SF const ImVec4 tint_col	= ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
+					//SF const ImVec4 border_col = ImVec4(1.0f, 1.0f, 1.0f, 0.0f);
 					ImGui::InvisibleButton("canvas", areaSize, ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight | ImGuiButtonFlags_MouseButtonMiddle);
 					ImGui::SetCursorPos(savedPos);
 
 					// Display Client Context
-					ImGui::Image(reinterpret_cast<ImTextureID>(client.mpHAL_AreaTexture), areaSize, ImVec2(0, HAL_API_RENDERTARGET_INVERT_Y ? 1 : 0), ImVec2(1, HAL_API_RENDERTARGET_INVERT_Y ? 0 : 1), tint_col, border_col);
+					//SF TODO ImGui::Image(reinterpret_cast<ImTextureID>(client.mpHAL_AreaTexture), areaSize, ImVec2(0, HAL_API_RENDERTARGET_INVERT_Y ? 1 : 0), ImVec2(1, HAL_API_RENDERTARGET_INVERT_Y ? 0 : 1), tint_col, border_col);
 					if( ImGui::IsItemHovered() ){
 						ImGui::SetMouseCursor(client.mMouseCursor);
 					}
@@ -626,7 +639,9 @@ void DrawImguiContent_Clients()
 	if (!hasConnection)
 	{
 		ImGui::SetNextWindowBgAlpha(1.0);
+	#ifdef TMP_VIEWPORT_DISABLED //SF
 		ImGui::SetNextWindowDockID(gMainDockID, ImGuiCond_Always);
+	#endif
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding , ImVec2(24.f,24.f));
 		if (ImGui::Begin("Information", nullptr, 0))
 		{

@@ -289,7 +289,7 @@ namespace NetImgui
 		public override void ConfigureAll(Configuration conf, NetImguiTarget target)
         {
 			base.ConfigureAll(conf, target);
-			conf.Defines.Add("ImTextureID=ImU64");		// Server must absolutly use at minimum 64bits texture id, even when compiled in 32 bits			
+			conf.Defines.Add("ImTextureUserID=ImU64");		// Server must absolutly use at minimum 64bits texture id, even when compiled in 32 bits			
 			EnabledImguiIndex32Bits(conf);
 		}
 	}

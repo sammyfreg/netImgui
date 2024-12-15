@@ -61,7 +61,9 @@ int main(int, char**)
     ImGuiIO& io = ImGui::GetIO(); (void)io;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
-    //SF io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;         // Enable Docking
+#ifdef TMP_VIEWPORT_DISABLED //SF
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;         // Enable Docking
+#endif
     //io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;         // Enable Multi-Viewport / Platform Windows // @SAMPLE_EDIT disabled temporarily
     //io.ConfigViewportsNoAutoMerge = true;
     //io.ConfigViewportsNoTaskBarIcon = true;
@@ -76,14 +78,14 @@ int main(int, char**)
     //ImGui::StyleColorsLight();
 
     // When viewports are enabled we tweak WindowRounding/WindowBg so platform windows can look identical to regular ones.
-	#if 0 //SF
+#ifdef TMP_VIEWPORT_DISABLED //SF
     ImGuiStyle& style = ImGui::GetStyle();
     if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
     {
         style.WindowRounding = 0.0f;
         style.Colors[ImGuiCol_WindowBg].w = 1.0f;
     }
-	#endif
+#endif
     // Setup Platform/Renderer backends
     ImGui_ImplWin32_Init(hwnd);
     ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
@@ -228,7 +230,7 @@ int main(int, char**)
             ImGui_ImplDX11_RenderDrawData(pDrawData);
         }
 		// Update and render additional Platform Windows
-		#if 0 //SF
+	#ifdef TMP_VIEWPORT_DISABLED //SF
 		static int sLastFrame   = -1;
 		int newFrame            = ImGui::GetFrameCount();
 		
@@ -238,7 +240,7 @@ int main(int, char**)
             ImGui::UpdatePlatformWindows();
             ImGui::RenderPlatformWindowsDefault();
         }
-		#endif
+	#endif
         //=========================================================================================
 
        // Present
@@ -350,7 +352,7 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         return 0;
     case WM_DPICHANGED:
         g_MonitorDPIScale = static_cast<float>(GetDpiForWindow(hWnd)) / 96.f; // @SAMPLE_EDIT (DPI Awareness)
-		#if 0 //SF
+	#ifdef TMP_VIEWPORT_DISABLED //SF
         if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DpiEnableScaleViewports)
         {
             //const int dpi = HIWORD(wParam);
@@ -358,7 +360,7 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
             const RECT* suggested_rect = (RECT*)lParam;
             ::SetWindowPos(hWnd, nullptr, suggested_rect->left, suggested_rect->top, suggested_rect->right - suggested_rect->left, suggested_rect->bottom - suggested_rect->top, SWP_NOZORDER | SWP_NOACTIVATE);
         }
-		#endif
+	#endif
         break;
     }
     return ::DefWindowProcW(hWnd, msg, wParam, lParam);

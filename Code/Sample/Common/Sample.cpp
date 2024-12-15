@@ -32,8 +32,6 @@ void FontCreationCallback_Default(float PreviousDPIScale, float NewDPIScale)
 #endif
 }
 
-//SF extern void ExtraSampleBackend_UpdateFontTexture();
-
 namespace Sample
 {
 

@@ -31,7 +31,7 @@ bool Startup(const char* CmdLine)
 		memset(EmptyPixels, 0, sizeof(EmptyPixels));
 		NetImguiServer::App::HAL_CreateTexture(8, 8, NetImgui::eTexFormat::kTexFmtA8, EmptyPixels, gEmptyTexture);
 		
-		UpdateFont();
+		LoadFonts();
 
 		ImGui::GetIO().IniFilename	= nullptr;	// Disable server ImGui ini settings (not really needed, and avoid imgui.ini filename conflicts)
 		ImGui::GetIO().LogFilename	= nullptr; 
@@ -261,27 +261,86 @@ void CompleteHALTextureDestroy()
 //-----------------------------------------------------------------------------------------
 // Update the Font texture when new monitor DPI is detected
 //-----------------------------------------------------------------------------------------
-bool UpdateFont()
+void UpdateFonts()
 {
-	static float sGeneratedDPI	= 0.f;
+	static float sGeneratedDPI	= 1.f;
 	float currentDPIScale		= NetImguiServer::UI::GetFontDPIScale();
-	if( sGeneratedDPI != currentDPIScale )
+	float scaleDiff				= currentDPIScale - sGeneratedDPI;
+	scaleDiff					*= scaleDiff < 0 ? -1.f : 1.f;
+	if( scaleDiff >= 0.01f )
 	{
-		ImFontConfig fontConfig;
-		ImFontAtlas* pFontAtlas = ImGui::GetIO().Fonts;
-		sGeneratedDPI			= currentDPIScale;
-		pFontAtlas->Clear();
-
-		// Add Fonts here...
-		// Using a different default font (provided with Dear ImGui)
-		NetImgui::Internal::StringCopy(fontConfig.Name, "Roboto Medium, 16px");	
-		if( !pFontAtlas->AddFontFromMemoryCompressedTTF(Roboto_Medium_compressed_data, Roboto_Medium_compressed_size, 16.f*currentDPIScale, &fontConfig) ){
-			fontConfig.SizePixels = 16.f*currentDPIScale;
-			pFontAtlas->AddFontDefault(&fontConfig);
+		float ratio		= currentDPIScale / sGeneratedDPI;
+		sGeneratedDPI	= currentDPIScale;
+		for(auto& font : ImGui::GetIO().Fonts->Fonts)
+		{
+			font->FontSize 	*= ratio;
+			for (int cfg_n = 0; cfg_n < font->ConfigDataCount; cfg_n++)
+			{
+				ImFontConfig* cfg = (ImFontConfig*)(void*)(&font->ConfigData[cfg_n]);
+				cfg->SizePixels *= ratio;
+			}
+			ImFontAtlasBuildReloadFont(font->ContainerAtlas, font);
 		}
-		return true;
 	}
-	return false;
+}
+//-----------------------------------------------------------------------------------------
+// Initialize all needed fonts by the NetImguiServer application
+//-----------------------------------------------------------------------------------------
+void LoadFonts()
+{
+	ImFontConfig fontConfig;
+	ImFontAtlas* pFontAtlas = ImGui::GetIO().Fonts;
+
+	// Add Fonts here...
+	// Using a different default font (provided with Dear ImGui)
+	NetImgui::Internal::StringCopy(fontConfig.Name, "Roboto Medium, 16px");	
+	if( !pFontAtlas->AddFontFromMemoryCompressedTTF(Roboto_Medium_compressed_data, Roboto_Medium_compressed_size, 16.f, &fontConfig) ){
+		fontConfig.SizePixels = 16.f;
+		pFontAtlas->AddFontDefault(&fontConfig);
+	}
+	
+	#if 0 // SF
+    // (1)
+    io.Fonts->AddFontFromFileTTF("../../../fonts/NotoSans-Regular.ttf", 16.0f * scale);
+    {
+        //static ImWchar ranges[] = { 0x1, 0x1FFFF, 0 };
+        ImFontConfig cfg;
+        cfg.OversampleH = cfg.OversampleV = 1;
+        cfg.MergeMode = true;
+		#ifdef IMGUI_ENABLE_FREETYPE
+        cfg.FontBuilderFlags |= ImGuiFreeTypeBuilderFlags_LoadColor;
+		#endif
+        io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\seguiemj.ttf", 16.0f * scale, &cfg);// , ranges);
+        //io.Fonts->AddFontFromFileTTF("../../misc/fonts/NotoColorEmoji.ttf", 16.0f, &cfg, ranges);
+    }
+    {
+        ImFontConfig cfg;
+        cfg.MergeMode = true;
+        io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 16.0f * scale, &cfg);
+    }
+
+    // (2)
+    {
+        ImFontConfig cfg_main;
+        //cfg.OversampleH = 1;
+        ImFont* font_main = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\segoeui.ttf", 18.0f * scale, &cfg_main);
+        IM_UNUSED(font_main);
+
+        ImFontConfig cfg_icon;
+        cfg_icon.MergeMode = true;
+        cfg_icon.OversampleH = 1;
+        ImFont* font_icon = io.Fonts->AddFontFromFileTTF("../../../fonts/fa-solid-900.ttf", 18.0f * scale, &cfg_icon);
+        IM_UNUSED(font_icon);
+    }
+
+    io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 17.0f * scale, nullptr, io.Fonts->GetGlyphRangesJapanese());
+
+    io.Fonts->AddFontDefault();
+    io.Fonts->AddFontFromFileTTF("../../misc/fonts/Roboto-Medium.ttf", 16.0f * scale);
+    io.Fonts->AddFontFromFileTTF("../../misc/fonts/Cousine-Regular.ttf", 15.0f * scale);
+    io.Fonts->AddFontFromFileTTF("../../misc/fonts/DroidSans.ttf", 16.0f * scale);
+    //io.Fonts->AddFontFromFileTTF("../../misc/fonts/ProggyTiny.ttf", 10.0f * scale);
+	#endif
 }
 
 }} // namespace NetImguiServer { namespace App

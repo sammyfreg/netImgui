@@ -78,7 +78,7 @@ namespace NetImgui
 			conf.AddPublicDependency<ProjectNetImgui32_Default>(target);
 			
 			conf.Defines.Add("IS_NETIMGUISERVER=1");	// 
-			conf.Defines.Add("ImTextureID=ImU64");		// Server must absolutly use at minimum 64bits texture id, even when compiled in 32 bits			
+			conf.Defines.Add("ImTextureUserID=ImU64");		// Server must absolutly use at minimum 64bits texture id, even when compiled in 32 bits			
 			
 			conf.IncludePaths.Add(SourceRootPath + @"\Source");
 			conf.IncludePaths.Add(NetImguiTarget.GetPath(ProjectImgui.sDefaultPath));

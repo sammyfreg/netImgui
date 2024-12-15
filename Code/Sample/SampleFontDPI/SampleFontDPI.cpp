@@ -71,7 +71,7 @@ void FontCreationCallback(float PreviousDPIScale, float NewDPIScale)
 	GetSample().UpdateFont(NewDPIScale, false);
 }
 
-extern void ExtraSampleBackend_UpdateFontTexture();
+//SF extern void ExtraSampleBackend_UpdateFontTexture();
 
 //=================================================================================================
 // CONSTRUCTOR
@@ -136,7 +136,7 @@ bool SampleFontDPI::UpdateFont(float fontScaleDPI, bool isLocal)
 		FontAtlas->GetTexDataAsAlpha8(&pPixelData, &width, &height);
 		NetImgui::SendDataTexture(FontAtlas->TexID, pPixelData, static_cast<uint16_t>(width), static_cast<uint16_t>(height), NetImgui::eTexFormat::kTexFmtA8);
 		if( ImGui::GetCurrentContext() == mpContextLocal ){
-			ExtraSampleBackend_UpdateFontTexture();
+			//SF ExtraSampleBackend_UpdateFontTexture();
 		}
 		return true;
 	}
