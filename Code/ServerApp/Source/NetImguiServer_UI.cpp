@@ -61,10 +61,10 @@ void DrawCenteredBackground(const App::ServerTexture& Texture, const ImVec4& Tin
 {
 	const ImVec2 savedPos	= ImGui::GetCursorPos();
 	const ImVec2 areaSize	= ImGui::GetContentRegionAvail();
-	const float ratioH		= static_cast<float>(Texture.mSize[0]) / areaSize.x;
-	const float ratioV		= static_cast<float>(Texture.mSize[1]) / areaSize.y;
-	float bgSizeX			= ratioH > ratioV ? areaSize.x : areaSize.y * static_cast<float>(Texture.mSize[0]) / static_cast<float>(Texture.mSize[1]);
-	float bgSizeY			= ratioH < ratioV ? areaSize.y : areaSize.x * static_cast<float>(Texture.mSize[1]) / static_cast<float>(Texture.mSize[0]);
+	const float ratioH		= static_cast<float>(Texture.mTexData.Width) / areaSize.x;
+	const float ratioV		= static_cast<float>(Texture.mTexData.Height) / areaSize.y;
+	float bgSizeX			= ratioH > ratioV ? areaSize.x : areaSize.y * static_cast<float>(Texture.mTexData.Height) / static_cast<float>(Texture.mTexData.Height);
+	float bgSizeY			= ratioH < ratioV ? areaSize.y : areaSize.x * static_cast<float>(Texture.mTexData.Width) / static_cast<float>(Texture.mTexData.Width);
 	float uvOffsetX			= (areaSize.x - bgSizeX) / 2.f;
 	float uvOffsetY			= (areaSize.y - bgSizeY) / 2.f;
 	ImGui::SetCursorPos(ImVec2(savedPos.x+uvOffsetX, savedPos.y+uvOffsetY));
@@ -567,13 +567,13 @@ void DrawImguiContent_Clients()
 				{					
 					// Add fake button to discard mouse input (prevent window moving when draging inside client area)
 					ImVec2 savedPos			= ImGui::GetCursorPos();
-					//SF const ImVec4 tint_col	= ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
-					//SF const ImVec4 border_col = ImVec4(1.0f, 1.0f, 1.0f, 0.0f);
+					const ImVec4 tint_col	= ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
+					const ImVec4 border_col = ImVec4(1.0f, 1.0f, 1.0f, 0.0f);
 					ImGui::InvisibleButton("canvas", areaSize, ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight | ImGuiButtonFlags_MouseButtonMiddle);
 					ImGui::SetCursorPos(savedPos);
 
 					// Display Client Context
-					//SF TODO ImGui::Image(reinterpret_cast<ImTextureID>(client.mpHAL_AreaTexture), areaSize, ImVec2(0, HAL_API_RENDERTARGET_INVERT_Y ? 1 : 0), ImVec2(1, HAL_API_RENDERTARGET_INVERT_Y ? 0 : 1), tint_col, border_col);
+					ImGui::Image(NetImgui::Internal::TextureCastFromPtr(client.mpHAL_AreaTexture), areaSize, ImVec2(0, HAL_API_RENDERTARGET_INVERT_Y ? 1 : 0), ImVec2(1, HAL_API_RENDERTARGET_INVERT_Y ? 0 : 1), tint_col, border_col);
 					if( ImGui::IsItemHovered() ){
 						ImGui::SetMouseCursor(client.mMouseCursor);
 					}
@@ -984,7 +984,7 @@ bool Startup()
 	if( pBGPixels )
 	{		
 		// @Sammyfreg TODO : Support multiple format for Background
-		NetImguiServer::App::HAL_CreateTexture(uint16_t(Width), uint16_t(Height), NetImgui::eTexFormat::kTexFmtRGBA8, pBGPixels, gBackgroundTexture);
+		//SF NetImguiServer::App::HAL_CreateTexture(uint16_t(Width), uint16_t(Height), NetImgui::eTexFormat::kTexFmtRGBA8, pBGPixels, gBackgroundTexture);
 		stbi_image_free(pBGPixels);
 	}
 
@@ -998,7 +998,7 @@ bool Startup()
 //=================================================================================================
 void Shutdown()
 {
-	NetImguiServer::App::HAL_DestroyTexture(gBackgroundTexture);	
+	//SF NetImguiServer::App::HAL_DestroyTexture(gBackgroundTexture);	
 }
 
 //=================================================================================================

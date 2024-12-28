@@ -38,14 +38,19 @@ namespace NetImguiServer { namespace App
 	// @sammyfreg todo: make this safer with smart pointer instead of manually deleting the HALTexture
 	struct ServerTexture 
 	{
-		inline bool	IsValid(){ return mpHAL_Texture != nullptr; }
-		void*			mpHAL_Texture		= nullptr;
+		inline bool	IsValid(){ return mTexData.Status == ImTextureStatus_OK; }
+		//void*			mpHAL_Texture		= nullptr;
 		ServerTexture*	mpDeleteNext		= nullptr;	// Used to insert in a list of textures to be deleted next frame
-		uint64_t		mImguiId			= 0u;		// Associated ImGui TextureId in Imgui commandlist
+		//uint64_t		mImguiId			= 0u;		// Associated ImGui TextureId in Imgui commandlist
+		//ImTextureID		mTexID;
 		uint64_t		mCustomData			= 0u;		// Memory available to custom command
-		uint16_t		mSize[2]			= {0,0};
-		uint8_t			mFormat				= 0;
-		uint8_t			mPadding[3]			= {};
+		uint8_t			mIsCustom			= 0u;		// Format handled by custom version of NetImguiServer modified by library user
+		uint8_t			mIsUpdatable		= 0u;		// True when textures can be updated (font)
+		uint8_t			mPadding[1]			= {};
+		ImTextureData	mTexData;
+		//uint16_t		mSize[2]			= {0,0};
+		//uint8_t			mFormat				= 0;
+		//uint8_t			mPadding[3]			= {};
 	};
 
 	//=============================================================================================
@@ -80,13 +85,10 @@ namespace NetImguiServer { namespace App
 	bool	HAL_GetClipboardUpdated();
 	// Receive a ImDrawData drawlist and request Dear ImGui's backend to output it into a texture
 	void	HAL_RenderDrawData(RemoteClient::Client& client, ImDrawData* pDrawData);
-	// Allocate a texture resource
-	bool	HAL_CreateTexture(uint16_t Width, uint16_t Height, NetImgui::eTexFormat Format, const uint8_t* pPixelData, ServerTexture& OutTexture);
-	// Free a Texture resource
-	void	HAL_DestroyTexture( ServerTexture& OutTexture );
+	// Request texture updating (create/update/destroy)
+	void	HAL_UpdateTexture(ImTextureData* ImguiTextureData);
 	// Allocate a RenderTarget that each client will use to output their ImGui drawing into.
 	bool	HAL_CreateRenderTarget(uint16_t Width, uint16_t Height, void*& pOutRT, void*& pOutTexture );
 	// Free a RenderTarget resource
 	void	HAL_DestroyRenderTarget(void*& pOutRT, void*& pOutTexture );
-
 }}

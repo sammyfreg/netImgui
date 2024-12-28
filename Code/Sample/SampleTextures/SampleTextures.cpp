@@ -88,7 +88,7 @@ void SampleTextures::TextureFormatCreation(NetImgui::eTexFormat eTexFmt)
 		constexpr uint32_t Height		= 8;
 		uint8_t pixelData[Width * Height * 4]={};
 		TextureCreate(pixelData, Width, Height, mCustomTextureView[static_cast<int>(eTexFmt)]);	// For local display
-		NetImgui::SendDataTexture(Sample::TextureCastFromPtr(mCustomTextureView[static_cast<int>(eTexFmt)]), &customTextrueData, Width, Height, eTexFmt, sizeof(customTextureData1));	// For remote display
+		NetImgui::SendDataTexture(NetImgui::Internal::TextureCastFromPtr(mCustomTextureView[static_cast<int>(eTexFmt)]), &customTextrueData, Width, Height, eTexFmt, sizeof(customTextureData1));	// For remote display
 	}
 	else
 #endif
@@ -125,7 +125,7 @@ void SampleTextures::TextureFormatCreation(NetImgui::eTexFormat eTexFmt)
 		case NetImgui::eTexFormat::kTexFmt_Invalid: assert(0); break;
 		}
 		TextureCreate(pixelData, Width, Height, mCustomTextureView[static_cast<int>(eTexFmt)]);													// For local display
-		NetImgui::SendDataTexture(Sample::TextureCastFromPtr(mCustomTextureView[static_cast<int>(eTexFmt)]), pixelData, Width, Height, eTexFmt);	// For remote display
+		NetImgui::SendDataTexture(NetImgui::Internal::TextureCastFromPtr(mCustomTextureView[static_cast<int>(eTexFmt)]), pixelData, Width, Height, eTexFmt);	// For remote display
 	}
 }
 
@@ -137,7 +137,7 @@ void SampleTextures::TextureFormatDestruction(NetImgui::eTexFormat eTexFmt)
 	if (mCustomTextureView[static_cast<int>(eTexFmt)])
 	{
 		// Remove texture from the remote client (on NetImgui Server)
-		NetImgui::SendDataTexture(Sample::TextureCastFromPtr(mCustomTextureView[static_cast<int>(eTexFmt)]), nullptr, 0, 0, NetImgui::eTexFormat::kTexFmt_Invalid);
+		NetImgui::SendDataTexture(NetImgui::Internal::TextureCastFromPtr(mCustomTextureView[static_cast<int>(eTexFmt)]), nullptr, 0, 0, NetImgui::eTexFormat::kTexFmt_Invalid);
 		
 		// Remove texture created locally (in this sample application)
 		TextureDestroy(mCustomTextureView[static_cast<int>(eTexFmt)]);
@@ -156,7 +156,7 @@ bool SampleTextures::Startup()
 	pixelData.fill(0);
 
 	TextureCreate(pixelData.data(), 8, 8, mDefaultEmptyTexture);
-	NetImgui::SendDataTexture(Sample::TextureCastFromPtr(mDefaultEmptyTexture), pixelData.data(), 8, 8, NetImgui::eTexFormat::kTexFmtRGBA8);
+	NetImgui::SendDataTexture(NetImgui::Internal::TextureCastFromPtr(mDefaultEmptyTexture), pixelData.data(), 8, 8, NetImgui::eTexFormat::kTexFmtRGBA8);
 
 	return true;
 }
@@ -166,7 +166,7 @@ bool SampleTextures::Startup()
 //=================================================================================================
 void SampleTextures::Shutdown()
 {
-	NetImgui::SendDataTexture(Sample::TextureCastFromPtr(mDefaultEmptyTexture), nullptr, 0, 0, NetImgui::eTexFormat::kTexFmt_Invalid);
+	NetImgui::SendDataTexture(NetImgui::Internal::TextureCastFromPtr(mDefaultEmptyTexture), nullptr, 0, 0, NetImgui::eTexFormat::kTexFmt_Invalid);
 	TextureDestroy(mDefaultEmptyTexture);
 	Base::Shutdown();
 }
@@ -212,7 +212,9 @@ ImDrawData* SampleTextures::Draw()
 
 				ImGui::SameLine(300.f);
 				void* pTexture = mCustomTextureView[i] ? mCustomTextureView[i] : mDefaultEmptyTexture;
-				ImGui::Image(reinterpret_cast<ImTextureID>(pTexture), ImVec2(128, 64), ImVec2(0, 0), ImVec2(1, 1), tint_col, border_col);
+				ImTextureID TextureID;
+				TextureID._TexUserID = reinterpret_cast<ImTextureUserID>(pTexture);
+				ImGui::Image(TextureID, ImVec2(128, 64), ImVec2(0, 0), ImVec2(1, 1), tint_col, border_col);
 				ImGui::PopID();
 			}
 			
@@ -231,11 +233,11 @@ ImDrawData* SampleTextures::Draw()
 			#if TEXTURE_CUSTOM_SAMPLE
 				customTextureData2 customTextureData;
 				customTextureData.m_TimeUS = static_cast<uint64_t>(ImGui::GetTime() * 1000.f * 1000.f);
-				NetImgui::SendDataTexture(ImTextureID(0x02020202), &customTextureData, 128, 64, NetImgui::eTexFormat::kTexFmtCustom, sizeof(customTextureData));
+				NetImgui::SendDataTexture(ImTextureUserID(0x02020202), &customTextureData, 128, 64, NetImgui::eTexFormat::kTexFmtCustom, sizeof(customTextureData));
 
 				ImGui::NewLine();
 				ImGui::TextUnformatted("Custom Texture");
-				ImGui::Image(ImTextureID(0x02020202), ImVec2(128, 64), ImVec2(0, 0), ImVec2(1, 1), tint_col, border_col);
+				ImGui::Image(ImTextureUserID(0x02020202), ImVec2(128, 64), ImVec2(0, 0), ImVec2(1, 1), tint_col, border_col);
 				ImGui::SameLine();
 				ImGui::TextWrapped("Server regenerate this texture every frame using a custom texture update and a time parameter. This behavior is custom implemented by library user on both the Client and Server codebase.");
 			#endif

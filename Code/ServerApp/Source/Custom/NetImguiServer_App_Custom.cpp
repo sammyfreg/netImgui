@@ -78,7 +78,7 @@ bool CreateTexture_Custom( ServerTexture& serverTexture, const NetImgui::Interna
 					pTempData[y*cmdTexture.mWidth+x] = colorCurrent;
 				}
 			}
-			NetImguiServer::App::HAL_CreateTexture(cmdTexture.mWidth, cmdTexture.mHeight, NetImgui::eTexFormat::kTexFmtRGBA8, reinterpret_cast<uint8_t*>(pTempData), serverTexture);
+			//SF NetImguiServer::App::HAL_CreateTexture(cmdTexture.mWidth, cmdTexture.mHeight, NetImgui::eTexFormat::kTexFmtRGBA8, reinterpret_cast<uint8_t*>(pTempData), serverTexture);
 			free(pTempData);
 
 			// Assign a custom texture information to the Server Texture
@@ -109,7 +109,7 @@ bool CreateTexture_Custom( ServerTexture& serverTexture, const NetImgui::Interna
 					pTempData[y*static_cast<size_t>(cmdTexture.mWidth)+x] = (ImU32)colorCurrent;
 				}
 			}
-			NetImguiServer::App::HAL_CreateTexture(cmdTexture.mWidth, cmdTexture.mHeight, NetImgui::eTexFormat::kTexFmtRGBA8, reinterpret_cast<uint8_t*>(pTempData), serverTexture);
+			//SF NetImguiServer::App::HAL_CreateTexture(cmdTexture.mWidth, cmdTexture.mHeight, NetImgui::eTexFormat::kTexFmtRGBA8, reinterpret_cast<uint8_t*>(pTempData), serverTexture);
 			free(pTempData);
 			// Assign a custom texture information to the Server Texture
 			// Here, it's just a stamp, but could be some user specific data, like allocated memory for extra info
@@ -131,7 +131,8 @@ bool DestroyTexture_Custom( ServerTexture& serverTexture, const NetImgui::Intern
 	IM_UNUSED(customDataSize);
 
 #if TEXTURE_CUSTOM_SAMPLE
-	if( serverTexture.mpHAL_Texture && serverTexture.mFormat == NetImgui::eTexFormat::kTexFmtCustom ){
+	#if 0 //SF TODO
+	if( serverTexture.mpHAL_Texture && serverTexture.mIsCustom ){
 		if( serverTexture.mCustomData == customTextureData1::kStamp || 
 			serverTexture.mCustomData == customTextureData2::kStamp )
 		{
@@ -152,6 +153,7 @@ bool DestroyTexture_Custom( ServerTexture& serverTexture, const NetImgui::Intern
 			}
 		}
 	}
+	#endif
 #endif
 	return false;
 }

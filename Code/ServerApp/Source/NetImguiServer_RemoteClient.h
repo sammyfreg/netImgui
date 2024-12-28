@@ -48,7 +48,7 @@ struct Client
 	void									ReceiveTexture(NetImgui::Internal::CmdTexture*);
 	void									ReceiveDrawFrame(NetImgui::Internal::CmdDrawFrame*);
 	NetImguiImDrawData*						ConvertToImguiDrawData(const NetImgui::Internal::CmdDrawFrame* pCmdDrawFrame);
-	NetImguiImDrawData*						GetImguiDrawData(void* pEmtpyTextureHAL);	// Get current active Imgui draw data
+	NetImguiImDrawData*						GetImguiDrawData(ImTextureID EmtpyTextureID);	// Get current active Imgui draw data
 		
 	void									CaptureImguiInput();
 	NetImgui::Internal::CmdInput*			TakePendingInput();

@@ -64,7 +64,7 @@
 	#define NETIMGUI_ENABLED 0
 #endif
 
-#if NETIMGUI_ENABLED
+#if NETIMGUI_ENABLED || 1 //SF
 
 #define IMGUI_IS_NEWFONT (IMGUI_VERSION_NUM >= 19161) //SF
 #if !IMGUI_IS_NEWFONT
@@ -114,8 +114,10 @@ namespace NetImgui
 // List of texture format supported
 //=================================================================================================
 enum eTexFormat {
-	kTexFmtA8,
+	// Match Dear Imgui 1.92 'ImTextureFormat'
 	kTexFmtRGBA8,
+	kTexFmtA8,
+	
 	
 	// Support of 'user defined' texture format.
 	// Implementation must be added on both client and Server code. 
@@ -207,10 +209,10 @@ NETIMGUI_API	bool				IsDrawingRemote(void);
 //=================================================================================================
 // Send an updated texture used by imgui, to the NetImguiServer application
 // Note: To remove a texture, set pData to nullptr
-// Note: User needs to provide a valid 'dataSize' when using format 'kTexFmtCustom', 
+// Note: User needs to provide a valid 'dataSize' when using format 'kTexFmtCustom',
 //		 can be ignored otherwise
 //=================================================================================================
-NETIMGUI_API	void				SendDataTexture(ImTextureID textureId, void* pData, uint16_t width, uint16_t height, eTexFormat format, uint32_t dataSize=0);
+NETIMGUI_API	void				SendDataTexture(ImTextureUserID textureId, void* pData, uint16_t width, uint16_t height, eTexFormat format, uint32_t dataSize=0);
 
 //=================================================================================================
 // Start a new Imgui Frame and wait for Draws commands, using ImContext that was active on connect.
@@ -246,7 +248,7 @@ NETIMGUI_API	ImGuiContext*		GetContext();
 //=================================================================================================
 NETIMGUI_API	void				SetBackground(const ImVec4& bgColor);
 NETIMGUI_API	void				SetBackground(const ImVec4& bgColor, const ImVec4& textureTint );
-NETIMGUI_API	void				SetBackground(const ImVec4& bgColor, const ImVec4& textureTint, ImTextureID bgTextureID);
+NETIMGUI_API	void				SetBackground(const ImVec4& bgColor, const ImVec4& textureTint, ImTextureUserID bgTextureID);
 
 //=================================================================================================
 // Control the data compression for communications between Client/Server

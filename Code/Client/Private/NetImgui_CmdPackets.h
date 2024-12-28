@@ -43,6 +43,7 @@ struct alignas(8) CmdVersion : public CmdHeader
 		ForceReconnect		= 15,	// Server can now take over the connection from another server
 		UpdatedComs 		= 16,	// Faster protocol by removing blocking coms
 		RemDisconnect		= 17,	// Removed Disconnect command
+		TextureUpdate 		= 18, 	// Adding support for new Dear Imgui Texture update
 		// Insert new version here
 
 		//--------------------------------
@@ -206,14 +207,37 @@ struct alignas(8) CmdInput : public CmdHeader
 };
 
 struct alignas(8) CmdTexture : public CmdHeader
-{		
+{
 	CmdTexture() : CmdHeader(CmdHeader::eCommands::Texture, sizeof(CmdTexture)){}
+	uint64_t						mTextureUserId		= 0;
+	uint8_t							mFormat				= eTexFormat::kTexFmt_Invalid;	// eTexFormat
+	uint8_t							mUpdatable			= false;						// Set to true on Create, for updatable textures
+	uint8_t							PADDING[1]			= {};
+	uint16_t						mWidth				= 0;
+	uint16_t						mHeight				= 0;
+	OffsetPointer<uint8_t>			mpTextureData;
+
+#if 0
 	OffsetPointer<uint8_t>			mpTextureData;
 	uint64_t						mTextureId		= 0;
 	uint16_t						mWidth			= 0;
 	uint16_t						mHeight			= 0;
 	uint8_t							mFormat			= eTexFormat::kTexFmt_Invalid;	// eTexFormat
 	uint8_t							PADDING[3]		= {};
+
+
+	ImTextureStatus     Status;                 // ImTextureStatus_OK/_WantCreate/_WantUpdates/_WantDestroy
+    ImTextureFormat     Format;                 // ImTextureFormat_RGBA32 (default) or ImTextureFormat_Alpha8
+    int                 Width;
+    int                 Height;
+    int                 BytesPerPixel;          // 4 or 1
+    unsigned char*      Pixels;                 // Pointer to buffer holding Width*Height pixels
+    ImTextureUserID     BackendTexID;           // Identifier stored in ImDrawCmd and passed to backend RenderDrawData loop. // FIXME-NEWATLAS: Confirm naming?
+    void*               BackendUserData;        // Convenience storage for backend. Some backends may have enough with BackendTexID.
+    int                 UnusedFrames;           // In order to facilitate handling Status==WantDestroy in some backend: this is a count successive frames where the texture was not used.
+    ImVector<ImTextureDataUpdate> Updates;      // List of individual updates
+    ImTextureDataUpdate UpdatesMerged;          // Bounding box encompassing all individual updates
+#endif
 };
 
 struct alignas(8) CmdDrawFrame : public CmdHeader

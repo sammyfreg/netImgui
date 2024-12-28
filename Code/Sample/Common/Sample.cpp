@@ -204,7 +204,7 @@ void Base::Draw_Connect()
 			if (ImGui::BeginMenu("[  Wait For  ]"))
 			//-------------------------------------------------------------------------------------
 			{
-				ImGui::TextColored(ImVec4(0.1, 1, 0.1, 1), "Client Settings");				
+				ImGui::TextColored(ImVec4(0.1, 1, 0.1, 1), "Client Settings");
 				ImGui::InputInt("Port", &mConnect_PortClient);
 				ImGui::NewLine();
 				ImGui::Separator();

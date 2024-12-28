@@ -90,7 +90,7 @@ void Client::ProcessPendingTextures()
 		NetImgui::Internal::CmdTexture* pTextureCmd = mpPendingTextures[(mPendingTextureReadIndex++) % IM_ARRAYSIZE(mpPendingTextures)];
 		bool isRemoval		= pTextureCmd->mFormat == NetImgui::eTexFormat::kTexFmt_Invalid;
 		uint32_t dataSize	= pTextureCmd->mSize - sizeof(NetImgui::Internal::CmdTexture);
-		auto texIt			= mTextureTable.find(pTextureCmd->mTextureId) ;
+		auto texIt			= mTextureTable.find(pTextureCmd->mTextureUserId) ;
 		textureChanged 		|= texIt != mTextureTable.end();
 		// Delete texture when format/size changed or asked to remove
 		if ( isRemoval && texIt != mTextureTable.end() ) {
@@ -99,7 +99,7 @@ void Client::ProcessPendingTextures()
 		}
 		// Add texture when new imgui id
 		else if (texIt == mTextureTable.end() ) {
-			texIt = mTextureTable.insert({pTextureCmd->mTextureId,App::ServerTexture()}).first;
+			texIt = mTextureTable.insert({pTextureCmd->mTextureUserId,App::ServerTexture()}).first;
 		}
 		
 		// Try creating the texture (and free it if failed)
@@ -148,11 +148,14 @@ void Client::Initialize()
 void Client::Uninitialize()
 {
 	NetImguiServer::App::HAL_DestroyRenderTarget(mpHAL_AreaRT, mpHAL_AreaTexture);
+	
+#if 0 //SF TODO?
 	NetImgui::Internal::CmdTexture cmdDelete;
 	for(auto& texIt : mTextureTable ){
-		cmdDelete.mTextureId = texIt.second.mImguiId;
+		cmdDelete.mTextureUserId = texIt.second.mImguiId;
 		NetImguiServer::App::DestroyTexture(texIt.second, cmdDelete, 0);
 	}
+#endif
 	mTextureTable.clear();
 
 	mPendingImguiDrawDataIn.Free();
@@ -226,7 +229,7 @@ uint32_t Client::GetFreeIndex()
 //=================================================================================================
 // Get the current Dear Imgui drawdata to use for this client rendering content
 //=================================================================================================
-NetImguiImDrawData*	Client::GetImguiDrawData(void* pEmtpyTextureHAL)
+NetImguiImDrawData*	Client::GetImguiDrawData(ImTextureID EmtpyTextureID)
 {
 	// Check if a new frame has been added. If yes, then take ownership of it.
 	NetImguiImDrawData* pPendingDrawData = mPendingImguiDrawDataIn.Release();
@@ -244,10 +247,17 @@ NetImguiImDrawData*	Client::GetImguiDrawData(void* pEmtpyTextureHAL)
 			ImDrawList* pCmdList = pPendingDrawData->CmdLists[i];
 			for(int drawIdx(0), drawCount(pCmdList->CmdBuffer.size()); drawIdx<drawCount; ++drawIdx)
 			{
+			#if 0 //SF
 				uint64_t wantedTexID	= NetImgui::Internal::TextureCastFromID(pCmdList->CmdBuffer[drawIdx].TextureId);
 				auto texIt				= mTextureTable.find(wantedTexID);
 				auto texHALPtr			= texIt == mTextureTable.end() ? pEmtpyTextureHAL : texIt->second.mpHAL_Texture;
 				pCmdList->CmdBuffer[drawIdx].TextureId	= NetImgui::Internal::TextureCastFromPtr( texHALPtr );
+			#else
+				uint64_t clientTexUserID				= pCmdList->CmdBuffer[drawIdx].TextureId._TexUserID;
+				auto texIt								= mTextureTable.find(clientTexUserID);
+				ImTextureID serverTexUserID				= (texIt == mTextureTable.end()) ? EmtpyTextureID : ImTextureID(texIt->second.mTexData.BackendTexID);
+				pCmdList->CmdBuffer[drawIdx].TextureId	= serverTexUserID;
+			#endif
 			}
 		}
 	}	

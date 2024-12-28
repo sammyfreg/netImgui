@@ -11,6 +11,8 @@
 #include "imgui_impl_dx11.h"
 #include <d3d11.h>
 
+extern void ImGui_ImplDX11_UpdateTexture(ImTextureData* tex);
+
 namespace NetImguiServer { namespace App
 {
 
@@ -139,10 +141,20 @@ void HAL_DestroyRenderTarget(void*& pOutRT, void*& pOutTexture)
 }
 
 //=================================================================================================
+// HAL UPDATE TEXTURE
+// Re-using backend code for texture management (create/update/delete)
+//=================================================================================================
+void HAL_UpdateTexture(ImTextureData* ImguiTextureData)
+{
+	ImGui_ImplDX11_UpdateTexture(ImguiTextureData);
+}
+
+//=================================================================================================
 // HAL CREATE TEXTURE
 // Receive info on a Texture to allocate. At the moment, 'Dear ImGui' default rendering backend
 // only support RGBA8 format, so first convert any input format to a RGBA8 that we can use
 //=================================================================================================
+#if 0 //SF DELETE ME
 bool HAL_CreateTexture(uint16_t Width, uint16_t Height, NetImgui::eTexFormat Format, const uint8_t* pPixelData, ServerTexture& OutTexture)
 {
 	NetImguiServer::App::EnqueueHALTextureDestroy(OutTexture);
@@ -226,7 +238,7 @@ void HAL_DestroyTexture(ServerTexture& OutTexture)
 		memset(&OutTexture, 0, sizeof(OutTexture));
 	}
 }
-
+#endif
 }} //namespace NetImguiServer { namespace App
 
 #endif // HAL_API_PLATFORM_WIN32_DX11

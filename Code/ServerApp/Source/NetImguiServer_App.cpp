@@ -9,7 +9,7 @@ namespace NetImguiServer { namespace App
 {
 
 constexpr uint32_t			kClientCountMax			= 32;	//! @sammyfreg todo: support unlimited client count
-static ServerTexture		gEmptyTexture;
+static ImTextureData 		gEmptyTexture;
 std::atomic<ServerTexture*>	gPendingTextureDelete(nullptr);
 
 bool Startup(const char* CmdLine)
@@ -27,9 +27,11 @@ bool Startup(const char* CmdLine)
 		NetImguiServer::Network::Startup() &&
 		NetImguiServer::UI::Startup())
 	{
-		uint8_t EmptyPixels[8*8];
-		memset(EmptyPixels, 0, sizeof(EmptyPixels));
-		NetImguiServer::App::HAL_CreateTexture(8, 8, NetImgui::eTexFormat::kTexFmtA8, EmptyPixels, gEmptyTexture);
+		gEmptyTexture.Create(ImTextureFormat::ImTextureFormat_RGBA32, 8, 8);
+		gEmptyTexture.Status = ImTextureStatus_Destroyed;
+		//SF uint8_t EmptyPixels[8*8];
+		//memset(EmptyPixels, 0, sizeof(EmptyPixels));
+		//NetImguiServer::App::HAL_CreateTexture(8, 8, NetImgui::eTexFormat::kTexFmtA8, EmptyPixels, gEmptyTexture);
 		
 		LoadFonts();
 
@@ -44,7 +46,7 @@ void Shutdown()
 {
 	NetImguiServer::Network::Shutdown();
 	NetImguiServer::UI::Shutdown();
-	NetImguiServer::App::HAL_DestroyTexture(gEmptyTexture);
+	//SF NetImguiServer::App::HAL_DestroyTexture(gEmptyTexture);
 	NetImguiServer::Config::Client::Clear();
 	RemoteClient::Client::Shutdown();
 	HAL_Shutdown();
@@ -111,7 +113,19 @@ void DrawClientBackground(RemoteClient::Client& client)
 	{
 		if( client.mpBGContext == nullptr )
 		{
+		#if 0 //SF Broken font reuse
 			client.mpBGContext					= ImGui::CreateContext(ImGui::GetIO().Fonts);
+		#else
+			client.mpBGContext		= ImGui::CreateContext();
+			const ImGuiIO& ServerIO = ImGui::GetIO();
+			
+			NetImgui::Internal::ScopedImguiContext scopedCtx(client.mpBGContext);
+			ImGui::GetIO().BackendRendererUserData 	= ServerIO.BackendRendererUserData;
+			ImGui::GetIO().BackendRendererName 		= ServerIO.BackendRendererName;
+			ImGui::GetIO().ConfigFlags				= ServerIO.ConfigFlags;
+			ImGui::GetIO().BackendFlags				= ServerIO.BackendFlags;
+			ImGui::GetIO().Fonts->AddFontDefault();
+		#endif
 			client.mpBGContext->IO.DeltaTime	= 1/30.f;
 			client.mpBGContext->IO.IniFilename	= nullptr;	// Disable server ImGui ini settings (not really needed, and avoid imgui.ini filename conflicts)
 			client.mpBGContext->IO.LogFilename	= nullptr; 
@@ -141,6 +155,10 @@ void DrawClientBackground(RemoteClient::Client& client)
 void UpdateRemoteContent()
 //=================================================================================================
 {
+	if( gEmptyTexture.Status == ImTextureStatus_Destroyed ){
+		gEmptyTexture.Status = ImTextureStatus_WantCreate;
+		HAL_UpdateTexture(&gEmptyTexture);
+	}
 	for (uint32_t i(0); i < RemoteClient::Client::GetCountMax(); ++i)
 	{
 		RemoteClient::Client& client = RemoteClient::Client::Get(i);
@@ -165,7 +183,7 @@ void UpdateRemoteContent()
 				}
 
 				// Render the remote results
-				ImDrawData* pDrawData = client.GetImguiDrawData(gEmptyTexture.mpHAL_Texture);
+				ImDrawData* pDrawData = client.GetImguiDrawData(gEmptyTexture.BackendTexID);
 				if( pDrawData )
 				{
 					DrawClientBackground(client);
@@ -184,9 +202,45 @@ bool CreateTexture_Default(ServerTexture& serverTexture, const NetImgui::Interna
 	IM_UNUSED(cmdTexture);
 	IM_UNUSED(customDataSize);
 
-	auto eTexFmt = static_cast<NetImgui::eTexFormat>(cmdTexture.mFormat);
-	if( eTexFmt < NetImgui::eTexFormat::kTexFmtCustom ){
-		HAL_CreateTexture(cmdTexture.mWidth, cmdTexture.mHeight, eTexFmt, cmdTexture.mpTextureData.Get(), serverTexture);
+	//auto eTexFmt = static_cast<NetImgui::eTexFormat>(cmdTexture.mFormat);
+	if( !serverTexture.mIsCustom )
+	{
+		if( cmdTexture.mpTextureData.Get() != nullptr )
+		{
+			auto NetImguiFmt			= static_cast<NetImgui::eTexFormat>(cmdTexture.mFormat);
+			auto ImGuiFormat			= (cmdTexture.mFormat == NetImgui::eTexFormat::kTexFmtA8) ? ImTextureFormat::ImTextureFormat_Alpha8 : ImTextureFormat::ImTextureFormat_RGBA32;
+			IM_UNUSED(NetImguiFmt);
+			serverTexture.mIsUpdatable	= cmdTexture.mUpdatable;
+			serverTexture.mTexData.Create(ImGuiFormat, cmdTexture.mWidth, cmdTexture.mHeight);
+			IM_ASSERT(serverTexture.mTexData.BytesPerPixel*8 == static_cast<int>(NetImgui::GetTexture_BitsPerPixel(NetImguiFmt)));
+			memcpy(serverTexture.mTexData.Pixels, cmdTexture.mpTextureData.Get(), customDataSize);
+
+			serverTexture.mTexData.Status		= ImTextureStatus_WantCreate;
+
+			serverTexture.mTexData.BackendTexID = 0; //SF TMP HACK (leak texture, until update support added)
+			serverTexture.mTexData.BackendUserData = 0; //SF TMP HACK (leak)
+			HAL_UpdateTexture(&serverTexture.mTexData);
+		}
+		//SF TODO free texture data
+		/*
+		//serverTexture.mTexData.BackendTexID			= 0;
+		//serverTexture.mTexData.Width				= cmdTexture.mWidth;
+		//serverTexture.mTexData.Height				= cmdTexture.mHeight;
+		//serverTexture.mTexData.Format				= cmdTexture.mFormat == NetImgui::eTexFormat::kTexFmtA8 ? ImTextureFormat::ImTextureFormat_Alpha8 : ImTextureFormat::ImTextureFormat_RGBA32;
+		//serverTexture.mTexData.Status				= ImTextureStatus::ImTextureStatus_WantCreate;
+		
+		serverTexture.mTexData.UpdatesMerged.X0		= cmdTexture.mUpdateAllCoords[0];
+		serverTexture.mTexData.UpdatesMerged.X0		= cmdTexture.mUpdateAllCoords[1];
+		serverTexture.mTexData.UpdatesMerged.X1		= cmdTexture.mUpdateAllCoords[2];
+		serverTexture.mTexData.UpdatesMerged.Y1		= cmdTexture.mUpdateAllCoords[3];
+		serverTexture.mTexData.Updates[0].X0		= cmdTexture.mUpdateCoords[0][0];
+		serverTexture.mTexData.Updates[0].Y0		= cmdTexture.mUpdateCoords[0][1];
+		serverTexture.mTexData.Updates[0].X1		= cmdTexture.mUpdateCoords[0][2];
+		serverTexture.mTexData.Updates[0].Y1		= cmdTexture.mUpdateCoords[0][3];
+		*/
+		
+		
+
 		return true;
 	}
 	return false;
@@ -199,9 +253,10 @@ bool DestroyTexture_Default(ServerTexture& serverTexture, const NetImgui::Intern
 	IM_UNUSED(cmdTexture);
 	IM_UNUSED(customDataSize);
 	
-	if( serverTexture.mpHAL_Texture ){
-		EnqueueHALTextureDestroy(serverTexture);
-	}
+	(void)serverTexture;//SF
+	//SF if( serverTexture.mpHAL_Texture ){
+	//	EnqueueHALTextureDestroy(serverTexture);
+	//}
 	return true;
 }
 
@@ -211,26 +266,24 @@ bool CreateTexture(ServerTexture& serverTexture, const NetImgui::Internal::CmdTe
 {
 	// Default behavior is to always destroy then re-create the texture
 	// But this can be changed inside the DestroyTexture_Custom function
-	if(	(serverTexture.mpHAL_Texture != nullptr) ){
+	#if 0 //SF TODO
+	if(	(serverTexture.mpHAL_Texture != nullptr) )
+	{
 		DestroyTexture(serverTexture, cmdTexture, customDataSize);
 	}
+	#endif
 
-	if(	CreateTexture_Custom(serverTexture, cmdTexture, customDataSize)		||
-		CreateTexture_Default(serverTexture, cmdTexture, customDataSize)	)
-	{
-		serverTexture.mImguiId	= cmdTexture.mTextureId;
-		serverTexture.mFormat	= cmdTexture.mFormat;
-		serverTexture.mSize[0]	= cmdTexture.mWidth;
-		serverTexture.mSize[1]	= cmdTexture.mHeight;
-		return true;	
-	}
-	return false;
+	//serverTexture.mTexID._TexUserID	= cmdTexture.mTextureUserId;
+	serverTexture.mIsCustom			= cmdTexture.mFormat == NetImgui::eTexFormat::kTexFmtCustom;
+	return 	CreateTexture_Custom(serverTexture, cmdTexture, customDataSize) ||
+			CreateTexture_Default(serverTexture, cmdTexture, customDataSize);
 }
 //=================================================================================================
 void DestroyTexture(ServerTexture& serverTexture, const NetImgui::Internal::CmdTexture& cmdTexture, uint32_t customDataSize)
 //=================================================================================================
 {
-	if ( DestroyTexture_Custom(serverTexture, cmdTexture, customDataSize) == false ) {
+	if ( DestroyTexture_Custom(serverTexture, cmdTexture, customDataSize) == false )
+	{
 		DestroyTexture_Default(serverTexture, cmdTexture, customDataSize);
 	}
 }
@@ -253,13 +306,14 @@ void CompleteHALTextureDestroy()
 	{
 		ServerTexture* pDeleteMe	= pTexture;
 		pTexture					= pTexture->mpDeleteNext;
-		HAL_DestroyTexture(*pDeleteMe);
+		//SF TODO HAL_DestroyTexture(*pDeleteMe);
 		delete pDeleteMe;
 	}
 }
 
 //-----------------------------------------------------------------------------------------
 // Update the Font texture when new monitor DPI is detected
+//SF TODO change font setting instead
 //-----------------------------------------------------------------------------------------
 void UpdateFonts()
 {

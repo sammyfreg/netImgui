@@ -2818,6 +2818,7 @@ void ImFontAtlasTextureBlockCopy(ImFontAtlas* atlas, ImTextureData* src_tex, int
 // Queue texture block update for renderer backend
 void ImFontAtlasTextureBlockQueueBackendUpdate(ImFontAtlas* atlas, ImTextureData* tex, int x, int y, int w, int h)
 {
+    IM_UNUSED(atlas);//SF
     // Queue texture update (no need to queue if status is _WantCreate)
     IM_ASSERT(atlas);
     if (tex->Status == ImTextureStatus_OK || tex->Status == ImTextureStatus_WantUpdates)
@@ -3941,6 +3942,7 @@ void ImFontAtlasDebugLogTextureRequests(ImFontAtlas* atlas)
             IMGUI_DEBUG_LOG_FONT("[font] Texture #%03d: update %d regions, texid=0x%" IM_PRIX64 ", backend_data=0x%" IM_PRIX64 "\n", tex->UniqueID, tex->Updates.Size, tex->BackendTexID, (ImU64)(intptr_t)tex->BackendUserData);
             for (const ImTextureDataUpdate& r : tex->Updates)
             {
+                IM_UNUSED(r);//SF
                 IM_ASSERT(r.X0 >= 0 && r.Y0 >= 0);
                 IM_ASSERT(r.X1 <= tex->Width && r.Y1 <= tex->Height); // In theory should subtract PackPadding but it's currently part of atlas and mid-frame change would wreck assert.
                 IM_ASSERT(r.X0 <= r.X1 && r.Y0 <= r.Y1);

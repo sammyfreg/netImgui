@@ -1,7 +1,7 @@
 #include "NetImgui_Shared.h"
 #include "NetImgui_WarningDisable.h"
 
-#if NETIMGUI_ENABLED
+#if NETIMGUI_ENABLED || 1 //SF
 #include <algorithm>
 #include <thread>
 #include "NetImgui_Client.h"
@@ -213,7 +213,39 @@ bool NewFrame(bool bSupportFrameSkip)
 		ProcessInputData(client);
 
 		// We are about to start drawing for remote context, check for font data update
-	 #if IMGUI_IS_NEWFONT //SF
+	 #if IMGUI_IS_NEWFONT || 1 //SF
+		ImFontAtlas* pFonts = ImGui::GetIO().Fonts;
+		if( pFonts && pFonts->TexData )
+		{
+			//SF TODO remove detection upload and just flag font texture for create?
+			auto& TexData = *pFonts->TexData;
+			for(auto tex : pFonts->TexList )
+			{
+				if( tex->Status == ImTextureStatus_OK || tex->Status == ImTextureStatus_Destroyed){
+					continue;
+				}
+				else if( tex->Status == ImTextureStatus_WantCreate ){
+					SendDataTexture(TexData.BackendTexID,
+								TexData.Pixels,
+								static_cast<uint16_t>(TexData.Width),
+								static_cast<uint16_t>(TexData.Height),
+								eTexFormat::kTexFmtRGBA8); //SF TODO pick format
+					tex->Status = ImTextureStatus_OK;
+				}
+				else if( tex->Status == ImTextureStatus_WantUpdates ){
+					SendDataTexture(TexData.BackendTexID,
+								TexData.Pixels,
+								static_cast<uint16_t>(TexData.Width),
+								static_cast<uint16_t>(TexData.Height),
+								eTexFormat::kTexFmtRGBA8); //SF TODO pick format, support updates
+					tex->Status = ImTextureStatus_OK;
+				}
+				else if( tex->Status == ImTextureStatus_WantDestroy ){
+					SendDataTexture(TexData.BackendTexID, nullptr, 0,0, eTexFormat::kTexFmtRGBA8);
+					tex->Status = ImTextureStatus_Destroyed;
+				}
+			}
+		}
 	#else
 		const ImFontAtlas* pFonts = ImGui::GetIO().Fonts;
 		if( pFonts->TexPixelsAlpha8 && 
@@ -223,13 +255,12 @@ bool NewFrame(bool bSupportFrameSkip)
 			ImGui::GetIO().Fonts->GetTexDataAsAlpha8(&pPixelData, &width, &height);
 			SendDataTexture(pFonts->TexID, pPixelData, static_cast<uint16_t>(width), static_cast<uint16_t>(height), eTexFormat::kTexFmtA8);
 		}
-	#endif
-
 		// No font texture has been sent to the netImgui server, you can either 
 		// 1. Leave font data available in ImGui (not call ImGui::ClearTexData) for netImgui to auto send it
 		// 2. Manually call 'NetImgui::SendDataTexture' with font texture data
 		assert(client.mbFontUploaded);
-			
+	#endif
+
 		// Update current active content with our time
 		ImGui::GetIO().DeltaTime = std::max<float>(1.f / 1000.f, elapsedCheckMs/1000.f);
 		
@@ -339,37 +370,43 @@ void SendDataTexture(ImTextureUserID textureId, void* pData, uint16_t width, uin
 		}
 		uint32_t SizeNeeded					= dataSize + sizeof(CmdTexture);
 		pCmdTexture							= netImguiSizedNew<CmdTexture>(SizeNeeded);
-
 		pCmdTexture->mpTextureData.SetPtr(reinterpret_cast<uint8_t*>(&pCmdTexture[1]));
 		memcpy(pCmdTexture->mpTextureData.Get(), pData, dataSize);
+		pCmdTexture->mpTextureData.ToOffset();
 
 		pCmdTexture->mSize					= SizeNeeded;
 		pCmdTexture->mWidth					= width;
 		pCmdTexture->mHeight				= height;
-		pCmdTexture->mTextureId				= texId64;
+		pCmdTexture->mTextureUserId			= texId64;
 		pCmdTexture->mFormat				= static_cast<uint8_t>(format);
-		pCmdTexture->mpTextureData.ToOffset();
+		pCmdTexture->mUpdatable				= false;
 
 		// Detects when user is sending the font texture
 		ScopedImguiContext scopedCtx(client.mpContext ? client.mpContext : ImGui::GetCurrentContext());
-		if( ImGui::GetIO().Fonts && ImGui::GetIO().Fonts->TexID == textureId )
+		const auto FontAtlas = ImGui::GetIO().Fonts;
+	#if IMGUI_IS_NEWFONT //SF
+		if( FontAtlas && FontAtlas->TexData && FontAtlas->TexData->BackendTexID == textureId )
 		{
-			client.mbFontUploaded		|= true;
-		#if IMGUI_IS_NEWFONT //SF
-		#else
-			client.mpFontTextureData	= ImGui::GetIO().Fonts->TexPixelsAlpha8;
+			client.mbFontUploaded	= true;
+			client.mFontTextureID	= textureId;
+			pCmdTexture->mUpdatable	= true;
+		}
+	#else
+		//SF TODO restore original
+		if( FontAtlas ... )
+		{
+			client.mbFontUploaded		= true;
+			client.mpFontTextureData	= FontAtlas->TexPixelsAlpha8;
 			client.mFontTextureID		= textureId;
-		#endif
-		}		
+		}
+	#endif
+		
 	}
 	// Texture to remove
 	else
 	{
 		pCmdTexture							= netImguiNew<CmdTexture>();
-		pCmdTexture->mTextureId				= texId64;		
-		pCmdTexture->mWidth					= 0;
-		pCmdTexture->mHeight				= 0;
-		pCmdTexture->mFormat				= eTexFormat::kTexFmt_Invalid;
+		pCmdTexture->mTextureUserId			= texId64;
 		pCmdTexture->mpTextureData.SetOff(0);
 	}
 
@@ -423,7 +460,7 @@ void SetBackground(const ImVec4& bgColor, const ImVec4& textureTint )
 }
 
 //=================================================================================================
-void SetBackground(const ImVec4& bgColor, const ImVec4& textureTint, ImTextureID bgTextureID)
+void SetBackground(const ImVec4& bgColor, const ImVec4& textureTint, ImTextureUserID bgTextureID)
 //=================================================================================================
 {
 	if (!gpClientInfo) return;

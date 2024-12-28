@@ -340,7 +340,7 @@ static void ImGui_ImplDX11_DestroyTexture(ImGui_ImplDX11_Texture* tex)
     IM_DELETE(tex);
 }
 
-static void ImGui_ImplDX11_UpdateTexture(ImTextureData* tex)
+void ImGui_ImplDX11_UpdateTexture(ImTextureData* tex) // @SAMPLE_EDIT : Removed static for extern access
 {
     ImGui_ImplDX11_Data* bd = ImGui_ImplDX11_GetBackendData();
     if (tex->Status == ImTextureStatus_WantCreate)

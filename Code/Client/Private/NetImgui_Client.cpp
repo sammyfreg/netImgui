@@ -1,6 +1,6 @@
 #include "NetImgui_Shared.h"
 
-#if NETIMGUI_ENABLED
+#if NETIMGUI_ENABLED || 1 //SF
 #include "NetImgui_WarningDisable.h"
 #include "NetImgui_Client.h"
 #include "NetImgui_Network.h"
@@ -149,7 +149,8 @@ void Communications_Outgoing_Textures(ClientInfo& client)
 			if( !cmdTexture.mbSent && cmdTexture.mpCmdTexture )
 			{
 				client.mPendingSend.pCommand	= cmdTexture.mpCmdTexture;
-				client.mPendingSend.bAutoFree	= cmdTexture.mpCmdTexture->mFormat == eTexFormat::kTexFmt_Invalid; // Texture as been marked for deletion, can now free memory allocated for this
+				//SF TODO fix this? 
+				client.mPendingSend.bAutoFree	= cmdTexture.mpCmdTexture->mFormat == eTexFormat::kTexFmt_Invalid; // Texture has been marked for deletion, can now free memory allocated for this
 				cmdTexture.mbSent				= true;
 				return; // Exit as soon as we find a texture to send, so thread can proceed with transmitting it
 			}
@@ -597,12 +598,20 @@ void ClientInfo::ContextOverride()
 		newIO.MouseDrawCursor				= false;
 		newIO.BackendPlatformName			= "NetImgui";
 		newIO.BackendRendererName			= "DirectX11";
+#if IMGUI_IS_NEWFONT
+		if( newIO.Fonts && newIO.Fonts->TexData ){
+			newIO.Fonts->TexData->Status = ImTextureStatus_WantCreate;
+			//SF TODO figure better way handling change to texture re-create
+			newIO.Fonts->TexID._TexUserID = newIO.Fonts->TexData->BackendTexID;
+			newIO.Fonts->TexID._TexData = newIO.Fonts->TexData;
+		}
+#else
 		if( mFontCreationFunction != nullptr )
 		{
 			newIO.FontGlobalScale = 1;
 			mFontCreationScaling = -1;
 		}
-		
+#endif		
 #if IMGUI_VERSION_NUM < 18700
 		for (uint32_t i(0); i < ImGuiKey_COUNT; ++i) {
 			newIO.KeyMap[i] = i;
@@ -635,12 +644,19 @@ void ClientInfo::ContextRestore()
 #ifdef IMGUI_HAS_VIEWPORT
 		ImGui::UpdatePlatformWindows(); // Prevents issue with mismatched frame tracking, when restoring enabled viewport feature
 #endif
+#if IMGUI_IS_NEWFONT
+		ImGuiIO& oldIO = ImGui::GetIO();
+		if( oldIO.Fonts && oldIO.Fonts->TexData ){
+			oldIO.Fonts->TexData->Status = ImTextureStatus_WantCreate;
+		}
+#else
 		if( mFontCreationFunction && ImGui::GetIO().Fonts && ImGui::GetIO().Fonts->Fonts.size() > 0)
 		{
 			float noScaleSize	= ImGui::GetIO().Fonts->Fonts[0]->FontSize / mFontCreationScaling;
 			float originalScale = mSavedContextValues.mFontGeneratedSize / noScaleSize;
 			mFontCreationFunction(mFontCreationScaling, originalScale);
 		}
+#endif
 		mSavedContextValues.Restore(mpContext);
 	}
 }
@@ -663,7 +679,7 @@ void ClientInfo::ContextRemoveHooks()
 //=================================================================================================
 // Process textures waiting to be sent to server
 // 1. New textures are added tp pending queue (Main Thread)
-// 2. Pending textures are sent to Server and added to our active texture list (Com Thread) 
+// 2. Pending textures are sent to Server and added to our active texture list (Com Thread)
 //=================================================================================================
 void ClientInfo::ProcessTexturePending()
 {
@@ -678,7 +694,8 @@ void ClientInfo::ProcessTexturePending()
 			// Find the TextureId from our list (or free slot)
 			int texIdx		= 0;
 			int texFreeSlot	= static_cast<int>(mTextures.size());
-			while( texIdx < mTextures.size() && ( !mTextures[texIdx].IsValid() || mTextures[texIdx].mpCmdTexture->mTextureId != pCmdTexture->mTextureId) )
+			while(	(texIdx < mTextures.size()) && 
+					(!mTextures[texIdx].IsValid() || mTextures[texIdx].mpCmdTexture->mTextureUserId != pCmdTexture->mTextureUserId) )
 			{
 				texFreeSlot = !mTextures[texIdx].IsValid() ? texIdx : texFreeSlot;
 				++texIdx;
