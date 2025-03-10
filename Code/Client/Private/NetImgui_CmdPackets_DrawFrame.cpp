@@ -1,6 +1,6 @@
 #include "NetImgui_Shared.h"
 
-#if NETIMGUI_ENABLED
+#if NETIMGUI_ENABLED || 1 //SF
 #include "NetImgui_WarningDisable.h"
 #include "NetImgui_CmdPackets.h"
 
@@ -88,9 +88,13 @@ inline void ImGui_ExtractVertices(const ImDrawList& cmdList, ImguiDrawGroup& dra
 //=================================================================================================
 inline void ImGui_ExtractDraws(const ImDrawList& cmdList, ImguiDrawGroup& drawGroupOut, ComDataType*& pDataOutput)
 {
-	int maxDrawCount		= static_cast<int>(cmdList.CmdBuffer.size());
-	uint32_t drawCount		= 0;
-	ImguiDraw* pOutDraws	= reinterpret_cast<ImguiDraw*>(pDataOutput);
+	int maxDrawCount			= static_cast<int>(cmdList.CmdBuffer.size());
+	uint32_t drawCount			= 0;
+	ImguiDraw* pOutDraws		= reinterpret_cast<ImguiDraw*>(pDataOutput);
+#if IMGUI_IS_NEWFONT
+	ImTextureData* pFontTexData	= ImGui::GetIO().Fonts ? ImGui::GetIO().Fonts->TexData : nullptr;
+#endif
+
 	for(int cmd_i = 0; cmd_i < maxDrawCount; ++cmd_i)
 	{
 		const ImDrawCmd* pCmd = &cmdList.CmdBuffer[cmd_i];
@@ -103,8 +107,16 @@ inline void ImGui_ExtractDraws(const ImDrawList& cmdList, ImguiDrawGroup& drawGr
 			pOutDraws[drawCount].mVtxOffset		= 0;
 			pOutDraws[drawCount].mIdxOffset		= 0;
 		#endif
-			
-			pOutDraws[drawCount].mTextureId		= TextureCastFromID(pCmd->TextureId);
+
+			ImTextureUserID texID				= TextureCastFromID(pCmd->TextureId);
+		#if IMGUI_IS_NEWFONT
+			// We user a different Font Atlas TextureID for client code,
+			// since we can't rely on Backend to provide one that's always valid
+			if( pCmd->TextureId._TexData == pFontTexData ){
+				texID = TextureCastFromPtr(pFontTexData);
+			}
+		#endif
+			pOutDraws[drawCount].mTextureId		= texID;
 			pOutDraws[drawCount].mIdxCount		= pCmd->ElemCount;
 			pOutDraws[drawCount].mClipRect[0]	= pCmd->ClipRect.x;
 			pOutDraws[drawCount].mClipRect[1]	= pCmd->ClipRect.y;
@@ -354,8 +366,6 @@ CmdDrawFrame* ConvertToCmdDrawFrame(const ImDrawData* pDearImguiData, ImGuiMouse
 	//-----------------------------------------------------------------------------------------
 	// Copy draw data (vertices, indices, drawcall info, ...)
 	//-----------------------------------------------------------------------------------------
-
-
 	for(size_t n = 0; n < pDrawFrame->mDrawGroupCount; n++)
 	{
 		ImguiDrawGroup& drawGroup		= pDrawFrame->mpDrawGroups[n];

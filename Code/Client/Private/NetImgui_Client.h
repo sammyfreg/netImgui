@@ -94,7 +94,7 @@ struct ClientInfo
 	ExchangePtr<CmdInput>				mPendingInputIn;
 	ExchangePtr<CmdClipboard>			mPendingClipboardIn;					// Clipboard content received from Server and waiting to be taken by client
 	ExchangePtr<CmdClipboard>			mPendingClipboardOut;					// Clipboard content copied on Client and waiting to be sent to Server
-	ImGuiContext*						mpContext					= nullptr;	// Context that the remote drawing should use (either the one active when connection request happened, or a clone)
+	ImGuiContext*						mpContext					= nullptr;	// Context that the remote drawing should use (the one active when connection request happened)
 	PendingCom 							mPendingRcv;							// Data being currently received from Server
 	PendingCom 							mPendingSend;							// Data being currently sent to Server
 	uint32_t							mPendingSendNext			= 0;		// Type of Cmd to next attempt sending, when channel is available
@@ -109,7 +109,7 @@ struct ClientInfo
 	TimePoint							mLastOutgoingDrawTime;					// When we last sent an updated draw command to the server
 	ImVec2								mSavedDisplaySize			= {0, 0};	// Save original display size on 'NewFrame' and restore it on 'EndFrame' (making sure size is still valid after a disconnect)
 	const void*							mpFontTextureData			= nullptr;	// Last font texture data send to server (used to detect if font was changed)
-	ImTextureID							mFontTextureID;
+	ImTextureID							mFontTextureID;							// Used to detect textureID change [Before ImGui 1.92, old Font Atlas]
 	SavedImguiContext					mSavedContextValues;
 	std::atomic_uint32_t				mTexturesPendingSent;
 	std::atomic_uint32_t				mTexturesPendingCreated;
@@ -137,8 +137,9 @@ struct ClientInfo
 	ImGuiID								mhImguiHookNewframe			= 0;
 	ImGuiID								mhImguiHookEndframe			= 0;
 	
+	void 								ProcessFontAtlasUpdates();
 	void								ProcessDrawData(const ImDrawData* pDearImguiData, ImGuiMouseCursor mouseCursor);
-	void								ProcessTexturePending();
+	void								ProcessPendingTexture();
 	inline bool							IsConnected()const;
 	inline bool							IsConnectPending()const;
 	inline bool							IsActive()const;

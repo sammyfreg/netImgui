@@ -25,7 +25,12 @@ void SavedImguiContext::Save(ImGuiContext* copyFrom)
 	mBackendRendererName	= sourceIO.BackendRendererName;
 	mDrawMouse				= sourceIO.MouseDrawCursor;
 	mFontGlobalScale		= sourceIO.FontGlobalScale;
+#if IMGUI_IS_NEWFONT
+	mFontGeneratedSize		= 13.f;//SF Rethink this
+#else
 	mFontGeneratedSize		= sourceIO.Fonts->Fonts.Size > 0 ? sourceIO.Fonts->Fonts[0]->FontSize : 13.f; // Save size to restore the font to original size
+#endif
+	
 #if IMGUI_VERSION_NUM < 18700
 	memcpy(mKeyMap, sourceIO.KeyMap, sizeof(mKeyMap));
 #endif
@@ -141,7 +146,7 @@ void Communications_Incoming_Clipboard(ClientInfo& client)
 //=================================================================================================
 void Communications_Outgoing_Textures(ClientInfo& client)
 {
-	client.ProcessTexturePending();
+	client.ProcessPendingTexture();
 	if( client.mbHasTextureUpdate )
 	{
 		for(auto& cmdTexture : client.mTextures)
@@ -563,7 +568,9 @@ ClientInfo::~ClientInfo()
 void ClientInfo::ContextInitialize()
 {
 	mpContext				= ImGui::GetCurrentContext();
-
+#if IMGUI_IS_NEWFONT
+	mbFontUploaded			= false;
+#endif
 #if NETIMGUI_IMGUI_CALLBACK_ENABLED
 	ImGuiContextHook hookNewframe, hookEndframe;
 	ContextRemoveHooks();
@@ -598,20 +605,13 @@ void ClientInfo::ContextOverride()
 		newIO.MouseDrawCursor				= false;
 		newIO.BackendPlatformName			= "NetImgui";
 		newIO.BackendRendererName			= "DirectX11";
-#if IMGUI_IS_NEWFONT
-		if( newIO.Fonts && newIO.Fonts->TexData ){
-			newIO.Fonts->TexData->Status = ImTextureStatus_WantCreate;
-			//SF TODO figure better way handling change to texture re-create
-			newIO.Fonts->TexID._TexUserID = newIO.Fonts->TexData->BackendTexID;
-			newIO.Fonts->TexID._TexData = newIO.Fonts->TexData;
-		}
-#else
+
 		if( mFontCreationFunction != nullptr )
 		{
 			newIO.FontGlobalScale = 1;
 			mFontCreationScaling = -1;
 		}
-#endif		
+
 #if IMGUI_VERSION_NUM < 18700
 		for (uint32_t i(0); i < ImGuiKey_COUNT; ++i) {
 			newIO.KeyMap[i] = i;
@@ -645,10 +645,10 @@ void ClientInfo::ContextRestore()
 		ImGui::UpdatePlatformWindows(); // Prevents issue with mismatched frame tracking, when restoring enabled viewport feature
 #endif
 #if IMGUI_IS_NEWFONT
-		ImGuiIO& oldIO = ImGui::GetIO();
-		if( oldIO.Fonts && oldIO.Fonts->TexData ){
-			oldIO.Fonts->TexData->Status = ImTextureStatus_WantCreate;
-		}
+		//ImGuiIO& oldIO = ImGui::GetIO();
+		//if( oldIO.Fonts && oldIO.Fonts->TexData ){
+		//	oldIO.Fonts->TexData->Status = ImTextureStatus_WantCreate;
+		//}
 #else
 		if( mFontCreationFunction && ImGui::GetIO().Fonts && ImGui::GetIO().Fonts->Fonts.size() > 0)
 		{
@@ -681,7 +681,7 @@ void ClientInfo::ContextRemoveHooks()
 // 1. New textures are added tp pending queue (Main Thread)
 // 2. Pending textures are sent to Server and added to our active texture list (Com Thread)
 //=================================================================================================
-void ClientInfo::ProcessTexturePending()
+void ClientInfo::ProcessPendingTexture()
 {
 	while( mTexturesPendingCreated != mTexturesPendingSent )
 	{
@@ -710,6 +710,44 @@ void ClientInfo::ProcessTexturePending()
 			mTextures[texIdx].mbSent = false;
 		}
 	}
+}
+
+//=================================================================================================
+// Process font texture atlas updates and forward it to NetImguiServer
+// For Dear ImGui 1.92+
+//=================================================================================================
+void ClientInfo::ProcessFontAtlasUpdates()
+{
+#if IMGUI_IS_NEWFONT || 1 //SF
+	ImTextureData* pFontTexData = ImGui::GetIO().Fonts ? ImGui::GetIO().Fonts->TexData : nullptr;
+	for(auto TexData : ImGui::GetPlatformIO().Textures )
+	{
+		ImTextureUserID clientTexID = TextureCastFromPtr(TexData);
+		ImTextureStatus TexStatus 	= TexData != nullptr ? TexData->Status : ImTextureStatus_OK;
+		if(!mbFontUploaded && TexData && TexData == pFontTexData){
+			TexStatus 		= ImTextureStatus_WantCreate;
+			mbFontUploaded 	= true;
+		}
+		//SF TODO detect if backend not handling texture update?
+		if( TexStatus == ImTextureStatus_WantCreate ){
+			SendDataTexture(clientTexID,
+							TexData->GetPixels(),
+							static_cast<uint16_t>(TexData->Width),
+							static_cast<uint16_t>(TexData->Height),
+							eTexFormat::kTexFmtRGBA8); //SF TODO pick format
+		}
+		else if( TexStatus == ImTextureStatus_WantUpdates ){
+			SendDataTexture(clientTexID,
+							TexData->GetPixels(),
+							static_cast<uint16_t>(TexData->Width),
+							static_cast<uint16_t>(TexData->Height),
+							eTexFormat::kTexFmtRGBA8); //SF TODO pick format, support updates
+		}
+		else if( TexStatus == ImTextureStatus_WantDestroy ){
+			SendDataTexture(clientTexID, nullptr, 0,0, eTexFormat::kTexFmtRGBA8);
+		}
+	}	
+#endif
 }
 
 //=================================================================================================

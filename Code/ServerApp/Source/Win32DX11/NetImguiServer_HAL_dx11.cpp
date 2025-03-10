@@ -144,101 +144,11 @@ void HAL_DestroyRenderTarget(void*& pOutRT, void*& pOutTexture)
 // HAL UPDATE TEXTURE
 // Re-using backend code for texture management (create/update/delete)
 //=================================================================================================
-void HAL_UpdateTexture(ImTextureData* ImguiTextureData)
+void HAL_UpdateTexture(ImTextureData& ImguiTextureData)
 {
-	ImGui_ImplDX11_UpdateTexture(ImguiTextureData);
+	ImGui_ImplDX11_UpdateTexture(&ImguiTextureData);
 }
 
-//=================================================================================================
-// HAL CREATE TEXTURE
-// Receive info on a Texture to allocate. At the moment, 'Dear ImGui' default rendering backend
-// only support RGBA8 format, so first convert any input format to a RGBA8 that we can use
-//=================================================================================================
-#if 0 //SF DELETE ME
-bool HAL_CreateTexture(uint16_t Width, uint16_t Height, NetImgui::eTexFormat Format, const uint8_t* pPixelData, ServerTexture& OutTexture)
-{
-	NetImguiServer::App::EnqueueHALTextureDestroy(OutTexture);
-
-	// Convert all incoming textures data to RGBA8
-	uint32_t* pPixelDataAlloc = nullptr;
-	if(Format == NetImgui::eTexFormat::kTexFmtA8)
-	{
-		pPixelDataAlloc = NetImgui::Internal::netImguiSizedNew<uint32_t>(static_cast<size_t>(Width)*static_cast<size_t>(Height)*4);
-		for (int i = 0; i < Width * Height; ++i){
-			pPixelDataAlloc[i] = 0x00FFFFFF | (static_cast<uint32_t>(pPixelData[i])<<24);
-		}
-		pPixelData = reinterpret_cast<const uint8_t*>(pPixelDataAlloc);
-	}
-	else if (Format == NetImgui::eTexFormat::kTexFmtRGBA8)
-	{
-	}
-	// Unsupported format
-	else
-	{
-		return false;
-	}
-
-	// Create the texture buffer
-	ID3D11Texture2D*            pTexture(nullptr);
-	ID3D11ShaderResourceView*   pTextureView(nullptr);
-	DXGI_FORMAT                 texFmt(DXGI_FORMAT_UNKNOWN);
-	D3D11_TEXTURE2D_DESC        texDesc;
-	D3D11_SUBRESOURCE_DATA		subResource;
-	ZeroMemory(&texDesc, sizeof(texDesc));
-	
-	texDesc.Width						= Width;
-	texDesc.Height						= Height;
-	texDesc.MipLevels					= 1;
-	texDesc.ArraySize					= 1;
-	texDesc.Format						= DXGI_FORMAT_R8G8B8A8_UNORM;
-	texDesc.SampleDesc.Count			= 1;
-	texDesc.Usage						= D3D11_USAGE_DEFAULT;
-	texDesc.BindFlags					= D3D11_BIND_SHADER_RESOURCE;
-	texDesc.CPUAccessFlags				= 0;
-	subResource.pSysMem					= pPixelData;
-	subResource.SysMemPitch				= Width * 4;
-	subResource.SysMemSlicePitch		= 0;
-	HRESULT Result						= GetD3DDevice()->CreateTexture2D(&texDesc, &subResource, &pTexture);
-	
-	if( Result == S_OK )
-	{
-		D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
-		ZeroMemory(&srvDesc, sizeof(srvDesc));
-		srvDesc.Format						= texFmt;
-		srvDesc.ViewDimension				= D3D11_SRV_DIMENSION_TEXTURE2D;
-		srvDesc.Texture2D.MipLevels			= texDesc.MipLevels;
-		srvDesc.Texture2D.MostDetailedMip	= 0;
-		GetD3DDevice()->CreateShaderResourceView(pTexture, &srvDesc, &pTextureView);
-		if( Result == S_OK )
-		{
-			pTexture->Release();
-			OutTexture.mpHAL_Texture		= reinterpret_cast<void*>(pTextureView);
-		}
-	}
-	
-	if( Result != S_OK && pTextureView ){
-		pTextureView->Release();
-	}
-	if( Result != S_OK && pTexture ){
-		pTexture->Release();
-	}
-	NetImgui::Internal::netImguiDeleteSafe(pPixelDataAlloc);
-	return Result == S_OK;
-}
-
-//=================================================================================================
-// HAL DESTROY TEXTURE
-// Free up allocated resources tried to a Texture
-//=================================================================================================
-void HAL_DestroyTexture(ServerTexture& OutTexture)
-{
-	if( OutTexture.mpHAL_Texture )
-	{
-		reinterpret_cast<ID3D11ShaderResourceView*>(OutTexture.mpHAL_Texture)->Release();
-		memset(&OutTexture, 0, sizeof(OutTexture));
-	}
-}
-#endif
 }} //namespace NetImguiServer { namespace App
 
 #endif // HAL_API_PLATFORM_WIN32_DX11

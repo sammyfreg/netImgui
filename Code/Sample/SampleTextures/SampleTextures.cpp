@@ -176,7 +176,7 @@ void SampleTextures::Shutdown()
 //=================================================================================================
 ImDrawData* SampleTextures::Draw()
 {
-	const char*	gTextureFormatName[static_cast<int>(NetImgui::eTexFormat::kTexFmt_Count)] = { "R8", "RGBA8", "Custom"};
+	const char*	gTextureFormatName[static_cast<int>(NetImgui::eTexFormat::kTexFmt_Count)] = { "RGBA8", "R8", "Custom"};
 	bool bCanDisplayLocally(false);
 
 	//---------------------------------------------------------------------------------------------

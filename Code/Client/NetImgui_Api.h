@@ -33,6 +33,8 @@
 	#pragma warning (disable: 5045)		// Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified
 #endif
 
+#include <stdint.h>
+
 //=================================================================================================
 // Include the user config file. It should contain the include for :
 // 'imgui.h' : always
@@ -64,15 +66,15 @@
 	#define NETIMGUI_ENABLED 0
 #endif
 
-#if NETIMGUI_ENABLED || 1 //SF
+#if NETIMGUI_ENABLED
 
-#define IMGUI_IS_NEWFONT (IMGUI_VERSION_NUM >= 19161) //SF
-#if !IMGUI_IS_NEWFONT
-typedef ImTextureID ImTextureUserID;
+//SF Skip using my own define
+#if IMGUI_HAS_TEXTURES
+	#define IMGUI_IS_NEWFONT 1
+#else
+	#define IMGUI_IS_NEWFONT 0
+	typedef ImTextureID ImTextureUserID;
 #endif
-
-
-#include <stdint.h>
 
 //=================================================================================================
 // Default Build settings defines values
@@ -173,7 +175,8 @@ NETIMGUI_API	void				Shutdown();
 // fontCreateFunction	: User provided function to call when the Server expect an update of
 //						  the font atlas, because of a monitor DPI change. When left to nullptr,
 //						  uses 'ImGuiIO.FontGlobalScale' instead to increase text size,
-//						  with blurier results.
+//						  with blurier results. 
+//						  NOTE: Removed for Dear ImGui 1.92 with added font update support.
 //=================================================================================================
 NETIMGUI_API	bool				ConnectToApp(const char* clientName, const char* serverHost, uint32_t serverPort=kDefaultServerPort, ThreadFunctPtr threadFunction=0, FontCreateFuncPtr FontCreateFunction=0);
 NETIMGUI_API	bool				ConnectFromApp(const char* clientName, uint32_t clientPort=kDefaultClientPort, ThreadFunctPtr threadFunction=0, FontCreateFuncPtr fontCreateFunction=0);

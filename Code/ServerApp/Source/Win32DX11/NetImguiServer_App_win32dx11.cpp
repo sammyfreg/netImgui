@@ -70,6 +70,7 @@ int main(int, char**)
     ImGuiIO& io = ImGui::GetIO(); (void)io;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;         // @SAMPLE_EDIT
 
     // Setup Dear ImGui style
     ImGui::StyleColorsDark();
@@ -133,9 +134,6 @@ int main(int, char**)
         sLastTime = std::chrono::steady_clock::now();
         
         NetImguiServer::App::UpdateFonts(); // @SAMPLE_EDIT (DPI Awareness) //SF REMOVE ME?
-        //if(  ) {
-		//	ImGui_ImplDX11_CreateFontsTexture();
-        //}
 
         // @SAMPLE_EDIT (Request each client to update their drawing content )
         NetImguiServer::App::UpdateRemoteContent();
@@ -329,7 +327,6 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         return 0;
     case WM_DPICHANGED:
         NetImguiServer::UI::SetWindowDPI(GetDpiForWindow(hWnd)); // @SAMPLE_EDIT (DPI Awareness)
-#ifdef TMP_VIEWPORT_DISABLED //SF (REMOVE ME?)
         if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DpiEnableScaleViewports)
         {
             //const int dpi = HIWORD(wParam);
@@ -337,7 +334,6 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
             const RECT* suggested_rect = (RECT*)lParam;
             ::SetWindowPos(hWnd, nullptr, suggested_rect->left, suggested_rect->top, suggested_rect->right - suggested_rect->left, suggested_rect->bottom - suggested_rect->top, SWP_NOZORDER | SWP_NOACTIVATE);
         }
-#endif
         break;
     }
     return ::DefWindowProcW(hWnd, msg, wParam, lParam);

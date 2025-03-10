@@ -46,7 +46,6 @@ Base::Base(const char* sampleName)
 #if NETIMGUI_ENABLED
 	mConnect_PortClient		= NetImgui::kDefaultClientPort;
 	mConnect_PortServer		= NetImgui::kDefaultServerPort;
-	mCallback_FontGenerate	= FontCreationCallback_Default;
 #endif
 }
 
@@ -109,7 +108,7 @@ bool Base::UpdateFont(float fontScaleDPI, bool isLocal)
 			ImFontAtlas* FontAtlas	= ImGui::GetIO().Fonts;
 			mGeneratedFontScaleDPI	= fontScaleDPI;
 			FontConfig.SizePixels	= static_cast<float>(pixelSizeWanted);
-			FontAtlas->Clear();
+			FontAtlas->ClearInputData();
 		
 		#if NETIMGUI_ENABLED
 			// Using Roboto Font with DPI awareness
@@ -119,12 +118,6 @@ bool Base::UpdateFont(float fontScaleDPI, bool isLocal)
 			// But can as easily rely on the default font
 			FontAtlas->AddFontDefault(&FontConfig);
 		#endif
-			
-			FontAtlas->Build();
-			// Regenerate the Font Texture (only if used by local context)
-			if( ImGui::GetCurrentContext() == mpContextLocal ){
-				//SF ExtraSampleBackend_UpdateFontTexture();
-			}
 			return true;
 		}
 	}
@@ -192,7 +185,7 @@ void Base::Draw_Connect()
 				ImGui::Separator();
 				if (ImGui::Button("Connect", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
 				{
-					NetImgui::ConnectToApp(mSampleName, mConnect_HostnameServer, mConnect_PortServer, mCallback_ThreadLaunch, mCallback_FontGenerate);
+					NetImgui::ConnectToApp(mSampleName, mConnect_HostnameServer, mConnect_PortServer, mCallback_ThreadLaunch);
 				}
 				ImGui::EndMenu();
 			}
@@ -210,7 +203,7 @@ void Base::Draw_Connect()
 				ImGui::Separator();
 				if (ImGui::Button("Listen", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
 				{
-					NetImgui::ConnectFromApp(mSampleName, mConnect_PortClient, mCallback_ThreadLaunch, mCallback_FontGenerate);
+					NetImgui::ConnectFromApp(mSampleName, mConnect_PortClient, mCallback_ThreadLaunch);
 				}
 				ImGui::EndMenu();
 			}

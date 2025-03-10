@@ -291,7 +291,7 @@ union TextureCastHelperUnion
 	const void*		TexturePtr;
 };
 
-//SF
+
 #if IMGUI_IS_NEWFONT
 uint64_t TextureCastFromID(ImTextureID textureID)
 {

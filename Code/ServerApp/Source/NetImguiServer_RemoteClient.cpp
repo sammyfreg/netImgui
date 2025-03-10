@@ -57,9 +57,7 @@ void Client::ReceiveDrawFrame(NetImgui::Internal::CmdDrawFrame* pFrameData)
 	{
 		// Convert DrawFrame command to Dear Imgui DrawData,
 		// and make it available for main thread to use in rendering
-		mpFrameDrawPrev						= pFrameData;
-		NetImguiImDrawData*	pNewDrawData	= ConvertToImguiDrawData(pFrameData);
-		mPendingImguiDrawDataIn.Assign(pNewDrawData);
+		ProcessCmdDrawFrame(pFrameData);
 
 		// Update framerate
 		constexpr float kHysteresis	= 0.025f; // Between 0 to 1.0
@@ -82,43 +80,84 @@ void Client::ReceiveTexture(NetImgui::Internal::CmdTexture* pTextureCmd)
 	}
 }
 
-void Client::ProcessPendingTextures()
+//=================================================================================================
+// Process pending texture commands and release unused textures
+//=================================================================================================
+void Client::UpdateTextures()
 {
-	bool textureChanged(false);
+	//---------------------------------------------------------------------------------------------
+	// First process all received texture commands from clients (create/update/delete cmds)
+	//---------------------------------------------------------------------------------------------
 	while( mPendingTextureReadIndex != mPendingTextureWriteIndex )
 	{
 		NetImgui::Internal::CmdTexture* pTextureCmd = mpPendingTextures[(mPendingTextureReadIndex++) % IM_ARRAYSIZE(mpPendingTextures)];
 		bool isRemoval		= pTextureCmd->mFormat == NetImgui::eTexFormat::kTexFmt_Invalid;
+		bool isUpdate		= false;
+		bool isCreate		= !isRemoval && !isUpdate;
 		uint32_t dataSize	= pTextureCmd->mSize - sizeof(NetImgui::Internal::CmdTexture);
-		auto texIt			= mTextureTable.find(pTextureCmd->mTextureUserId) ;
-		textureChanged 		|= texIt != mTextureTable.end();
-		// Delete texture when format/size changed or asked to remove
-		if ( isRemoval && texIt != mTextureTable.end() ) {
-			DestroyTexture(texIt->second, *pTextureCmd, dataSize);
+		auto texIt			= mTextureTable.find(pTextureCmd->mTextureUserId);
+
+		// Delete texture when requested or create with same Client UserID received
+		if( !isUpdate && texIt != mTextureTable.end() && texIt->second != nullptr )
+		{
+			texIt->second->mIsPendingDel = true;
 			mTextureTable.erase(texIt);
 		}
-		// Add texture when new imgui id
-		else if (texIt == mTextureTable.end() ) {
-			texIt = mTextureTable.insert({pTextureCmd->mTextureUserId,App::ServerTexture()}).first;
-		}
-		
-		// Try creating the texture (and free it if failed)
-		if( !isRemoval && texIt != mTextureTable.end() ) {
-			if( !CreateTexture(texIt->second, *pTextureCmd, dataSize) )	{
-				mTextureTable.erase(texIt);
+
+		// Add texture
+		if( isCreate )
+		{
+			auto* serverTex 		= new App::ServerTexture();
+			serverTex->mTexClientID	= pTextureCmd->mTextureUserId;
+			mTextureList.push_back(serverTex);
+			if( CreateTexture(*serverTex, *pTextureCmd, dataSize) )
+			{
+				mTextureTable.insert({pTextureCmd->mTextureUserId, serverTex});
+			}
+			else
+			{
+				serverTex->mIsPendingDel = true;
 			}
 		}
+
 		NetImgui::Internal::netImguiDeleteSafe(pTextureCmd);
 	}
 
-	// Must invalidate last resolved Dear ImGui draw data,
-	// since some texture pointers are now invalid
-	// Note: if there's frequent texture removal/update and it could cause
-	//		 flickering. This could be fixed by saving the last received 
-	//		 draw command and resolving it every frame 
-	// 		 (with ProcessPendingTextures) instead
-	if (textureChanged) {
-		NetImgui::Internal::netImguiDeleteSafe( mpImguiDrawData );
+	//---------------------------------------------------------------------------------------------
+	// Ask Backend to update each texture
+	//---------------------------------------------------------------------------------------------
+	for(int i(0); i<mTextureList.Size;)
+	{
+		if( mTextureList[i] != nullptr )
+		{
+			NetImguiServer::App::ServerTexture& ServerTex = *mTextureList[i];
+
+			// Delete Texture Resource
+			if( ServerTex.mIsPendingDel && !ServerTex.mIsReferenced && ServerTex.mTexData.Status != ImTextureStatus_Destroyed )
+			{
+				ServerTex.mTexData.Status = ImTextureStatus_WantDestroy;
+			}
+
+			NetImguiServer::App::HAL_UpdateTexture(ServerTex.mTexData);
+
+			// Remove from client
+			if( ServerTex.mTexData.Status == ImTextureStatus_Destroyed )
+			{
+				// Remove from our Hashtable
+				auto texIt = mTextureTable.find(ServerTex.mTexClientID);
+				if( texIt != mTextureTable.end() && texIt->second == &ServerTex ){
+					mTextureTable.erase(texIt);
+				}
+				// Remove from our list of texture
+				ImSwap(mTextureList[i], mTextureList[mTextureList.Size-1]);
+				mTextureList.pop_back();
+				delete &ServerTex;
+			}
+			else
+			{
+				++i;
+			}
+		}
 	}
 }
 
@@ -149,13 +188,15 @@ void Client::Uninitialize()
 {
 	NetImguiServer::App::HAL_DestroyRenderTarget(mpHAL_AreaRT, mpHAL_AreaTexture);
 	
-#if 0 //SF TODO?
-	NetImgui::Internal::CmdTexture cmdDelete;
-	for(auto& texIt : mTextureTable ){
-		cmdDelete.mTextureUserId = texIt.second.mImguiId;
-		NetImguiServer::App::DestroyTexture(texIt.second, cmdDelete, 0);
+	for(auto serverTex : mTextureList )
+	{
+		if( serverTex && serverTex->mTexData.Status != ImTextureStatus_Destroyed ){
+			serverTex->mTexData.Status = ImTextureStatus_WantDestroy;
+			NetImguiServer::App::HAL_UpdateTexture(serverTex->mTexData);
+			delete serverTex;
+		}
 	}
-#endif
+	mTextureList.clear();
 	mTextureTable.clear();
 
 	mPendingImguiDrawDataIn.Free();
@@ -238,6 +279,13 @@ NetImguiImDrawData*	Client::GetImguiDrawData(ImTextureID EmtpyTextureID)
 		NetImgui::Internal::netImguiDeleteSafe( mpImguiDrawData );
 		mpImguiDrawData	= pPendingDrawData;
 		
+		// Reset info on referenced textures
+		for(auto serverTex : mTextureList){
+			if( serverTex ){
+				serverTex->mIsReferenced = false;
+			}
+		}
+
 		// When a new drawdata is available, need to convert the textureid from NetImgui Id
 		// to the backend renderer format (texture view pointer). 
 		// Done here (in main thread) instead of when first received on the (com thread),
@@ -247,17 +295,14 @@ NetImguiImDrawData*	Client::GetImguiDrawData(ImTextureID EmtpyTextureID)
 			ImDrawList* pCmdList = pPendingDrawData->CmdLists[i];
 			for(int drawIdx(0), drawCount(pCmdList->CmdBuffer.size()); drawIdx<drawCount; ++drawIdx)
 			{
-			#if 0 //SF
-				uint64_t wantedTexID	= NetImgui::Internal::TextureCastFromID(pCmdList->CmdBuffer[drawIdx].TextureId);
-				auto texIt				= mTextureTable.find(wantedTexID);
-				auto texHALPtr			= texIt == mTextureTable.end() ? pEmtpyTextureHAL : texIt->second.mpHAL_Texture;
-				pCmdList->CmdBuffer[drawIdx].TextureId	= NetImgui::Internal::TextureCastFromPtr( texHALPtr );
-			#else
+				ImTextureID serverTexUserID				= EmtpyTextureID;
 				uint64_t clientTexUserID				= pCmdList->CmdBuffer[drawIdx].TextureId._TexUserID;
 				auto texIt								= mTextureTable.find(clientTexUserID);
-				ImTextureID serverTexUserID				= (texIt == mTextureTable.end()) ? EmtpyTextureID : ImTextureID(texIt->second.mTexData.BackendTexID);
+				if( texIt != mTextureTable.end() && texIt->second ){
+					serverTexUserID						= texIt->second->GetTexID();
+					texIt->second->mIsReferenced 		= true;
+				}
 				pCmdList->CmdBuffer[drawIdx].TextureId	= serverTexUserID;
-			#endif
 			}
 		}
 	}	
@@ -267,7 +312,7 @@ NetImguiImDrawData*	Client::GetImguiDrawData(ImTextureID EmtpyTextureID)
 //=================================================================================================
 // Create a new Dear Imgui DrawData ready to be submitted for rendering
 //=================================================================================================
-NetImguiImDrawData* Client::ConvertToImguiDrawData(const NetImgui::Internal::CmdDrawFrame* pCmdDrawFrame)
+void Client::ProcessCmdDrawFrame(NetImgui::Internal::CmdDrawFrame* pCmdDrawFrame)
 {
 	constexpr float kPosRangeMin	= static_cast<float>(NetImgui::Internal::ImguiVert::kPosRange_Min);
 	constexpr float kPosRangeMax	= static_cast<float>(NetImgui::Internal::ImguiVert::kPosRange_Max);
@@ -275,7 +320,7 @@ NetImguiImDrawData* Client::ConvertToImguiDrawData(const NetImgui::Internal::Cmd
 	constexpr float kUVRangeMax		= static_cast<float>(NetImgui::Internal::ImguiVert::kUvRange_Max);
 
 	if (!pCmdDrawFrame){
-		return nullptr;
+		return;
 	}
 	mMouseCursor					= static_cast<ImGuiMouseCursor>(pCmdDrawFrame->mMouseCursor);
 
@@ -296,65 +341,65 @@ NetImguiImDrawData* Client::ConvertToImguiDrawData(const NetImgui::Internal::Cmd
 	pCmdList->CmdBuffer.resize(pCmdDrawFrame->mTotalDrawCount);
 	pCmdList->Flags					= ImDrawListFlags_AllowVtxOffset|ImDrawListFlags_AntiAliasedLines|ImDrawListFlags_AntiAliasedFill|ImDrawListFlags_AntiAliasedLinesUseTex;
 
-	if( pCmdDrawFrame->mTotalDrawCount == 0 ){
-		return pDrawData;
-	}
+	if( pCmdDrawFrame->mTotalDrawCount != 0 )
+	{
+		uint32_t indexOffset(0), vertexOffset(0);
+		ImDrawIdx* pIndexDst			= &pCmdList->IdxBuffer[0];
+		ImDrawVert* pVertexDst			= &pCmdList->VtxBuffer[0];
+		ImDrawCmd* pCommandDst			= &pCmdList->CmdBuffer[0];
 
-	uint32_t indexOffset(0), vertexOffset(0);
-	ImDrawIdx* pIndexDst			= &pCmdList->IdxBuffer[0];
-	ImDrawVert* pVertexDst			= &pCmdList->VtxBuffer[0];
-	ImDrawCmd* pCommandDst			= &pCmdList->CmdBuffer[0];
-
-	for(uint32_t i(0); i<pCmdDrawFrame->mDrawGroupCount; ++i){
-		const NetImgui::Internal::ImguiDrawGroup& drawGroup = pCmdDrawFrame->mpDrawGroups[i];
+		for(uint32_t i(0); i<pCmdDrawFrame->mDrawGroupCount; ++i){
+			const NetImgui::Internal::ImguiDrawGroup& drawGroup = pCmdDrawFrame->mpDrawGroups[i];
 				
-		// Copy/Convert Indices from network command to Dear ImGui indices format
-		const uint16_t* pIndices = reinterpret_cast<const uint16_t*>(drawGroup.mpIndices.Get());
-		if (drawGroup.mBytePerIndex == sizeof(ImDrawIdx))
-		{
-			memcpy(pIndexDst, pIndices, drawGroup.mIndiceCount*sizeof(ImDrawIdx));
-		}
-		else
-		{
-			for (uint32_t indexIdx(0); indexIdx < drawGroup.mIndiceCount; ++indexIdx){
-				pIndexDst[indexIdx] = static_cast<ImDrawIdx>(pIndices[indexIdx]);
+			// Copy/Convert Indices from network command to Dear ImGui indices format
+			const uint16_t* pIndices = reinterpret_cast<const uint16_t*>(drawGroup.mpIndices.Get());
+			if (drawGroup.mBytePerIndex == sizeof(ImDrawIdx))
+			{
+				memcpy(pIndexDst, pIndices, drawGroup.mIndiceCount*sizeof(ImDrawIdx));
 			}
-		}
+			else
+			{
+				for (uint32_t indexIdx(0); indexIdx < drawGroup.mIndiceCount; ++indexIdx){
+					pIndexDst[indexIdx] = static_cast<ImDrawIdx>(pIndices[indexIdx]);
+				}
+			}
 
-		// Convert the Vertices from network command to Dear Imgui Format
-		const NetImgui::Internal::ImguiVert* pVertexSrc = drawGroup.mpVertices.Get();
-		for (uint32_t vtxIdx(0); vtxIdx < drawGroup.mVerticeCount; ++vtxIdx)
-		{
-			pVertexDst[vtxIdx].pos.x				= (static_cast<float>(pVertexSrc[vtxIdx].mPos[0]) * (kPosRangeMax - kPosRangeMin)) / static_cast<float>(0xFFFF) + kPosRangeMin + drawGroup.mReferenceCoord[0];
-			pVertexDst[vtxIdx].pos.y				= (static_cast<float>(pVertexSrc[vtxIdx].mPos[1]) * (kPosRangeMax - kPosRangeMin)) / static_cast<float>(0xFFFF) + kPosRangeMin + drawGroup.mReferenceCoord[1];
-			pVertexDst[vtxIdx].uv.x					= (static_cast<float>(pVertexSrc[vtxIdx].mUV[0]) * (kUVRangeMax - kUVRangeMin)) / static_cast<float>(0xFFFF) + kUVRangeMin;
-			pVertexDst[vtxIdx].uv.y					= (static_cast<float>(pVertexSrc[vtxIdx].mUV[1]) * (kUVRangeMax - kUVRangeMin)) / static_cast<float>(0xFFFF) + kUVRangeMin;
-			pVertexDst[vtxIdx].col					= pVertexSrc[vtxIdx].mColor;
-		}
+			// Convert the Vertices from network command to Dear Imgui Format
+			const NetImgui::Internal::ImguiVert* pVertexSrc = drawGroup.mpVertices.Get();
+			for (uint32_t vtxIdx(0); vtxIdx < drawGroup.mVerticeCount; ++vtxIdx)
+			{
+				pVertexDst[vtxIdx].pos.x				= (static_cast<float>(pVertexSrc[vtxIdx].mPos[0]) * (kPosRangeMax - kPosRangeMin)) / static_cast<float>(0xFFFF) + kPosRangeMin + drawGroup.mReferenceCoord[0];
+				pVertexDst[vtxIdx].pos.y				= (static_cast<float>(pVertexSrc[vtxIdx].mPos[1]) * (kPosRangeMax - kPosRangeMin)) / static_cast<float>(0xFFFF) + kPosRangeMin + drawGroup.mReferenceCoord[1];
+				pVertexDst[vtxIdx].uv.x					= (static_cast<float>(pVertexSrc[vtxIdx].mUV[0]) * (kUVRangeMax - kUVRangeMin)) / static_cast<float>(0xFFFF) + kUVRangeMin;
+				pVertexDst[vtxIdx].uv.y					= (static_cast<float>(pVertexSrc[vtxIdx].mUV[1]) * (kUVRangeMax - kUVRangeMin)) / static_cast<float>(0xFFFF) + kUVRangeMin;
+				pVertexDst[vtxIdx].col					= pVertexSrc[vtxIdx].mColor;
+			}
 
-		// Convert the Draws from network command to Dear Imgui Format
-		const NetImgui::Internal::ImguiDraw* pDrawSrc = drawGroup.mpDraws.Get();
-		for(uint32_t drawIdx(0); drawIdx<drawGroup.mDrawCount; ++drawIdx)
-		{
-			pCommandDst[drawIdx].ClipRect.x			= pDrawSrc[drawIdx].mClipRect[0];
-			pCommandDst[drawIdx].ClipRect.y			= pDrawSrc[drawIdx].mClipRect[1];
-			pCommandDst[drawIdx].ClipRect.z			= pDrawSrc[drawIdx].mClipRect[2];
-			pCommandDst[drawIdx].ClipRect.w			= pDrawSrc[drawIdx].mClipRect[3];
-			pCommandDst[drawIdx].VtxOffset			= pDrawSrc[drawIdx].mVtxOffset + vertexOffset;
-			pCommandDst[drawIdx].IdxOffset			= pDrawSrc[drawIdx].mIdxOffset + indexOffset;
-			pCommandDst[drawIdx].ElemCount			= pDrawSrc[drawIdx].mIdxCount;
-			pCommandDst[drawIdx].UserCallback		= nullptr;
-			pCommandDst[drawIdx].UserCallbackData	= nullptr;
-			pCommandDst[drawIdx].TextureId			= NetImgui::Internal::TextureCastFromID(pDrawSrc[drawIdx].mTextureId);
-		}
+			// Convert the Draws from network command to Dear Imgui Format
+			const NetImgui::Internal::ImguiDraw* pDrawSrc = drawGroup.mpDraws.Get();
+			for(uint32_t drawIdx(0); drawIdx<drawGroup.mDrawCount; ++drawIdx)
+			{
+				pCommandDst[drawIdx].ClipRect.x			= pDrawSrc[drawIdx].mClipRect[0];
+				pCommandDst[drawIdx].ClipRect.y			= pDrawSrc[drawIdx].mClipRect[1];
+				pCommandDst[drawIdx].ClipRect.z			= pDrawSrc[drawIdx].mClipRect[2];
+				pCommandDst[drawIdx].ClipRect.w			= pDrawSrc[drawIdx].mClipRect[3];
+				pCommandDst[drawIdx].VtxOffset			= pDrawSrc[drawIdx].mVtxOffset + vertexOffset;
+				pCommandDst[drawIdx].IdxOffset			= pDrawSrc[drawIdx].mIdxOffset + indexOffset;
+				pCommandDst[drawIdx].ElemCount			= pDrawSrc[drawIdx].mIdxCount;
+				pCommandDst[drawIdx].UserCallback		= nullptr;
+				pCommandDst[drawIdx].UserCallbackData	= nullptr;
+				pCommandDst[drawIdx].TextureId			= NetImgui::Internal::TextureCastFromID(pDrawSrc[drawIdx].mTextureId);
+			}
 	
-		pIndexDst		+= drawGroup.mIndiceCount;
-		pVertexDst		+= drawGroup.mVerticeCount;
-		pCommandDst		+= drawGroup.mDrawCount;
-		indexOffset		+= drawGroup.mIndiceCount;
-		vertexOffset	+= drawGroup.mVerticeCount;
+			pIndexDst		+= drawGroup.mIndiceCount;
+			pVertexDst		+= drawGroup.mVerticeCount;
+			pCommandDst		+= drawGroup.mDrawCount;
+			indexOffset		+= drawGroup.mIndiceCount;
+			vertexOffset	+= drawGroup.mVerticeCount;
+		}
 	}
-	return pDrawData;
+	mpFrameDrawPrev	= pCmdDrawFrame;
+	mPendingImguiDrawDataIn.Assign(pDrawData);
 }
 
 //=================================================================================================

@@ -33,33 +33,33 @@ struct Client
 	using ExchPtrClipboard	= NetImgui::Internal::ExchangePtr<NetImgui::Internal::CmdClipboard>;
 	using ExchPtrBackground = NetImgui::Internal::ExchangePtr<NetImgui::Internal::CmdBackground>;
 	using ExchPtrImguiDraw	= NetImgui::Internal::ExchangePtr<NetImguiImDrawData>;
-	using TextureTable		= std::unordered_map<uint64_t, App::ServerTexture>;
+	using TextureTable		= std::unordered_map<uint64_t, App::ServerTexture*>;
 
-											Client();
-											~Client();
-											Client(const Client&)	= delete;
-											Client(const Client&&)	= delete;
-	void									operator=(const Client&) = delete;
-	void									Initialize();
-	void									Uninitialize();
-	void									Release();
-	bool									IsValid()const;
+												Client();
+												~Client();
+												Client(const Client&)	= delete;
+												Client(const Client&&)	= delete;
+	void										operator=(const Client&) = delete;
+	void										Initialize();
+	void										Uninitialize();
+	void										Release();
+	bool										IsValid()const;
+												
+	void										ReceiveTexture(NetImgui::Internal::CmdTexture*);
+	void										ReceiveDrawFrame(NetImgui::Internal::CmdDrawFrame*);
+	void										ProcessCmdDrawFrame(NetImgui::Internal::CmdDrawFrame* pCmdDrawFrame);
+	NetImguiImDrawData*							GetImguiDrawData(ImTextureID EmtpyTextureID);	// Get current active Imgui draw data
+		                                    	
+	void										CaptureImguiInput();
+	NetImgui::Internal::CmdInput*				TakePendingInput();
+	NetImgui::Internal::CmdClipboard*			TakePendingClipboard();
+	void										UpdateTextures();
 
-	void									ReceiveTexture(NetImgui::Internal::CmdTexture*);
-	void									ReceiveDrawFrame(NetImgui::Internal::CmdDrawFrame*);
-	NetImguiImDrawData*						ConvertToImguiDrawData(const NetImgui::Internal::CmdDrawFrame* pCmdDrawFrame);
-	NetImguiImDrawData*						GetImguiDrawData(ImTextureID EmtpyTextureID);	// Get current active Imgui draw data
-		
-	void									CaptureImguiInput();
-	NetImgui::Internal::CmdInput*			TakePendingInput();
-	NetImgui::Internal::CmdClipboard*		TakePendingClipboard();
-	void									ProcessPendingTextures();
-	
-	static bool								Startup(uint32_t clientCountMax);
-	static void								Shutdown();
-	static uint32_t							GetCountMax();
-	static uint32_t							GetFreeIndex();
-	static Client&							Get(uint32_t index);
+	static bool									Startup(uint32_t clientCountMax);
+	static void									Shutdown();
+	static uint32_t								GetCountMax();
+	static uint32_t								GetFreeIndex();
+	static Client&								Get(uint32_t index);
 
 	void*										mpHAL_AreaRT			= nullptr;
 	void*										mpHAL_AreaTexture		= nullptr;
@@ -78,7 +78,8 @@ struct Client
 
 	NetImguiImDrawData*							mpImguiDrawData			= nullptr;	//!< Current Imgui Data that this client is the owner of
 	NetImgui::Internal::CmdDrawFrame*			mpFrameDrawPrev			= nullptr;	//!< Last valid DrawDrame (used by com thread, to uncompress data)
-	TextureTable								mTextureTable;						//!< Table of textures received and used by the client
+	TextureTable								mTextureTable;						//!< Table matching client TextureUserID to textures allocated on Server for it
+	ImVector<App::ServerTexture*>				mTextureList;						//!< List of all textures created by this client
 	ExchPtrImguiDraw							mPendingImguiDrawDataIn;			//!< Pending received Imgui DrawData, waiting to be taken ownership of
 	ExchPtrBackground							mPendingBackgroundIn;				//!< Background settings received and waiting to update client setting
 	ExchPtrClipboard							mPendingClipboardIn;				//!< Clipboard received from Client and waiting to be processed on Server

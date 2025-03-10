@@ -188,8 +188,7 @@ bool NewFrame(bool bSupportFrameSkip)
 		ImGui::SetCurrentContext(client.mpContext);
 
 		// Save current context settings and override settings to fit our netImgui usage 
-		if (!client.IsContextOverriden() )
-		{			
+		if (!client.IsContextOverriden() ){
 			client.ContextOverride();
 		}
 		
@@ -213,40 +212,7 @@ bool NewFrame(bool bSupportFrameSkip)
 		ProcessInputData(client);
 
 		// We are about to start drawing for remote context, check for font data update
-	 #if IMGUI_IS_NEWFONT || 1 //SF
-		ImFontAtlas* pFonts = ImGui::GetIO().Fonts;
-		if( pFonts && pFonts->TexData )
-		{
-			//SF TODO remove detection upload and just flag font texture for create?
-			auto& TexData = *pFonts->TexData;
-			for(auto tex : pFonts->TexList )
-			{
-				if( tex->Status == ImTextureStatus_OK || tex->Status == ImTextureStatus_Destroyed){
-					continue;
-				}
-				else if( tex->Status == ImTextureStatus_WantCreate ){
-					SendDataTexture(TexData.BackendTexID,
-								TexData.Pixels,
-								static_cast<uint16_t>(TexData.Width),
-								static_cast<uint16_t>(TexData.Height),
-								eTexFormat::kTexFmtRGBA8); //SF TODO pick format
-					tex->Status = ImTextureStatus_OK;
-				}
-				else if( tex->Status == ImTextureStatus_WantUpdates ){
-					SendDataTexture(TexData.BackendTexID,
-								TexData.Pixels,
-								static_cast<uint16_t>(TexData.Width),
-								static_cast<uint16_t>(TexData.Height),
-								eTexFormat::kTexFmtRGBA8); //SF TODO pick format, support updates
-					tex->Status = ImTextureStatus_OK;
-				}
-				else if( tex->Status == ImTextureStatus_WantDestroy ){
-					SendDataTexture(TexData.BackendTexID, nullptr, 0,0, eTexFormat::kTexFmtRGBA8);
-					tex->Status = ImTextureStatus_Destroyed;
-				}
-			}
-		}
-	#else
+	 #if !IMGUI_IS_NEWFONT
 		const ImFontAtlas* pFonts = ImGui::GetIO().Fonts;
 		if( pFonts->TexPixelsAlpha8 && 
 			(pFonts->TexPixelsAlpha8 != client.mpFontTextureData || client.mFontTextureID != pFonts->TexID ))
@@ -277,8 +243,7 @@ bool NewFrame(bool bSupportFrameSkip)
 		client.ContextRestore();
 		
 		// Remove hooks callback only when completly disconnected
-		if (!client.IsConnectPending())
-		{
+		if (!client.IsConnectPending()){
 			client.ContextRemoveHooks();
 		}
 	}
@@ -316,6 +281,7 @@ void EndFrame(void)
 		}
 		
 		// Prepare the Dear Imgui DrawData for later tranmission to Server
+		client.ProcessFontAtlasUpdates();
 		client.ProcessDrawData(ImGui::GetDrawData(), Cursor);
 		
 		// Detect change to background settings by user, and forward them to server
@@ -381,26 +347,16 @@ void SendDataTexture(ImTextureUserID textureId, void* pData, uint16_t width, uin
 		pCmdTexture->mFormat				= static_cast<uint8_t>(format);
 		pCmdTexture->mUpdatable				= false;
 
+	#if !IMGUI_IS_NEWFONT
 		// Detects when user is sending the font texture
 		ScopedImguiContext scopedCtx(client.mpContext ? client.mpContext : ImGui::GetCurrentContext());
-		const auto FontAtlas = ImGui::GetIO().Fonts;
-	#if IMGUI_IS_NEWFONT //SF
-		if( FontAtlas && FontAtlas->TexData && FontAtlas->TexData->BackendTexID == textureId )
+		if( ImGui::GetIO().Fonts && ImGui::GetIO().Fonts->TexID == textureId )
 		{
-			client.mbFontUploaded	= true;
-			client.mFontTextureID	= textureId;
-			pCmdTexture->mUpdatable	= true;
-		}
-	#else
-		//SF TODO restore original
-		if( FontAtlas ... )
-		{
-			client.mbFontUploaded		= true;
-			client.mpFontTextureData	= FontAtlas->TexPixelsAlpha8;
+			client.mbFontUploaded		|= true;
+			client.mpFontTextureData	= ImGui::GetIO().Fonts->TexPixelsAlpha8;
 			client.mFontTextureID		= textureId;
 		}
 	#endif
-		
 	}
 	// Texture to remove
 	else
@@ -417,14 +373,14 @@ void SendDataTexture(ImTextureUserID textureId, void* pData, uint16_t width, uin
 		if( IsConnected() )
 			std::this_thread::yield();
 		else
-			client.ProcessTexturePending();
+			client.ProcessPendingTexture();
 	}
 	uint32_t idx					= client.mTexturesPendingCreated.fetch_add(1) % static_cast<uint32_t>(ArrayCount(client.mTexturesPending));
 	client.mTexturesPending[idx]	= pCmdTexture;
 
 	// If not connected to server yet, update all pending textures
 	if( !IsConnected() )
-		client.ProcessTexturePending();
+		client.ProcessPendingTexture();
 }
 
 //=================================================================================================
@@ -639,6 +595,9 @@ bool ProcessInputData(Client::ClientInfo& client)
 		const float wheelX	= pCmdInput->mMouseWheelHoriz - client.mPreviousInputState.mMouseWheelHorizPrev;
 		io.DisplaySize		= ImVec2(pCmdInput->mScreenSize[0], pCmdInput->mScreenSize[1]);
 
+#if IMGUI_IS_NEWFONT
+		io.FontGlobalScale	= pCmdInput->mFontDPIScaling; //SF TODO scale support
+#else
 		// User assigned a function callback handling FontScaling, 
 		// use it to request a Font update on DPI scaling change on the server
 		if (gpClientInfo->mFontCreationFunction != nullptr)
@@ -655,7 +614,8 @@ bool ProcessInputData(Client::ClientInfo& client)
 		{
 			io.FontGlobalScale = pCmdInput->mFontDPIScaling;
 		}
-		
+#endif
+
 #if IMGUI_VERSION_NUM < 18700
 		io.MousePos			= ImVec2(pCmdInput->mMousePos[0], pCmdInput->mMousePos[1]);
 		io.MouseWheel		= wheelY;
