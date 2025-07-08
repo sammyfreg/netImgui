@@ -1,7 +1,7 @@
 #include "NetImgui_Shared.h"
 #include "NetImgui_WarningDisable.h"
 
-#if NETIMGUI_ENABLED || 1 //SF
+#if NETIMGUI_ENABLED
 #include <algorithm>
 #include <thread>
 #include "NetImgui_Client.h"
@@ -212,7 +212,7 @@ bool NewFrame(bool bSupportFrameSkip)
 		ProcessInputData(client);
 
 		// We are about to start drawing for remote context, check for font data update
-	 #if !IMGUI_IS_NEWFONT
+	#ifndef IMGUI_HAS_TEXTURES
 		const ImFontAtlas* pFonts = ImGui::GetIO().Fonts;
 		if( pFonts->TexPixelsAlpha8 && 
 			(pFonts->TexPixelsAlpha8 != client.mpFontTextureData || client.mFontTextureID != pFonts->TexID ))
@@ -241,7 +241,13 @@ bool NewFrame(bool bSupportFrameSkip)
 	{
 		// Restore context setting override, after a disconnect
 		client.ContextRestore();
-		
+	#ifdef IMGUI_HAS_TEXTURES
+		if( client.mFontCreationScaling > 0.f )
+		{
+			//SF ImGui::GetStyle().FontScaleDpi 	= client.mFontCreationScaling;
+			client.mFontCreationScaling		= 0.f;
+		}
+	#endif
 		// Remove hooks callback only when completly disconnected
 		if (!client.IsConnectPending()){
 			client.ContextRemoveHooks();
@@ -255,6 +261,10 @@ bool NewFrame(bool bSupportFrameSkip)
 	// This function can be called from a 'NewFrame' ImGui hook, we should not start a new frame again
 	if (!client.mbInsideHook)
 	{
+	#ifdef IMGUI_HAS_TEXTURES
+		client.mFontCreationScaling 	= ImGui::GetStyle().FontScaleDpi;
+		//SF ImGui::GetStyle().FontScaleDpi	= client.mFontServerScale;
+	#endif
 		ImGui::NewFrame();
 	}
 
@@ -277,12 +287,17 @@ void EndFrame(void)
 		
 		// This function can be called from a 'NewFrame' ImGui hook, in which case no need to call this again
 		if( !client.mbInsideHook ){
-			ImGui::Render(); 
+			ImGui::Render();
+		#ifdef IMGUI_HAS_TEXTURES
+			//SF ImGui::GetStyle().FontScaleDpi 	= client.mFontCreationScaling;
+			client.mFontCreationScaling		= 0.f;
+		#endif
 		}
 		
 		// Prepare the Dear Imgui DrawData for later tranmission to Server
-		client.ProcessFontAtlasUpdates();
-		client.ProcessDrawData(ImGui::GetDrawData(), Cursor);
+		ImDrawData* imDrawData = ImGui::GetDrawData();
+		client.ProcessTextureImGui();
+		client.ProcessDrawData(imDrawData, Cursor);
 		
 		// Detect change to background settings by user, and forward them to server
 		if( client.mBGSetting != client.mBGSettingSent )
@@ -293,8 +308,21 @@ void EndFrame(void)
 			client.mPendingBackgroundOut.Assign(pCmdBackground);
 		}
 
-		// Restore display size, so we never lose original setting that may get updated after initial connection
-		if( client.mbIsRemoteDrawing ) {
+		
+		if( client.mbIsRemoteDrawing )
+		{
+			// Clear the ImGui Draw Data while leaving the texture updates intact
+			// This allows the backend to process the texture updates/status normally
+			// (usually done in Render backend implementation) while not displaying anything.
+			if( imDrawData )
+			{
+				imDrawData->CmdListsCount = 0;
+				imDrawData->TotalIdxCount = 0;
+				imDrawData->TotalVtxCount = 0;
+			}
+
+			// Restore display size, so we never lose original setting 
+			// that may get updated after initial connection
 			ImGui::GetIO().DisplaySize = client.mSavedDisplaySize;
 		}
 	}
@@ -315,7 +343,7 @@ ImGuiContext* GetContext()
 }
 
 //=================================================================================================
-void SendDataTexture(ImTextureUserID textureId, void* pData, uint16_t width, uint16_t height, eTexFormat format, uint32_t dataSize)
+void SendDataTexture(ImTextureID textureId, void* pData, uint16_t width, uint16_t height, eTexFormat format, uint32_t dataSize)
 //=================================================================================================
 {
 	if (!gpClientInfo) return;
@@ -325,8 +353,8 @@ void SendDataTexture(ImTextureUserID textureId, void* pData, uint16_t width, uin
 
 	// Makes sure even 32bits ImTextureID value are received properly as 64bits
 	uint64_t texId64(0);
-	static_assert(sizeof(uint64_t) >= sizeof(ImTextureUserID), "ImTextureID is bigger than 64bits, CmdTexture::mTextureId needs to be updated to support it");
-	reinterpret_cast<ImTextureUserID*>(&texId64)[0] = textureId;
+	static_assert(sizeof(uint64_t) >= sizeof(ImTextureID), "ImTextureID is bigger than 64bits, CmdTexture::mTextureId needs to be updated to support it");
+	reinterpret_cast<ImTextureID*>(&texId64)[0] = textureId;
 
 	// Add/Update a texture
 	if( pData != nullptr )
@@ -343,11 +371,11 @@ void SendDataTexture(ImTextureUserID textureId, void* pData, uint16_t width, uin
 		pCmdTexture->mSize					= SizeNeeded;
 		pCmdTexture->mWidth					= width;
 		pCmdTexture->mHeight				= height;
-		pCmdTexture->mTextureUserId			= texId64;
+		pCmdTexture->mTextureClientID			= texId64;
 		pCmdTexture->mFormat				= static_cast<uint8_t>(format);
 		pCmdTexture->mUpdatable				= false;
 
-	#if !IMGUI_IS_NEWFONT
+	#ifndef IMGUI_HAS_TEXTURES
 		// Detects when user is sending the font texture
 		ScopedImguiContext scopedCtx(client.mpContext ? client.mpContext : ImGui::GetCurrentContext());
 		if( ImGui::GetIO().Fonts && ImGui::GetIO().Fonts->TexID == textureId )
@@ -362,7 +390,7 @@ void SendDataTexture(ImTextureUserID textureId, void* pData, uint16_t width, uin
 	else
 	{
 		pCmdTexture							= netImguiNew<CmdTexture>();
-		pCmdTexture->mTextureUserId			= texId64;
+		pCmdTexture->mTextureClientID			= texId64;
 		pCmdTexture->mpTextureData.SetOff(0);
 	}
 
@@ -373,14 +401,14 @@ void SendDataTexture(ImTextureUserID textureId, void* pData, uint16_t width, uin
 		if( IsConnected() )
 			std::this_thread::yield();
 		else
-			client.ProcessPendingTexture();
+			client.ProcessTexturePendingCmds();
 	}
 	uint32_t idx					= client.mTexturesPendingCreated.fetch_add(1) % static_cast<uint32_t>(ArrayCount(client.mTexturesPending));
 	client.mTexturesPending[idx]	= pCmdTexture;
 
 	// If not connected to server yet, update all pending textures
 	if( !IsConnected() )
-		client.ProcessPendingTexture();
+		client.ProcessTexturePendingCmds();
 }
 
 //=================================================================================================
@@ -416,7 +444,7 @@ void SetBackground(const ImVec4& bgColor, const ImVec4& textureTint )
 }
 
 //=================================================================================================
-void SetBackground(const ImVec4& bgColor, const ImVec4& textureTint, ImTextureUserID bgTextureID)
+void SetBackground(const ImVec4& bgColor, const ImVec4& textureTint, ImTextureID bgTextureID)
 //=================================================================================================
 {
 	if (!gpClientInfo) return;
@@ -591,17 +619,16 @@ bool ProcessInputData(Client::ClientInfo& client)
 
 	if (pCmdInput)
 	{
-		const float wheelY	= pCmdInput->mMouseWheelVert - client.mPreviousInputState.mMouseWheelVertPrev;
-		const float wheelX	= pCmdInput->mMouseWheelHoriz - client.mPreviousInputState.mMouseWheelHorizPrev;
-		io.DisplaySize		= ImVec2(pCmdInput->mScreenSize[0], pCmdInput->mScreenSize[1]);
-
-#if IMGUI_IS_NEWFONT
-		io.FontGlobalScale	= pCmdInput->mFontDPIScaling; //SF TODO scale support
-#else
+		const float wheelY		= pCmdInput->mMouseWheelVert - client.mPreviousInputState.mMouseWheelVertPrev;
+		const float wheelX		= pCmdInput->mMouseWheelHoriz - client.mPreviousInputState.mMouseWheelHorizPrev;
+		io.DisplaySize			= ImVec2(pCmdInput->mScreenSize[0], pCmdInput->mScreenSize[1]);
+		client.mFontServerScale = pCmdInput->mFontDPIScaling;
+#ifndef IMGUI_HAS_TEXTURES
 		// User assigned a function callback handling FontScaling, 
 		// use it to request a Font update on DPI scaling change on the server
 		if (gpClientInfo->mFontCreationFunction != nullptr)
 		{
+			io.FontGlobalScale = 1.f;
 			if(abs(gpClientInfo->mFontCreationScaling - pCmdInput->mFontDPIScaling) > 0.01f)
 			{				
 				gpClientInfo->mFontCreationFunction(gpClientInfo->mFontCreationScaling, pCmdInput->mFontDPIScaling);
@@ -615,7 +642,6 @@ bool ProcessInputData(Client::ClientInfo& client)
 			io.FontGlobalScale = pCmdInput->mFontDPIScaling;
 		}
 #endif
-
 #if IMGUI_VERSION_NUM < 18700
 		io.MousePos			= ImVec2(pCmdInput->mMousePos[0], pCmdInput->mMousePos[1]);
 		io.MouseWheel		= wheelY;

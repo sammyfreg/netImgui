@@ -1,6 +1,6 @@
 #include "NetImgui_Shared.h"
 
-#if NETIMGUI_ENABLED || 1 //SF
+#if NETIMGUI_ENABLED
 #include "NetImgui_WarningDisable.h"
 #include "NetImgui_Client.h"
 #include "NetImgui_Network.h"
@@ -24,11 +24,12 @@ void SavedImguiContext::Save(ImGuiContext* copyFrom)
 	mBackendPlatformName	= sourceIO.BackendPlatformName;
 	mBackendRendererName	= sourceIO.BackendRendererName;
 	mDrawMouse				= sourceIO.MouseDrawCursor;
-	mFontGlobalScale		= sourceIO.FontGlobalScale;
-#if IMGUI_IS_NEWFONT
-	mFontGeneratedSize		= 13.f;//SF Rethink this
+#ifdef IMGUI_HAS_TEXTURES
+	mFontGeneratedSize		= 0.f;	// Unnecessary with Dear ImGui 1.92+ dynamic font ...
+	mFontGlobalScale		= 0.0f;	// override and restore every frame the font DPI 
 #else
 	mFontGeneratedSize		= sourceIO.Fonts->Fonts.Size > 0 ? sourceIO.Fonts->Fonts[0]->FontSize : 13.f; // Save size to restore the font to original size
+	mFontGlobalScale		= sourceIO.FontGlobalScale;
 #endif
 	
 #if IMGUI_VERSION_NUM < 18700
@@ -55,8 +56,10 @@ void SavedImguiContext::Restore(ImGuiContext* copyTo)
 	destIO.BackendFlags			= mBackendFlags;
 	destIO.BackendPlatformName	= mBackendPlatformName;
 	destIO.BackendRendererName	= mBackendRendererName;
-	destIO.MouseDrawCursor		= mDrawMouse;	
+	destIO.MouseDrawCursor		= mDrawMouse;
+#ifndef IMGUI_HAS_TEXTURES
 	destIO.FontGlobalScale		= mFontGlobalScale;
+#endif
 #if IMGUI_VERSION_NUM < 18700
 	memcpy(destIO.KeyMap, mKeyMap, sizeof(destIO.KeyMap));
 #endif
@@ -146,7 +149,7 @@ void Communications_Incoming_Clipboard(ClientInfo& client)
 //=================================================================================================
 void Communications_Outgoing_Textures(ClientInfo& client)
 {
-	client.ProcessPendingTexture();
+	client.ProcessTexturePendingCmds();
 	if( client.mbHasTextureUpdate )
 	{
 		for(auto& cmdTexture : client.mTextures)
@@ -532,7 +535,7 @@ ClientInfo::ClientInfo()
 : mpSocketPending(nullptr)
 , mpSocketComs(nullptr)
 , mpSocketListen(nullptr)
-, mFontTextureID(TextureCastFromUInt(uint64_t(0u)))
+, mFontTextureID(0u)
 , mTexturesPendingSent(0)
 , mTexturesPendingCreated(0)
 , mbClientThreadActive(false)
@@ -568,9 +571,7 @@ ClientInfo::~ClientInfo()
 void ClientInfo::ContextInitialize()
 {
 	mpContext				= ImGui::GetCurrentContext();
-#if IMGUI_IS_NEWFONT
 	mbFontUploaded			= false;
-#endif
 #if NETIMGUI_IMGUI_CALLBACK_ENABLED
 	ImGuiContextHook hookNewframe, hookEndframe;
 	ContextRemoveHooks();
@@ -605,13 +606,13 @@ void ClientInfo::ContextOverride()
 		newIO.MouseDrawCursor				= false;
 		newIO.BackendPlatformName			= "NetImgui";
 		newIO.BackendRendererName			= "DirectX11";
-
+#ifndef IMGUI_HAS_TEXTURES
 		if( mFontCreationFunction != nullptr )
 		{
 			newIO.FontGlobalScale = 1;
 			mFontCreationScaling = -1;
 		}
-
+#endif
 #if IMGUI_VERSION_NUM < 18700
 		for (uint32_t i(0); i < ImGuiKey_COUNT; ++i) {
 			newIO.KeyMap[i] = i;
@@ -644,12 +645,7 @@ void ClientInfo::ContextRestore()
 #ifdef IMGUI_HAS_VIEWPORT
 		ImGui::UpdatePlatformWindows(); // Prevents issue with mismatched frame tracking, when restoring enabled viewport feature
 #endif
-#if IMGUI_IS_NEWFONT
-		//ImGuiIO& oldIO = ImGui::GetIO();
-		//if( oldIO.Fonts && oldIO.Fonts->TexData ){
-		//	oldIO.Fonts->TexData->Status = ImTextureStatus_WantCreate;
-		//}
-#else
+#ifndef IMGUI_HAS_TEXTURES
 		if( mFontCreationFunction && ImGui::GetIO().Fonts && ImGui::GetIO().Fonts->Fonts.size() > 0)
 		{
 			float noScaleSize	= ImGui::GetIO().Fonts->Fonts[0]->FontSize / mFontCreationScaling;
@@ -681,7 +677,7 @@ void ClientInfo::ContextRemoveHooks()
 // 1. New textures are added tp pending queue (Main Thread)
 // 2. Pending textures are sent to Server and added to our active texture list (Com Thread)
 //=================================================================================================
-void ClientInfo::ProcessPendingTexture()
+void ClientInfo::ProcessTexturePendingCmds()
 {
 	while( mTexturesPendingCreated != mTexturesPendingSent )
 	{
@@ -695,7 +691,7 @@ void ClientInfo::ProcessPendingTexture()
 			int texIdx		= 0;
 			int texFreeSlot	= static_cast<int>(mTextures.size());
 			while(	(texIdx < mTextures.size()) && 
-					(!mTextures[texIdx].IsValid() || mTextures[texIdx].mpCmdTexture->mTextureUserId != pCmdTexture->mTextureUserId) )
+					(!mTextures[texIdx].IsValid() || mTextures[texIdx].mpCmdTexture->mTextureClientID != pCmdTexture->mTextureClientID) )
 			{
 				texFreeSlot = !mTextures[texIdx].IsValid() ? texIdx : texFreeSlot;
 				++texIdx;
@@ -716,35 +712,40 @@ void ClientInfo::ProcessPendingTexture()
 // Process font texture atlas updates and forward it to NetImguiServer
 // For Dear ImGui 1.92+
 //=================================================================================================
-void ClientInfo::ProcessFontAtlasUpdates()
+void ClientInfo::ProcessTextureImGui()
 {
-#if IMGUI_IS_NEWFONT || 1 //SF
-	ImTextureData* pFontTexData = ImGui::GetIO().Fonts ? ImGui::GetIO().Fonts->TexData : nullptr;
-	for(auto TexData : ImGui::GetPlatformIO().Textures )
+#ifdef IMGUI_HAS_TEXTURES //SF TODO Confirm client texture handling
+	ImTextureData* pFontTexData			= ImGui::GetIO().Fonts ? ImGui::GetIO().Fonts->TexData : nullptr;
+	ImVector<ImTextureData*>& Textures	= ImGui::GetPlatformIO().Textures;
+	ImTextureRef ClientTextureRef;
+	for(auto TexData : Textures)
 	{
-		ImTextureUserID clientTexID = TextureCastFromPtr(TexData);
+		ClientTextureRef._TexData	= TexData;
 		ImTextureStatus TexStatus 	= TexData != nullptr ? TexData->Status : ImTextureStatus_OK;
+		
+		// Detect FontAtlas texture has never been uploaded, override texture status to sent it
 		if(!mbFontUploaded && TexData && TexData == pFontTexData){
 			TexStatus 		= ImTextureStatus_WantCreate;
 			mbFontUploaded 	= true;
 		}
+
 		//SF TODO detect if backend not handling texture update?
 		if( TexStatus == ImTextureStatus_WantCreate ){
-			SendDataTexture(clientTexID,
+			SendDataTexture(ClientTextureRef.GetTexID(),
 							TexData->GetPixels(),
 							static_cast<uint16_t>(TexData->Width),
 							static_cast<uint16_t>(TexData->Height),
 							eTexFormat::kTexFmtRGBA8); //SF TODO pick format
 		}
 		else if( TexStatus == ImTextureStatus_WantUpdates ){
-			SendDataTexture(clientTexID,
+			SendDataTexture(ClientTextureRef.GetTexID(),
 							TexData->GetPixels(),
 							static_cast<uint16_t>(TexData->Width),
 							static_cast<uint16_t>(TexData->Height),
 							eTexFormat::kTexFmtRGBA8); //SF TODO pick format, support updates
 		}
 		else if( TexStatus == ImTextureStatus_WantDestroy ){
-			SendDataTexture(clientTexID, nullptr, 0,0, eTexFormat::kTexFmtRGBA8);
+			SendDataTexture(ClientTextureRef.GetTexID(), nullptr, 0,0, eTexFormat::kTexFmtRGBA8);
 		}
 	}	
 #endif
@@ -769,3 +770,4 @@ void ClientInfo::ProcessDrawData(const ImDrawData* pDearImguiData, ImGuiMouseCur
 
 #include "NetImgui_WarningReenable.h"
 #endif //#if NETIMGUI_ENABLED
+

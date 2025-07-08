@@ -53,7 +53,7 @@ struct Client
 	void										CaptureImguiInput();
 	NetImgui::Internal::CmdInput*				TakePendingInput();
 	NetImgui::Internal::CmdClipboard*			TakePendingClipboard();
-	void										UpdateTextures();
+	void										ProcessPendingTextureCmds();
 
 	static bool									Startup(uint32_t clientCountMax);
 	static void									Shutdown();
@@ -62,7 +62,7 @@ struct Client
 	static Client&								Get(uint32_t index);
 
 	void*										mpHAL_AreaRT			= nullptr;
-	void*										mpHAL_AreaTexture		= nullptr;
+	ImTextureData								mHAL_AreaTexture;
 	uint16_t									mAreaRTSizeX			= 0;		//!< Currently allocated RenderTarget size
 	uint16_t									mAreaRTSizeY			= 0;		//!< Currently allocated RenderTarget size
 	uint16_t									mAreaSizeX				= 0;		//!< Available area size available to remote client
@@ -79,7 +79,6 @@ struct Client
 	NetImguiImDrawData*							mpImguiDrawData			= nullptr;	//!< Current Imgui Data that this client is the owner of
 	NetImgui::Internal::CmdDrawFrame*			mpFrameDrawPrev			= nullptr;	//!< Last valid DrawDrame (used by com thread, to uncompress data)
 	TextureTable								mTextureTable;						//!< Table matching client TextureUserID to textures allocated on Server for it
-	ImVector<App::ServerTexture*>				mTextureList;						//!< List of all textures created by this client
 	ExchPtrImguiDraw							mPendingImguiDrawDataIn;			//!< Pending received Imgui DrawData, waiting to be taken ownership of
 	ExchPtrBackground							mPendingBackgroundIn;				//!< Background settings received and waiting to update client setting
 	ExchPtrClipboard							mPendingClipboardIn;				//!< Clipboard received from Client and waiting to be processed on Server

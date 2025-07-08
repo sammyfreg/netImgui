@@ -17,10 +17,10 @@
 class SampleCompression : public Sample::Base
 {
 public:
-						SampleCompression();
-	virtual ImDrawData* Draw() override;
+					SampleCompression();
+	virtual void 	Draw() override;
 protected:
-	void				Draw_ExtraWindow(const char* name, const ImVec2& pos);
+	void			Draw_ExtraWindow(const char* name, const ImVec2& pos);
 };
 
 //=================================================================================================
@@ -132,7 +132,7 @@ SampleCompression::SampleCompression()
 //=================================================================================================
 // DRAW
 //=================================================================================================
-ImDrawData* SampleCompression::Draw()
+void SampleCompression::Draw()
 {
 	//---------------------------------------------------------------------------------------------
 	// (0) Update the communications statistics
@@ -254,10 +254,6 @@ ImDrawData* SampleCompression::Draw()
 		auto elapsedDraw		= std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - timeDrawStart);
 		sMetric_FrameDrawTimeUS	= (sMetric_FrameDrawTimeUS*(100.f-kHysteresis) + static_cast<float>(elapsedDraw.count())/ 1000.f * kHysteresis) / 100.f;
 	}
-	//---------------------------------------------------------------------------------------------
-	// (4) Return content to draw by local renderer. Stop drawing locally when remote connected
-	//---------------------------------------------------------------------------------------------
-	return !NetImgui::IsConnected() ? ImGui::GetDrawData() : nullptr;
 }
 
 //=================================================================================================

@@ -20,7 +20,7 @@ class SampleDisabled : public Sample::Base
 {
 public:
 					SampleDisabled() : Base("SampleDisabled") {}
-virtual ImDrawData* Draw() override;
+virtual void		Draw() override;
 };
 
 //=================================================================================================
@@ -36,7 +36,7 @@ Sample::Base& GetSample()
 //=================================================================================================
 // DRAW
 //=================================================================================================
-ImDrawData* SampleDisabled::Draw()
+void SampleDisabled::Draw()
 {
 	//---------------------------------------------------------------------------------------------
 	// (1) Start a new Frame
@@ -65,10 +65,5 @@ ImDrawData* SampleDisabled::Draw()
 	// (3) Finish the frame, preparing the drawing data and...
 	//---------------------------------------------------------------------------------------------
 	ImGui::Render();
-	
-	//---------------------------------------------------------------------------------------------
-	// (4) Forward to drawing data our local renderer when not remotely drawing
-	//---------------------------------------------------------------------------------------------
-	return ImGui::GetDrawData();
 }
 

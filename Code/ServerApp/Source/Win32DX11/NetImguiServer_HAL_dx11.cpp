@@ -17,6 +17,13 @@ namespace NetImguiServer { namespace App
 {
 
 //Copied over from 'backends\imgui_impl_dx11.cpp'
+struct ImGui_ImplDX11_Texture
+{
+	ID3D11Texture2D*            pTexture;
+	ID3D11ShaderResourceView*   pTextureView;
+};
+
+//Copied over from 'backends\imgui_impl_dx11.cpp'
 struct ImGui_ImplDX11_Data
 {
     ID3D11Device*               pd3dDevice;
@@ -67,10 +74,10 @@ void HAL_RenderDrawData(RemoteClient::Client& client, ImDrawData* pDrawData)
 // The drawing of their menu content will be outputed in it, then displayed normally 
 // inside our own 'NetImGui application' Imgui drawing
 //=================================================================================================
-bool HAL_CreateRenderTarget(uint16_t Width, uint16_t Height, void*& pOutRT, void*& pOutTexture)
+bool HAL_CreateRenderTarget(uint16_t Width, uint16_t Height, void*& pOutRT, ImTextureData& OutTexture)
 {
-	HAL_DestroyRenderTarget(pOutRT, pOutTexture);
-	
+	HAL_DestroyRenderTarget(pOutRT, OutTexture);
+
 	ID3D11Texture2D*                pTexture(nullptr);
 	ID3D11RenderTargetView*         pRenderTargetView(nullptr);
 	ID3D11ShaderResourceView*       pTextureView(nullptr);
@@ -79,16 +86,16 @@ bool HAL_CreateRenderTarget(uint16_t Width, uint16_t Height, void*& pOutRT, void
 	ZeroMemory(&texDesc, sizeof(texDesc));
 	ZeroMemory(&srvDesc, sizeof(srvDesc));
 
-	texDesc.Width						= static_cast<UINT>(Width);
-	texDesc.Height						= static_cast<UINT>(Height);
-	texDesc.MipLevels					= 1;
-	texDesc.ArraySize					= 1;
-	texDesc.Format						= DXGI_FORMAT_R8G8B8A8_UNORM;
-	texDesc.SampleDesc.Count			= 1;
-	texDesc.Usage						= D3D11_USAGE_DEFAULT;
-	texDesc.BindFlags					= D3D11_BIND_RENDER_TARGET|D3D11_BIND_SHADER_RESOURCE;
-	texDesc.CPUAccessFlags				= 0;
-	HRESULT Result						= GetD3DDevice()->CreateTexture2D(&texDesc, nullptr, &pTexture);
+	texDesc.Width				= static_cast<UINT>(Width);
+	texDesc.Height				= static_cast<UINT>(Height);
+	texDesc.MipLevels			= 1;
+	texDesc.ArraySize			= 1;
+	texDesc.Format				= DXGI_FORMAT_R8G8B8A8_UNORM;
+	texDesc.SampleDesc.Count	= 1;
+	texDesc.Usage				= D3D11_USAGE_DEFAULT;
+	texDesc.BindFlags			= D3D11_BIND_RENDER_TARGET|D3D11_BIND_SHADER_RESOURCE;
+	texDesc.CPUAccessFlags		= 0;
+	HRESULT Result				= GetD3DDevice()->CreateTexture2D(&texDesc, nullptr, &pTexture);
 	if( Result == S_OK )
 	{
 		Result = GetD3DDevice()->CreateRenderTargetView(pTexture, nullptr, &pRenderTargetView );
@@ -103,8 +110,26 @@ bool HAL_CreateRenderTarget(uint16_t Width, uint16_t Height, void*& pOutRT, void
 			if( Result == S_OK )
 			{
 				pTexture->Release();
-				pOutRT      = reinterpret_cast<void*>(pRenderTargetView);
-				pOutTexture = reinterpret_cast<void*>(pTextureView);
+				pOutRT      						= reinterpret_cast<void*>(pRenderTargetView);
+				OutTexture 							= ImTextureData();
+				OutTexture.RefCount 				= 1;
+				OutTexture.Format					= ImTextureFormat::ImTextureFormat_RGBA32;
+				OutTexture.BytesPerPixel			= 4;				
+				OutTexture.Height					= texDesc.Height;
+				OutTexture.Width					= texDesc.Width;
+				
+				//-------------------------------------------------------------
+				// Taken from ImGui_ImplDX11_UpdateTexture
+				// Use the RenderTarget as the resource, no need to create a
+				// texture, we only care about the ResourceView
+				ImGui_ImplDX11_Texture* backend_tex = IM_NEW(ImGui_ImplDX11_Texture)();
+				backend_tex->pTexture				= nullptr;
+				backend_tex->pTextureView			= pTextureView;
+				// Store identifiers
+				OutTexture.SetTexID((ImTextureID)(intptr_t)backend_tex->pTextureView);
+				OutTexture.SetStatus(ImTextureStatus_OK);
+				OutTexture.BackendUserData 	= backend_tex;
+				//-------------------------------------------------------------
 				return true;
 			}
 		}
@@ -126,27 +151,30 @@ bool HAL_CreateRenderTarget(uint16_t Width, uint16_t Height, void*& pOutRT, void
 // HAL DESTROY RENDER TARGET
 // Free up allocated resources tried to a RenderTarget
 //=================================================================================================
-void HAL_DestroyRenderTarget(void*& pOutRT, void*& pOutTexture)
+void HAL_DestroyRenderTarget(void*& pOutRT, ImTextureData& OutTexture)
 {
 	if(pOutRT)
 	{
 		reinterpret_cast<ID3D11RenderTargetView*>(pOutRT)->Release();
 		pOutRT = nullptr;
 	}
-	if(pOutTexture)
-	{
-		reinterpret_cast<ID3D11ShaderResourceView*>(pOutTexture)->Release();        
-		pOutTexture = nullptr;
-	}
-}
 
-//=================================================================================================
-// HAL UPDATE TEXTURE
-// Re-using backend code for texture management (create/update/delete)
-//=================================================================================================
-void HAL_UpdateTexture(ImTextureData& ImguiTextureData)
-{
-	ImGui_ImplDX11_UpdateTexture(&ImguiTextureData);
+	//-------------------------------------------------------------
+	// Taken from ImGui_ImplDX11_DestroyTexture
+	// Use the RenderTarget as the resource, no need to create a
+	// texture, we only care about the ResourceView
+	ImGui_ImplDX11_Texture* backend_tex = (ImGui_ImplDX11_Texture*)OutTexture.BackendUserData;
+	if (backend_tex == nullptr)
+		return;
+	IM_ASSERT(backend_tex->pTextureView == (ID3D11ShaderResourceView*)(intptr_t)OutTexture.TexID);
+	backend_tex->pTextureView->Release();
+	IM_DELETE(backend_tex);
+
+	// Clear identifiers and mark as destroyed (in order to allow e.g. calling InvalidateDeviceObjects while running)
+	OutTexture.SetTexID(ImTextureID_Invalid);
+	OutTexture.SetStatus(ImTextureStatus_Destroyed);
+	OutTexture.BackendUserData = nullptr;
+	//-------------------------------------------------------------
 }
 
 }} //namespace NetImguiServer { namespace App

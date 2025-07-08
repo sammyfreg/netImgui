@@ -60,7 +60,7 @@ bool CreateTexture_Custom( ServerTexture& serverTexture, const NetImgui::Interna
 	
 	
 //SF TODO Support Custom sample again
-#if TEXTURE_CUSTOM_SAMPLE && 0 //SF
+#if TEXTURE_CUSTOM_SAMPLE && 0
 	auto eTexFmt = static_cast<NetImgui::eTexFormat>(cmdTexture.mFormat);
 	if( eTexFmt == NetImgui::eTexFormat::kTexFmtCustom ){
 		extern ImTextureData gEmptyTexture;
@@ -139,8 +139,7 @@ bool DestroyTexture_Custom( ServerTexture& serverTexture, const NetImgui::Intern
 	IM_UNUSED(cmdTexture);
 	IM_UNUSED(customDataSize);
 
-#if TEXTURE_CUSTOM_SAMPLE
-	#if 0 //SF TODO
+#if TEXTURE_CUSTOM_SAMPLE && 0 //SF REDO custom texture support sample
 	if( serverTexture.mpHAL_Texture && serverTexture.mIsCustom ){
 		if( serverTexture.mCustomData == customTextureData1::kStamp || 
 			serverTexture.mCustomData == customTextureData2::kStamp )
@@ -162,7 +161,6 @@ bool DestroyTexture_Custom( ServerTexture& serverTexture, const NetImgui::Intern
 			}
 		}
 	}
-	#endif
 #endif
 	return false;
 }

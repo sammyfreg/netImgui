@@ -14,8 +14,8 @@
 class SampleBasic : public Sample::Base
 {
 public:
-					SampleBasic() : Base("SampleBasic") {}
-virtual ImDrawData* Draw() override;
+				SampleBasic() : Base("SampleBasic") {}
+virtual void	Draw() override;
 };
 
 //=================================================================================================
@@ -31,7 +31,7 @@ Sample::Base& GetSample()
 //=================================================================================================
 // DRAW
 //=================================================================================================
-ImDrawData* SampleBasic::Draw()
+void SampleBasic::Draw()
 {
 	//---------------------------------------------------------------------------------------------
 	// (1) Start a new Frame.
@@ -69,9 +69,4 @@ ImDrawData* SampleBasic::Draw()
 	// Note:	Same note as in (1)
 	//---------------------------------------------------------------------------------------------
 	ImGui::Render();
-
-	//---------------------------------------------------------------------------------------------
-	// (4) Return content to draw by local renderer. Stop drawing locally when remote connected
-	//---------------------------------------------------------------------------------------------
-	return !NetImgui::IsConnected() ? ImGui::GetDrawData() : nullptr;
 }

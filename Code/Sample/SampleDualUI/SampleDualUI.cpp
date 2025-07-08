@@ -21,7 +21,7 @@ public:
 						SampleDualUI() : Base("SampleDualUI") {}
 	virtual bool		Startup() override;
 	virtual void		Shutdown() override;
-	virtual ImDrawData* Draw() override;
+	virtual void		Draw() override;
 	virtual bool		UpdateFont(float fontScaleDPI, bool isLocal) override;
 
 protected:
@@ -123,7 +123,7 @@ bool SampleDualUI::UpdateFont(float fontScaleDPI, bool isLocal)
 // DRAW
 // Function used by the sample, to draw all ImGui Content
 //=================================================================================================
-ImDrawData* SampleDualUI::Draw()
+void SampleDualUI::Draw()
 {
 	//---------------------------------------------------------------------------------------------
 	// (0) Update Font Texture
@@ -226,7 +226,8 @@ ImDrawData* SampleDualUI::Draw()
 	//		 we do not draw outside of this method, so the main context won't be missing any draws.
 	//		 In your own code, it should be the context you want to receive the default ImGui drawing commands.
 	ImGui::SetCurrentContext(mpContextLocal);
-	return NetImgui::IsConnected() && displayModeAtStart == eDisplayMode::SingleUI ? nullptr : ImGui::GetDrawData();;
+	//return NetImgui::IsConnected() && displayModeAtStart == eDisplayMode::SingleUI ? nullptr : ImGui::GetDrawData();;
+	//SF TODO
 } 
 
 //=================================================================================================

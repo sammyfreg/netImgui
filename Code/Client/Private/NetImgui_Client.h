@@ -109,7 +109,7 @@ struct ClientInfo
 	TimePoint							mLastOutgoingDrawTime;					// When we last sent an updated draw command to the server
 	ImVec2								mSavedDisplaySize			= {0, 0};	// Save original display size on 'NewFrame' and restore it on 'EndFrame' (making sure size is still valid after a disconnect)
 	const void*							mpFontTextureData			= nullptr;	// Last font texture data send to server (used to detect if font was changed)
-	ImTextureID							mFontTextureID;							// Used to detect textureID change [Before ImGui 1.92, old Font Atlas]
+	uint64_t							mFontTextureID;							// Used to detect textureID change [Before ImGui 1.92, old Font Atlas]
 	SavedImguiContext					mSavedContextValues;
 	std::atomic_uint32_t				mTexturesPendingSent;
 	std::atomic_uint32_t				mTexturesPendingCreated;
@@ -130,16 +130,17 @@ struct ClientInfo
 	bool								mServerCompressionSkip		= false;	// Force ignore compression setting for 1 frame
 	bool 								mServerForceConnectEnabled	= true;		// If another NetImguiServer can take connection away from the one currently active
 	ThreadFunctPtr						mThreadFunction				= nullptr;	// Function to use when laucnhing new threads
-	FontCreateFuncPtr					mFontCreationFunction		= nullptr;	// Method to call to generate the remote ImGui font. By default, re-use the local font, but this doesn't handle native DPI scaling on remote server
-	float								mFontCreationScaling		= 1.f;		// Last font scaling used when generating the NetImgui font
+	FontCreateFuncPtr					mFontCreationFunction		= nullptr;	// Method to call to generate the remote ImGui font. By default, re-use the local font, but this doesn't handle native DPI scaling on remote server. //NOTE: Unused by Dear imGui 1.92+
+	float								mFontCreationScaling		= 1.f;		//SF RENAME Last font scaling used when generating the NetImgui font
+	float 								mFontServerScale			= 1.f;
 	float 								mDesiredFps					= 30.f;		// How often we should update the remote drawing. Received from server
 	InputState							mPreviousInputState;					// Keeping track of last keyboard/mouse state
 	ImGuiID								mhImguiHookNewframe			= 0;
 	ImGuiID								mhImguiHookEndframe			= 0;
 	
-	void 								ProcessFontAtlasUpdates();
+	void 								ProcessTextureImGui();					// Process changes to Dear ImGui texture management (used for dynamic Font Atlas) 
+	void								ProcessTexturePendingCmds();			// Process NetImgui texture commands waiting to be sent to server
 	void								ProcessDrawData(const ImDrawData* pDearImguiData, ImGuiMouseCursor mouseCursor);
-	void								ProcessPendingTexture();
 	inline bool							IsConnected()const;
 	inline bool							IsConnectPending()const;
 	inline bool							IsActive()const;

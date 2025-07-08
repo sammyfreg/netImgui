@@ -23,7 +23,7 @@ public:
 	virtual bool				Startup();											//!< Called once when starting
 	virtual void				Shutdown();											//!< Called once when exiting
 	virtual bool				UpdateFont(float fontScaleDPI, bool isLocal);		//!< Receive command to create/update the Font Atlas and its texture data
-	virtual ImDrawData*			Draw() = 0;											//!< Each sample should have their Dear ImGui drawing routines in this overloaded method
+	virtual void				Draw() = 0;											//!< Each sample should have their Dear ImGui drawing routines in this overloaded method
 
 protected:	
 	void						Draw_Connect();									//!< Display UI for initiating a connection to the remote NetImgui server application

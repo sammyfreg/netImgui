@@ -22,7 +22,7 @@ public:
 						SampleBackground() : Base("SampleBackground") {}
 	virtual bool		Startup() override;
 	virtual void		Shutdown() override;
-	virtual ImDrawData* Draw() override;
+	virtual void		Draw() override;
 protected:
 	void*				mTextureView = nullptr;
 };
@@ -59,7 +59,7 @@ bool SampleBackground::Startup()
 		}
 	}
 	TextureCreate(reinterpret_cast<uint8_t*>(pixels), kSize, kSize, mTextureView);													// For local display
-	NetImgui::SendDataTexture(Sample::TextureCastFromPtr(mTextureView), pixels, kSize, kSize, NetImgui::eTexFormat::kTexFmtRGBA8);	// For remote display
+	//SF TODO NetImgui::SendDataTexture(Sample::TextureCastFromPtr(mTextureView), pixels, kSize, kSize, NetImgui::eTexFormat::kTexFmtRGBA8);	// For remote display
 	return true;
 }
 
@@ -75,7 +75,7 @@ void SampleBackground::Shutdown()
 //=================================================================================================
 // DRAW
 //=================================================================================================
-ImDrawData* SampleBackground::Draw()
+void SampleBackground::Draw()
 {
 	//---------------------------------------------------------------------------------------------
 	// (1) Start a new Frame
@@ -105,7 +105,7 @@ ImDrawData* SampleBackground::Draw()
 			ImGui::PopStyleColor();
 			if( sUseTextureOverride )
 			{
-				NetImgui::SetBackground(sBgColor, sTextureTint, Sample::TextureCastFromPtr(mTextureView));
+				//SF TODO NetImgui::SetBackground(sBgColor, sTextureTint, Sample::TextureCastFromPtr(mTextureView));
 			}
 			else
 			{ 
@@ -120,10 +120,5 @@ ImDrawData* SampleBackground::Draw()
 		//-----------------------------------------------------------------------------------------
 		NetImgui::EndFrame();
 	}
-
-	//---------------------------------------------------------------------------------------------
-	// (4b) Render nothing locally (when connected)
-	//---------------------------------------------------------------------------------------------
-	return !NetImgui::IsConnected() ? ImGui::GetDrawData() : nullptr;
 }
 

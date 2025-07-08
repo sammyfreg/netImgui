@@ -286,45 +286,25 @@ IntType RoundUp(IntType Value, IntType Round)
 
 union TextureCastHelperUnion
 {
-	ImTextureUserID TextureID;
-	uint64_t		TextureUint;
-	const void*		TexturePtr;
+	ImTextureID 	TextureID;
+	ClientTextureID	TextureUint;
+	//const void*		TexturePtr;
 };
 
-
-#if IMGUI_IS_NEWFONT
-uint64_t TextureCastFromID(ImTextureID textureID)
-{
-	TextureCastHelperUnion textureUnion;
-	textureUnion.TextureUint	= 0;
-	textureUnion.TextureID		= textureID._TexUserID;
-	return textureUnion.TextureUint;
-}
-#endif
-
-uint64_t TextureCastFromID(ImTextureUserID textureID)
+ImTextureID ConvertToClientTexID(ImTextureID textureID)
 {
 	TextureCastHelperUnion textureUnion;
 	textureUnion.TextureUint	= 0;
 	textureUnion.TextureID		= textureID;
 	return textureUnion.TextureUint;
+	
 }
 
-ImTextureUserID TextureCastFromPtr(void* pTexture)
+uint64_t ConvertFromClientTexID(uint64_t clientTexID)
 {
 	TextureCastHelperUnion textureUnion;
-	textureUnion.TextureUint	= 0;
-	textureUnion.TexturePtr		= pTexture;
+	textureUnion.TextureUint = clientTexID;
 	return textureUnion.TextureID;
 }
-
-#ifndef IS_NETIMGUISERVER
-ImTextureUserID TextureCastFromUInt(uint64_t textureID)
-{
-	TextureCastHelperUnion textureUnion;
-	textureUnion.TextureUint = textureID;
-	return textureUnion.TextureID;
-}
-#endif
 
 }} //namespace NetImgui::Internal

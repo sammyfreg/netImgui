@@ -1,6 +1,6 @@
 #include "NetImgui_Shared.h"
 
-#if NETIMGUI_ENABLED || 1 //SF
+#if NETIMGUI_ENABLED
 #include "NetImgui_WarningDisable.h"
 #include "NetImgui_CmdPackets.h"
 
@@ -91,8 +91,8 @@ inline void ImGui_ExtractDraws(const ImDrawList& cmdList, ImguiDrawGroup& drawGr
 	int maxDrawCount			= static_cast<int>(cmdList.CmdBuffer.size());
 	uint32_t drawCount			= 0;
 	ImguiDraw* pOutDraws		= reinterpret_cast<ImguiDraw*>(pDataOutput);
-#if IMGUI_IS_NEWFONT
-	ImTextureData* pFontTexData	= ImGui::GetIO().Fonts ? ImGui::GetIO().Fonts->TexData : nullptr;
+#ifdef IMGUI_HAS_TEXTURES
+	//SF ImTextureData* pFontTexData	= ImGui::GetIO().Fonts ? ImGui::GetIO().Fonts->TexData : nullptr;
 #endif
 
 	for(int cmd_i = 0; cmd_i < maxDrawCount; ++cmd_i)
@@ -107,16 +107,13 @@ inline void ImGui_ExtractDraws(const ImDrawList& cmdList, ImguiDrawGroup& drawGr
 			pOutDraws[drawCount].mVtxOffset		= 0;
 			pOutDraws[drawCount].mIdxOffset		= 0;
 		#endif
-
-			ImTextureUserID texID				= TextureCastFromID(pCmd->TextureId);
-		#if IMGUI_IS_NEWFONT
-			// We user a different Font Atlas TextureID for client code,
-			// since we can't rely on Backend to provide one that's always valid
-			if( pCmd->TextureId._TexData == pFontTexData ){
-				texID = TextureCastFromPtr(pFontTexData);
-			}
+			
+		#ifdef IMGUI_HAS_TEXTURES
+			ImTextureID texClientID				= pCmd->TexRef.GetTexID();
+		#else
+			ImTextureID texClientID				= pCmd->TextureId;
 		#endif
-			pOutDraws[drawCount].mTextureId		= texID;
+			pOutDraws[drawCount].mClientTexId	= ConvertToClientTexID(texClientID);
 			pOutDraws[drawCount].mIdxCount		= pCmd->ElemCount;
 			pOutDraws[drawCount].mClipRect[0]	= pCmd->ClipRect.x;
 			pOutDraws[drawCount].mClipRect[1]	= pCmd->ClipRect.y;
@@ -133,7 +130,7 @@ inline void ImGui_ExtractDraws(const ImDrawList& cmdList, ImguiDrawGroup& drawGr
 
 //=================================================================================================
 // Delta comress data.
-// Take a data stream and output a version with only the difference from other stream is written
+// Take 2 data stream and output a stream with only the data difference from each other
 //=================================================================================================
 void CompressData(const ComDataType* pDataPrev, size_t dataSizePrev, const ComDataType* pDataNew, size_t dataSizeNew, ComDataType*& pCommandMemoryInOut)
 {
@@ -142,7 +139,7 @@ void CompressData(const ComDataType* pDataPrev, size_t dataSizePrev, const ComDa
 	const size_t elemCountNew	= static_cast<size_t>(DivUp(dataSizeNew, sizeof(uint64_t)));
 	const size_t elemCount		= elemCountPrev < elemCountNew ? elemCountPrev : elemCountNew;
 	size_t n					= 0;
-	
+
 	if( pDataPrev )
 	{
 		while(n < elemCount)

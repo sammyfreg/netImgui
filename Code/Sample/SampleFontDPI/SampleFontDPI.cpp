@@ -19,7 +19,7 @@ class SampleFontDPI : public Sample::Base
 {
 public:
 						SampleFontDPI();
-	virtual ImDrawData* Draw() override;
+	virtual void		Draw() override;
 	virtual bool		UpdateFont(float fontScaleDPI, bool isLocal) override;
 
 protected:
@@ -71,8 +71,6 @@ void FontCreationCallback(float PreviousDPIScale, float NewDPIScale)
 	GetSample().UpdateFont(NewDPIScale, false);
 }
 
-//SF extern void ExtraSampleBackend_UpdateFontTexture();
-
 //=================================================================================================
 // CONSTRUCTOR
 //=================================================================================================
@@ -81,7 +79,7 @@ SampleFontDPI::SampleFontDPI()
 {
 	// For demonstration purposes, we replaced the default NetImgui Font DPI callback
 	// used by our samples, to a new one, to demonstrate its usage
-	mCallback_FontGenerate	= FontCreationCallback;
+	//SF TODO mCallback_FontGenerate	= FontCreationCallback;
 }
 
 //=================================================================================================
@@ -89,6 +87,9 @@ SampleFontDPI::SampleFontDPI()
 //=================================================================================================
 bool SampleFontDPI::UpdateFont(float fontScaleDPI, bool isLocal)
 {
+	IM_UNUSED(fontScaleDPI);
+	IM_UNUSED(isLocal);
+#if 0 //SF TODO
 	// Ignore local DPI when drawing remotely
 	// (font pixel should be dictated by remote server when sharing 1 context and connected)
 	if( NetImgui::IsConnected() && isLocal ){
@@ -140,6 +141,7 @@ bool SampleFontDPI::UpdateFont(float fontScaleDPI, bool isLocal)
 		}
 		return true;
 	}
+#endif
 	return false;
 }
 
@@ -148,6 +150,9 @@ bool SampleFontDPI::UpdateFont(float fontScaleDPI, bool isLocal)
 //=================================================================================================
 void SampleFontDPI::Draw_Window(const char* WindowTitle, float FontDpiScaling)
 {
+	IM_UNUSED(WindowTitle);
+	IM_UNUSED(FontDpiScaling);
+#if 0 //SF TODO
 	ImGui::SetNextWindowSize(ImVec2(640, 640), ImGuiCond_Appearing);
 	if (ImGui::Begin(WindowTitle, nullptr))
 	{
@@ -168,12 +173,13 @@ void SampleFontDPI::Draw_Window(const char* WindowTitle, float FontDpiScaling)
 		ImGui::TextWrapped("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.");
 	}
 	ImGui::End();
+#endif
 }
 
 //=================================================================================================
 // Function used by the sample, to draw all ImGui Content
 //=================================================================================================
-ImDrawData* SampleFontDPI::Draw()
+void SampleFontDPI::Draw()
 {
 	//---------------------------------------------------------------------------------------------
 	// (1) Start a new Frame.
@@ -184,6 +190,7 @@ ImDrawData* SampleFontDPI::Draw()
 	//---------------------------------------------------------------------------------------------
 	ImGui::NewFrame();
 
+#if 0 //SF TODO
 	//-----------------------------------------------------------------------------------------
 	// (2) Draw ImGui Content
 	//-----------------------------------------------------------------------------------------
@@ -226,15 +233,11 @@ ImDrawData* SampleFontDPI::Draw()
 	Draw_Window("Sample Font 2 [DPI Scaling Off]", 1.f);
 	ImGui::PopFont();
 	ImGui::GetIO().FontGlobalScale = savedScale;
+#endif
 
 	//---------------------------------------------------------------------------------------------
 	// (3) Finish the frame
 	// Note:	Same note as in (1)
 	//---------------------------------------------------------------------------------------------
 	ImGui::Render();
-
-	//---------------------------------------------------------------------------------------------
-	// (4) Return content to draw by local renderer. Stop drawing locally when remote connected
-	//---------------------------------------------------------------------------------------------
-	return !NetImgui::IsConnected() ? ImGui::GetDrawData() : nullptr;
 }

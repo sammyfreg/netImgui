@@ -137,34 +137,33 @@ struct alignas(8) CmdInput : public CmdHeader
 		ImGuiKey_KeypadAdd, ImGuiKey_KeypadEnter, ImGuiKey_KeypadEqual,
 		ImGuiKey_AppBack,               // Available on some keyboard/mouses. Often referred as "Browser Back"
 		ImGuiKey_AppForward,
+		ImGuiKey_Oem102,				// Non-US backslash.
 
-		// Gamepad (some of those are analog values, 0.0f to 1.0f)                          // GAME NAVIGATION ACTION
-		// (download controller mapping PNG/PSD at http://dearimgui.org/controls_sheets)
-		ImGuiKey_GamepadStart,          // Menu (Xbox)      + (Switch)   Start/Options (PS)
-		ImGuiKey_GamepadBack,           // View (Xbox)      - (Switch)   Share (PS)
-		ImGuiKey_GamepadFaceLeft,       // X (Xbox)         Y (Switch)   Square (PS)        // Tap: Toggle Menu. Hold: Windowing mode (Focus/Move/Resize windows)
-		ImGuiKey_GamepadFaceRight,      // B (Xbox)         A (Switch)   Circle (PS)        // Cancel / Close / Exit
-		ImGuiKey_GamepadFaceUp,         // Y (Xbox)         X (Switch)   Triangle (PS)      // Text Input / On-screen Keyboard
-		ImGuiKey_GamepadFaceDown,       // A (Xbox)         B (Switch)   Cross (PS)         // Activate / Open / Toggle / Tweak
-		ImGuiKey_GamepadDpadLeft,       // D-pad Left                                       // Move / Tweak / Resize Window (in Windowing mode)
-		ImGuiKey_GamepadDpadRight,      // D-pad Right                                      // Move / Tweak / Resize Window (in Windowing mode)
-		ImGuiKey_GamepadDpadUp,         // D-pad Up                                         // Move / Tweak / Resize Window (in Windowing mode)
-		ImGuiKey_GamepadDpadDown,       // D-pad Down                                       // Move / Tweak / Resize Window (in Windowing mode)
-		ImGuiKey_GamepadL1,             // L Bumper (Xbox)  L (Switch)   L1 (PS)            // Tweak Slower / Focus Previous (in Windowing mode)
-		ImGuiKey_GamepadR1,             // R Bumper (Xbox)  R (Switch)   R1 (PS)            // Tweak Faster / Focus Next (in Windowing mode)
-		ImGuiKey_GamepadL2,             // L Trig. (Xbox)   ZL (Switch)  L2 (PS) [Analog]
-		ImGuiKey_GamepadR2,             // R Trig. (Xbox)   ZR (Switch)  R2 (PS) [Analog]
-		ImGuiKey_GamepadL3,             // L Stick (Xbox)   L3 (Switch)  L3 (PS)
-		ImGuiKey_GamepadR3,             // R Stick (Xbox)   R3 (Switch)  R3 (PS)
-
-		ImGuiKey_GamepadLStickLeft,     // [Analog]                                         // Move Window (in Windowing mode)
-		ImGuiKey_GamepadLStickRight,    // [Analog]                                         // Move Window (in Windowing mode)
-		ImGuiKey_GamepadLStickUp,       // [Analog]                                         // Move Window (in Windowing mode)
-		ImGuiKey_GamepadLStickDown,     // [Analog]                                         // Move Window (in Windowing mode)
-		ImGuiKey_GamepadRStickLeft,     // [Analog]
-		ImGuiKey_GamepadRStickRight,    // [Analog]
-		ImGuiKey_GamepadRStickUp,       // [Analog]
-		ImGuiKey_GamepadRStickDown,     // [Analog]
+		//                              // XBOX        | SWITCH  | PLAYSTA. | -> ACTION
+		ImGuiKey_GamepadStart,          // Menu        | +       | Options  |
+		ImGuiKey_GamepadBack,           // View        | -       | Share    |
+		ImGuiKey_GamepadFaceLeft,       // X           | Y       | Square   | Tap: Toggle Menu. Hold: Windowing mode (Focus/Move/Resize windows)
+		ImGuiKey_GamepadFaceRight,      // B           | A       | Circle   | Cancel / Close / Exit
+		ImGuiKey_GamepadFaceUp,         // Y           | X       | Triangle | Text Input / On-screen Keyboard
+		ImGuiKey_GamepadFaceDown,       // A           | B       | Cross    | Activate / Open / Toggle / Tweak
+		ImGuiKey_GamepadDpadLeft,       // D-pad Left  | "       | "        | Move / Tweak / Resize Window (in Windowing mode)
+		ImGuiKey_GamepadDpadRight,      // D-pad Right | "       | "        | Move / Tweak / Resize Window (in Windowing mode)
+		ImGuiKey_GamepadDpadUp,         // D-pad Up    | "       | "        | Move / Tweak / Resize Window (in Windowing mode)
+		ImGuiKey_GamepadDpadDown,       // D-pad Down  | "       | "        | Move / Tweak / Resize Window (in Windowing mode)
+		ImGuiKey_GamepadL1,             // L Bumper    | L       | L1       | Tweak Slower / Focus Previous (in Windowing mode)
+		ImGuiKey_GamepadR1,             // R Bumper    | R       | R1       | Tweak Faster / Focus Next (in Windowing mode)
+		ImGuiKey_GamepadL2,             // L Trigger   | ZL      | L2       | [Analog]
+		ImGuiKey_GamepadR2,             // R Trigger   | ZR      | R2       | [Analog]
+		ImGuiKey_GamepadL3,             // L Stick     | L3      | L3       |
+		ImGuiKey_GamepadR3,             // R Stick     | R3      | R3       |
+		ImGuiKey_GamepadLStickLeft,     //             |         |          | [Analog] Move Window (in Windowing mode)
+		ImGuiKey_GamepadLStickRight,    //             |         |          | [Analog] Move Window (in Windowing mode)
+		ImGuiKey_GamepadLStickUp,       //             |         |          | [Analog] Move Window (in Windowing mode)
+		ImGuiKey_GamepadLStickDown,     //             |         |          | [Analog] Move Window (in Windowing mode)
+		ImGuiKey_GamepadRStickLeft,     //             |         |          | [Analog]
+		ImGuiKey_GamepadRStickRight,    //             |         |          | [Analog]
+		ImGuiKey_GamepadRStickUp,       //             |         |          | [Analog]
+		ImGuiKey_GamepadRStickDown,     //             |         |          | [Analog]
 
 		// Mouse Buttons (auto-submitted from AddMouseButtonEvent() calls)
 		// - This is mirroring the data also written to io.MouseDown[], io.MouseWheel, in a format allowing them to be accessed via standard key API.
@@ -209,7 +208,7 @@ struct alignas(8) CmdInput : public CmdHeader
 struct alignas(8) CmdTexture : public CmdHeader
 {
 	CmdTexture() : CmdHeader(CmdHeader::eCommands::Texture, sizeof(CmdTexture)){}
-	uint64_t						mTextureUserId		= 0;
+	uint64_t						mTextureClientID	= 0;
 	uint8_t							mFormat				= eTexFormat::kTexFmt_Invalid;	// eTexFormat
 	uint8_t							mUpdatable			= false;						// Set to true on Create, for updatable textures
 	uint8_t							PADDING[1]			= {};

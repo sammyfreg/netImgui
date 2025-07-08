@@ -115,6 +115,7 @@ struct Server
 	static float	sRefreshFPSInactive;	//!< Refresh rate of inactive Window
 	static float	sDPIScaleRatio;			//!< Ratio of DPI scale applied to Font size (helps with high resolution monitor, default 1.0)
 	static bool		sCompressionEnable;		//!< Ask the clients to compress their data before transmission
+	static float 	sFontSize;				//!< Font size used for Server UI
 };
 
 }} // namespace NetImguiServer { namespace Config

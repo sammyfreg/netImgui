@@ -17,6 +17,7 @@ static constexpr char kConfigField_ServerRefreshActive[]		= "RefreshFPSActive";
 static constexpr char kConfigField_ServerRefreshInactive[]		= "RefreshFPSInactive";
 static constexpr char kConfigField_ServerDPIScaleRatio[]		= "DPIScaleRatio";
 static constexpr char kConfigField_ServerCompressionEnable[]	= "CompressionEnable";
+static constexpr char kConfigField_ServerFontSize[]				= "ServerFontSize";
 
 static constexpr char kConfigField_Note[]						= "Note";
 static constexpr char kConfigField_Version[]					= "Version";
@@ -33,7 +34,7 @@ float		Server::sRefreshFPSActive	= 30.f;
 float		Server::sRefreshFPSInactive	= 30.f;
 float		Server::sDPIScaleRatio		= 1.f;
 bool		Server::sCompressionEnable	= true;
-
+float		Server::sFontSize			= 16.f;
 
 //=================================================================================================
 // The user config is created when the main config file is readonly
@@ -265,6 +266,7 @@ void Client::SaveConfigFile(eConfigType configFileType, bool writeServerSettings
 		configRoot[kConfigField_ServerRefreshInactive]		= Server::sRefreshFPSInactive;
 		configRoot[kConfigField_ServerDPIScaleRatio]		= Server::sDPIScaleRatio;
 		configRoot[kConfigField_ServerCompressionEnable]	= Server::sCompressionEnable;
+		configRoot[kConfigField_ServerFontSize]				= Server::sFontSize;
 	}
 
 	int clientToSaveCount(0);
@@ -332,7 +334,8 @@ void Client::LoadConfigFile(eConfigType configFileType)
 	Server::sRefreshFPSInactive	= GetPropertyValue(configRoot, kConfigField_ServerRefreshInactive,		Server::sRefreshFPSInactive);
 	Server::sDPIScaleRatio		= GetPropertyValue(configRoot, kConfigField_ServerDPIScaleRatio,		Server::sDPIScaleRatio);
 	Server::sCompressionEnable	= GetPropertyValue(configRoot, kConfigField_ServerCompressionEnable,	Server::sCompressionEnable);
-	
+	Server::sFontSize			= GetPropertyValue(configRoot, kConfigField_ServerFontSize,				Server::sFontSize);
+
 	if( configVersion >= static_cast<uint32_t>(eVersion::Initial) )
 	{	
 		for(const auto& config : configRoot[kConfigField_Configs] )

@@ -67,20 +67,10 @@
 #endif
 
 #if NETIMGUI_ENABLED
-
-//SF Skip using my own define
-#if IMGUI_HAS_TEXTURES
-	#define IMGUI_IS_NEWFONT 1
-#else
-	#define IMGUI_IS_NEWFONT 0
-	typedef ImTextureID ImTextureUserID;
-#endif
-
 //=================================================================================================
 // Default Build settings defines values
 // Assign default values when not set in user NetImgui_Config.h
 //=================================================================================================
-
 //-------------------------------------------------------------------------------------------------
 // Prepended to functions signature, for dll export/import
 //-------------------------------------------------------------------------------------------------
@@ -176,7 +166,7 @@ NETIMGUI_API	void				Shutdown();
 //						  the font atlas, because of a monitor DPI change. When left to nullptr,
 //						  uses 'ImGuiIO.FontGlobalScale' instead to increase text size,
 //						  with blurier results. 
-//						  NOTE: Removed for Dear ImGui 1.92 with added font update support.
+//						  NOTE: Not used by Dear ImGui 1.92+, unneeded with font update support.
 //=================================================================================================
 NETIMGUI_API	bool				ConnectToApp(const char* clientName, const char* serverHost, uint32_t serverPort=kDefaultServerPort, ThreadFunctPtr threadFunction=0, FontCreateFuncPtr FontCreateFunction=0);
 NETIMGUI_API	bool				ConnectFromApp(const char* clientName, uint32_t clientPort=kDefaultClientPort, ThreadFunctPtr threadFunction=0, FontCreateFuncPtr fontCreateFunction=0);
@@ -215,7 +205,7 @@ NETIMGUI_API	bool				IsDrawingRemote(void);
 // Note: User needs to provide a valid 'dataSize' when using format 'kTexFmtCustom',
 //		 can be ignored otherwise
 //=================================================================================================
-NETIMGUI_API	void				SendDataTexture(ImTextureUserID textureId, void* pData, uint16_t width, uint16_t height, eTexFormat format, uint32_t dataSize=0);
+NETIMGUI_API	void				SendDataTexture(ImTextureID textureId, void* pData, uint16_t width, uint16_t height, eTexFormat format, uint32_t dataSize=0);
 
 //=================================================================================================
 // Start a new Imgui Frame and wait for Draws commands, using ImContext that was active on connect.
@@ -251,7 +241,7 @@ NETIMGUI_API	ImGuiContext*		GetContext();
 //=================================================================================================
 NETIMGUI_API	void				SetBackground(const ImVec4& bgColor);
 NETIMGUI_API	void				SetBackground(const ImVec4& bgColor, const ImVec4& textureTint );
-NETIMGUI_API	void				SetBackground(const ImVec4& bgColor, const ImVec4& textureTint, ImTextureUserID bgTextureID);
+NETIMGUI_API	void				SetBackground(const ImVec4& bgColor, const ImVec4& textureTint, ImTextureID bgTextureID);
 
 //=================================================================================================
 // Control the data compression for communications between Client/Server

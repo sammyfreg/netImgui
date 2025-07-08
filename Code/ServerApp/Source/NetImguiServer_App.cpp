@@ -8,9 +8,9 @@
 namespace NetImguiServer { namespace App
 {
 
-constexpr uint32_t			kClientCountMax			= 32;	//! @sammyfreg todo: support unlimited client count
-ImTextureData 				gEmptyTexture;
-std::atomic<ServerTexture*>	gPendingTextureDelete(nullptr);
+constexpr uint32_t			kClientCountMax		= 32;		//! @sammyfreg todo: support unlimited client count
+ImVector<ServerTexture*>	gServerTextures;				// List of ALL server created textures (used by server and clients)
+ServerTexture*				gServerTextureEmpty	= nullptr;	// Empty texture used when no valid texture found
 
 bool Startup(const char* CmdLine)
 {	
@@ -27,8 +27,13 @@ bool Startup(const char* CmdLine)
 		NetImguiServer::Network::Startup() &&
 		NetImguiServer::UI::Startup())
 	{
-		gEmptyTexture.Create(ImTextureFormat::ImTextureFormat_RGBA32, 8, 8); // Init default empty texture used when no valid texture is found
-		gEmptyTexture.Status = ImTextureStatus_WantCreate;
+		NetImgui::Internal::CmdTexture cmdTexture; //SF TODO make this 8 bits
+		uint32_t EmptyData[4*4]					= {0xFF0000FF,0xFF0000FF,0xFF0000FF,0xFF0000FF,0xFF0000FF,0xFF0000FF,0xFF0000FF,0xFF0000FF,0xFF0000FF,0xFF0000FF,0xFF0000FF,0xFF0000FF,0xFF0000FF,0xFF0000FF,0xFF0000FF,0xFF0000FF};
+		cmdTexture.mTextureClientID				= 0;
+		cmdTexture.mFormat						= ImTextureFormat::ImTextureFormat_RGBA32;
+		cmdTexture.mWidth = cmdTexture.mHeight	= 4;
+		cmdTexture.mpTextureData.SetPtr((uint8_t*)EmptyData);
+		gServerTextureEmpty 					= CreateTexture(cmdTexture, sizeof(EmptyData));
 
 		LoadFonts();
 		ImGui::GetIO().IniFilename	= nullptr;	// Disable server ImGui ini settings (not really needed, and avoid imgui.ini filename conflicts)
@@ -40,9 +45,13 @@ bool Startup(const char* CmdLine)
 
 void Shutdown()
 {
+	if( gServerTextureEmpty )
+	{
+		gServerTextureEmpty->MarkForDelete();
+	}
+	//SF TODO delete res
 	NetImguiServer::Network::Shutdown();
 	NetImguiServer::UI::Shutdown();
-	//SF NetImguiServer::App::HAL_DestroyTexture(gEmptyTexture);
 	NetImguiServer::Config::Client::Clear();
 	RemoteClient::Client::Shutdown();
 	HAL_Shutdown();
@@ -112,7 +121,8 @@ void DrawClientBackground(RemoteClient::Client& client)
 			client.mpBGContext					= ImGui::CreateContext(ImGui::GetIO().Fonts);
 			client.mpBGContext->IO.DeltaTime	= 1/30.f;
 			client.mpBGContext->IO.IniFilename	= nullptr;	// Disable server ImGui ini settings (not really needed, and avoid imgui.ini filename conflicts)
-			client.mpBGContext->IO.LogFilename	= nullptr; 
+			client.mpBGContext->IO.LogFilename	= nullptr;
+			client.mpBGContext->IO.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
 		}
 
 		NetImgui::Internal::ScopedImguiContext scopedCtx(client.mpBGContext);
@@ -132,128 +142,124 @@ void DrawClientBackground(RemoteClient::Client& client)
 }
 
 //=================================================================================================
-// UPDATE REMOTE CONTENT
-// Create a render target for each connected remote client once, and update it every frame
-// with the last drawing commands received from it. This Render Target will then be used
-// normally as the background image of each client window renderered by this Server
-void UpdateRemoteContent()
+void UpdateServerTextures()
 //=================================================================================================
 {
-	HAL_UpdateTexture(gEmptyTexture);
-	
-	for (uint32_t i(0); i < RemoteClient::Client::GetCountMax(); ++i)
+	for(int i(0); i<gServerTextures.size();)
 	{
-		RemoteClient::Client& client = RemoteClient::Client::Get(i);
-		if( client.mbIsConnected )
+		// Delete Texture Resource
+		if( gServerTextures[i] )
 		{
-			if (client.mbIsReleased) {
-				client.Uninitialize();
-			}
-			else
+			ServerTexture& ServerTex 		= *gServerTextures[i];
+			ServerTex.mTexData.UnusedFrames	+= ServerTex.mTexData.RefCount > 0 ? 1 : 0;
+
+			// Release un-needed pixel data once it has been processed by backend
+			if( ServerTex.mIsUpdatable == false && 
+				ServerTex.mTexData.Pixels != nullptr && 
+				ServerTex.mTexData.Status == ImTextureStatus_OK )
 			{
-				client.UpdateTextures();
-				if( client.mbIsVisible )
-				{
-
-					// Update the RenderTarget destination of each client, of size was updated
-					if (client.mAreaSizeX > 0 && client.mAreaSizeY > 0 && (!client.mpHAL_AreaRT || client.mAreaRTSizeX != client.mAreaSizeX || client.mAreaRTSizeY != client.mAreaSizeY))
-					{
-						if (HAL_CreateRenderTarget(client.mAreaSizeX, client.mAreaSizeY, client.mpHAL_AreaRT, client.mpHAL_AreaTexture))
-						{
-							client.mAreaRTSizeX		= client.mAreaSizeX;
-							client.mAreaRTSizeY		= client.mAreaSizeY;
-							client.mLastUpdateTime	= std::chrono::steady_clock::now() - std::chrono::hours(1); // Will redraw the client
-							client.mBGNeedUpdate	= true;
-						}
-					}
-
-					// Render the remote results
-					ImDrawData* pDrawData = client.GetImguiDrawData(gEmptyTexture.GetTexID());
-					if( pDrawData )
-					{
-						DrawClientBackground(client);
-						HAL_RenderDrawData(client, pDrawData);
-					}
-				}
+				ServerTex.mTexData.DestroyPixels();
 			}
+
+			// Send deletion request to backend
+			if( ServerTex.mTexData.WantDestroyNextFrame )
+			{
+				ServerTex.mTexData.Status 				= ImTextureStatus_WantDestroy;
+				ServerTex.mTexData.WantDestroyNextFrame	= false;
+			}
+
+			// Backend deleted the texture, remove it from our list
+			if( ServerTex.mTexData.Status == ImTextureStatus_Destroyed )
+			{
+				ImGui::UnregisterUserTexture(&ServerTex.mTexData);
+				delete gServerTextures[i];
+				gServerTextures[i] = nullptr;
+			}
+		}
+
+		// Advance to next texture
+		if (gServerTextures[i])
+		{
+			++i;
+		}
+		// Remove released texture
+		else
+		{
+			ImSwap(gServerTextures[i], gServerTextures[gServerTextures.Size-1]);
+			gServerTextures.pop_back();
 		}
 	}
 }
 
 //=================================================================================================
+// Default texture creation behavior, relying on Dear ImGui backend to do
+// the heavy lifting of texture creation and management
 bool CreateTexture_Default(ServerTexture& serverTexture, const NetImgui::Internal::CmdTexture& cmdTexture, uint32_t customDataSize)
 //=================================================================================================
 {
-	if( !serverTexture.mIsCustom )
+	if( !serverTexture.mIsCustom && cmdTexture.mpTextureData.Get() != nullptr )
 	{
-		if( cmdTexture.mpTextureData.Get() != nullptr )
+		serverTexture.mIsUpdatable = cmdTexture.mUpdatable;
+		serverTexture.mTexData.Create(ImTextureFormat::ImTextureFormat_RGBA32, cmdTexture.mWidth, cmdTexture.mHeight);
+		if( cmdTexture.mFormat == ImTextureFormat::ImTextureFormat_RGBA32 )
 		{
-			serverTexture.mIsUpdatable = cmdTexture.mUpdatable;
-			serverTexture.mTexData.Create(ImTextureFormat::ImTextureFormat_RGBA32, cmdTexture.mWidth, cmdTexture.mHeight);
-			if( cmdTexture.mFormat == ImTextureFormat::ImTextureFormat_RGBA32 ){
-				memcpy(serverTexture.mTexData.Pixels, cmdTexture.mpTextureData.Get(), customDataSize);
-			}
-			else if ( cmdTexture.mFormat == ImTextureFormat::ImTextureFormat_Alpha8) {
-				const uint8_t* pSrcCur	= cmdTexture.mpTextureData.Get();
-				uint32_t* pDestCur		= reinterpret_cast<uint32_t*>(serverTexture.mTexData.GetPixels());
-				uint32_t* pDestEnd		= &pDestCur[cmdTexture.mHeight*cmdTexture.mWidth];
-				while (pDestCur < pDestEnd) {
-					*pDestCur++ = 0x00FFFFFF | (uint64_t(*pSrcCur++)<<24);
-				}
-			}
-			else {
-				IM_ASSERT_USER_ERROR(0, "Unsupported format");
-			}
-			
-			serverTexture.mTexData.Status = ImTextureStatus_WantCreate;
-			HAL_UpdateTexture(serverTexture.mTexData);
-			
-			// Release pixels when not needed further
-			if( !cmdTexture.mUpdatable ){
-				serverTexture.mTexData.DestroyPixels();
+			memcpy(serverTexture.mTexData.Pixels, cmdTexture.mpTextureData.Get(), customDataSize);
+		}
+		else if ( cmdTexture.mFormat == ImTextureFormat::ImTextureFormat_Alpha8) {
+			const uint8_t* pSrcCur	= cmdTexture.mpTextureData.Get();
+			uint32_t* pDestCur		= reinterpret_cast<uint32_t*>(serverTexture.mTexData.GetPixels());
+			uint32_t* pDestEnd		= &pDestCur[cmdTexture.mHeight*cmdTexture.mWidth];
+			while (pDestCur < pDestEnd) {
+				*pDestCur++ = 0x00FFFFFF | (uint64_t(*pSrcCur++)<<24);
 			}
 		}
+		else {
+			IM_ASSERT_USER_ERROR(0, "Unsupported format");
+		}
+
+		serverTexture.mTexData.Status 	= ImTextureStatus_WantCreate;
+		serverTexture.mTexData.RefCount	= 1;
+		ImGui::RegisterUserTexture(&serverTexture.mTexData);
 		return true;
 	}
 	return false;
 }
 
 //=================================================================================================
-bool CreateTexture(ServerTexture& serverTexture, const NetImgui::Internal::CmdTexture& cmdTexture, uint32_t customDataSize)
+ServerTexture* CreateTexture(const NetImgui::Internal::CmdTexture& cmdTexture, uint32_t textureDataSize)
 //=================================================================================================
 {
-	serverTexture.mIsCustom	= cmdTexture.mFormat == NetImgui::eTexFormat::kTexFmtCustom;
-	return 	CreateTexture_Custom(serverTexture, cmdTexture, customDataSize) ||
-			CreateTexture_Default(serverTexture, cmdTexture, customDataSize);
-}
-//=================================================================================================
-void DestroyTexture(ServerTexture& serverTexture, const NetImgui::Internal::CmdTexture& cmdTexture, uint32_t customDataSize)
-//=================================================================================================
-{
-	if ( DestroyTexture_Custom(serverTexture, cmdTexture, customDataSize) == false )
+	ServerTexture* serverTex(new ServerTexture);
+	if( serverTex )
 	{
-		EnqueueHALTextureDestroy(serverTexture);
-	}
-}
+		serverTex->mIsCustom	= cmdTexture.mFormat == NetImgui::eTexFormat::kTexFmtCustom;
+		serverTex->mIsUpdatable	= false;
+		serverTex->mClientTexID	= cmdTexture.mTextureClientID;
 
+		if(	CreateTexture_Custom(*serverTex, cmdTexture, textureDataSize) ||
+			CreateTexture_Default(*serverTex, cmdTexture, textureDataSize) )
+		{
+			gServerTextures.push_back(serverTex);
+		}
+		else
+		{
+			delete serverTex;
+			serverTex = NULL;
+		}
+	}
+	return serverTex;
+}
 //=================================================================================================
-void EnqueueHALTextureDestroy(ServerTexture& serverTexture)
+void DestroyTexture(ServerTexture* serverTexture, const NetImgui::Internal::CmdTexture& cmdTexture, uint32_t customDataSize)
 //=================================================================================================
 {
-	serverTexture.mIsPendingDel = true;
-	//SF TODO REMOVE this
-	//ServerTexture* pDeleteTexture	= new ServerTexture(serverTexture);
-	//pDeleteTexture->mpDeleteNext	= gPendingTextureDelete.exchange(pDeleteTexture);
-	//memset(&serverTexture, 0, sizeof(serverTexture)); // Making sure we don't double free this later
-}
-
-//-----------------------------------------------------------------------------------------
-// Update the Font texture when new monitor DPI is detected
-//SF TODO change font setting instead
-//-----------------------------------------------------------------------------------------
-void UpdateFonts()
-{	
-	ImGui::GetIO().FontGlobalScale = NetImguiServer::UI::GetFontDPIScale();
+	if( serverTexture )
+	{
+		if ( DestroyTexture_Custom(*serverTexture, cmdTexture, customDataSize) == false )
+		{
+			serverTexture->MarkForDelete();
+		}
+	}
 }
 
 //-----------------------------------------------------------------------------------------
@@ -266,11 +272,57 @@ void LoadFonts()
 
 	// Add Fonts here...
 	// Using a different default font (provided with Dear ImGui)
-	NetImgui::Internal::StringCopy(fontConfig.Name, "Roboto Medium, 16px");	
-	if( !pFontAtlas->AddFontFromMemoryCompressedTTF(Roboto_Medium_compressed_data, Roboto_Medium_compressed_size, 16.f, &fontConfig) ){
-		fontConfig.SizePixels = 16.f;
+	NetImgui::Internal::StringCopy(fontConfig.Name, "Roboto Medium");	
+	if( !pFontAtlas->AddFontFromMemoryCompressedTTF(Roboto_Medium_compressed_data, Roboto_Medium_compressed_size, 0.f, &fontConfig) ){
 		pFontAtlas->AddFontDefault(&fontConfig);
 	}
 }
 
+//=================================================================================================
+// UPDATE REMOTE CONTENT
+// Create a render target for each connected remote client once, and update it every frame
+// with the last drawing commands received from it. This Render Target will then be used
+// normally as the background image of each client window renderered by this Server
+void Update()
+//=================================================================================================
+{
+	for (uint32_t i(0); i < RemoteClient::Client::GetCountMax(); ++i)
+	{
+		RemoteClient::Client& client = RemoteClient::Client::Get(i);
+		if( client.mbIsConnected )
+		{
+			if (client.mbIsReleased) {
+				client.Uninitialize();
+			}
+			else
+			{
+				client.ProcessPendingTextureCmds();
+				if( client.mbIsVisible )
+				{
+					// Update the RenderTarget destination of each client, of size was updated
+					if (client.mAreaSizeX > 0 && client.mAreaSizeY > 0 && (!client.mpHAL_AreaRT || client.mAreaRTSizeX != client.mAreaSizeX || client.mAreaRTSizeY != client.mAreaSizeY))
+					{
+						if (HAL_CreateRenderTarget(client.mAreaSizeX, client.mAreaSizeY, client.mpHAL_AreaRT, client.mHAL_AreaTexture))
+						{
+							client.mAreaRTSizeX		= client.mAreaSizeX;
+							client.mAreaRTSizeY		= client.mAreaSizeY;
+							client.mLastUpdateTime	= std::chrono::steady_clock::now() - std::chrono::hours(1); // Will redraw the client
+							client.mBGNeedUpdate	= true;
+						}
+					}
+
+					// Render the remote results
+					ImDrawData* pDrawData = client.GetImguiDrawData(gServerTextureEmpty->mTexData.GetTexID());
+					if( pDrawData )
+					{
+						DrawClientBackground(client);
+						HAL_RenderDrawData(client, pDrawData);
+					}
+				}
+			}
+		}
+	}
+
+	UpdateServerTextures();
+}
 }} // namespace NetImguiServer { namespace App

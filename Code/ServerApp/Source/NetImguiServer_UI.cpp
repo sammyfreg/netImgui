@@ -13,6 +13,8 @@
 #include "../ThirdParty/stb_image.h"
 #undef STB_IMAGE_IMPLEMENTATION
 
+namespace NetImguiServer { namespace App { extern ServerTexture* gServerTextureEmpty; }} //SF TEST
+
 namespace NetImguiServer { namespace UI
 {
 
@@ -67,10 +69,10 @@ void DrawCenteredBackground(const App::ServerTexture& Texture, const ImVec4& Tin
 	float bgSizeY			= ratioH < ratioV ? areaSize.y : areaSize.x * static_cast<float>(Texture.mTexData.Width) / static_cast<float>(Texture.mTexData.Width);
 	float uvOffsetX			= (areaSize.x - bgSizeX) / 2.f;
 	float uvOffsetY			= (areaSize.y - bgSizeY) / 2.f;
+	ImTextureRef texRef 	= const_cast<ImTextureData&>(Texture.mTexData).GetTexRef(); //Note: method does not modify object, but wasn't marked 'const'
 	ImGui::SetCursorPos(ImVec2(savedPos.x+uvOffsetX, savedPos.y+uvOffsetY));
 	ImGui::Dummy(ImVec2(0,0));
-
-	ImGui::ImageWithBg(Texture.GetTexID(), ImVec2(bgSizeX, bgSizeY), ImVec2(0, 0), ImVec2(1, 1), ImVec4(0,0,0,0), Tint);
+	ImGui::ImageWithBg(texRef, ImVec2(bgSizeX, bgSizeY), ImVec2(0, 0), ImVec2(1, 1), ImVec4(0,0,0,0), Tint);
 	ImGui::SetCursorPos(savedPos);
 	ImGui::Dummy(ImVec2(0,0));
 }
@@ -222,6 +224,7 @@ void Popup_ServerConfig()
 	static float sEditRefreshFPSActive		= 0;
 	static float sEditRefreshFPSInactive	= 0;
 	static bool sEditCompressionEnable		= true;
+	static int sEditServerFontSize			= 0;
 	static float sSavedDPIScalePourcentage	= 0.f;
 	if( gPopup_ServerConfig_Show )
 	{		
@@ -230,6 +233,7 @@ void Popup_ServerConfig()
 			sEditRefreshFPSActive		= NetImguiServer::Config::Server::sRefreshFPSActive;
 			sEditRefreshFPSInactive		= NetImguiServer::Config::Server::sRefreshFPSInactive;
 			sEditCompressionEnable		= NetImguiServer::Config::Server::sCompressionEnable;
+			sEditServerFontSize			= (int)NetImguiServer::Config::Server::sFontSize;
 			sSavedDPIScalePourcentage	= NetImguiServer::Config::Server::sDPIScaleRatio;
 		}
 
@@ -268,6 +272,12 @@ void Popup_ServerConfig()
 			if( ImGui::IsItemHovered() ){
 				ImGui::SetTooltip("How often we refresh content of *visible* and *unfocused* clients.\nNote: Lowering this will reduce network traffic.");
 			}
+			
+			// --- Refresh ---
+			ImGui::SliderInt("Server UI Font size", &sEditServerFontSize, 8, 32, "%2i pts" );
+			if( ImGui::IsItemHovered() ){
+				ImGui::SetTooltip("Font size for Server UI elements. This does not control the size of text of remote client content.");
+			}
 
 			// --- DPI Scale ---
 			constexpr float kStepSize = 5.f;
@@ -300,6 +310,7 @@ void Popup_ServerConfig()
 				NetImguiServer::Config::Server::sRefreshFPSActive	= sEditRefreshFPSActive;
 				NetImguiServer::Config::Server::sRefreshFPSInactive	= sEditRefreshFPSInactive;
 				NetImguiServer::Config::Server::sCompressionEnable	= sEditCompressionEnable;
+				NetImguiServer::Config::Server::sFontSize			= (float)sEditServerFontSize;
 				NetImguiServer::Config::Client::SaveAll();
 				gPopup_ServerConfig_Show = false;
 			}
@@ -549,7 +560,7 @@ void DrawImguiContent_Clients()
 			if( client.mbIsVisible )
 			{
 				// Display remote client drawing results
-				if (client.mpHAL_AreaTexture && areaSize.x > 0 && areaSize.y > 0) 
+				if (client.mHAL_AreaTexture.Status == ImTextureStatus::ImTextureStatus_OK && areaSize.x > 0 && areaSize.y > 0) 
 				{					
 					// Add fake button to discard mouse input (prevent window moving when draging inside client area)
 					ImVec2 savedPos			= ImGui::GetCursorPos();
@@ -557,7 +568,10 @@ void DrawImguiContent_Clients()
 					ImGui::SetCursorPos(savedPos);
 
 					// Display Client Context
-					ImGui::Image(NetImgui::Internal::TextureCastFromPtr(client.mpHAL_AreaTexture), areaSize, ImVec2(0, HAL_API_RENDERTARGET_INVERT_Y ? 1 : 0), ImVec2(1, HAL_API_RENDERTARGET_INVERT_Y ? 0 : 1));
+					ImTextureRef clientFrameTexRef;
+					clientFrameTexRef._TexData = &client.mHAL_AreaTexture;
+					ImGui::Image(clientFrameTexRef, areaSize, ImVec2(0, HAL_API_RENDERTARGET_INVERT_Y ? 1 : 0), ImVec2(1, HAL_API_RENDERTARGET_INVERT_Y ? 0 : 1));
+
 					if( ImGui::IsItemHovered() ){
 						ImGui::SetMouseCursor(client.mMouseCursor);
 					}
@@ -628,6 +642,11 @@ void DrawImguiContent_Clients()
 		if (ImGui::Begin("Information", nullptr, 0))
 		{
 			DrawCenteredBackground(gBackgroundTexture, ImVec4(1.f, 1.f, 1.f, 0.15f));
+			
+			//SF TEST tex creation
+			ImTextureRef texID;
+			texID._TexData = &NetImguiServer::App::gServerTextureEmpty->mTexData;
+			ImGui::Image(texID, ImVec2(128, 128), ImVec2(0, 0), ImVec2(1, 1));
 
 			ImGui::TextColored(kColorTitle, "%s", "Purpose:");
 			ImGui::PushStyleColor(ImGuiCol_Text, kColorContent);
@@ -941,6 +960,7 @@ ImVec4 DrawImguiContent()
 	gLastUIUpdate				= std::chrono::steady_clock::now();
 	gDisplayFPS					= gDisplayFPS*(1.f-kHysteresis) + (1000000.f/elapsedMicroS)*kHysteresis;
 
+	ImGui::PushFont(nullptr, NetImguiServer::Config::Server::sFontSize);
 	Popup_ServerConfig();
 	Popup_ClientConfigEdit();
 	Popup_ClientConfigDelete();
@@ -950,7 +970,10 @@ ImVec4 DrawImguiContent()
 	DrawImguiContent_MainMenu();
 	DrawImguiContent_SetupDocking();
 	DrawImguiContent_Clients();
+
 	//ImGui::ShowDemoWindow();
+
+	ImGui::PopFont();
 
 	return kColorBGClear;
 }

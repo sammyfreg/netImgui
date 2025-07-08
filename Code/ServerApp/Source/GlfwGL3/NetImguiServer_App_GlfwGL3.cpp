@@ -171,7 +171,7 @@ int main(int argc, char **argv)
         // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
         glfwPollEvents();
 
-		NetImguiServer::App::UpdateRemoteContent(); // @SAMPLE_EDIT (Request each client to update their drawing content )
+		NetImguiServer::App::Update(); // @SAMPLE_EDIT (Request each client to update their drawing content )
 
         //=========================================================================================
         // @SAMPLE_EDIT (DPI Awareness)

@@ -56,8 +56,10 @@ bool Client_Startup()
 	ImGui::CreateContext();
 	ImGuiIO& io = ImGui::GetIO();
 	io.Fonts->AddFontDefault();
+#ifndef IMGUI_HAS_TEXTURES
 	io.Fonts->Build();
 	io.Fonts->SetTexID(0);
+#endif
 	io.DisplaySize = ImVec2(8,8);
 	io.BackendFlags |= ImGuiBackendFlags_HasGamepad;	// Enable NetImgui Gamepad support
 	ImGui::StyleColorsDark();
