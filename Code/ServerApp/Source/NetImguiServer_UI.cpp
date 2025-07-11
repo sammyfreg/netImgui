@@ -27,7 +27,6 @@ static const ImVec4			kColorTitle							= ImVec4(0.3f,1.0f,0.3f,1.f);	// Various
 static const ImVec4			kColorContent						= ImVec4(0.7f,0.75f,0.7f,1.f);	// Various Server text content color
 static ImGuiID				gMainDockID							= 0;
 static float				gDisplayFPS							= 30.f;
-static uint32_t				gWindowDPI							= kWindowDPIDefault;
 static auto					gLastUIUpdate						= std::chrono::steady_clock::now();
 static App::ServerTexture	gBackgroundTexture;
 
@@ -745,7 +744,7 @@ void DrawImguiContent_MainMenu_Clients_Entry(RemoteClient::Client* pClient, NetI
 	ImGui::EndDisabled();	
 
 	// Config: Connection
-	const float kButtonWidth = 100.f * GetFontDPIScale();
+	const float kButtonWidth = 100.f; //SF TODO scaling with editor font size selected
 	if( pClient && !pClient->mbDisconnectPending && ImGui::Button("Disconnect", ImVec2(kButtonWidth, 0)) )
 	{
 		gPopup_ConfirmDisconnect_ClientIdx = pClient->mClientIndex;
@@ -1004,7 +1003,7 @@ bool Startup()
 //=================================================================================================
 void Shutdown()
 {
-	//SF NetImguiServer::App::HAL_DestroyTexture(gBackgroundTexture);	
+	//SF NetImguiServer::App::HAL_DestroyTexture(gBackgroundTexture);
 }
 
 //=================================================================================================
@@ -1013,24 +1012,6 @@ void Shutdown()
 float GetDisplayFPS()
 {	
 	return gDisplayFPS;
-}
-
-//=================================================================================================
-// Store the current Server application DPI (for font upscaling)
-//=================================================================================================
-void SetWindowDPI(uint32_t dpi)
-{
-	gWindowDPI = dpi;
-}
-
-//=================================================================================================
-// Get the font scaling factor applied to handle small text on screen with high resolution
-//=================================================================================================
-float GetFontDPIScale()
-{
-	float scale = ((float)gWindowDPI / (float)kWindowDPIDefault);
-	scale		= scale > 1.f ? scale : 1.f;
-	return 1.f + (scale - 1.f) * NetImguiServer::Config::Server::sDPIScaleRatio;
 }
 
 }} // namespace NetImguiServer { namespace UI

@@ -11,6 +11,4 @@ namespace NetImguiServer { namespace UI
 	void						DrawCenteredBackground( const App::ServerTexture& Texture, const ImVec4& tint=ImVec4(1.f,1.f,1.f,1.f));
 	float						GetDisplayFPS();
 	const App::ServerTexture&	GetBackgroundTexture();
-	void						SetWindowDPI(uint32_t dpi);
-	float						GetFontDPIScale();
 }} //namespace NetImguiServer { namespace UI

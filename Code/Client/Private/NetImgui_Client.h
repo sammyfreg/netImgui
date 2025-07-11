@@ -131,7 +131,7 @@ struct ClientInfo
 	bool 								mServerForceConnectEnabled	= true;		// If another NetImguiServer can take connection away from the one currently active
 	ThreadFunctPtr						mThreadFunction				= nullptr;	// Function to use when laucnhing new threads
 	FontCreateFuncPtr					mFontCreationFunction		= nullptr;	// Method to call to generate the remote ImGui font. By default, re-use the local font, but this doesn't handle native DPI scaling on remote server. //NOTE: Unused by Dear imGui 1.92+
-	float								mFontCreationScaling		= 1.f;		//SF RENAME Last font scaling used when generating the NetImgui font
+	float								mFontCreationScaling		= 0.f;		//SF RENAME Last font scaling used when generating the NetImgui font
 	float 								mFontServerScale			= 1.f;
 	float 								mDesiredFps					= 30.f;		// How often we should update the remote drawing. Received from server
 	InputState							mPreviousInputState;					// Keeping track of last keyboard/mouse state

@@ -425,8 +425,16 @@ void Client::CaptureImguiInput()
 	pNewInput->mMouseWheelHoriz		= mMouseWheelPos[1];
 	pNewInput->mCompressionUse		= NetImguiServer::Config::Server::sCompressionEnable;
 	pNewInput->mCompressionSkip		= mbCompressionSkipOncePending;
-	pNewInput->mFontDPIScaling		= config.mDPIScaleEnabled ? NetImguiServer::UI::GetFontDPIScale() : 1.f;
+	pNewInput->mFontDPIScaling		= 1.f;
 	pNewInput->mDesiredFps			= clientFPS;
+
+	if( config.mDPIScaleEnabled )
+	{
+		float scale = ImGui::GetMainViewport()->DpiScale;
+		scale		= scale > 1.f ? scale : 1.f;
+		pNewInput->mFontDPIScaling = 1.f + (scale - 1.f) * NetImguiServer::Config::Server::sDPIScaleRatio;
+	}
+
 	mbCompressionSkipOncePending	= false;
 
 	if( (mbIsVisible && mbIsActive) && ImGui::IsWindowFocused() )

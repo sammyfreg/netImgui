@@ -212,7 +212,10 @@ bool NewFrame(bool bSupportFrameSkip)
 		ProcessInputData(client);
 
 		// We are about to start drawing for remote context, check for font data update
-	#ifndef IMGUI_HAS_TEXTURES
+	#ifdef IMGUI_HAS_TEXTURES
+		client.mFontCreationScaling 	= ImGui::GetStyle().FontScaleDpi;
+		ImGui::GetStyle().FontScaleDpi	= client.mFontServerScale;
+	#else
 		const ImFontAtlas* pFonts = ImGui::GetIO().Fonts;
 		if( pFonts->TexPixelsAlpha8 && 
 			(pFonts->TexPixelsAlpha8 != client.mpFontTextureData || client.mFontTextureID != pFonts->TexID ))
@@ -241,13 +244,7 @@ bool NewFrame(bool bSupportFrameSkip)
 	{
 		// Restore context setting override, after a disconnect
 		client.ContextRestore();
-	#ifdef IMGUI_HAS_TEXTURES
-		if( client.mFontCreationScaling > 0.f )
-		{
-			//SF ImGui::GetStyle().FontScaleDpi 	= client.mFontCreationScaling;
-			client.mFontCreationScaling		= 0.f;
-		}
-	#endif
+
 		// Remove hooks callback only when completly disconnected
 		if (!client.IsConnectPending()){
 			client.ContextRemoveHooks();
@@ -257,14 +254,10 @@ bool NewFrame(bool bSupportFrameSkip)
 	// A new frame is expected, update the current time of the drawing context, and let Imgui know to prepare a new drawing frame	
 	client.mbIsRemoteDrawing	= NetImgui::IsConnected();
 	client.mbIsDrawing			= true;
-	
+
 	// This function can be called from a 'NewFrame' ImGui hook, we should not start a new frame again
 	if (!client.mbInsideHook)
 	{
-	#ifdef IMGUI_HAS_TEXTURES
-		client.mFontCreationScaling 	= ImGui::GetStyle().FontScaleDpi;
-		//SF ImGui::GetStyle().FontScaleDpi	= client.mFontServerScale;
-	#endif
 		ImGui::NewFrame();
 	}
 
@@ -288,12 +281,17 @@ void EndFrame(void)
 		// This function can be called from a 'NewFrame' ImGui hook, in which case no need to call this again
 		if( !client.mbInsideHook ){
 			ImGui::Render();
-		#ifdef IMGUI_HAS_TEXTURES
-			//SF ImGui::GetStyle().FontScaleDpi 	= client.mFontCreationScaling;
-			client.mFontCreationScaling		= 0.f;
-		#endif
 		}
-		
+
+	#ifdef IMGUI_HAS_TEXTURES
+		// Restore Font DPI override when done with remote draw
+		if( client.mFontCreationScaling > 0.f )
+		{
+			ImGui::GetStyle().FontScaleDpi 	= client.mFontCreationScaling;
+			client.mFontCreationScaling		= 0.f;
+		}
+	#endif
+
 		// Prepare the Dear Imgui DrawData for later tranmission to Server
 		ImDrawData* imDrawData = ImGui::GetDrawData();
 		client.ProcessTextureImGui();
@@ -316,6 +314,7 @@ void EndFrame(void)
 			// (usually done in Render backend implementation) while not displaying anything.
 			if( imDrawData )
 			{
+				imDrawData->CmdLists.resize(0);
 				imDrawData->CmdListsCount = 0;
 				imDrawData->TotalIdxCount = 0;
 				imDrawData->TotalVtxCount = 0;
@@ -371,7 +370,7 @@ void SendDataTexture(ImTextureID textureId, void* pData, uint16_t width, uint16_
 		pCmdTexture->mSize					= SizeNeeded;
 		pCmdTexture->mWidth					= width;
 		pCmdTexture->mHeight				= height;
-		pCmdTexture->mTextureClientID			= texId64;
+		pCmdTexture->mTextureClientID		= texId64;
 		pCmdTexture->mFormat				= static_cast<uint8_t>(format);
 		pCmdTexture->mUpdatable				= false;
 
@@ -630,7 +629,7 @@ bool ProcessInputData(Client::ClientInfo& client)
 		{
 			io.FontGlobalScale = 1.f;
 			if(abs(gpClientInfo->mFontCreationScaling - pCmdInput->mFontDPIScaling) > 0.01f)
-			{				
+			{
 				gpClientInfo->mFontCreationFunction(gpClientInfo->mFontCreationScaling, pCmdInput->mFontDPIScaling);
 				gpClientInfo->mFontCreationScaling = pCmdInput->mFontDPIScaling;
 			}
