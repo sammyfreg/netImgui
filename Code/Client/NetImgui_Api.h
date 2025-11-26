@@ -102,6 +102,14 @@
 	#define NETIMGUI_IMGUI_CALLBACK_ENABLED		(IMGUI_VERSION_NUM >= 18100)	// Not supported pre Dear ImGui 1.81
 #endif
 
+// Temporary code to support the new Font Texture Update
+// Very inneficient, this is a stop gap measure until 
+// the partial texture update support is finished in NetImgui
+#ifdef IMGUI_HAS_TEXTURES
+	#define NETIMGUI_FONTUPDATE_TEMP_WORKAROUND 1
+#else
+	#define NETIMGUI_FONTUPDATE_TEMP_WORKAROUND 0
+#endif
 
 namespace NetImgui 
 { 

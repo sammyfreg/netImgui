@@ -24,8 +24,17 @@ void SavedImguiContext::Save(ImGuiContext* copyFrom)
 	mBackendPlatformName	= sourceIO.BackendPlatformName;
 	mBackendRendererName	= sourceIO.BackendRendererName;
 	mDrawMouse				= sourceIO.MouseDrawCursor;
+#if !NETIMGUI_FONTUPDATE_TEMP_WORKAROUND
 	mFontGlobalScale		= sourceIO.FontGlobalScale;
+#endif
+// Temporary code to support the new Font Texture Update
+// Very inneficient, this is a stop gap measure until 
+// the partial texture update support is finished in NetImgui
+#if NETIMGUI_FONTUPDATE_TEMP_WORKAROUND
+	mFontGeneratedSize		= 13.f;
+#else
 	mFontGeneratedSize		= sourceIO.Fonts->Fonts.Size > 0 ? sourceIO.Fonts->Fonts[0]->FontSize : 13.f; // Save size to restore the font to original size
+#endif
 #if IMGUI_VERSION_NUM < 18700
 	memcpy(mKeyMap, sourceIO.KeyMap, sizeof(mKeyMap));
 #endif
@@ -50,8 +59,10 @@ void SavedImguiContext::Restore(ImGuiContext* copyTo)
 	destIO.BackendFlags			= mBackendFlags;
 	destIO.BackendPlatformName	= mBackendPlatformName;
 	destIO.BackendRendererName	= mBackendRendererName;
-	destIO.MouseDrawCursor		= mDrawMouse;	
+	destIO.MouseDrawCursor		= mDrawMouse;
+#if !NETIMGUI_FONTUPDATE_TEMP_WORKAROUND
 	destIO.FontGlobalScale		= mFontGlobalScale;
+#endif
 #if IMGUI_VERSION_NUM < 18700
 	memcpy(destIO.KeyMap, mKeyMap, sizeof(destIO.KeyMap));
 #endif
@@ -600,7 +611,9 @@ void ClientInfo::ContextOverride()
 		newIO.BackendRendererName			= "DirectX11";
 		if( mFontCreationFunction != nullptr )
 		{
+		#if !NETIMGUI_FONTUPDATE_TEMP_WORKAROUND
 			newIO.FontGlobalScale = 1;
+		#endif
 			mFontCreationScaling = -1;
 		}
 		
@@ -638,9 +651,11 @@ void ClientInfo::ContextRestore()
 #endif
 		if( mFontCreationFunction && ImGui::GetIO().Fonts && ImGui::GetIO().Fonts->Fonts.size() > 0)
 		{
+		#if !NETIMGUI_FONTUPDATE_TEMP_WORKAROUND
 			float noScaleSize	= ImGui::GetIO().Fonts->Fonts[0]->FontSize / mFontCreationScaling;
 			float originalScale = mSavedContextValues.mFontGeneratedSize / noScaleSize;
 			mFontCreationFunction(mFontCreationScaling, originalScale);
+		#endif
 		}
 		mSavedContextValues.Restore(mpContext);
 	}

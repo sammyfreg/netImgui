@@ -47,6 +47,51 @@ enum eSampleState : uint8_t {
 	Connected,
 };
 
+#if NETIMGUI_FONTUPDATE_TEMP_WORKAROUND
+// Based on ImGui_ImplDX12_UpdateTexture, but without actual texture handling
+void ImGui_ImplDX12_UpdateTexture(ImTextureData* tex)
+{
+	static uint64_t UniqueTextureID(1);
+	if (tex->Status == ImTextureStatus_WantCreate)
+    {
+        // Create and upload new texture to graphics system
+        //IMGUI_DEBUG_LOG("UpdateTexture #%03d: WantCreate %dx%d\n", tex->UniqueID, tex->Width, tex->Height);
+        IM_ASSERT(tex->TexID == ImTextureID_Invalid && tex->BackendUserData == nullptr);
+        IM_ASSERT(tex->Format == ImTextureFormat_RGBA32);
+
+        // Store identifiers
+        tex->SetTexID((ImTextureID)UniqueTextureID++);
+    }
+
+    if (tex->Status == ImTextureStatus_WantCreate || tex->Status == ImTextureStatus_WantUpdates)
+    {
+        IM_ASSERT(tex->Format == ImTextureFormat_RGBA32);
+        tex->SetStatus(ImTextureStatus_OK);
+    }
+
+	if (tex->Status == ImTextureStatus_WantDestroy && tex->UnusedFrames >= 2)
+	{
+		// Clear identifiers and mark as destroyed (in order to allow e.g. calling InvalidateDeviceObjects while running)
+		tex->SetTexID(ImTextureID_Invalid);
+		tex->SetStatus(ImTextureStatus_Destroyed);
+	}
+}
+
+// This hook into the PostRender callback to 'update' the ImGui Textures
+// Since this is a Sample for no Backend, only assign an ID to new textures
+void Client_UpdateTexturesCallback(ImGuiContext*, ImGuiContextHook* hook)
+{
+	ImVector<ImTextureData*>& Textures = ImGui::GetPlatformIO().Textures;
+	for (ImTextureData* tex : Textures)
+	{
+		if (tex->Status != ImTextureStatus_OK)
+		{
+			ImGui_ImplDX12_UpdateTexture(tex);
+		}
+	}
+}
+#endif //NETIMGUI_FONTUPDATE_TEMP_WORKAROUND
+
 //=================================================================================================
 // Initialize the Dear Imgui Context and the NetImgui library
 //=================================================================================================
@@ -56,12 +101,21 @@ bool Client_Startup()
 	ImGui::CreateContext();
 	ImGuiIO& io = ImGui::GetIO();
 	io.Fonts->AddFontDefault();
-	io.Fonts->Build();
-	io.Fonts->SetTexID(0);
 	io.DisplaySize = ImVec2(8,8);
 	io.BackendFlags |= ImGuiBackendFlags_HasGamepad;	// Enable NetImgui Gamepad support
 	ImGui::StyleColorsDark();
-
+#if NETIMGUI_FONTUPDATE_TEMP_WORKAROUND
+	ImGuiContextHook hookEndframe;
+	hookEndframe.HookId		= 0;
+	hookEndframe.Type		= ImGuiContextHookType_RenderPost;
+	hookEndframe.Callback	= Client_UpdateTexturesCallback;
+	hookEndframe.UserData	= nullptr;
+	ImGui::AddContextHook(ImGui::GetCurrentContext(), &hookEndframe);
+	io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
+#else
+	io.Fonts->Build();
+	io.Fonts->SetTexID(0);
+#endif
 	if( !NetImgui::Startup() )
 		return false;
 
@@ -137,11 +191,9 @@ void Client_Draw(bool& bQuit)
 								"Rely instead on NetImgui to remotely handle drawing and inputs. This avoids the need for rendering/input/window management code on the client itself.");
 		}
 		ImGui::End();
-
 		NetImgui::EndFrame();
 	}
 }
-
 } // namespace SampleNoBackend
 
 int main(int, char**)

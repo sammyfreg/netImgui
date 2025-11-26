@@ -104,7 +104,11 @@ inline void ImGui_ExtractDraws(const ImDrawList& cmdList, ImguiDrawGroup& drawGr
 			pOutDraws[drawCount].mIdxOffset		= 0;
 		#endif
 			
+		#if NETIMGUI_FONTUPDATE_TEMP_WORKAROUND
+			pOutDraws[drawCount].mTextureId		= TextureCastFromID(pCmd->GetTexID());
+		#else
 			pOutDraws[drawCount].mTextureId		= TextureCastFromID(pCmd->TextureId);
+		#endif
 			pOutDraws[drawCount].mIdxCount		= pCmd->ElemCount;
 			pOutDraws[drawCount].mClipRect[0]	= pCmd->ClipRect.x;
 			pOutDraws[drawCount].mClipRect[1]	= pCmd->ClipRect.y;

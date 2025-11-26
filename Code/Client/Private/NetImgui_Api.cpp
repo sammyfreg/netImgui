@@ -212,7 +212,8 @@ bool NewFrame(bool bSupportFrameSkip)
 		
 		ProcessInputData(client);
 
-		// We are about to start drawing for remote context, check for font data update
+		// We are about to start drawing for remote context, check for font data update		
+	#if !NETIMGUI_FONTUPDATE_TEMP_WORKAROUND
 		const ImFontAtlas* pFonts = ImGui::GetIO().Fonts;
 		if( pFonts->TexPixelsAlpha8 && 
 			(pFonts->TexPixelsAlpha8 != client.mpFontTextureData || client.mFontTextureID != pFonts->TexID ))
@@ -226,7 +227,7 @@ bool NewFrame(bool bSupportFrameSkip)
 		// 1. Leave font data available in ImGui (not call ImGui::ClearTexData) for netImgui to auto send it
 		// 2. Manually call 'NetImgui::SendDataTexture' with font texture data
 		assert(client.mbFontUploaded);
-			
+	#endif		
 		// Update current active content with our time
 		ImGui::GetIO().DeltaTime = std::max<float>(1.f / 1000.f, elapsedCheckMs/1000.f);
 		
@@ -274,13 +275,37 @@ void EndFrame(void)
 	if ( client.mbIsDrawing  )
 	{
 		// Must be fetched before 'Render'
-		ImGuiMouseCursor Cursor	= ImGui::GetMouseCursor();	
+		ImGuiMouseCursor Cursor	= ImGui::GetMouseCursor();
 		
+	#if NETIMGUI_FONTUPDATE_TEMP_WORKAROUND
+		const ImFontAtlas* pFonts = ImGui::GetIO().Fonts;
+		const ImTextureData* pFontTexData = pFonts->TexRef._TexData;
+		if( pFontTexData && pFontTexData->Status == ImTextureStatus_WantUpdates )
+		{
+			uint8_t* pPixelData(nullptr); int width(0), height(0);
+			pPixelData	= reinterpret_cast<uint8_t*>(pFonts->TexRef._TexData->GetPixels());
+			width		= pFonts->TexRef._TexData->Width;
+			height		= pFonts->TexRef._TexData->Height;
+			SendDataTexture(pFonts->TexRef.GetTexID(), pPixelData, static_cast<uint16_t>(width), static_cast<uint16_t>(height), pFontTexData->BytesPerPixel == 4 ? eTexFormat::kTexFmtRGBA8 : eTexFormat::kTexFmtA8 );
+		}
+	#endif
+
 		// This function can be called from a 'NewFrame' ImGui hook, in which case no need to call this again
 		if( !client.mbInsideHook ){
-			ImGui::Render(); 
+			ImGui::Render();
 		}
 		
+	#if NETIMGUI_FONTUPDATE_TEMP_WORKAROUND
+		if( pFontTexData && !client.mbFontUploaded && pFontTexData->Status == ImTextureStatus_OK )
+		{
+			uint8_t* pPixelData(nullptr); int width(0), height(0);
+			pPixelData	= reinterpret_cast<uint8_t*>(pFonts->TexRef._TexData->GetPixels());
+			width		= pFonts->TexRef._TexData->Width;
+			height		= pFonts->TexRef._TexData->Height;
+			SendDataTexture(pFonts->TexRef.GetTexID(), pPixelData, static_cast<uint16_t>(width), static_cast<uint16_t>(height), pFontTexData->BytesPerPixel == 4 ? eTexFormat::kTexFmtRGBA8 : eTexFormat::kTexFmtA8 );
+		}
+	#endif
+
 		// Prepare the Dear Imgui DrawData for later tranmission to Server
 		client.ProcessDrawData(ImGui::GetDrawData(), Cursor);
 		
@@ -349,12 +374,22 @@ void SendDataTexture(ImTextureID textureId, void* pData, uint16_t width, uint16_
 
 		// Detects when user is sending the font texture
 		ScopedImguiContext scopedCtx(client.mpContext ? client.mpContext : ImGui::GetCurrentContext());
+	#if NETIMGUI_FONTUPDATE_TEMP_WORKAROUND
+		const ImFontAtlas* pFonts = ImGui::GetIO().Fonts;
+		if( pFonts && pFonts->TexRef.GetTexID() == textureId )
+		{
+			client.mbFontUploaded		|= true;
+			client.mpFontTextureData	= pFonts->TexRef._TexData->GetPixels();
+			client.mFontTextureID		= textureId;
+		}
+	#else
 		if( ImGui::GetIO().Fonts && ImGui::GetIO().Fonts->TexID == textureId )
 		{
 			client.mbFontUploaded		|= true;
 			client.mpFontTextureData	= ImGui::GetIO().Fonts->TexPixelsAlpha8;
 			client.mFontTextureID		= textureId;
-		}		
+		}
+	#endif
 	}
 	// Texture to remove
 	else
@@ -608,11 +643,12 @@ bool ProcessInputData(Client::ClientInfo& client)
 		}
 		// Client doesn't support regenerating the font at new DPI
 		// Use FontGlobalScale to affect rendering size, resulting in blurrier result
+	#if !NETIMGUI_FONTUPDATE_TEMP_WORKAROUND
 		else
 		{
 			io.FontGlobalScale = pCmdInput->mFontDPIScaling;
 		}
-		
+	#endif	
 #if IMGUI_VERSION_NUM < 18700
 		io.MousePos			= ImVec2(pCmdInput->mMousePos[0], pCmdInput->mMousePos[1]);
 		io.MouseWheel		= wheelY;
