@@ -1,19 +1,8 @@
 
 #include "NetImgui_Network.h"
+#include <algorithm>    // std::find
 
 namespace NetImgui { namespace Internal { namespace Client {
-
-void ClientTexture::Set( CmdTexture* pCmdTexture )
-{
-	netImguiDeleteSafe(mpCmdTexture);
-	mpCmdTexture	= pCmdTexture;
-	mbSent			= pCmdTexture == nullptr;
-}
-
-bool ClientTexture::IsValid()const
-{
-	return mpCmdTexture != nullptr;
-}
 
 bool ClientInfo::IsConnected()const
 {

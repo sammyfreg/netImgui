@@ -145,13 +145,13 @@ void DrawClientBackground(RemoteClient::Client& client)
 void UpdateServerTextures()
 //=================================================================================================
 {
-	for(int i(0); i<gServerTextures.size();)
+	for(int i(gServerTextures.size()-1); i>=0; --i)
 	{
 		// Delete Texture Resource
 		if( gServerTextures[i] )
 		{
 			ServerTexture& ServerTex 		= *gServerTextures[i];
-			ServerTex.mTexData.UnusedFrames	+= ServerTex.mTexData.RefCount > 0 ? 1 : 0;
+			ServerTex.mTexData.UnusedFrames	= ServerTex.mTexData.RefCount > 0 ? 0 : ServerTex.mTexData.UnusedFrames+1;
 
 			// Release un-needed pixel data once it has been processed by backend
 			if( ServerTex.mIsUpdatable == false && 
@@ -162,7 +162,7 @@ void UpdateServerTextures()
 			}
 
 			// Send deletion request to backend
-			if( ServerTex.mTexData.WantDestroyNextFrame )
+			if( ServerTex.mTexData.WantDestroyNextFrame && ServerTex.mTexData.UnusedFrames >= 3)
 			{
 				ServerTex.mTexData.Status 				= ImTextureStatus_WantDestroy;
 				ServerTex.mTexData.WantDestroyNextFrame	= false;
@@ -177,13 +177,8 @@ void UpdateServerTextures()
 			}
 		}
 
-		// Advance to next texture
-		if (gServerTextures[i])
-		{
-			++i;
-		}
 		// Remove released texture
-		else
+		if (gServerTextures[i] == nullptr)
 		{
 			ImSwap(gServerTextures[i], gServerTextures[gServerTextures.Size-1]);
 			gServerTextures.pop_back();
@@ -217,8 +212,9 @@ bool CreateTexture_Default(ServerTexture& serverTexture, const NetImgui::Interna
 			IM_ASSERT_USER_ERROR(0, "Unsupported format");
 		}
 
-		serverTexture.mTexData.Status 	= ImTextureStatus_WantCreate;
-		serverTexture.mTexData.RefCount	= 1;
+		serverTexture.mTexData.Status 		= ImTextureStatus_WantCreate;
+		serverTexture.mTexData.RefCount		= 1;
+		serverTexture.mTexData.UseColors	= cmdTexture.mFormat == ImTextureFormat::ImTextureFormat_RGBA32;
 		ImGui::RegisterUserTexture(&serverTexture.mTexData);
 		return true;
 	}

@@ -286,25 +286,42 @@ IntType RoundUp(IntType Value, IntType Round)
 
 union TextureCastHelperUnion
 {
-	ImTextureID 	TextureID;
-	ClientTextureID	TextureUint;
-	//const void*		TexturePtr;
+	const void*		TexData;
+	ImTextureID 	TexID;
+	ClientTextureID	TexUint;
 };
 
-ImTextureID ConvertToClientTexID(ImTextureID textureID)
+#if NETIMGUI_IMGUI_TEXTURES_ENABLED
+ClientTextureID ConvertToClientTexID(const ImTextureRef& textureRef)
 {
+	static_assert(sizeof(uint64_t) >= sizeof(ImTextureID), "ImTextureID is bigger than 64bits, CmdTexture::mTextureId needs to be updated to support it");
 	TextureCastHelperUnion textureUnion;
-	textureUnion.TextureUint	= 0;
-	textureUnion.TextureID		= textureID;
-	return textureUnion.TextureUint;
+	textureUnion.TexUint	= 0;
+	if( textureRef._TexData ){
+		textureUnion.TexData= reinterpret_cast<const void*>(textureRef._TexData);
+	}
+	else{
+		textureUnion.TexID 	= textureRef._TexID;
+	}
+	return textureUnion.TexUint;
+}
+#endif
+
+ClientTextureID ConvertToClientTexID(ImTextureID textureID)
+{
+	static_assert(sizeof(uint64_t) >= sizeof(ImTextureID), "ImTextureID is bigger than 64bits, CmdTexture::mTextureId needs to be updated to support it");
+	TextureCastHelperUnion textureUnion;
+	textureUnion.TexUint	= 0;
+	textureUnion.TexID		= textureID;
+	return textureUnion.TexUint;
 	
 }
 
-uint64_t ConvertFromClientTexID(uint64_t clientTexID)
+ImTextureID ConvertFromClientTexID(ClientTextureID clientTexID)
 {
 	TextureCastHelperUnion textureUnion;
-	textureUnion.TextureUint = clientTexID;
-	return textureUnion.TextureID;
+	textureUnion.TexUint = clientTexID;
+	return textureUnion.TexID;
 }
 
 }} //namespace NetImgui::Internal

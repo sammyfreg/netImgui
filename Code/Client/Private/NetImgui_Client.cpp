@@ -24,10 +24,7 @@ void SavedImguiContext::Save(ImGuiContext* copyFrom)
 	mBackendPlatformName	= sourceIO.BackendPlatformName;
 	mBackendRendererName	= sourceIO.BackendRendererName;
 	mDrawMouse				= sourceIO.MouseDrawCursor;
-#ifdef IMGUI_HAS_TEXTURES
-	mFontGeneratedSize		= 0.f;	// Unnecessary with Dear ImGui 1.92+ dynamic font ...
-	mFontGlobalScale		= 0.0f;	// override and restore every frame the font DPI 
-#else
+#if !NETIMGUI_IMGUI_TEXTURES_ENABLED
 	mFontGeneratedSize		= sourceIO.Fonts->Fonts.Size > 0 ? sourceIO.Fonts->Fonts[0]->FontSize : 13.f; // Save size to restore the font to original size
 	mFontGlobalScale		= sourceIO.FontGlobalScale;
 #endif
@@ -57,7 +54,7 @@ void SavedImguiContext::Restore(ImGuiContext* copyTo)
 	destIO.BackendPlatformName	= mBackendPlatformName;
 	destIO.BackendRendererName	= mBackendRendererName;
 	destIO.MouseDrawCursor		= mDrawMouse;
-#ifndef IMGUI_HAS_TEXTURES
+#if !NETIMGUI_IMGUI_TEXTURES_ENABLED
 	destIO.FontGlobalScale		= mFontGlobalScale;
 #endif
 #if IMGUI_VERSION_NUM < 18700
@@ -145,25 +142,22 @@ void Communications_Incoming_Clipboard(ClientInfo& client)
 
 //=================================================================================================
 // OUTCOM: TEXTURE
-// Transmit all pending new/updated texture
+// Transmit the next pending texture command
 //=================================================================================================
 void Communications_Outgoing_Textures(ClientInfo& client)
 {
-	client.ProcessTexturePendingCmds();
-	if( client.mbHasTextureUpdate )
+	if( client.mPendingTextures )
 	{
-		for(auto& cmdTexture : client.mTextures)
+		std::lock_guard<std::mutex> guard(client.mPendingTexturesLock);
+		if( client.mPendingTextures )
 		{
-			if( !cmdTexture.mbSent && cmdTexture.mpCmdTexture )
-			{
-				client.mPendingSend.pCommand	= cmdTexture.mpCmdTexture;
-				//SF TODO fix this? 
-				client.mPendingSend.bAutoFree	= cmdTexture.mpCmdTexture->mFormat == eTexFormat::kTexFmt_Invalid; // Texture has been marked for deletion, can now free memory allocated for this
-				cmdTexture.mbSent				= true;
-				return; // Exit as soon as we find a texture to send, so thread can proceed with transmitting it
-			}
+			// Get oldest texture command to sent to server
+			CmdTexture* pPendingTexture 	= client.mPendingTextures;
+			client.mPendingTextures			= client.mPendingTextures->mpNext;
+			pPendingTexture->mpNext			= nullptr;
+			client.mPendingSend.pCommand	= pPendingTexture;
+			client.mPendingSend.bAutoFree	= false; // free handled by main update thread
 		}
-		client.mbHasTextureUpdate = false;	// No pending texture detected, mark as 'all sent'
 	}
 }
 
@@ -321,6 +315,7 @@ void Communications_Outgoing(ClientInfo& client)
 		// Free allocated memory for command
 		if( client.mPendingSend.IsDone() )
 		{
+			client.mPendingSend.pCommand->mSent = true;
 			if( client.mPendingSend.IsError() ){
 				client.mbDisconnectPending = true;
 			}
@@ -368,7 +363,7 @@ bool Communications_Initialize(ClientInfo& client)
 {
 	CmdVersion cmdVersionSend, cmdVersionRcv;
 	PendingCom PendingRcv, PendingSend;
-	
+
 	client.mbComInitActive = true;
 
 	//---------------------------------------------------------------------
@@ -413,13 +408,7 @@ bool Communications_Initialize(ClientInfo& client)
 			while( client.IsConnected() );
 		}
 
-		for(auto& texture : client.mTextures)
-		{
-			texture.mbSent = false;
-		}
-
 		client.mpSocketComs					= pNewComSocket;					// Take ownerhip of socket
-		client.mbHasTextureUpdate			= true;								// Force sending the client textures
 		client.mBGSettingSent.mTextureId	= client.mBGSetting.mTextureId-1u;	// Force sending the Background settings (by making different than current settings)
 		client.mFrameIndex					= 0;
 		client.mPendingSendNext				= 0;
@@ -459,6 +448,7 @@ void Communications_Loop(void* pClientVoid)
 	if (pSocket){
 		NetImgui::Internal::Network::Disconnect(pSocket);
 	}
+
 	pClient->mbClientThreadActive 	= false;
 }
 
@@ -536,13 +526,10 @@ ClientInfo::ClientInfo()
 , mpSocketComs(nullptr)
 , mpSocketListen(nullptr)
 , mFontTextureID(0u)
-, mTexturesPendingSent(0)
-, mTexturesPendingCreated(0)
 , mbClientThreadActive(false)
 , mbListenThreadActive(false)
 , mbComInitActive(false)
 {
-	memset(mTexturesPending, 0, sizeof(mTexturesPending));
 }
 
 //=================================================================================================
@@ -552,13 +539,11 @@ ClientInfo::~ClientInfo()
 {
 	ContextRemoveHooks();
 
-	for( auto& texture : mTextures ){
-		texture.Set(nullptr);
+	// Free all tracked textures
+	for(auto cmdTexture : mTrackedTextures){
+		netImguiDelete(cmdTexture);
 	}
-
-	for(size_t i(0); i<ArrayCount(mTexturesPending); ++i){
-		netImguiDeleteSafe(mTexturesPending[i]);
-	}
+	mTrackedTextures.clear();
 
 	netImguiDeleteSafe(mpCmdInputPending);
 	netImguiDeleteSafe(mpCmdDrawLast);
@@ -571,7 +556,6 @@ ClientInfo::~ClientInfo()
 void ClientInfo::ContextInitialize()
 {
 	mpContext				= ImGui::GetCurrentContext();
-	mbFontUploaded			= false;
 #if NETIMGUI_IMGUI_CALLBACK_ENABLED
 	ImGuiContextHook hookNewframe, hookEndframe;
 	ContextRemoveHooks();
@@ -585,6 +569,9 @@ void ClientInfo::ContextInitialize()
 	hookEndframe.Callback	= HookEndFrame;
 	hookEndframe.UserData	= this;
 	mhImguiHookEndframe		= ImGui::AddContextHook(mpContext, &hookEndframe);
+#endif
+#if !NETIMGUI_IMGUI_TEXTURES_ENABLED
+	mbFontUploaded			= false;
 #endif
 }
 
@@ -606,13 +593,6 @@ void ClientInfo::ContextOverride()
 		newIO.MouseDrawCursor				= false;
 		newIO.BackendPlatformName			= "NetImgui";
 		newIO.BackendRendererName			= "DirectX11";
-#ifndef IMGUI_HAS_TEXTURES
-		if( mFontCreationFunction != nullptr )
-		{
-			newIO.FontGlobalScale = 1;
-			mFontCreationScaling = -1;
-		}
-#endif
 #if IMGUI_VERSION_NUM < 18700
 		for (uint32_t i(0); i < ImGuiKey_COUNT; ++i) {
 			newIO.KeyMap[i] = i;
@@ -631,6 +611,26 @@ void ClientInfo::ContextOverride()
 #if defined(IMGUI_HAS_VIEWPORT)
 		newIO.ConfigFlags &= ~(ImGuiConfigFlags_ViewportsEnable); // Viewport unsupported at the moment
 #endif
+
+		// Resend every tracked textures
+		for(auto textureCmd : mTrackedTextures ){
+			if( textureCmd->mStatus == CmdTexture::eType::Create ){
+				TexturePendingServerAdd(*textureCmd);
+			}
+		}
+
+#if NETIMGUI_IMGUI_TEXTURES_ENABLED
+		mFontSavedScaling 				= ImGui::GetStyle().FontScaleDpi;
+		ImGui::GetStyle().FontScaleDpi 	= mFontServerScale;
+		newIO.BackendFlags				|= ImGuiBackendFlags_RendererHasTextures;
+		TextureTrackingUpdate(true);
+#else
+		if( mFontCreationFunction != nullptr )
+		{
+			newIO.FontGlobalScale = 1;
+			mFontServerScale = -1;
+		}
+#endif
 	}
 }
 
@@ -645,12 +645,30 @@ void ClientInfo::ContextRestore()
 #ifdef IMGUI_HAS_VIEWPORT
 		ImGui::UpdatePlatformWindows(); // Prevents issue with mismatched frame tracking, when restoring enabled viewport feature
 #endif
-#ifndef IMGUI_HAS_TEXTURES
+#if NETIMGUI_IMGUI_TEXTURES_ENABLED
+		// Remove all auto managed texture from our tracking, 
+		// leaving only the manually managed textures. 
+		// Auto-Managed will automatically get re-added on reconnect.
+		ImVector<ImTextureData*>& Textures = ImGui::GetPlatformIO().Textures;
+		ImTextureRef ClientTextureRef;
+		for(auto TexData : Textures)
+		{
+			ClientTextureRef._TexData	= TexData;
+			ImTextureStatus TexStatus 	= TexData != nullptr ? TexData->Status : ImTextureStatus_Destroyed;
+			if( TexStatus != ImTextureStatus_Destroyed && 
+				TexStatus != ImTextureStatus_WantDestroy )
+			{
+				TextureTrackingRem(ClientTextureRef.GetTexID());
+			}
+		}
+
+		ImGui::GetStyle().FontScaleDpi = mFontSavedScaling;
+#else
 		if( mFontCreationFunction && ImGui::GetIO().Fonts && ImGui::GetIO().Fonts->Fonts.size() > 0)
 		{
-			float noScaleSize	= ImGui::GetIO().Fonts->Fonts[0]->FontSize / mFontCreationScaling;
+			float noScaleSize	= ImGui::GetIO().Fonts->Fonts[0]->FontSize / mFontServerScale;
 			float originalScale = mSavedContextValues.mFontGeneratedSize / noScaleSize;
-			mFontCreationFunction(mFontCreationScaling, originalScale);
+			mFontCreationFunction(mFontSavedScaling, originalScale);
 		}
 #endif
 		mSavedContextValues.Restore(mpContext);
@@ -673,82 +691,216 @@ void ClientInfo::ContextRemoveHooks()
 }
 
 //=================================================================================================
-// Process textures waiting to be sent to server
-// 1. New textures are added tp pending queue (Main Thread)
-// 2. Pending textures are sent to Server and added to our active texture list (Com Thread)
+// If backend doesn't support Dear ImGui texture managed (used by font) as indicated with
+// 'ImGuiBackendFlags_RendererHasTextures', we still want to handle it with our RemoteServer
+// so we take it upon ourselves to clear the list of texture updates
 //=================================================================================================
-void ClientInfo::ProcessTexturePendingCmds()
+void ClientInfo::TextureTrackingClear()
 {
-	while( mTexturesPendingCreated != mTexturesPendingSent )
-	{
-		mbHasTextureUpdate			|= true;
-		uint32_t idx				= mTexturesPendingSent.fetch_add(1) % static_cast<uint32_t>(ArrayCount(mTexturesPending));
-		CmdTexture* pCmdTexture		= mTexturesPending[idx];
-		mTexturesPending[idx]		= nullptr;
-		if( pCmdTexture )
-		{
-			// Find the TextureId from our list (or free slot)
-			int texIdx		= 0;
-			int texFreeSlot	= static_cast<int>(mTextures.size());
-			while(	(texIdx < mTextures.size()) && 
-					(!mTextures[texIdx].IsValid() || mTextures[texIdx].mpCmdTexture->mTextureClientID != pCmdTexture->mTextureClientID) )
-			{
-				texFreeSlot = !mTextures[texIdx].IsValid() ? texIdx : texFreeSlot;
-				++texIdx;
-			}
-
-			if( texIdx == mTextures.size() )
-				texIdx = texFreeSlot;
-			if( texIdx == mTextures.size() )
-				mTextures.push_back(ClientTexture());
-
-			mTextures[texIdx].Set( pCmdTexture );
-			mTextures[texIdx].mbSent = false;
-		}
-	}
-}
-
-//=================================================================================================
-// Process font texture atlas updates and forward it to NetImguiServer
-// For Dear ImGui 1.92+
-//=================================================================================================
-void ClientInfo::ProcessTextureImGui()
-{
-#ifdef IMGUI_HAS_TEXTURES //SF TODO Confirm client texture handling
-	ImTextureData* pFontTexData			= ImGui::GetIO().Fonts ? ImGui::GetIO().Fonts->TexData : nullptr;
-	ImVector<ImTextureData*>& Textures	= ImGui::GetPlatformIO().Textures;
+#if NETIMGUI_IMGUI_TEXTURES_ENABLED
+	// This is basically a stripped our version of 'ImGui_ImplDX11_UpdateTexture' 
+	// where we only care about the TexID and status values
+	ImVector<ImTextureData*>& Textures = ImGui::GetPlatformIO().Textures;
 	ImTextureRef ClientTextureRef;
 	for(auto TexData : Textures)
 	{
-		ClientTextureRef._TexData	= TexData;
-		ImTextureStatus TexStatus 	= TexData != nullptr ? TexData->Status : ImTextureStatus_OK;
-		
-		// Detect FontAtlas texture has never been uploaded, override texture status to sent it
-		if(!mbFontUploaded && TexData && TexData == pFontTexData){
-			TexStatus 		= ImTextureStatus_WantCreate;
-			mbFontUploaded 	= true;
+		if (TexData->Status == ImTextureStatus_WantCreate )
+    	{
+			IM_ASSERT(TexData->TexID == ImTextureID_Invalid && TexData->BackendUserData == nullptr);
+			static ImTextureID sUniqueID(1);
+			TexData->SetTexID(static_cast<ImTextureID>(sUniqueID++));
+        	TexData->SetStatus(ImTextureStatus_OK);
+    	}
+		else if (TexData->Status == ImTextureStatus_WantUpdates)
+		{
+			TexData->SetStatus(ImTextureStatus_OK);
+		}
+    	else if (TexData->Status == ImTextureStatus_WantDestroy && TexData->UnusedFrames > 0)
+    	{
+        	TexData->SetTexID(ImTextureID_Invalid);
+    		TexData->SetStatus(ImTextureStatus_Destroyed);
+    	}
+	}
+#endif
+}
+
+//=================================================================================================
+// Process backend texture updates and forward it to NetImguiServer
+// Note: This is mostly used by the Font Atlas Texture added in Dear ImGui 1.92+
+//=================================================================================================
+void ClientInfo::TextureTrackingUpdate(bool bResendAll)
+{
+#if NETIMGUI_IMGUI_TEXTURES_ENABLED
+	if( IsConnected() )
+	{
+		ImVector<ImTextureData*>& Textures	= ImGui::GetPlatformIO().Textures;
+		ImTextureRef ClientTextureRef;
+		for(auto TexData : Textures)
+		{
+			ClientTextureRef._TexData	= TexData;
+			ImTextureStatus TexStatus 	= TexData != nullptr ? TexData->Status : ImTextureStatus_OK;
+			eTexFormat TexFormat		= eTexFormat::kTexFmtRGBA8; //SF TODO pick format
+			uint32_t dataSize			= 0;
+			uint16_t w					= static_cast<uint16_t>(TexData->Width); //SF TODO data rounding on u8?
+			uint16_t h					= static_cast<uint16_t>(TexData->Height);
+			//SF TODO detect if backend not handling texture update?
+			if( (TexStatus == ImTextureStatus_WantCreate) ||
+				(bResendAll && TexStatus != ImTextureStatus_Destroyed && TexStatus != ImTextureStatus_WantDestroy)){
+
+				CmdTexture* pCmdTexture	= TextureCmdAllocate(ConvertToClientTexID(ClientTextureRef), w, h, TexFormat, dataSize);
+				if( pCmdTexture )
+				{
+					memcpy(pCmdTexture->mpTextureData.Get(), TexData->GetPixels(), dataSize);
+					pCmdTexture->mUpdatable = true;
+					pCmdTexture->mpTextureData.ToOffset();
+					TextureTrackingAdd(*pCmdTexture);
+					mbTrackedTexturesPending = true;
+				}
+			}
+			else if( TexStatus == ImTextureStatus_WantUpdates )
+			{
+				uint16_t dstW			= static_cast<uint16_t>(TexData->UpdateRect.w); //SF TODO data rounding on u8?
+				uint16_t dstH			= static_cast<uint16_t>(TexData->UpdateRect.h);
+				CmdTexture* pCmdTexture	= TextureCmdAllocate(ConvertToClientTexID(ClientTextureRef), dstW, dstH, TexFormat, dataSize);
+				if( pCmdTexture )
+				{
+					size_t SrcLineBytes 	= static_cast<size_t>(TexData->GetPitch());
+					size_t DstLineBytes 	= static_cast<size_t>(TexData->BytesPerPixel*TexData->UpdateRect.w);
+					size_t OffsetBytes		= static_cast<size_t>(TexData->GetPitch()*TexData->UpdateRect.y + TexData->BytesPerPixel*TexData->UpdateRect.x);
+					const uint8_t* pDataSrc = reinterpret_cast<uint8_t*>(TexData->GetPixels());
+					uint8_t* pDataDst 		= pCmdTexture->mpTextureData.Get();
+					for(uint64_t y(0); y < TexData->UpdateRect.h; ++y)
+					{
+						memcpy(	&pDataDst[y*DstLineBytes], 
+							   &pDataSrc[OffsetBytes+(y*SrcLineBytes)],
+							   DstLineBytes);
+					}
+					pCmdTexture->mStatus 	= CmdTexture::eType::Update;
+					pCmdTexture->mOffsetX	= TexData->UpdateRect.x;
+					pCmdTexture->mOffsetY	= TexData->UpdateRect.y;
+					pCmdTexture->mUpdatable	= true;
+					pCmdTexture->mpTextureData.ToOffset();
+					TexturePendingServerAdd(*pCmdTexture);		// Request texture to be sent over to Server
+					mbTrackedTexturesPending = true;
+				}
+			}
+			else if( TexStatus == ImTextureStatus_WantDestroy ){
+				mbTrackedTexturesPending |= TextureTrackingRem(ClientTextureRef.GetTexID());
+			}
+		}
+	}
+#endif
+
+	//----------------------------------------
+	if( mbTrackedTexturesPending )
+	{
+		int TrackedCount(mTrackedTextures.Size);
+		mbTrackedTexturesPending = false;
+		for(int i(0); i<TrackedCount; ++i)
+		{
+			mbTrackedTexturesPending |= !mTrackedTextures[i]->mSent && mTrackedTextures[i]->mStatus != CmdTexture::eType::Create;
+			// As soon as we detect a command to be un-needed, release it
+			if( mTrackedTextures[i]->mSent && 
+				mTrackedTextures[i]->mStatus != CmdTexture::eType::Create )
+			{
+				netImguiDelete(mTrackedTextures[i]);
+				mTrackedTextures[i] = mTrackedTextures[--TrackedCount]; // Erase swap with last element
+				--i; // re-process same index after its entry was swapped with last valid element
+			}
+		}
+		mTrackedTextures.resize(TrackedCount);
+	}
+}
+
+CmdTexture* ClientInfo::TextureCmdAllocate(ClientTextureID clientTexID, uint16_t width, uint16_t height, eTexFormat format, uint32_t& dataSizeInOut)
+{
+	if( format != eTexFormat::kTexFmtCustom ){
+		dataSizeInOut = GetTexture_BytePerImage(format, width, height);
+	}
+
+	uint32_t SizeNeeded			= dataSizeInOut + sizeof(CmdTexture);
+	CmdTexture* pCmdTexture		= netImguiSizedNew<CmdTexture>(SizeNeeded);
+	if( pCmdTexture )
+	{
+		pCmdTexture->mpTextureData.SetPtr(reinterpret_cast<uint8_t*>(&pCmdTexture[1]));
+		pCmdTexture->mStatus			= CmdTexture::eType::Create;
+		pCmdTexture->mSize				= SizeNeeded;
+		pCmdTexture->mWidth				= width;
+		pCmdTexture->mHeight			= height;
+		pCmdTexture->mTextureClientID	= clientTexID;
+		pCmdTexture->mFormat			= static_cast<uint8_t>(format);
+		pCmdTexture->mUpdatable			= false;
+	}
+	return pCmdTexture;
+}
+
+// Start tracking this client texture
+bool ClientInfo::TextureTrackingAdd(CmdTexture& cmdTexture)
+{
+	if(cmdTexture.mStatus != CmdTexture::eType::Create){
+		return false;
+	}
+
+	TextureTrackingRem(cmdTexture.mTextureClientID);
+	mTrackedTextures.push_back(&cmdTexture);	// Add the new entry needing to be tracked
+	TexturePendingServerAdd(cmdTexture);		// Request texture to be sent over to Server
+	return true;
+}
+
+bool ClientInfo::TextureTrackingRem(ClientTextureID clientTextureID)
+{
+	// If texture has been sent to server, re-purpose existing command 
+	// as a 'destroy' and re-send it to server
+	for(int i(0); i<mTrackedTextures.Size; ++i)
+	{
+		CmdTexture* pCmdTexture = mTrackedTextures[i];
+		if( pCmdTexture && 
+			pCmdTexture->mSent &&
+			pCmdTexture->mTextureClientID == clientTextureID && 
+			pCmdTexture->mStatus == CmdTexture::eType::Create)
+		{
+			pCmdTexture->mSent		= false;
+			pCmdTexture->mStatus 	= CmdTexture::eType::Destroy;	// Re-purpose create cmd to destroy the texture
+			TexturePendingServerAdd(*pCmdTexture);
+
+			// Remove item from our list
+			mTrackedTextures[i] = mTrackedTextures.back();
+			mTrackedTextures.pop_back();
+			return true;
+		}
+	}
+	return false;
+}
+
+void ClientInfo::TexturePendingServerAdd(CmdTexture& cmdTexture)
+{
+	std::lock_guard<std::mutex> guard(mPendingTexturesLock);
+	if( IsConnected() )
+	{
+		// Find last added entry
+		CmdTexture** ppNextTexture 	= &mPendingTextures;
+		CmdTexture* pendingTexture 	= mPendingTextures;
+		while( pendingTexture != nullptr )
+		{
+			// Remove all unprocessed texture commands with same id
+			// (only need the latest action for create/destroy, but can have multiple update queued)
+			if(	cmdTexture.mStatus != CmdTexture::eType::Update &&
+				cmdTexture.mSent == false &&
+				cmdTexture.mTextureClientID == pendingTexture->mTextureClientID )
+			{
+				// Mark as sent and un-needed (which gets it removed from tracking array and deleted later)
+				pendingTexture->mSent	= true;
+				pendingTexture->mStatus	= CmdTexture::eType::Destroy;
+				*ppNextTexture			= pendingTexture->mpNext;
+			}
+			ppNextTexture	= &pendingTexture->mpNext;
+			pendingTexture 	= pendingTexture->mpNext;
 		}
 
-		//SF TODO detect if backend not handling texture update?
-		if( TexStatus == ImTextureStatus_WantCreate ){
-			SendDataTexture(ClientTextureRef.GetTexID(),
-							TexData->GetPixels(),
-							static_cast<uint16_t>(TexData->Width),
-							static_cast<uint16_t>(TexData->Height),
-							eTexFormat::kTexFmtRGBA8); //SF TODO pick format
-		}
-		else if( TexStatus == ImTextureStatus_WantUpdates ){
-			SendDataTexture(ClientTextureRef.GetTexID(),
-							TexData->GetPixels(),
-							static_cast<uint16_t>(TexData->Width),
-							static_cast<uint16_t>(TexData->Height),
-							eTexFormat::kTexFmtRGBA8); //SF TODO pick format, support updates
-		}
-		else if( TexStatus == ImTextureStatus_WantDestroy ){
-			SendDataTexture(ClientTextureRef.GetTexID(), nullptr, 0,0, eTexFormat::kTexFmtRGBA8);
-		}
-	}	
-#endif
+		// Add as last element and ready to be sent
+		cmdTexture.mSent	= false;
+		*ppNextTexture		= &cmdTexture;
+	}
 }
 
 //=================================================================================================

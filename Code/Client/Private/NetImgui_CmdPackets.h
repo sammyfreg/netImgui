@@ -13,7 +13,8 @@ struct alignas(8) CmdHeader
 				CmdHeader(eCommands CmdType, uint16_t Size) : mSize(Size), mType(CmdType){}
 	uint32_t	mSize		= 0;
 	eCommands	mType		= eCommands::Count;
-	uint8_t		mPadding[3]	= {};
+	uint8_t		mSent		= false;	// True when command finished being sent to client or server
+	uint8_t		mPadding[2]	= {};
 };
 
 // Used as step 1 of 2 of reading incoming transmission between Client/Server, to get header whose size we know
@@ -207,36 +208,18 @@ struct alignas(8) CmdInput : public CmdHeader
 
 struct alignas(8) CmdTexture : public CmdHeader
 {
+	enum class eType : uint8_t { Create, Update, Destroy };
 	CmdTexture() : CmdHeader(CmdHeader::eCommands::Texture, sizeof(CmdTexture)){}
 	uint64_t						mTextureClientID	= 0;
+	eType							mStatus				= eType::Create;
 	uint8_t							mFormat				= eTexFormat::kTexFmt_Invalid;	// eTexFormat
 	uint8_t							mUpdatable			= false;						// Set to true on Create, for updatable textures
-	uint8_t							PADDING[1]			= {};
-	uint16_t						mWidth				= 0;
-	uint16_t						mHeight				= 0;
+	uint16_t						mWidth				= 0;							// Either the texture width on create, or the update area width
+	uint16_t						mHeight				= 0;							// Either the texture height on create, or the update area height
+	uint16_t 						mOffsetX			= 0;							// Used by partial update
+	uint16_t 						mOffsetY			= 0;							// Used by partial update
+	CmdTexture*						mpNext				= nullptr;						// Used for single linked list of pending textures
 	OffsetPointer<uint8_t>			mpTextureData;
-
-#if 0
-	OffsetPointer<uint8_t>			mpTextureData;
-	uint64_t						mTextureId		= 0;
-	uint16_t						mWidth			= 0;
-	uint16_t						mHeight			= 0;
-	uint8_t							mFormat			= eTexFormat::kTexFmt_Invalid;	// eTexFormat
-	uint8_t							PADDING[3]		= {};
-
-
-	ImTextureStatus     Status;                 // ImTextureStatus_OK/_WantCreate/_WantUpdates/_WantDestroy
-    ImTextureFormat     Format;                 // ImTextureFormat_RGBA32 (default) or ImTextureFormat_Alpha8
-    int                 Width;
-    int                 Height;
-    int                 BytesPerPixel;          // 4 or 1
-    unsigned char*      Pixels;                 // Pointer to buffer holding Width*Height pixels
-    ImTextureUserID     BackendTexID;           // Identifier stored in ImDrawCmd and passed to backend RenderDrawData loop. // FIXME-NEWATLAS: Confirm naming?
-    void*               BackendUserData;        // Convenience storage for backend. Some backends may have enough with BackendTexID.
-    int                 UnusedFrames;           // In order to facilitate handling Status==WantDestroy in some backend: this is a count successive frames where the texture was not used.
-    ImVector<ImTextureDataUpdate> Updates;      // List of individual updates
-    ImTextureDataUpdate UpdatesMerged;          // Bounding box encompassing all individual updates
-#endif
 };
 
 struct alignas(8) CmdDrawFrame : public CmdHeader

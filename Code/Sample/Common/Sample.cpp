@@ -22,9 +22,8 @@ void FontCreationCallback_Default(float PreviousDPIScale, float NewDPIScale)
 #if NETIMGUI_ENABLED
 	if (GetSample().UpdateFont(NewDPIScale, false))
 	{
-	#ifdef IMGUI_HAS_TEXTURES
-		// Since Dear ImGui 1.92+, we do not need to managed font scaling/dpi anymore
-	#else
+	#if !NETIMGUI_IMGUI_TEXTURES_ENABLED
+		// Since Dear ImGui 1.92+, we do not need to manage font scaling/dpi anymore
 		uint8_t* pPixelData(nullptr); int width(0), height(0);
 		ImGui::GetIO().Fonts->GetTexDataAsAlpha8(&pPixelData, &width, &height);
 		NetImgui::SendDataTexture(ImGui::GetIO().Fonts->TexID, pPixelData, static_cast<uint16_t>(width), static_cast<uint16_t>(height), NetImgui::eTexFormat::kTexFmtA8);

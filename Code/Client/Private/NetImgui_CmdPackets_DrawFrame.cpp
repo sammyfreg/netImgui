@@ -91,10 +91,6 @@ inline void ImGui_ExtractDraws(const ImDrawList& cmdList, ImguiDrawGroup& drawGr
 	int maxDrawCount			= static_cast<int>(cmdList.CmdBuffer.size());
 	uint32_t drawCount			= 0;
 	ImguiDraw* pOutDraws		= reinterpret_cast<ImguiDraw*>(pDataOutput);
-#ifdef IMGUI_HAS_TEXTURES
-	//SF ImTextureData* pFontTexData	= ImGui::GetIO().Fonts ? ImGui::GetIO().Fonts->TexData : nullptr;
-#endif
-
 	for(int cmd_i = 0; cmd_i < maxDrawCount; ++cmd_i)
 	{
 		const ImDrawCmd* pCmd = &cmdList.CmdBuffer[cmd_i];
@@ -108,12 +104,12 @@ inline void ImGui_ExtractDraws(const ImDrawList& cmdList, ImguiDrawGroup& drawGr
 			pOutDraws[drawCount].mIdxOffset		= 0;
 		#endif
 			
-		#ifdef IMGUI_HAS_TEXTURES
-			ImTextureID texClientID				= pCmd->TexRef.GetTexID();
+		#if NETIMGUI_IMGUI_TEXTURES_ENABLED
+			ClientTextureID texClientID			= ConvertToClientTexID(pCmd->TexRef);
 		#else
-			ImTextureID texClientID				= pCmd->TextureId;
+			ClientTextureID texClientID			= ConvertToClientTexID(pCmd->TextureId);
 		#endif
-			pOutDraws[drawCount].mClientTexId	= ConvertToClientTexID(texClientID);
+			pOutDraws[drawCount].mClientTexId	= texClientID;
 			pOutDraws[drawCount].mIdxCount		= pCmd->ElemCount;
 			pOutDraws[drawCount].mClipRect[0]	= pCmd->ClipRect.x;
 			pOutDraws[drawCount].mClipRect[1]	= pCmd->ClipRect.y;
@@ -306,7 +302,7 @@ CmdDrawFrame* DecompressCmdDrawFrame(const CmdDrawFrame* pDrawFramePrev, const C
 			indiceSizePrev					= drawGroupPrev.mIndiceCount*static_cast<size_t>(drawGroupPrev.mBytePerIndex);
 			drawSizePrev					= drawGroupPrev.mDrawCount*sizeof(ImguiDraw);
 		}
-		
+
 		drawGroup.mpIndices.SetComDataPtr(pDataOutput);
 		DecompressData( pIndicePrev,							indiceSizePrev,
 						drawGroupPack.mpIndices.GetComData(),	drawGroupPack.mIndiceCount*static_cast<size_t>(drawGroupPack.mBytePerIndex),
@@ -316,7 +312,7 @@ CmdDrawFrame* DecompressCmdDrawFrame(const CmdDrawFrame* pDrawFramePrev, const C
 		DecompressData(	pVerticePrev,							verticeSizePrev,
 						drawGroupPack.mpVertices.GetComData(),	drawGroupPack.mVerticeCount*sizeof(ImguiVert),
 						pDataOutput);
-			
+
 		drawGroup.mpDraws.SetComDataPtr(pDataOutput);
 		DecompressData( pDrawsPrev,								drawSizePrev,
 						drawGroupPack.mpDraws.GetComData(),		drawGroupPack.mDrawCount*sizeof(ImguiDraw),

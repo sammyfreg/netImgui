@@ -353,7 +353,7 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
 //=================================================================================================
 // @SAMPLE_EDIT
-//SF See if still needed? Rely on new texture update?
+//SF REMOVE THIS and use built-in texture supprort
 //=================================================================================================
 // Avoids adding DirectX11 dependencies in ClientSample, with all the disable warning required
 void TextureCreate(const uint8_t* pPixelData, uint32_t width, uint32_t height, void*& pTextureViewOut)
@@ -388,7 +388,6 @@ void TextureCreate(const uint8_t* pPixelData, uint32_t width, uint32_t height, v
         srvDesc.Texture2D.MipLevels = desc.MipLevels;
         srvDesc.Texture2D.MostDetailedMip = 0;
         g_pd3dDevice->CreateShaderResourceView(pTexture, &srvDesc, reinterpret_cast<ID3D11ShaderResourceView**>(&pTextureViewOut));
-
         pTexture->Release();
     }
 }

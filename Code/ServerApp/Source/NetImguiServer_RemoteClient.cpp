@@ -76,7 +76,10 @@ void Client::ReceiveTexture(NetImgui::Internal::CmdTexture* pTextureCmd)
 		while (mPendingTextureWriteIndex - mPendingTextureReadIndex >= IM_ARRAYSIZE(mpPendingTextures)) {
 			std::this_thread::yield();
 		}
-		mpPendingTextures[(mPendingTextureWriteIndex++) % IM_ARRAYSIZE(mpPendingTextures)] = pTextureCmd;
+
+		uint64_t writeIndex 			= mPendingTextureWriteIndex % IM_ARRAYSIZE(mpPendingTextures);
+		mpPendingTextures[writeIndex]	= pTextureCmd;
+		mPendingTextureWriteIndex		= mPendingTextureWriteIndex + 1;
 	}
 }
 
@@ -87,31 +90,69 @@ void Client::ProcessPendingTextureCmds()
 {
 	while( mPendingTextureReadIndex != mPendingTextureWriteIndex )
 	{
-		NetImgui::Internal::CmdTexture* pTextureCmd 	= mpPendingTextures[(mPendingTextureReadIndex++) % IM_ARRAYSIZE(mpPendingTextures)];
-		bool isRemoval									= pTextureCmd->mFormat == NetImgui::eTexFormat::kTexFmt_Invalid;
-		bool isUpdate									= false;
-		bool isCreate									= !isRemoval && !isUpdate;
-		uint32_t texDataSize							= pTextureCmd->mSize - sizeof(NetImgui::Internal::CmdTexture);
+		uint64_t readIndex 								= mPendingTextureReadIndex % IM_ARRAYSIZE(mpPendingTextures);
+		NetImgui::Internal::CmdTexture* pTextureCmd 	= mpPendingTextures[readIndex];
 		auto texIt										= mTextureTable.find(pTextureCmd->mTextureClientID);
 		NetImguiServer::App::ServerTexture* serverTex	= texIt != mTextureTable.end() ? texIt->second : nullptr;
+
+		bool isCreate			= pTextureCmd->mStatus == NetImgui::Internal::CmdTexture::eType::Create && pTextureCmd->mFormat != NetImgui::eTexFormat::kTexFmt_Invalid;
+		bool isUpdate			= pTextureCmd->mStatus == NetImgui::Internal::CmdTexture::eType::Update && pTextureCmd->mFormat != NetImgui::eTexFormat::kTexFmtCustom;		
+		uint32_t texDataSize	= pTextureCmd->mSize - sizeof(NetImgui::Internal::CmdTexture);
 
 		// Delete a texture on request or when creating new one with same ClientTextureID
 		if( !isUpdate && serverTex )
 		{
-			serverTex->mTexData.WantDestroyNextFrame = true;
-			mTextureTable.erase(texIt);
+			serverTex->MarkForDelete();
 		}
 
 		// Add a texture
 		if( isCreate ) 
 		{
 			serverTex = NetImguiServer::App::CreateTexture(*pTextureCmd, texDataSize);
+			//SF TEXTURE : This is an issue, replacing current entry with new one, before we're done using it... won't be flagged for delete...
 			if( serverTex ){
 				mTextureTable.insert({pTextureCmd->mTextureClientID, serverTex} );
 			}
 		}
+		// Update a Texture
+		else if(isUpdate && serverTex && serverTex->mTexData.Status != ImTextureStatus::ImTextureStatus_WantDestroy && serverTex->mTexData.Status != ImTextureStatus::ImTextureStatus_Destroyed)
+		{
+			auto TexFormat 			= static_cast<NetImgui::eTexFormat>(pTextureCmd->mFormat);
+			size_t SrcLineBytes 	= NetImgui::GetTexture_BytePerLine(TexFormat, static_cast<uint32_t>(pTextureCmd->mWidth));
+			size_t DstLineBytes 	= NetImgui::GetTexture_BytePerLine(TexFormat, static_cast<uint32_t>(serverTex->mTexData.Width));
+			size_t OffsetBytes		= (pTextureCmd->mOffsetY*DstLineBytes) + NetImgui::GetTexture_BytePerLine(TexFormat, pTextureCmd->mOffsetX);
+			const uint8_t* pDataSrc = pTextureCmd->mpTextureData.Get();
+			uint8_t* pDataDst 		= reinterpret_cast<uint8_t*>(serverTex->mTexData.GetPixels());
+			for(uint64_t y(0); y < pTextureCmd->mHeight; ++y)
+			{
+				memcpy(	&pDataDst[OffsetBytes+(y*DstLineBytes)],
+					  	&pDataSrc[y*SrcLineBytes], SrcLineBytes);
+			}
 
+			// Following code mostly copied from ImFontAtlasTextureBlockQueueUpload
+			ImTextureData* tex = &serverTex->mTexData;
+			ImTextureRect req = { 	(unsigned short)pTextureCmd->mOffsetX, (unsigned short)pTextureCmd->mOffsetY, 
+									(unsigned short)pTextureCmd->mWidth, (unsigned short)pTextureCmd->mHeight };
+			int new_x1 = ImMax(tex->UpdateRect.w == 0 ? 0 : tex->UpdateRect.x + tex->UpdateRect.w, req.x + req.w);
+			int new_y1 = ImMax(tex->UpdateRect.h == 0 ? 0 : tex->UpdateRect.y + tex->UpdateRect.h, req.y + req.h);
+			tex->UpdateRect.x = ImMin(tex->UpdateRect.x, req.x);
+			tex->UpdateRect.y = ImMin(tex->UpdateRect.y, req.y);
+			tex->UpdateRect.w = (unsigned short)(new_x1 - tex->UpdateRect.x);
+			tex->UpdateRect.h = (unsigned short)(new_y1 - tex->UpdateRect.y);
+			tex->UsedRect.x = ImMin(tex->UsedRect.x, req.x);
+			tex->UsedRect.y = ImMin(tex->UsedRect.y, req.y);
+			tex->UsedRect.w = (unsigned short)(ImMax(tex->UsedRect.x + tex->UsedRect.w, req.x + req.w) - tex->UsedRect.x);
+			tex->UsedRect.h = (unsigned short)(ImMax(tex->UsedRect.y + tex->UsedRect.h, req.y + req.h) - tex->UsedRect.y);
+
+			// No need to queue if status is _WantCreate
+			if (tex->Status != ImTextureStatus_WantCreate)
+			{
+				tex->Status = ImTextureStatus_WantUpdates;
+				tex->Updates.push_back(req);
+			}
+		}
 		NetImgui::Internal::netImguiDeleteSafe(pTextureCmd);
+		mPendingTextureReadIndex = mPendingTextureReadIndex + 1;
 	}
 }
 
@@ -231,11 +272,13 @@ NetImguiImDrawData*	Client::GetImguiDrawData(ImTextureID EmtpyTextureID)
 		mpImguiDrawData	= pPendingDrawData;
 
 		// Reset the RefCount to 0, when we detect that we want to remove the texture
+		ImVector<App::ServerTexture*> PendingDeleteTextures;
 		for(auto serverTexIt : mTextureTable)
 		{
 			ImTextureData* texData = serverTexIt.second ? &serverTexIt.second->mTexData : nullptr;
 			if( texData && texData->WantDestroyNextFrame ){
 				texData->RefCount = 0;
+				PendingDeleteTextures.push_back(serverTexIt.second);
 			}
 		}
 
@@ -248,13 +291,27 @@ NetImguiImDrawData*	Client::GetImguiDrawData(ImTextureID EmtpyTextureID)
 			ImDrawList* pCmdList = pPendingDrawData->CmdLists[i];
 			for(int drawIdx(0), drawCount(pCmdList->CmdBuffer.size()); drawIdx<drawCount; ++drawIdx)
 			{
-				uint64_t clientTexUserID			= pCmdList->CmdBuffer[drawIdx].TexRef._TexID;
-				auto texIt							= mTextureTable.find(clientTexUserID);
-				ImTextureData* texData 				= (texIt != mTextureTable.end() && texIt->second) ? &texIt->second->mTexData : nullptr;
-				ImTextureRef serverTexRef 			= texData && !texData->WantDestroyNextFrame && texData->Status == ImTextureStatus_OK ? texData->GetTexRef() : EmtpyTextureID;
+				uint64_t clientTexUserID	= pCmdList->CmdBuffer[drawIdx].TexRef._TexID;
+				auto texIt					= mTextureTable.find(clientTexUserID);
+				ImTextureData* texData 		= (texIt != mTextureTable.end() && texIt->second && texIt->second->IsValid()) ? &texIt->second->mTexData : nullptr;
+				ImTextureRef serverTexRef 	= texData ? texData->GetTexRef() : EmtpyTextureID;
+				// Postpone texture deletion until not in use
+				if( texData && texData->RefCount == 0 ){
+					texData->RefCount = 1;
+				}
 				pCmdList->CmdBuffer[drawIdx].TexRef	= serverTexRef;
 			}
 		}
+
+		// Remove pending delete textures from our local table when detecting it is
+		// not needed anymore. Resource deletion will be done at the 'gServerTextures' level
+		for(auto serverTexture : PendingDeleteTextures)
+		{
+			if( serverTexture->mTexData.RefCount == 0 ){
+				mTextureTable.erase(serverTexture->mClientTexID);
+			}
+		}
+		
 	}
 	return mpImguiDrawData;
 }

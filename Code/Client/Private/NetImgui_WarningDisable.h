@@ -11,6 +11,7 @@
 	#pragma clang diagnostic push
 	#pragma clang diagnostic ignored "-Wc++98-compat-pedantic"
 	#pragma clang diagnostic ignored "-Wmissing-prototypes"
+	#pragma clang diagnostic ignored "-Wold-style-cast"			// For ImTextureID_Invalid
 	
 //=================================================================================================
 // Visual Studio warnings

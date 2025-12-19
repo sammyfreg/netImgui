@@ -63,7 +63,19 @@
 //-------------------------------------------------------------------------------------------------
 #if !defined(IMGUI_VERSION)
 	#undef	NETIMGUI_ENABLED
-	#define NETIMGUI_ENABLED 0
+	#define NETIMGUI_ENABLED 					1 //SF2 TEMP EDIT
+#endif
+
+//-------------------------------------------------------------------------------------------------
+// Control support for native Dear ImGui texture backend support
+// At the moment, meant to always be active on recent Dear Imgui version (1.92+)
+//-------------------------------------------------------------------------------------------------
+#ifndef NETIMGUI_IMGUI_TEXTURES_ENABLED
+#ifdef IMGUI_HAS_TEXTURES
+	#define NETIMGUI_IMGUI_TEXTURES_ENABLED		1
+#else
+	#define NETIMGUI_IMGUI_TEXTURES_ENABLED		1 //SF2 TEMP EDIT
+#endif
 #endif
 
 #if NETIMGUI_ENABLED
@@ -97,7 +109,6 @@
 #ifndef NETIMGUI_IMGUI_CALLBACK_ENABLED
 	#define NETIMGUI_IMGUI_CALLBACK_ENABLED		(IMGUI_VERSION_NUM >= 18100)	// Not supported pre Dear ImGui 1.81
 #endif
-
 
 namespace NetImgui 
 { 
@@ -204,6 +215,8 @@ NETIMGUI_API	bool				IsDrawingRemote(void);
 // Note: To remove a texture, set pData to nullptr
 // Note: User needs to provide a valid 'dataSize' when using format 'kTexFmtCustom',
 //		 can be ignored otherwise
+// Note: Can now rely on native Dear ImGui texture support now, to let the system automatically
+//		 handle texture creation/update/destruction with Dear ImGui 1.92+. See 'SampleTextures'.
 //=================================================================================================
 NETIMGUI_API	void				SendDataTexture(ImTextureID textureId, void* pData, uint16_t width, uint16_t height, eTexFormat format, uint32_t dataSize=0);
 

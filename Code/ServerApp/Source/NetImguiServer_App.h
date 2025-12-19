@@ -36,6 +36,7 @@ namespace NetImguiServer { namespace App
 	struct ServerTexture 
 	{
 		inline ServerTexture(){ mTexData.Status = ImTextureStatus_Destroyed; }
+		inline bool IsValid(){ return mTexData.Status != ImTextureStatus_WantCreate && mTexData.Status != ImTextureStatus_Destroyed; }
 		inline void MarkForDelete(){ mTexData.WantDestroyNextFrame = true; mTexData.UnusedFrames = 0; }
 		ImTextureData	mTexData;					// Struct used by backend for texture support
 		ImTextureID		mClientTexID;				// Client UserID associated with this texture

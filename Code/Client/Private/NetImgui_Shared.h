@@ -189,6 +189,10 @@ IntType DivUp(IntType Value, IntType Denominator);
 template <typename IntType>
 IntType RoundUp(IntType Value, IntType Round);
 
+
+#if NETIMGUI_IMGUI_TEXTURES_ENABLED
+inline ClientTextureID 	ConvertToClientTexID(const ImTextureRef& textureRef);
+#endif
 inline ClientTextureID 	ConvertToClientTexID(ImTextureID textureID);
 inline ImTextureID 		ConvertFromClientTexID(ClientTextureID textureID);
 

@@ -85,7 +85,7 @@ struct Client
 	ExchPtrInput								mPendingInputOut;					//!< Input command waiting to be sent out to client
 	ExchPtrClipboard							mPendingClipboardOut;				//!< Clipboard command waiting to be sent out to client
 	std::vector<ImWchar>						mPendingInputChars;					//!< Captured Imgui characters input waiting to be added to new InputCmd
-	NetImgui::Internal::CmdTexture*				mpPendingTextures[64]	= {};		//!< Textures commands waiting to be processed in main update loop
+	NetImgui::Internal::CmdTexture*				mpPendingTextures[1024]	= {};		//!< Textures commands waiting to be processed in main update loop
 	std::atomic_uint64_t						mPendingTextureReadIndex;
 	std::atomic_uint64_t						mPendingTextureWriteIndex;
 	bool										mbIsVisible				= false;	//!< If currently shown
