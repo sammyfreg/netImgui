@@ -288,7 +288,7 @@ union TextureCastHelperUnion
 {
 	const void*		TexData;
 	ImTextureID 	TexID;
-	ClientTextureID	TexUint;
+	ClientTextureID	TexClientID;
 };
 
 #if NETIMGUI_IMGUI_TEXTURES_ENABLED
@@ -296,14 +296,18 @@ ClientTextureID ConvertToClientTexID(const ImTextureRef& textureRef)
 {
 	static_assert(sizeof(uint64_t) >= sizeof(ImTextureID), "ImTextureID is bigger than 64bits, CmdTexture::mTextureId needs to be updated to support it");
 	TextureCastHelperUnion textureUnion;
-	textureUnion.TexUint	= 0;
+	textureUnion.TexClientID = 0;
 	if( textureRef._TexData ){
+		//Note: Cannot rely on textureRef.GetTexID() because it uses a pointer to
+		//		a texture object that might not have been created by the backend yet.
+		//		Instead, use a stable value that remain valid for texture lifetime,
+		//		to id it with the NetImgui Server
 		textureUnion.TexData= reinterpret_cast<const void*>(textureRef._TexData);
 	}
 	else{
 		textureUnion.TexID 	= textureRef._TexID;
 	}
-	return textureUnion.TexUint;
+	return textureUnion.TexClientID;
 }
 #endif
 
@@ -311,16 +315,16 @@ ClientTextureID ConvertToClientTexID(ImTextureID textureID)
 {
 	static_assert(sizeof(uint64_t) >= sizeof(ImTextureID), "ImTextureID is bigger than 64bits, CmdTexture::mTextureId needs to be updated to support it");
 	TextureCastHelperUnion textureUnion;
-	textureUnion.TexUint	= 0;
-	textureUnion.TexID		= textureID;
-	return textureUnion.TexUint;
+	textureUnion.TexClientID	= 0;
+	textureUnion.TexID			= textureID;
+	return textureUnion.TexClientID;
 	
 }
 
 ImTextureID ConvertFromClientTexID(ClientTextureID clientTexID)
 {
 	TextureCastHelperUnion textureUnion;
-	textureUnion.TexUint = clientTexID;
+	textureUnion.TexClientID = clientTexID;
 	return textureUnion.TexID;
 }
 

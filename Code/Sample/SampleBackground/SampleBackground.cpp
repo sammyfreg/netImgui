@@ -8,10 +8,7 @@
 #include <array>
 #include <cmath>
 #include "../Common/Sample.h"
-
-// Methods declared in main.cpp, extern declare to avoid having to include 'd3d11.h' here
-extern void TextureCreate(const uint8_t* pPixelData, uint32_t width, uint32_t height, void*& pTextureViewOut);
-extern void TextureDestroy(void*& pTextureView);
+#include "../Common/TextureResource.h"
 
 //=================================================================================================
 // SAMPLE CLASS
@@ -19,12 +16,12 @@ extern void TextureDestroy(void*& pTextureView);
 class SampleBackground : public Sample::Base
 {
 public:
-						SampleBackground() : Base("SampleBackground") {}
+						SampleBackground() : Base("SampleBackground"){}
 	virtual bool		Startup() override;
 	virtual void		Shutdown() override;
 	virtual void		Draw() override;
 protected:
-	void*				mTextureView = nullptr;
+	TexResImgui			mTexture;
 };
 
 //=================================================================================================
@@ -47,19 +44,20 @@ bool SampleBackground::Startup()
 
 	constexpr uint16_t kSize	= 256;
 	constexpr float kFadeSize	= 16.f;
-	uint32_t pixels[kSize][kSize];
-	for (uint32_t y(0); y < kSize; ++y) {
-		for (uint32_t x(0); x < kSize; ++x) 
+	mTexture.InitPixels(ImTextureFormat::ImTextureFormat_RGBA32, 256, 256);
+	for (int y(0); y < mTexture.mImTexData.Height; ++y)
+	{
+		uint32_t* pPixRow 	= static_cast<uint32_t*>(mTexture.mImTexData.GetPixelsAt(0,y));
+		float offsetY		= static_cast<float>(y) - static_cast<float>(kSize/2);
+		for (int x(0); x < kSize; ++x)
 		{
 			float offsetX	= static_cast<float>(x) - static_cast<float>(kSize/2);
-			float offsetY	= static_cast<float>(y) - static_cast<float>(kSize/2);
 			float radius	= static_cast<float>(sqrt(offsetX*offsetX+offsetY*offsetY));
 			float alpha		= 1.f - std::min(1.f, std::max(0.f, (radius - (static_cast<float>(kSize/2)-kFadeSize))) / kFadeSize);
-			pixels[y][x]	= ImColor( static_cast<uint8_t>(x), static_cast<uint8_t>(y), (x+y) <= 255 ? 0 : 255-(x+y), static_cast<uint8_t>(255.f*alpha));
+			pPixRow[x]		= ImColor( static_cast<uint8_t>(x), static_cast<uint8_t>(y), (x+y) <= 255 ? 0 : 255-(x+y), static_cast<uint8_t>(255.f*alpha));
 		}
 	}
-	TextureCreate(reinterpret_cast<uint8_t*>(pixels), kSize, kSize, mTextureView);													// For local display
-	//SF TODO NetImgui::SendDataTexture(Sample::TextureCastFromPtr(mTextureView), pixels, kSize, kSize, NetImgui::eTexFormat::kTexFmtRGBA8);	// For remote display
+	mTexture.Create();
 	return true;
 }
 
@@ -68,7 +66,6 @@ bool SampleBackground::Startup()
 //=================================================================================================
 void SampleBackground::Shutdown()
 {
-	TextureDestroy(mTextureView);
 	NetImgui::Shutdown();
 }
 
@@ -77,6 +74,8 @@ void SampleBackground::Shutdown()
 //=================================================================================================
 void SampleBackground::Draw()
 {
+	mTexture.Update();
+
 	//---------------------------------------------------------------------------------------------
 	// (1) Start a new Frame
 	//---------------------------------------------------------------------------------------------
@@ -95,22 +94,23 @@ void SampleBackground::Draw()
 			static ImVec4 sBgColor(0.2f,0.2f,0.2f,1.f);
 			static ImVec4 sTextureTint(1,1,1,0.5f);
 			static bool sUseTextureOverride(false);
-
-			ImGui::ColorEdit4("Background", reinterpret_cast<float*>(&sBgColor), ImGuiColorEditFlags_Float | ImGuiColorEditFlags_DisplayRGB | ImGuiColorEditFlags_InputRGB | ImGuiColorEditFlags_PickerHueWheel);
-			ImGui::ColorEdit4("Logo Tint", reinterpret_cast<float*>(&sTextureTint), ImGuiColorEditFlags_Float | ImGuiColorEditFlags_DisplayRGB | ImGuiColorEditFlags_InputRGB | ImGuiColorEditFlags_PickerHueWheel);			
-			ImGui::Checkbox("Replace Background Texture", &sUseTextureOverride);
-			ImGui::Image(ImTextureID(mTextureView), ImVec2(64,64));
+			bool bChanged(false);
+			bChanged |= ImGui::ColorEdit4("Background", reinterpret_cast<float*>(&sBgColor), ImGuiColorEditFlags_Float | ImGuiColorEditFlags_DisplayRGB | ImGuiColorEditFlags_InputRGB | ImGuiColorEditFlags_PickerHueWheel);
+			bChanged |= ImGui::ColorEdit4("Logo Tint", reinterpret_cast<float*>(&sTextureTint), ImGuiColorEditFlags_Float | ImGuiColorEditFlags_DisplayRGB | ImGuiColorEditFlags_InputRGB | ImGuiColorEditFlags_PickerHueWheel);			
+			bChanged |= ImGui::Checkbox("Replace Background Texture", &sUseTextureOverride);
+			ImGui::Image(mTexture.mImTexRef, ImVec2(64,64));
 			ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.5f, 0.5f, 1.f));
 			ImGui::TextWrapped("(Note: Custom background settings only applied on remote server)");
 			ImGui::PopStyleColor();
-			if( sUseTextureOverride )
+			if( bChanged )
 			{
-				//SF TODO NetImgui::SetBackground(sBgColor, sTextureTint, Sample::TextureCastFromPtr(mTextureView));
+				if( sUseTextureOverride ){
+					NetImgui::SetBackground(sBgColor, sTextureTint, mTexture.mImTexRef);
+				}
+				else{ 
+					NetImgui::SetBackground(sBgColor, sTextureTint);
+				}
 			}
-			else
-			{ 
-				NetImgui::SetBackground(sBgColor, sTextureTint);
-			}			
 		}
 		ImGui::End();
 

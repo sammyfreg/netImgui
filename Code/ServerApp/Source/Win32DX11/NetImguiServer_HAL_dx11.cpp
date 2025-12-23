@@ -112,7 +112,6 @@ bool HAL_CreateRenderTarget(uint16_t Width, uint16_t Height, void*& pOutRT, ImTe
 				pTexture->Release();
 				pOutRT      						= reinterpret_cast<void*>(pRenderTargetView);
 				OutTexture 							= ImTextureData();
-				OutTexture.RefCount 				= 1;
 				OutTexture.Format					= ImTextureFormat::ImTextureFormat_RGBA32;
 				OutTexture.BytesPerPixel			= 4;				
 				OutTexture.Height					= texDesc.Height;

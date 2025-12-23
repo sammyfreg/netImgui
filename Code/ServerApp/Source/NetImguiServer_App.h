@@ -35,7 +35,7 @@ namespace NetImguiServer { namespace App
 	// Descriptor of each textures by Server. Format always RGBA8
 	struct ServerTexture 
 	{
-		inline ServerTexture(){ mTexData.Status = ImTextureStatus_Destroyed; }
+		inline ServerTexture(){ mTexData.Status = ImTextureStatus_Destroyed; mTexData.RefCount = 1; }
 		inline bool IsValid(){ return mTexData.Status != ImTextureStatus_WantCreate && mTexData.Status != ImTextureStatus_Destroyed; }
 		inline void MarkForDelete(){ mTexData.WantDestroyNextFrame = true; mTexData.UnusedFrames = 0; }
 		ImTextureData	mTexData;					// Struct used by backend for texture support

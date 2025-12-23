@@ -63,7 +63,7 @@
 //-------------------------------------------------------------------------------------------------
 #if !defined(IMGUI_VERSION)
 	#undef	NETIMGUI_ENABLED
-	#define NETIMGUI_ENABLED 					1 //SF2 TEMP EDIT
+	#define NETIMGUI_ENABLED 					0 //SF2 TEMP EDIT
 #endif
 
 //-------------------------------------------------------------------------------------------------
@@ -74,7 +74,7 @@
 #ifdef IMGUI_HAS_TEXTURES
 	#define NETIMGUI_IMGUI_TEXTURES_ENABLED		1
 #else
-	#define NETIMGUI_IMGUI_TEXTURES_ENABLED		1 //SF2 TEMP EDIT
+	#define NETIMGUI_IMGUI_TEXTURES_ENABLED		0 //SF2 TEMP EDIT
 #endif
 #endif
 
@@ -255,6 +255,9 @@ NETIMGUI_API	ImGuiContext*		GetContext();
 NETIMGUI_API	void				SetBackground(const ImVec4& bgColor);
 NETIMGUI_API	void				SetBackground(const ImVec4& bgColor, const ImVec4& textureTint );
 NETIMGUI_API	void				SetBackground(const ImVec4& bgColor, const ImVec4& textureTint, ImTextureID bgTextureID);
+#if NETIMGUI_IMGUI_TEXTURES_ENABLED
+NETIMGUI_API	void				SetBackground(const ImVec4& bgColor, const ImVec4& textureTint, const ImTextureRef& bgTextureRef);
+#endif
 
 //=================================================================================================
 // Control the data compression for communications between Client/Server

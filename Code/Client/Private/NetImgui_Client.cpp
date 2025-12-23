@@ -693,33 +693,37 @@ void ClientInfo::ContextRemoveHooks()
 //=================================================================================================
 // If backend doesn't support Dear ImGui texture managed (used by font) as indicated with
 // 'ImGuiBackendFlags_RendererHasTextures', we still want to handle it with our RemoteServer
-// so we take it upon ourselves to clear the list of texture updates
+// so we take it upon ourselves to clear the list of texture updates.
+// Otherwise, we'd be constantly re applying the same updates
 //=================================================================================================
 void ClientInfo::TextureTrackingClear()
 {
 #if NETIMGUI_IMGUI_TEXTURES_ENABLED
-	// This is basically a stripped our version of 'ImGui_ImplDX11_UpdateTexture' 
-	// where we only care about the TexID and status values
-	ImVector<ImTextureData*>& Textures = ImGui::GetPlatformIO().Textures;
-	ImTextureRef ClientTextureRef;
-	for(auto TexData : Textures)
+	if( IsConnected() && (mSavedContextValues.mBackendFlags & ImGuiBackendFlags_RendererHasTextures) == 0)
 	{
-		if (TexData->Status == ImTextureStatus_WantCreate )
-    	{
-			IM_ASSERT(TexData->TexID == ImTextureID_Invalid && TexData->BackendUserData == nullptr);
-			static ImTextureID sUniqueID(1);
-			TexData->SetTexID(static_cast<ImTextureID>(sUniqueID++));
-        	TexData->SetStatus(ImTextureStatus_OK);
-    	}
-		else if (TexData->Status == ImTextureStatus_WantUpdates)
+		// This is basically a stripped version of 'ImGui_ImplDX11_UpdateTexture'
+		// where we only care about the TexID and status values
+		ImVector<ImTextureData*>& Textures = ImGui::GetPlatformIO().Textures;
+		ImTextureRef ClientTextureRef;
+		for(auto TexData : Textures)
 		{
-			TexData->SetStatus(ImTextureStatus_OK);
+			if (TexData->Status == ImTextureStatus_WantCreate )
+			{
+				IM_ASSERT(TexData->TexID == ImTextureID_Invalid && TexData->BackendUserData == nullptr);
+				static ImTextureID sUniqueID(1);
+				TexData->SetTexID(static_cast<ImTextureID>(sUniqueID++));
+				TexData->SetStatus(ImTextureStatus_OK);
+			}
+			else if (TexData->Status == ImTextureStatus_WantUpdates)
+			{
+				TexData->SetStatus(ImTextureStatus_OK);
+			}
+			else if (TexData->Status == ImTextureStatus_WantDestroy && TexData->UnusedFrames > 0)
+			{
+				TexData->SetTexID(ImTextureID_Invalid);
+				TexData->SetStatus(ImTextureStatus_Destroyed);
+			}
 		}
-    	else if (TexData->Status == ImTextureStatus_WantDestroy && TexData->UnusedFrames > 0)
-    	{
-        	TexData->SetTexID(ImTextureID_Invalid);
-    		TexData->SetStatus(ImTextureStatus_Destroyed);
-    	}
 	}
 #endif
 }
@@ -743,7 +747,7 @@ void ClientInfo::TextureTrackingUpdate(bool bResendAll)
 			uint32_t dataSize			= 0;
 			uint16_t w					= static_cast<uint16_t>(TexData->Width); //SF TODO data rounding on u8?
 			uint16_t h					= static_cast<uint16_t>(TexData->Height);
-			//SF TODO detect if backend not handling texture update?
+
 			if( (TexStatus == ImTextureStatus_WantCreate) ||
 				(bResendAll && TexStatus != ImTextureStatus_Destroyed && TexStatus != ImTextureStatus_WantDestroy)){
 

@@ -19,15 +19,13 @@
 void FontCreationCallback_Default(float PreviousDPIScale, float NewDPIScale)
 {
 	IM_UNUSED(PreviousDPIScale); IM_UNUSED(NewDPIScale);
-#if NETIMGUI_ENABLED
+#if NETIMGUI_ENABLED && !NETIMGUI_IMGUI_TEXTURES_ENABLED
+	// Since Dear ImGui 1.92+, we do not need to manage font scaling/dpi anymore
 	if (GetSample().UpdateFont(NewDPIScale, false))
 	{
-	#if !NETIMGUI_IMGUI_TEXTURES_ENABLED
-		// Since Dear ImGui 1.92+, we do not need to manage font scaling/dpi anymore
 		uint8_t* pPixelData(nullptr); int width(0), height(0);
 		ImGui::GetIO().Fonts->GetTexDataAsAlpha8(&pPixelData, &width, &height);
 		NetImgui::SendDataTexture(ImGui::GetIO().Fonts->TexID, pPixelData, static_cast<uint16_t>(width), static_cast<uint16_t>(height), NetImgui::eTexFormat::kTexFmtA8);
-	#endif
 	}
 #endif
 }
@@ -86,6 +84,8 @@ void Base::Shutdown()
 // The DPI scaling can also be entirely ignored by generating the font texture once 
 // to a fixed size, paired with 'ImGui::GetIO().FontGlobalScale' for the text size increase.
 // However, this create blurier text. See 'SampleFontDPI' for more details
+//
+// Note: Since Dear ImGui 1.92+, we do not need to manage font scaling/dpi anymore
 //=================================================================================================
 bool Base::UpdateFont(float fontScaleDPI, bool isLocal)
 {

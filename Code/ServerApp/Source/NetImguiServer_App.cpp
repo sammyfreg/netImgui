@@ -147,11 +147,9 @@ void UpdateServerTextures()
 {
 	for(int i(gServerTextures.size()-1); i>=0; --i)
 	{
-		// Delete Texture Resource
 		if( gServerTextures[i] )
 		{
 			ServerTexture& ServerTex 		= *gServerTextures[i];
-			ServerTex.mTexData.UnusedFrames	= ServerTex.mTexData.RefCount > 0 ? 0 : ServerTex.mTexData.UnusedFrames+1;
 
 			// Release un-needed pixel data once it has been processed by backend
 			if( ServerTex.mIsUpdatable == false && 
@@ -160,24 +158,27 @@ void UpdateServerTextures()
 			{
 				ServerTex.mTexData.DestroyPixels();
 			}
-
-			// Send deletion request to backend
-			if( ServerTex.mTexData.WantDestroyNextFrame && ServerTex.mTexData.UnusedFrames >= 3)
-			{
-				ServerTex.mTexData.Status 				= ImTextureStatus_WantDestroy;
-				ServerTex.mTexData.WantDestroyNextFrame	= false;
-			}
-
+			
 			// Backend deleted the texture, remove it from our list
-			if( ServerTex.mTexData.Status == ImTextureStatus_Destroyed )
+			else if( ServerTex.mTexData.Status == ImTextureStatus_Destroyed )
 			{
 				ImGui::UnregisterUserTexture(&ServerTex.mTexData);
 				delete gServerTextures[i];
 				gServerTextures[i] = nullptr;
 			}
+
+			// Send deletion request to backend
+			else if( ServerTex.mTexData.WantDestroyNextFrame )
+			{
+				if(ServerTex.mTexData.UnusedFrames++ >= 2)
+				{
+					ServerTex.mTexData.Status 				= ImTextureStatus_WantDestroy;
+					ServerTex.mTexData.WantDestroyNextFrame	= false;
+				}
+			}
 		}
 
-		// Remove released texture
+		// Remove release textures (null) from our list
 		if (gServerTextures[i] == nullptr)
 		{
 			ImSwap(gServerTextures[i], gServerTextures[gServerTextures.Size-1]);
@@ -213,7 +214,6 @@ bool CreateTexture_Default(ServerTexture& serverTexture, const NetImgui::Interna
 		}
 
 		serverTexture.mTexData.Status 		= ImTextureStatus_WantCreate;
-		serverTexture.mTexData.RefCount		= 1;
 		serverTexture.mTexData.UseColors	= cmdTexture.mFormat == ImTextureFormat::ImTextureFormat_RGBA32;
 		ImGui::RegisterUserTexture(&serverTexture.mTexData);
 		return true;

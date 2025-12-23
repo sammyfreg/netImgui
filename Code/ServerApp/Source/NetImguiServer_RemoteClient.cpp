@@ -103,13 +103,13 @@ void Client::ProcessPendingTextureCmds()
 		if( !isUpdate && serverTex )
 		{
 			serverTex->MarkForDelete();
+			mTextureTable.erase(texIt);
 		}
 
 		// Add a texture
 		if( isCreate ) 
 		{
 			serverTex = NetImguiServer::App::CreateTexture(*pTextureCmd, texDataSize);
-			//SF TEXTURE : This is an issue, replacing current entry with new one, before we're done using it... won't be flagged for delete...
 			if( serverTex ){
 				mTextureTable.insert({pTextureCmd->mTextureClientID, serverTex} );
 			}
@@ -271,17 +271,6 @@ NetImguiImDrawData*	Client::GetImguiDrawData(ImTextureID EmtpyTextureID)
 		NetImgui::Internal::netImguiDeleteSafe( mpImguiDrawData );
 		mpImguiDrawData	= pPendingDrawData;
 
-		// Reset the RefCount to 0, when we detect that we want to remove the texture
-		ImVector<App::ServerTexture*> PendingDeleteTextures;
-		for(auto serverTexIt : mTextureTable)
-		{
-			ImTextureData* texData = serverTexIt.second ? &serverTexIt.second->mTexData : nullptr;
-			if( texData && texData->WantDestroyNextFrame ){
-				texData->RefCount = 0;
-				PendingDeleteTextures.push_back(serverTexIt.second);
-			}
-		}
-
 		// When a new drawdata is available, need to convert the textureid from NetImgui Id
 		// to the backend renderer format (texture view pointer). 
 		// Done here (in main thread) instead of when first received on the (com thread),
@@ -295,23 +284,9 @@ NetImguiImDrawData*	Client::GetImguiDrawData(ImTextureID EmtpyTextureID)
 				auto texIt					= mTextureTable.find(clientTexUserID);
 				ImTextureData* texData 		= (texIt != mTextureTable.end() && texIt->second && texIt->second->IsValid()) ? &texIt->second->mTexData : nullptr;
 				ImTextureRef serverTexRef 	= texData ? texData->GetTexRef() : EmtpyTextureID;
-				// Postpone texture deletion until not in use
-				if( texData && texData->RefCount == 0 ){
-					texData->RefCount = 1;
-				}
 				pCmdList->CmdBuffer[drawIdx].TexRef	= serverTexRef;
 			}
 		}
-
-		// Remove pending delete textures from our local table when detecting it is
-		// not needed anymore. Resource deletion will be done at the 'gServerTextures' level
-		for(auto serverTexture : PendingDeleteTextures)
-		{
-			if( serverTexture->mTexData.RefCount == 0 ){
-				mTextureTable.erase(serverTexture->mClientTexID);
-			}
-		}
-		
 	}
 	return mpImguiDrawData;
 }

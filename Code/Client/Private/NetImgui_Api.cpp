@@ -1,7 +1,7 @@
 #include "NetImgui_Shared.h"
 #include "NetImgui_WarningDisable.h"
 
-#if NETIMGUI_ENABLED || 1
+#if NETIMGUI_ENABLED
 #include <algorithm>
 #include <thread>
 #include "NetImgui_Client.h"
@@ -432,6 +432,15 @@ void SetBackground(const ImVec4& bgColor, const ImVec4& textureTint, ImTextureID
 	reinterpret_cast<ImTextureID*>(&texId64)[0] = bgTextureID;
 	client.mBGSetting.mTextureId		= texId64;
 }
+
+#if NETIMGUI_IMGUI_TEXTURES_ENABLED
+//=================================================================================================
+void SetBackground(const ImVec4& bgColor, const ImVec4& textureTint, const ImTextureRef& bgTextureRef)
+//=================================================================================================
+{
+	SetBackground(bgColor, textureTint, ConvertToClientTexID(bgTextureRef));
+}
+#endif
 
 //=================================================================================================
 void SetCompressionMode(eCompressionMode eMode)
