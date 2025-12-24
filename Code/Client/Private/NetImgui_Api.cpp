@@ -225,7 +225,7 @@ bool NewFrame(bool bSupportFrameSkip)
 	#else
 		const ImFontAtlas* pFonts = ImGui::GetIO().Fonts;
 		if( pFonts->TexPixelsAlpha8 && 
-			(pFonts->TexPixelsAlpha8 != client.mpFontTextureData || client.mFontTextureID != pFonts->TexID ))
+			(pFonts->TexPixelsAlpha8 != client.mpFontTextureData || client.mFontTextureID != ConvertToClientTexID(pFonts->TexID) ))
 		{
 			uint8_t* pPixelData(nullptr); int width(0), height(0);
 			ImGui::GetIO().Fonts->GetTexDataAsAlpha8(&pPixelData, &width, &height);
@@ -311,6 +311,7 @@ void EndFrame(void)
 		
 		if( client.mbIsRemoteDrawing )
 		{
+		#if NETIMGUI_IMGUI_TEXTURES_ENABLED
 			// Clear the ImGui Draw Data while leaving the texture updates intact
 			// This allows the backend to process the texture updates/status normally
 			// (usually done in Render backend implementation) while not displaying anything.
@@ -321,7 +322,7 @@ void EndFrame(void)
 				imDrawData->TotalIdxCount = 0;
 				imDrawData->TotalVtxCount = 0;
 			}
-
+		#endif
 			// Restore display size, so we never lose original setting 
 			// that may get updated after initial connection
 			ImGui::GetIO().DisplaySize = client.mSavedDisplaySize;
@@ -368,7 +369,7 @@ void SendDataTexture(ImTextureID textureId, void* pData, uint16_t width, uint16_
 			{
 				client.mbFontUploaded		|= true;
 				client.mpFontTextureData	= ImGui::GetIO().Fonts->TexPixelsAlpha8;
-				client.mFontTextureID		= textureId;
+				client.mFontTextureID		= ConvertToClientTexID(textureId);
 			}
 		#endif
 		}

@@ -19,18 +19,15 @@ namespace Sample
 class Base
 {
 public:
-								Base(const char* sampleName);						//!< Constructor receiving pointer to constant string that must remains valid
-	virtual bool				Startup();											//!< Called once when starting
-	virtual void				Shutdown();											//!< Called once when exiting
-	virtual bool				UpdateFont(float fontScaleDPI, bool isLocal);		//!< Receive command to create/update the Font Atlas and its texture data
-	virtual void				Draw() = 0;											//!< Each sample should have their Dear ImGui drawing routines in this overloaded method
+								Base(const char* sampleName);	//!< Constructor receiving pointer to constant string that must remains valid
+	virtual bool				Startup();						//!< Called once when starting
+	virtual void				Shutdown();						//!< Called once when exiting
+	virtual void				Draw() = 0;						//!< Each sample should have their Dear ImGui drawing routines in this overloaded method
+	virtual void				AddFont();						//!< Called on startup to add the wanted font
 
-protected:	
+protected:
 	void						Draw_Connect();									//!< Display UI for initiating a connection to the remote NetImgui server application
 	const char*					mSampleName					= nullptr;			//!< Name displayed in the Main Menu bar (must receive string pointer in constructor that remains valid)
-	ImGuiContext*				mpContextMain				= nullptr;			//!< Pointer to main context created in main.cpp (used to detect when to update font texture)
-	ImGuiContext*				mpContextLocal				= nullptr;			//!< Pointer to context used for local draw. Most sample leave it to the same as mpContextMain
-	float						mGeneratedFontScaleDPI		= 0.f;				//!< Current generated font texture DPI
 	bool						mbShowDemoWindow			= !NETIMGUI_ENABLED;//!< If we should show the Dear ImGui demo window
 	
 #if NETIMGUI_ENABLED

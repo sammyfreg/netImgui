@@ -150,7 +150,6 @@ namespace NetImgui
 	// Standard samples
 	//-------------------------------------------------------------------------
 	[Sharpmake.Generate] public class ProjectSample_Basic 		: ProjectSample { public ProjectSample_Basic() 		: base("SampleBasic"){} }
-	[Sharpmake.Generate] public class ProjectSample_FontDPI		: ProjectSample { public ProjectSample_FontDPI() 	: base("SampleFontDPI"){} }
 	[Sharpmake.Generate] public class ProjectSample_Textures	: ProjectSample { public ProjectSample_Textures() 	: base("SampleTextures"){} }
 	[Sharpmake.Generate] public class ProjectSample_NewFrame	: ProjectSample { public ProjectSample_NewFrame()	: base("SampleNewFrame"){} }
 	[Sharpmake.Generate] public class ProjectSample_Background	: ProjectSample { public ProjectSample_Background()	: base("SampleBackground"){} }
@@ -279,7 +278,6 @@ namespace NetImgui
 		{
 			string SolutionFolder = "Samples";
 			conf.AddProject<ProjectSample_Basic>(target, false, SolutionFolder);			
-			conf.AddProject<ProjectSample_FontDPI>(target, false, SolutionFolder);
 			conf.AddProject<ProjectSample_NewFrame>(target, false, SolutionFolder);
 			conf.AddProject<ProjectSample_Compression>(target, false, SolutionFolder);			
 			conf.AddProject<ProjectSample_Textures>(target, false, SolutionFolder);
