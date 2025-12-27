@@ -513,7 +513,7 @@ void SampleTextures::DemoImActionCreateDestroy()
 
 //=================================================================================================
 // Demontrate the ability to partially update a texture
-// In this sample, we update the bottom right 1/4 corner with a different pattern.
+// In this sample, we send 4 partial updates in one frame
 //
 // Only the partially updated data gets transmitted to the NetImgui Server and there's no
 // need to manually signal the server about, it is automatically detected
@@ -522,30 +522,27 @@ void SampleTextures::DemoImActionPartialUpdate()
 {
 	TexResImgui& TexEntry 	= GetTexResource(EImguiTex::Update);
 	ImTextureData& texData 	= TexEntry.mImTexData;
-	
-	// ABGR format
-	constexpr uint32_t kColorCount	= 4;
-	constexpr uint32_t kColors[kColorCount][2]={
-		{0x00000000, 0xFFFFFFFF}, 
-		{0xFF0000FF, 0x00000000}, 
-		{0x00000000, 0xFF00FF00}, 
-		{0xFFFF0000, 0x00000000}
-	};
-	int updateX, updateW, updateY, updateH;
-		
-	uint32_t NewColorA 	= kColors[mActionPartialUpdateCount%kColorCount][0];
-	uint32_t NewColorB 	= kColors[mActionPartialUpdateCount%kColorCount][1];
-	updateX				= updateW = texData.Width/2;
-	updateY				= updateH = texData.Height/2;
-	mActionPartialUpdateCount++;
-	for (int y = 0; y < updateH; ++y)
+	constexpr uint32_t kUpdateCount = 4;
+	constexpr uint32_t kOffsetXY[kUpdateCount][2]={{0,0}, {1,0}, {1,1}, {0,1}};
+	constexpr uint32_t kColors[kUpdateCount]={0xFFFFFFFF, 0xFF0000FF, 0xFF00FF00, 0xFFFF0000}; // ABGR format
+	int updateX, updateY;
+	int updateW = texData.Width/4;
+	int updateH = texData.Height/4;
+	for(uint32_t i(0); i<kUpdateCount; ++i)
 	{
-		uint32_t* pPixelRow = reinterpret_cast<uint32_t*>(texData.GetPixelsAt(updateX, updateY+y));
-		for (int x = 0; x < updateW; ++x){
-			pPixelRow[x] = (((x / 8) & 0x01) ^ ((y / 8) & 0x01)) ? NewColorB : NewColorA;
+		uint32_t NewColor 	= kColors[(mActionPartialUpdateCount+kUpdateCount-i)%kUpdateCount];
+		updateX				= texData.Width/2	+ kOffsetXY[i][0] * updateW;
+		updateY				= texData.Height/2	+ kOffsetXY[i][1] * updateH;
+		for (int y = 0; y < updateH; ++y)
+		{
+			uint32_t* pPixelRow = reinterpret_cast<uint32_t*>(texData.GetPixelsAt(updateX, updateY+y));
+			for (int x = 0; x < updateW; ++x){
+				pPixelRow[x] = NewColor;
+			}
 		}
+		TexEntry.MarkUpdated(updateX, updateY, updateW, updateH);
 	}
-	TexEntry.MarkUpdated(updateX, updateY, updateW, updateH);
+	mActionPartialUpdateCount++;
 }
 
 //=================================================================================================
