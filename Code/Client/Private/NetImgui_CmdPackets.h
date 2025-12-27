@@ -218,7 +218,7 @@ struct alignas(8) CmdTexture : public CmdHeader
 	uint16_t						mHeight				= 0;							// Either the texture height on create, or the update area height
 	uint16_t 						mOffsetX			= 0;							// Used by partial update
 	uint16_t 						mOffsetY			= 0;							// Used by partial update
-	CmdTexture*						mpNext				= nullptr;						// Used for single linked list of pending textures
+	alignas(8) CmdTexture*			mpNext				= nullptr;						// Used for single linked list of pending textures (alignas needed to keep class size the same between win32/x64)
 	OffsetPointer<uint8_t>			mpTextureData;
 };
 

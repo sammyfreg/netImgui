@@ -355,7 +355,7 @@ void SendDataTexture(ImTextureID textureId, void* pData, uint16_t width, uint16_
 	// Add/Update a texture
 	if( pData != nullptr )
 	{
-		CmdTexture* pCmdTexture	= client.TextureCmdAllocate(ConvertToClientTexID(textureId), width, height, format, dataSize);
+		CmdTexture* pCmdTexture	= client.TextureCmdAllocate(clientTexID, width, height, format, dataSize);
 		if( pCmdTexture )
 		{
 			memcpy(pCmdTexture->mpTextureData.Get(), pData, dataSize);
@@ -369,7 +369,7 @@ void SendDataTexture(ImTextureID textureId, void* pData, uint16_t width, uint16_
 			{
 				client.mbFontUploaded		|= true;
 				client.mpFontTextureData	= ImGui::GetIO().Fonts->TexPixelsAlpha8;
-				client.mFontTextureID		= ConvertToClientTexID(textureId);
+				client.mFontTextureID		= clientTexID;
 			}
 		#endif
 		}

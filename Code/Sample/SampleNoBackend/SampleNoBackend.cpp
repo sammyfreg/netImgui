@@ -35,8 +35,8 @@
 //		 can prevent code change detection in these included files, when compiling.
 #define NETIMGUI_IMPLEMENTATION
 #include <NetImgui_Api.h>
-
 #include <chrono>
+#include "../../ServerApp/Source/Fonts/Roboto_Medium.cpp"
 
 namespace SampleNoBackend
 {
@@ -58,7 +58,10 @@ bool Client_Startup()
 	io.BackendFlags |= ImGuiBackendFlags_HasGamepad;	// Enable NetImgui Gamepad support
 	io.DisplaySize	= ImVec2(8,8);
 
-	io.Fonts->AddFontDefault();
+	ImFontConfig FontConfig = {};
+	const char FontName[] = "Roboto Medium";
+	memcpy(FontConfig.Name, FontName, sizeof(FontName));
+	io.Fonts->AddFontFromMemoryCompressedTTF(Roboto_Medium_compressed_data, Roboto_Medium_compressed_size, 16.f, &FontConfig);
 #if !NETIMGUI_IMGUI_TEXTURES_ENABLED
 	io.Fonts->Build();
 	io.Fonts->SetTexID(0);
