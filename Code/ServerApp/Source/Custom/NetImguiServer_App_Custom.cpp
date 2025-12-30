@@ -12,10 +12,9 @@
 // Enable handling of a Custom Texture Format samples. 
 // Only meant as an example, users are free to replace it with their own handling of
 // custom texture formats. Look for this define for implementation details.
-#define TEXTURE_CUSTOM_SAMPLE 1
+#define TEXTURE_CUSTOM_SAMPLE 0 //@sammyfreg todo: Re-Implement custom texture support
 
 #if TEXTURE_CUSTOM_SAMPLE
-
 //=================================================================================================
 // This is our Custom texture data format, it must match when the NetImgui Client code send
 // It can be customized to anything needed, as long as Client/Server use the same content
@@ -57,10 +56,7 @@ bool CreateTexture_Custom( ServerTexture& serverTexture, const NetImgui::Interna
 	IM_UNUSED(cmdTexture);
 	IM_UNUSED(customDataSize);
 
-	
-	
-//SF TODO Support Custom sample again
-#if TEXTURE_CUSTOM_SAMPLE && 0
+#if TEXTURE_CUSTOM_SAMPLE
 	auto eTexFmt = static_cast<NetImgui::eTexFormat>(cmdTexture.mFormat);
 	if( eTexFmt == NetImgui::eTexFormat::kTexFmtCustom ){
 		extern ImTextureData gEmptyTexture;
@@ -86,7 +82,7 @@ bool CreateTexture_Custom( ServerTexture& serverTexture, const NetImgui::Interna
 					pTempData[y*cmdTexture.mWidth+x] = colorCurrent;
 				}
 			}
-			//SF NetImguiServer::App::HAL_CreateTexture(cmdTexture.mWidth, cmdTexture.mHeight, NetImgui::eTexFormat::kTexFmtRGBA8, reinterpret_cast<uint8_t*>(pTempData), serverTexture);
+			NetImguiServer::App::HAL_CreateTexture(cmdTexture.mWidth, cmdTexture.mHeight, NetImgui::eTexFormat::kTexFmtRGBA8, reinterpret_cast<uint8_t*>(pTempData), serverTexture);
 			free(pTempData);
 
 			// Assign a custom texture information to the Server Texture
@@ -117,7 +113,7 @@ bool CreateTexture_Custom( ServerTexture& serverTexture, const NetImgui::Interna
 					pTempData[y*static_cast<size_t>(cmdTexture.mWidth)+x] = (ImU32)colorCurrent;
 				}
 			}
-			//SF NetImguiServer::App::HAL_CreateTexture(cmdTexture.mWidth, cmdTexture.mHeight, NetImgui::eTexFormat::kTexFmtRGBA8, reinterpret_cast<uint8_t*>(pTempData), serverTexture);
+			NetImguiServer::App::HAL_CreateTexture(cmdTexture.mWidth, cmdTexture.mHeight, NetImgui::eTexFormat::kTexFmtRGBA8, reinterpret_cast<uint8_t*>(pTempData), serverTexture);
 			free(pTempData);
 			// Assign a custom texture information to the Server Texture
 			// Here, it's just a stamp, but could be some user specific data, like allocated memory for extra info
@@ -139,7 +135,7 @@ bool DestroyTexture_Custom( ServerTexture& serverTexture, const NetImgui::Intern
 	IM_UNUSED(cmdTexture);
 	IM_UNUSED(customDataSize);
 
-#if TEXTURE_CUSTOM_SAMPLE && 0 //SF REDO custom texture support sample
+#if TEXTURE_CUSTOM_SAMPLE
 	if( serverTexture.mpHAL_Texture && serverTexture.mIsCustom ){
 		if( serverTexture.mCustomData == customTextureData1::kStamp || 
 			serverTexture.mCustomData == customTextureData2::kStamp )

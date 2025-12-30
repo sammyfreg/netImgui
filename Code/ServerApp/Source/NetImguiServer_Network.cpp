@@ -28,6 +28,21 @@ void Communications_Incoming_CmdTexture(RemoteClient::Client& Client)
 	auto pCmdTexture				= reinterpret_cast<NetImgui::Internal::CmdTexture*>(Client.mPendingRcv.pCommand);
 	Client.mPendingRcv.bAutoFree 	= false; // Taking ownership of the data
 	pCmdTexture->mpTextureData.ToPointer();
+
+	// For debug tracking
+	uint32_t idx = Client.mTextureHistoryIndex % IM_ARRAYSIZE(Client.mTextureHistory);
+	Client.mTextureHistory[idx].UpdateId 			= Client.mTextureHistoryIndex++;
+	Client.mTextureHistory[idx].Frame				= Client.mLastDrawFrameIndex;
+	Client.mTextureHistory[idx].ClientId			= pCmdTexture->mTextureClientID;
+	Client.mTextureHistory[idx].Format				= pCmdTexture->mFormat;
+	Client.mTextureHistory[idx].isCreate			= pCmdTexture->mStatus == CmdTexture::eType::Create;
+	Client.mTextureHistory[idx].isDestroy			= pCmdTexture->mStatus == CmdTexture::eType::Destroy;
+	Client.mTextureHistory[idx].isUpdate			= pCmdTexture->mStatus == CmdTexture::eType::Update;
+	Client.mTextureHistory[idx].isDearImguiManaged	= pCmdTexture->mIsDearImGuiManaged != 0;
+	Client.mTextureHistory[idx].x					= pCmdTexture->mOffsetX;
+	Client.mTextureHistory[idx].y					= pCmdTexture->mOffsetY;
+	Client.mTextureHistory[idx].w					= pCmdTexture->mWidth;
+	Client.mTextureHistory[idx].h					= pCmdTexture->mHeight;
 	Client.ReceiveTexture(pCmdTexture);
 }
 
@@ -109,7 +124,7 @@ void Communications_Incoming(RemoteClient::Client& Client)
 				Client.mLastIncomingComTime	= std::chrono::steady_clock::now();
 				switch( Client.mPendingRcv.pCommand->mType )
 				{
-					case NetImgui::Internal::CmdHeader::eCommands::Texture:		Communications_Incoming_CmdTexture(Client);	break;
+					case NetImgui::Internal::CmdHeader::eCommands::Texture:		Communications_Incoming_CmdTexture(Client);		break;
 					case NetImgui::Internal::CmdHeader::eCommands::Background: 	Communications_Incoming_CmdBackground(Client);	break;
 					case NetImgui::Internal::CmdHeader::eCommands::DrawFrame:	Communications_Incoming_CmdDrawFrame(Client);	break;
 					case NetImgui::Internal::CmdHeader::eCommands::Clipboard:	Communications_Incoming_CmdClipboard(Client);	break;

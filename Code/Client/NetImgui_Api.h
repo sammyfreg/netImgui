@@ -4,12 +4,12 @@
 //! @Name		: NetImgui
 //=================================================================================================
 //! @author		: Sammy Fatnassi
-//! @date		: 2024/12/10
-//!	@version	: v1.12.1
+//! @date		: 2024/12/30
+//!	@version	: v1.12.2
 //! @Details	: For integration info : https://github.com/sammyfreg/netImgui/wiki
 //=================================================================================================
-#define NETIMGUI_VERSION		"1.12.1"	// Fixed disconnect thread contention and clipboard command
-#define NETIMGUI_VERSION_NUM	11201
+#define NETIMGUI_VERSION		"1.12.2"	// Fixed disconnect thread contention and clipboard command
+#define NETIMGUI_VERSION_NUM	11202
 
 
 //-------------------------------------------------------------------------------------------------
@@ -53,7 +53,7 @@
 // we define this library as 'Disabled'
 //-------------------------------------------------------------------------------------------------
 #ifndef NETIMGUI_ENABLED
-	#define NETIMGUI_ENABLED 0
+	#define NETIMGUI_ENABLED 					0
 #endif
 
 //-------------------------------------------------------------------------------------------------
@@ -63,7 +63,7 @@
 //-------------------------------------------------------------------------------------------------
 #if !defined(IMGUI_VERSION)
 	#undef	NETIMGUI_ENABLED
-	#define NETIMGUI_ENABLED 					0 //SF2 TEMP EDIT
+	#define NETIMGUI_ENABLED 					0
 #endif
 
 //-------------------------------------------------------------------------------------------------
@@ -74,7 +74,7 @@
 #ifdef IMGUI_HAS_TEXTURES
 	#define NETIMGUI_IMGUI_TEXTURES_ENABLED		1
 #else
-	#define NETIMGUI_IMGUI_TEXTURES_ENABLED		0 //SF2 TEMP EDIT
+	#define NETIMGUI_IMGUI_TEXTURES_ENABLED		0
 #endif
 #endif
 
@@ -87,7 +87,7 @@
 // Prepended to functions signature, for dll export/import
 //-------------------------------------------------------------------------------------------------
 #ifndef NETIMGUI_API
-	#define NETIMGUI_API						IMGUI_API						// Use same value as defined by Dear ImGui by default 
+	#define NETIMGUI_API						IMGUI_API	// Use same value as defined by Dear ImGui by default 
 #endif
 
 //-------------------------------------------------------------------------------------------------
@@ -95,7 +95,7 @@
 // Note:	Can help when unable to open a socket because it wasn't properly released after a crash.
 //-------------------------------------------------------------------------------------------------
 #ifndef NETIMGUI_FORCE_TCP_LISTEN_BINDING
-	#define NETIMGUI_FORCE_TCP_LISTEN_BINDING	0								// Doesn't seem to be needed on Window/Linux
+	#define NETIMGUI_FORCE_TCP_LISTEN_BINDING	0	// Doesn't seem to be needed on Window/Linux
 #endif
 
 //-------------------------------------------------------------------------------------------------
@@ -271,7 +271,7 @@ NETIMGUI_API	eCompressionMode	GetCompressionMode();
 NETIMGUI_API	uint8_t				GetTexture_BitsPerPixel	(eTexFormat eFormat);
 NETIMGUI_API	uint32_t			GetTexture_BytePerLine	(eTexFormat eFormat, uint32_t pixelWidth);
 NETIMGUI_API	uint32_t			GetTexture_BytePerImage	(eTexFormat eFormat, uint32_t pixelWidth, uint32_t pixelHeight);
-} 
+}
 
 //=================================================================================================
 // Optional single include compiling option

@@ -292,6 +292,16 @@ union TextureCastHelperUnion
 };
 
 #if NETIMGUI_IMGUI_TEXTURES_ENABLED
+NetImgui::eTexFormat ConvertTextureFormat(ImTextureFormat ImFormat)
+{
+	switch(ImFormat)
+	{
+		case ImTextureFormat_RGBA32: return eTexFormat::kTexFmtRGBA8;
+		case ImTextureFormat_Alpha8: return eTexFormat::kTexFmtA8;
+	}
+	return eTexFormat::kTexFmtRGBA8;
+}
+
 ClientTextureID ConvertToClientTexID(const ImTextureRef& textureRef)
 {
 	static_assert(sizeof(uint64_t) >= sizeof(ImTextureID), "ImTextureID is bigger than 64bits, CmdTexture::mTextureId needs to be updated to support it");
@@ -302,7 +312,7 @@ ClientTextureID ConvertToClientTexID(const ImTextureRef& textureRef)
 		//		a texture object that might not have been created by the backend yet.
 		//		Instead, use a stable value that remain valid for texture lifetime,
 		//		to id it with the NetImgui Server
-		textureUnion.TexData= reinterpret_cast<const void*>(textureRef._TexData);
+		textureUnion.TexClientID = static_cast<ClientTextureID>(textureRef._TexData->UniqueID);
 	}
 	else{
 		textureUnion.TexID 	= textureRef._TexID;

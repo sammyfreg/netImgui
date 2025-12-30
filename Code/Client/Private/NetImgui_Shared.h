@@ -191,6 +191,7 @@ IntType RoundUp(IntType Value, IntType Round);
 
 
 #if NETIMGUI_IMGUI_TEXTURES_ENABLED
+inline NetImgui::eTexFormat ConvertTextureFormat(ImTextureFormat ImFormat);
 inline ClientTextureID 	ConvertToClientTexID(const ImTextureRef& textureRef);
 #endif
 inline ClientTextureID 	ConvertToClientTexID(ImTextureID textureID);

@@ -8,7 +8,7 @@ namespace NetImguiServer { namespace UI
 	bool						Startup();
 	void						Shutdown();
 	ImVec4						DrawImguiContent();
-	void						DrawCenteredBackground( const App::ServerTexture& Texture, const ImVec4& tint=ImVec4(1.f,1.f,1.f,1.f));
+	void						DrawCenteredBackground( const App::ServerTexture* Texture, const ImVec4& tint=ImVec4(1.f,1.f,1.f,1.f));
 	float						GetDisplayFPS();
-	const App::ServerTexture&	GetBackgroundTexture();
+	const App::ServerTexture*	GetBackgroundTexture();
 }} //namespace NetImguiServer { namespace UI

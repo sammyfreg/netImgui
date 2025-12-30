@@ -45,6 +45,14 @@ inline ID3D11DeviceContext* GetD3DContext()
 
 //=================================================================================================
 // HAL RENDER DRAW DATA
+//=================================================================================================
+void HAL_RenderDrawData(ImDrawData* pDrawData)
+{
+	ImGui_ImplDX11_RenderDrawData(pDrawData);
+}
+
+//=================================================================================================
+// HAL RENDER DRAW DATA
 // The drawing of remote clients is handled normally by the standard rendering backend,
 // but output is redirected to an allocated client texture  instead default swapchain
 //=================================================================================================

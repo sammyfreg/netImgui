@@ -36,11 +36,13 @@ namespace NetImguiServer { namespace App
 	struct ServerTexture 
 	{
 		inline ServerTexture(){ mTexData.Status = ImTextureStatus_Destroyed; mTexData.RefCount = 1; }
-		inline bool IsValid(){ return mTexData.Status != ImTextureStatus_WantCreate && mTexData.Status != ImTextureStatus_Destroyed; }
+		inline bool IsValid()const { return mTexData.Status != ImTextureStatus_WantCreate && mTexData.Status != ImTextureStatus_Destroyed; }
 		inline void MarkForDelete(){ mTexData.WantDestroyNextFrame = true; mTexData.UnusedFrames = 0; }
 		ImTextureData	mTexData;					// Struct used by backend for texture support
 		ImTextureID		mClientTexID;				// Client UserID associated with this texture
 		uint64_t		mCustomData			= 0u;	// Memory available to custom command
+		uint64_t 		mLastFrameUsed		= 0u;	// Last draw frame this texture was used (needed for resources release)
+		int32_t 		mOwnerClientIndex	= -1;	// Client that created this texture (if any)
 		uint8_t			mIsCustom			= 0u;	// Format handled by custom version of NetImguiServer modified by library user
 		uint8_t			mIsUpdatable		= 0u;	// True when textures can be updated (font)
 		uint8_t			mPadding[6]			= {};
@@ -50,16 +52,10 @@ namespace NetImguiServer { namespace App
 	// Handling of texture data
 	//=============================================================================================
 	ServerTexture* CreateTexture(const NetImgui::Internal::CmdTexture& cmdTexture, uint32_t customDataSize);
-	void	DestroyTexture(ServerTexture* serverTexture, const NetImgui::Internal::CmdTexture& cmdTexture, uint32_t customDataSize);
 
 	// Library users can implement their own texture format (on client/server). Useful for vidoe streaming, new format, etc.
 	bool	CreateTexture_Custom(ServerTexture& serverTexture, const NetImgui::Internal::CmdTexture& cmdTexture, uint32_t customDataSize);
 	bool	DestroyTexture_Custom(ServerTexture& serverTexture, const NetImgui::Internal::CmdTexture& cmdTexture, uint32_t customDataSize);
-
-	// Texture destruction is postponed until the end of the frame update to avoid rendering issues
-	//SF TODO This needs rework to handle tracking in used texture created by custom
-	//void	EnqueueHALTextureDestroy(ServerTexture& serverTexture);
-
 
 	//=============================================================================================
 	// Note (H)ardware (A)bstraction (L)ayer
@@ -77,6 +73,8 @@ namespace NetImguiServer { namespace App
 	const char* HAL_GetUserSettingFolder();
 	// Return true when new content should be retrieved from Clipboard (avoid constantly reading/converting content)
 	bool	HAL_GetClipboardUpdated();
+	// Receive a ImDrawData drawlist and render it to backbuffer
+	void	HAL_RenderDrawData(ImDrawData* pDrawData);
 	// Receive a ImDrawData drawlist and request Dear ImGui's backend to output it into a texture
 	void	HAL_RenderDrawData(RemoteClient::Client& client, ImDrawData* pDrawData);
 	// Allocate a RenderTarget that each client will use to output their ImGui drawing into.
