@@ -93,7 +93,7 @@ struct ClientInfo
 	uint64_t							mFrameIndex					= 0;		// Incremented every time we send a DrawFrame Command
 	std::mutex							mPendingTexturesLock;					// Lock to prevent thread contention on the list of texure cmd waiting to be sent to the NetImgui Server
 	CmdTexture*							mPendingTextures			= nullptr;	// List of texture commands waiting to be send to Sever (single linked list with oldest item at the head)
-	ImVector<CmdTexture*>				mTrackedTextures;						// List of texture commands manually sent and not managed by Imgui backend (note for large texture count, should be replace with a unordered_map for fast operations)
+	ImVector<CmdTexture*>				mTrackedTextures;						// List of texture commands to create textures used by this client (note for large texture count, should be replace with a unordered_map for fast operations)
 	ExchangePtr<CmdDrawFrame>			mPendingFrameOut;
 	ExchangePtr<CmdBackground>			mPendingBackgroundOut;
 	ExchangePtr<CmdInput>				mPendingInputIn;
@@ -102,7 +102,6 @@ struct ClientInfo
 	ImGuiContext*						mpContext					= nullptr;	// Context that the remote drawing should use (the one active when connection request happened)
 	PendingCom 							mPendingRcv;							// Data being currently received from Server
 	PendingCom 							mPendingSend;							// Data being currently sent to Server
-	uint32_t							mPendingSendNext			= 0;		// Type of Cmd to next attempt sending, when channel is available
 	CmdPendingRead 						mCmdPendingRead;						// Used to get info on the next incoming command from Server
 	CmdInput*							mpCmdInputPending			= nullptr;	// Last Input Command from server, waiting to be processed by client
 	CmdClipboard*						mpCmdClipboard				= nullptr;	// Last received clipboad command
@@ -137,6 +136,8 @@ struct ClientInfo
 	InputState							mPreviousInputState;					// Keeping track of last keyboard/mouse state
 	ImGuiID								mhImguiHookNewframe			= 0;
 	ImGuiID								mhImguiHookEndframe			= 0;
+	int									mClientTextureIDNext		= 0;		// Next available ID to assign to new Dear ImGui managed textures
+	int									mDearImguiTextureCount		= 0;		// Keep track of number of Dear ImGui managed texture added (to detect when DearImgui released some)
 #if !NETIMGUI_IMGUI_TEXTURES_ENABLED
 	FontCreateFuncPtr					mFontCreationFunction		= nullptr;	// Method to call to generate the remote ImGui font. By default, re-use the local font, but this doesn't handle native DPI scaling on remote server. //NOTE: Unused by Dear imGui 1.92+
 	bool								mbFontUploaded				= false;	// Auto detect if font was sent to server

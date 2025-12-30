@@ -13,8 +13,6 @@
 #include "../ThirdParty/stb_image.h"
 #undef STB_IMAGE_IMPLEMENTATION
 
-namespace NetImguiServer { namespace App { extern ServerTexture* gServerTextureEmpty; }} //SF TEST
-
 namespace NetImguiServer { namespace UI
 {
 
@@ -28,7 +26,7 @@ static const ImVec4			kColorContent						= ImVec4(0.7f,0.75f,0.7f,1.f);	// Vario
 static ImGuiID				gMainDockID							= 0;
 static float				gDisplayFPS							= 30.f;
 static auto					gLastUIUpdate						= std::chrono::steady_clock::now();
-static App::ServerTexture	gBackgroundTexture;
+static App::ServerTexture*	gpBackgroundTexture;
 
 static uint32_t							gPopup_ConfirmDisconnect_ClientIdx	= kClientRemoteInvalid;
 static uint32_t							gPopup_ConfirmDelete_ConfigIdx		= NetImguiServer::Config::Client::kInvalidRuntimeID;
@@ -50,30 +48,31 @@ uint8_t ConvertDataAmount(uint64_t& dataSize)
 	return outUnitIdx;
 }
 
-const App::ServerTexture& GetBackgroundTexture()
+const App::ServerTexture* GetBackgroundTexture()
 {
-	return gBackgroundTexture;
+	return gpBackgroundTexture;
 }
 
 //=================================================================================================
 // Fill current window with our main background picture
 //=================================================================================================
-void DrawCenteredBackground(const App::ServerTexture& Texture, const ImVec4& Tint)
+void DrawCenteredBackground(const App::ServerTexture* Texture, const ImVec4& Tint)
 {
-	const ImVec2 savedPos	= ImGui::GetCursorPos();
-	const ImVec2 areaSize	= ImGui::GetContentRegionAvail();
-	const float ratioH		= static_cast<float>(Texture.mTexData.Width) / areaSize.x;
-	const float ratioV		= static_cast<float>(Texture.mTexData.Height) / areaSize.y;
-	float bgSizeX			= ratioH > ratioV ? areaSize.x : areaSize.y * static_cast<float>(Texture.mTexData.Height) / static_cast<float>(Texture.mTexData.Height);
-	float bgSizeY			= ratioH < ratioV ? areaSize.y : areaSize.x * static_cast<float>(Texture.mTexData.Width) / static_cast<float>(Texture.mTexData.Width);
-	float uvOffsetX			= (areaSize.x - bgSizeX) / 2.f;
-	float uvOffsetY			= (areaSize.y - bgSizeY) / 2.f;
-	ImTextureRef texRef 	= const_cast<ImTextureData&>(Texture.mTexData).GetTexRef(); //Note: method does not modify object, but wasn't marked 'const'
-	ImGui::SetCursorPos(ImVec2(savedPos.x+uvOffsetX, savedPos.y+uvOffsetY));
-	ImGui::Dummy(ImVec2(0,0));
-	ImGui::ImageWithBg(texRef, ImVec2(bgSizeX, bgSizeY), ImVec2(0, 0), ImVec2(1, 1), ImVec4(0,0,0,0), Tint);
-	ImGui::SetCursorPos(savedPos);
-	ImGui::Dummy(ImVec2(0,0));
+	if( Texture && Texture->IsValid() )
+	{
+		const ImVec2 savedPos	= ImGui::GetCursorPos();
+		const ImVec2 areaSize	= ImGui::GetContentRegionAvail();
+		const float ratioH		= static_cast<float>(Texture->mTexData.Width) / areaSize.x;
+		const float ratioV		= static_cast<float>(Texture->mTexData.Height) / areaSize.y;
+		float bgSizeX			= ratioH > ratioV ? areaSize.x : areaSize.y * static_cast<float>(Texture->mTexData.Width) / static_cast<float>(Texture->mTexData.Height);
+		float bgSizeY			= ratioH < ratioV ? areaSize.y : areaSize.x * static_cast<float>(Texture->mTexData.Height) / static_cast<float>(Texture->mTexData.Width);
+		float uvOffsetX			= (areaSize.x - bgSizeX) / 2.f;
+		float uvOffsetY			= (areaSize.y - bgSizeY) / 2.f;
+		ImTextureRef texRef 	= const_cast<ImTextureData&>(Texture->mTexData).GetTexRef(); //Note: method does not modify object, but wasn't marked 'const'
+		ImGui::SetCursorPos(ImVec2(savedPos.x+uvOffsetX, savedPos.y+uvOffsetY));
+		ImGui::ImageWithBg(texRef, ImVec2(bgSizeX, bgSizeY), ImVec2(0, 0), ImVec2(1, 1), ImVec4(0,0,0,0), Tint);
+		ImGui::SetCursorPos(savedPos);
+	}
 }
 
 //=================================================================================================
@@ -513,7 +512,7 @@ void DrawImguiContent_SetupDocking()
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.f, 4.f));
 	ImGui::Begin("DockSpace", nullptr, window_flags);
 	ImGui::PopStyleVar(3);
-	DrawCenteredBackground(gBackgroundTexture, kColorBGTint);
+	DrawCenteredBackground(gpBackgroundTexture, kColorBGTint);
 	if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable)
 	{
 		ImGui::DockSpace(gMainDockID, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode);
@@ -640,13 +639,8 @@ void DrawImguiContent_Clients()
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding , ImVec2(24.f,24.f));
 		if (ImGui::Begin("Information", nullptr, 0))
 		{
-			DrawCenteredBackground(gBackgroundTexture, ImVec4(1.f, 1.f, 1.f, 0.15f));
+			DrawCenteredBackground(gpBackgroundTexture, ImVec4(1.f, 1.f, 1.f, 0.15f));
 			
-			//SF TEST tex creation
-			ImTextureRef texID;
-			texID._TexData = &NetImguiServer::App::gServerTextureEmpty->mTexData;
-			ImGui::Image(texID, ImVec2(128, 128), ImVec2(0, 0), ImVec2(1, 1));
-
 			ImGui::TextColored(kColorTitle, "%s", "Purpose:");
 			ImGui::PushStyleColor(ImGuiCol_Text, kColorContent);
 			ImGui::TextWrapped("This 'NetImgui Server' application allows connection to clients running with the 'NetImGui Library.");
@@ -664,7 +658,7 @@ void DrawImguiContent_Clients()
 			ImGui::TextColored(kColorTitle, "%s", "Note:");
 			ImGui::PushStyleColor(ImGuiCol_Text, kColorContent);
 			ImGui::TextWrapped("'Multiple clients can be connected to this server. Each client window can be undocked and moved around independently.");
-			ImGui::PopStyleColor();			
+			ImGui::PopStyleColor();
 		}
 		ImGui::End();
 		ImGui::PopStyleVar();
@@ -744,7 +738,7 @@ void DrawImguiContent_MainMenu_Clients_Entry(RemoteClient::Client* pClient, NetI
 	ImGui::EndDisabled();	
 
 	// Config: Connection
-	const float kButtonWidth = 100.f; //SF TODO scaling with editor font size selected
+	float kButtonWidth = ImGui::GetFont()->CalcTextSizeA(ImGui::GetFontSize(), 0.f, 0.f, " Disconnect ").x;
 	if( pClient && !pClient->mbDisconnectPending && ImGui::Button("Disconnect", ImVec2(kButtonWidth, 0)) )
 	{
 		gPopup_ConfirmDisconnect_ClientIdx = pClient->mClientIndex;
@@ -971,7 +965,6 @@ ImVec4 DrawImguiContent()
 	DrawImguiContent_Clients();
 
 	//ImGui::ShowDemoWindow();
-
 	ImGui::PopFont();
 
 	return kColorBGClear;
@@ -988,8 +981,15 @@ bool Startup()
 	if( pBGPixels )
 	{		
 		// @Sammyfreg TODO : Support multiple format for Background
-		//SF TODO bool	CreateTexture(ServerTexture& serverTexture, const NetImgui::Internal::CmdTexture& cmdTexture, uint32_t customDataSize);
-		//NetImguiServer::App::HAL_CreateTexture(uint16_t(Width), uint16_t(Height), NetImgui::eTexFormat::kTexFmtRGBA8, pBGPixels, gBackgroundTexture);
+		NetImgui::Internal::CmdTexture cmdTexture;
+		constexpr NetImgui::eTexFormat format 	= NetImgui::eTexFormat::kTexFmtRGBA8;
+		const uint32_t textureBytes				= NetImgui::GetTexture_BytePerImage(format, Width, Height);
+		cmdTexture.mTextureClientID				= 0;
+		cmdTexture.mFormat						= format;
+		cmdTexture.mWidth 						= static_cast<uint16_t>(Width);
+		cmdTexture.mHeight						= static_cast<uint16_t>(Height);
+		cmdTexture.mpTextureData.SetPtr((uint8_t*)pBGPixels);
+		gpBackgroundTexture 					= App::CreateTexture(cmdTexture, textureBytes);
 		stbi_image_free(pBGPixels);
 	}
 
@@ -1003,14 +1003,13 @@ bool Startup()
 //=================================================================================================
 void Shutdown()
 {
-	//SF NetImguiServer::App::HAL_DestroyTexture(gBackgroundTexture);
 }
 
 //=================================================================================================
 // Return the current average FPS of UI refreshed (tied to GPU VSync setting of backend)
 //=================================================================================================
 float GetDisplayFPS()
-{	
+{
 	return gDisplayFPS;
 }
 

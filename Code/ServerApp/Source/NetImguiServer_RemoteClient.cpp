@@ -96,7 +96,7 @@ void Client::ProcessPendingTextureCmds()
 		NetImguiServer::App::ServerTexture* serverTex	= texIt != mTextureTable.end() ? texIt->second : nullptr;
 
 		bool isCreate			= pTextureCmd->mStatus == NetImgui::Internal::CmdTexture::eType::Create && pTextureCmd->mFormat != NetImgui::eTexFormat::kTexFmt_Invalid;
-		bool isUpdate			= pTextureCmd->mStatus == NetImgui::Internal::CmdTexture::eType::Update && pTextureCmd->mFormat != NetImgui::eTexFormat::kTexFmtCustom;		
+		bool isUpdate			= pTextureCmd->mStatus == NetImgui::Internal::CmdTexture::eType::Update && pTextureCmd->mFormat != NetImgui::eTexFormat::kTexFmtCustom;
 		uint32_t texDataSize	= pTextureCmd->mSize - sizeof(NetImgui::Internal::CmdTexture);
 
 		// Delete a texture on request or when creating new one with same ClientTextureID
@@ -111,44 +111,53 @@ void Client::ProcessPendingTextureCmds()
 		{
 			serverTex = NetImguiServer::App::CreateTexture(*pTextureCmd, texDataSize);
 			if( serverTex ){
+				serverTex->mOwnerClientIndex = static_cast<int32_t>(mClientIndex);
 				mTextureTable.insert({pTextureCmd->mTextureClientID, serverTex} );
 			}
 		}
 		// Update a Texture
 		else if(isUpdate && serverTex && serverTex->mTexData.Status != ImTextureStatus::ImTextureStatus_WantDestroy && serverTex->mTexData.Status != ImTextureStatus::ImTextureStatus_Destroyed)
 		{
-			auto TexFormat 			= static_cast<NetImgui::eTexFormat>(pTextureCmd->mFormat);
-			size_t SrcLineBytes 	= NetImgui::GetTexture_BytePerLine(TexFormat, static_cast<uint32_t>(pTextureCmd->mWidth));
-			size_t DstLineBytes 	= NetImgui::GetTexture_BytePerLine(TexFormat, static_cast<uint32_t>(serverTex->mTexData.Width));
-			size_t OffsetBytes		= (pTextureCmd->mOffsetY*DstLineBytes) + NetImgui::GetTexture_BytePerLine(TexFormat, pTextureCmd->mOffsetX);
-			const uint8_t* pDataSrc = pTextureCmd->mpTextureData.Get();
-			uint8_t* pDataDst 		= reinterpret_cast<uint8_t*>(serverTex->mTexData.GetPixels());
-			for(uint64_t y(0); y < pTextureCmd->mHeight; ++y)
+			auto TexFormat = static_cast<NetImgui::eTexFormat>(pTextureCmd->mFormat);
+			if( serverTex->mTexData.Width < (int)(pTextureCmd->mWidth + pTextureCmd->mOffsetX) || 
+				serverTex->mTexData.Height < (int)(pTextureCmd->mHeight + pTextureCmd->mOffsetY) )
 			{
-				memcpy(	&pDataDst[OffsetBytes+(y*DstLineBytes)],
-					  	&pDataSrc[y*SrcLineBytes], SrcLineBytes);
+				// Update bigger than texture should not happen, but left here as a precaution to avoid 
+				// memory corruption. Could happen if there's an error with client/server re-using a texture ID somehow
 			}
-
-			// Following code mostly copied from ImFontAtlasTextureBlockQueueUpload
-			ImTextureData* tex = &serverTex->mTexData;
-			ImTextureRect req = { 	(unsigned short)pTextureCmd->mOffsetX, (unsigned short)pTextureCmd->mOffsetY, 
-									(unsigned short)pTextureCmd->mWidth, (unsigned short)pTextureCmd->mHeight };
-			int new_x1 = ImMax(tex->UpdateRect.w == 0 ? 0 : tex->UpdateRect.x + tex->UpdateRect.w, req.x + req.w);
-			int new_y1 = ImMax(tex->UpdateRect.h == 0 ? 0 : tex->UpdateRect.y + tex->UpdateRect.h, req.y + req.h);
-			tex->UpdateRect.x = ImMin(tex->UpdateRect.x, req.x);
-			tex->UpdateRect.y = ImMin(tex->UpdateRect.y, req.y);
-			tex->UpdateRect.w = (unsigned short)(new_x1 - tex->UpdateRect.x);
-			tex->UpdateRect.h = (unsigned short)(new_y1 - tex->UpdateRect.y);
-			tex->UsedRect.x = ImMin(tex->UsedRect.x, req.x);
-			tex->UsedRect.y = ImMin(tex->UsedRect.y, req.y);
-			tex->UsedRect.w = (unsigned short)(ImMax(tex->UsedRect.x + tex->UsedRect.w, req.x + req.w) - tex->UsedRect.x);
-			tex->UsedRect.h = (unsigned short)(ImMax(tex->UsedRect.y + tex->UsedRect.h, req.y + req.h) - tex->UsedRect.y);
-
-			// No need to queue if status is _WantCreate
-			if (tex->Status != ImTextureStatus_WantCreate)
+			else
 			{
-				tex->Status = ImTextureStatus_WantUpdates;
-				tex->Updates.push_back(req);
+				size_t SrcLineBytes 	= NetImgui::GetTexture_BytePerLine(TexFormat, static_cast<uint32_t>(pTextureCmd->mWidth));
+				size_t DstLineBytes 	= NetImgui::GetTexture_BytePerLine(TexFormat, static_cast<uint32_t>(serverTex->mTexData.Width));
+				size_t OffsetBytes		= (pTextureCmd->mOffsetY*DstLineBytes) + NetImgui::GetTexture_BytePerLine(TexFormat, pTextureCmd->mOffsetX);
+				const uint8_t* pDataSrc = pTextureCmd->mpTextureData.Get();
+				uint8_t* pDataDst 		= reinterpret_cast<uint8_t*>(serverTex->mTexData.GetPixels());
+				for(uint64_t y(0); y < pTextureCmd->mHeight; ++y)
+				{
+					memcpy(	&pDataDst[OffsetBytes+(y*DstLineBytes)],
+							&pDataSrc[y*SrcLineBytes], SrcLineBytes);
+				}
+
+				// No need to queue if status is _WantCreate
+				if (serverTex->mTexData.Status != ImTextureStatus_WantCreate)
+				{
+					// Following code mostly copied from ImFontAtlasTextureBlockQueueUpload
+					ImTextureData* tex = &serverTex->mTexData;
+					ImTextureRect req = { 	(unsigned short)pTextureCmd->mOffsetX, (unsigned short)pTextureCmd->mOffsetY, 
+											(unsigned short)pTextureCmd->mWidth, (unsigned short)pTextureCmd->mHeight };
+					int new_x1 = ImMax(tex->UpdateRect.w == 0 ? 0 : tex->UpdateRect.x + tex->UpdateRect.w, req.x + req.w);
+					int new_y1 = ImMax(tex->UpdateRect.h == 0 ? 0 : tex->UpdateRect.y + tex->UpdateRect.h, req.y + req.h);
+					tex->UpdateRect.x = ImMin(tex->UpdateRect.x, req.x);
+					tex->UpdateRect.y = ImMin(tex->UpdateRect.y, req.y);
+					tex->UpdateRect.w = (unsigned short)(new_x1 - tex->UpdateRect.x);
+					tex->UpdateRect.h = (unsigned short)(new_y1 - tex->UpdateRect.y);
+					tex->UsedRect.x = ImMin(tex->UsedRect.x, req.x);
+					tex->UsedRect.y = ImMin(tex->UsedRect.y, req.y);
+					tex->UsedRect.w = (unsigned short)(ImMax(tex->UsedRect.x + tex->UsedRect.w, req.x + req.w) - tex->UsedRect.x);
+					tex->UsedRect.h = (unsigned short)(ImMax(tex->UsedRect.y + tex->UsedRect.h, req.y + req.h) - tex->UsedRect.y);
+					tex->Status = ImTextureStatus_WantUpdates;
+					tex->Updates.push_back(req);
+				}
 			}
 		}
 		NetImgui::Internal::netImguiDeleteSafe(pTextureCmd);
@@ -162,6 +171,7 @@ void Client::Initialize()
 	mLastUpdateTime			= std::chrono::steady_clock::now() - std::chrono::hours(1);
 	mLastDrawFrame			= std::chrono::steady_clock::now();
 	mLastIncomingComTime	= std::chrono::steady_clock::now();
+	mLastDrawFrameIndex		= 0;
 	mStatsIndex				= 0;
 	mStatsRcvdBps			= 0;
 	mStatsSentBps			= 0;
@@ -264,15 +274,23 @@ uint32_t Client::GetFreeIndex()
 //=================================================================================================
 NetImguiImDrawData*	Client::GetImguiDrawData(ImTextureID EmtpyTextureID)
 {
+	// DrawData's textures should now have been created, safe to use it
+	if( mpPendingDrawData )
+	{
+		NetImgui::Internal::netImguiDeleteSafe( mpImguiDrawData );
+		mpImguiDrawData		= mpPendingDrawData;
+		mLastDrawFrameIndex	= mpImguiDrawData->mFrameIndex;
+		mpPendingDrawData	= nullptr;
+	}
+
 	// Check if a new frame has been added. If yes, then take ownership of it.
 	NetImguiImDrawData* pPendingDrawData = mPendingImguiDrawDataIn.Release();
 	if( pPendingDrawData )
 	{
-		NetImgui::Internal::netImguiDeleteSafe( mpImguiDrawData );
-		mpImguiDrawData	= pPendingDrawData;
+		bool bHasPendingTextureUpdate(false);
 
 		// When a new drawdata is available, need to convert the textureid from NetImgui Id
-		// to the backend renderer format (texture view pointer). 
+		// to the backend renderer format (texture view pointer).
 		// Done here (in main thread) instead of when first received on the (com thread),
 		// since 'mvTextures' can only be safely accessed on (main thread).
 		for(int i(0); i<pPendingDrawData->CmdListsCount; ++i)
@@ -282,12 +300,34 @@ NetImguiImDrawData*	Client::GetImguiDrawData(ImTextureID EmtpyTextureID)
 			{
 				uint64_t clientTexUserID	= pCmdList->CmdBuffer[drawIdx].TexRef._TexID;
 				auto texIt					= mTextureTable.find(clientTexUserID);
-				ImTextureData* texData 		= (texIt != mTextureTable.end() && texIt->second && texIt->second->IsValid()) ? &texIt->second->mTexData : nullptr;
-				ImTextureRef serverTexRef 	= texData ? texData->GetTexRef() : EmtpyTextureID;
+				ImTextureRef serverTexRef	= EmtpyTextureID;
+				if( texIt != mTextureTable.end() && texIt->second )
+				{
+					ImTextureData* texData 			= &texIt->second->mTexData;
+					serverTexRef 					= texData->GetTexRef();
+					texIt->second->mLastFrameUsed 	= pPendingDrawData->mFrameIndex; // Needed to know when it is safe to release the texture resource
+					bHasPendingTextureUpdate		|= texData->Status != ImTextureStatus::ImTextureStatus_OK;
+				}
 				pCmdList->CmdBuffer[drawIdx].TexRef	= serverTexRef;
 			}
 		}
+
+		// DrawData contains textures with pending updates,
+		// wait 1 frame to display it
+		if( bHasPendingTextureUpdate )
+		{
+			
+			mpPendingDrawData = pPendingDrawData;
+		}
+		// New valid DrawData, use it for display
+		else
+		{
+			NetImgui::Internal::netImguiDeleteSafe( mpImguiDrawData );
+			mpImguiDrawData		= pPendingDrawData;
+			mLastDrawFrameIndex	= mpImguiDrawData->mFrameIndex;
+		}
 	}
+	
 	return mpImguiDrawData;
 }
 
@@ -307,6 +347,7 @@ void Client::ProcessCmdDrawFrame(NetImgui::Internal::CmdDrawFrame* pCmdDrawFrame
 	mMouseCursor					= static_cast<ImGuiMouseCursor>(pCmdDrawFrame->mMouseCursor);
 
 	NetImguiImDrawData* pDrawData	= NetImgui::Internal::netImguiNew<NetImguiImDrawData>();
+	pDrawData->mFrameIndex			= pCmdDrawFrame->mFrameIndex;
 	pDrawData->Valid				= true;
     pDrawData->TotalVtxCount		= static_cast<int>(pCmdDrawFrame->mTotalVerticeCount);
 	pDrawData->TotalIdxCount		= static_cast<int>(pCmdDrawFrame->mTotalIndiceCount);

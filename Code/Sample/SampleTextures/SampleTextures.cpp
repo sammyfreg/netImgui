@@ -10,7 +10,7 @@
 // Enable handling of a Custom Texture Format samples.
 // Only meant as an example, users are free to replace it with their own support
 //Look for this define for implementation details.
-#define TEXTURE_CUSTOM_SAMPLE 0 //SF TODO re-implement this
+#define TEXTURE_CUSTOM_SAMPLE 0 //@sammyfreg todo re-implement custom texture support
 #if TEXTURE_CUSTOM_SAMPLE
 //=================================================================================================
 // This is our Custom texture data format
@@ -418,7 +418,6 @@ void SampleTextures::InitUserTexture()
 	imTexInfo->Create();
 
 	//-------------------------------------------------------------------------
-	//SF TODO
 #if TEXTURE_CUSTOM_SAMPLE
 	GetTexInfo(EUserTex::CustomA) = TexInfo("CustomA", "Currently Unsupported");
 	GetTexInfo(EUserTex::CustomA).mRemoteOnly = true;

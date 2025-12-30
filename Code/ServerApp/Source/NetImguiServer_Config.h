@@ -66,7 +66,6 @@ public:
 	// Access methods
 public:
 					Client();
-					Client(const Client& Copy) = default;
 
 	inline bool		IsReadOnly()const { return mReadOnly; };
 	inline bool		IsTransient()const { return mConfigType == eConfigType::Transient; };

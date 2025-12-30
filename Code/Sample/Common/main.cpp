@@ -19,7 +19,7 @@
 #include <tchar.h>
 
 // Data
-static ID3D11Device*            g_pd3dDevice = nullptr;
+ID3D11Device*           	 	g_pd3dDevice = nullptr; // @SAMPLE_EDIT (removed static)
 static ID3D11DeviceContext*     g_pd3dDeviceContext = nullptr;
 static IDXGISwapChain*          g_pSwapChain = nullptr;
 static bool                     g_SwapChainOccluded = false;
@@ -349,57 +349,6 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         return 0;
     }
     return ::DefWindowProcW(hWnd, msg, wParam, lParam);
-}
-
-//=================================================================================================
-// @SAMPLE_EDIT
-//SF REMOVE THIS and use built-in texture supprort
-//=================================================================================================
-// Avoids adding DirectX11 dependencies in ClientSample, with all the disable warning required
-void TextureCreate(const uint8_t* pPixelData, uint32_t width, uint32_t height, void*& pTextureViewOut)
-{
-    D3D11_TEXTURE2D_DESC desc;
-    D3D11_SUBRESOURCE_DATA subResource;
-
-    ZeroMemory(&desc, sizeof(desc));
-    desc.Width = static_cast<UINT>(width);
-    desc.Height = static_cast<UINT>(height);
-    desc.MipLevels = 1;
-    desc.ArraySize = 1;
-    desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-    desc.SampleDesc.Count = 1;
-    desc.Usage = D3D11_USAGE_DEFAULT;
-    desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-    desc.CPUAccessFlags = 0;
-
-    ID3D11Texture2D* pTexture = nullptr;
-    subResource.pSysMem = pPixelData;
-    subResource.SysMemPitch = desc.Width * 4;
-    subResource.SysMemSlicePitch = 0;
-    g_pd3dDevice->CreateTexture2D(&desc, &subResource, &pTexture);
-
-    if( pTexture )
-    {
-        // Create texture view
-        D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
-        ZeroMemory(&srvDesc, sizeof(srvDesc));
-        srvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-        srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-        srvDesc.Texture2D.MipLevels = desc.MipLevels;
-        srvDesc.Texture2D.MostDetailedMip = 0;
-        g_pd3dDevice->CreateShaderResourceView(pTexture, &srvDesc, reinterpret_cast<ID3D11ShaderResourceView**>(&pTextureViewOut));
-        pTexture->Release();
-    }
-}
-
-// Avoids adding DirectX11 dependencies in ClientSample, with all the disable warning required
-void TextureDestroy(void*& pTextureView)
-{
-    if (pTextureView)
-    {
-        reinterpret_cast<ID3D11ShaderResourceView*>(pTextureView)->Release();
-        pTextureView = nullptr;
-    }
 }
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)

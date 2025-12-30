@@ -327,17 +327,18 @@ void Communications_Outgoing(ClientInfo& client)
 	}
 	//---------------------------------------------------------------------------------------------
 	// Initiate sending next command to Server, when none are in flight
-	// Keep track of what command was last send to prevent 1 type to monopolize coms
+	// Note: The cmd order is important, textures must always be sent before DrawFrame
+	// @sammyfreg todo Could add a frame number awareness to avoid sending only textures with no stop
 	//---------------------------------------------------------------------------------------------
 	constexpr CmdHeader::eCommands kCommandsOrder[] = {
 		CmdHeader::eCommands::Texture, CmdHeader::eCommands::Background, 
 		CmdHeader::eCommands::Clipboard, CmdHeader::eCommands::DrawFrame};
-	constexpr uint32_t kCommandCounts = static_cast<uint32_t>(sizeof(kCommandsOrder)/sizeof(CmdHeader::eCommands));
+	constexpr uint32_t kCommandCounts = IM_ARRAYSIZE(kCommandsOrder);
 	
-	uint32_t Index(client.mPendingSendNext);
-	while( client.mPendingSend.IsReady() && (Index-client.mPendingSendNext)<kCommandCounts )
+	uint32_t Index(0);
+	while( client.mPendingSend.IsReady() && Index<kCommandCounts )
 	{
-		CmdHeader::eCommands NextCmd = kCommandsOrder[Index++ % kCommandCounts];
+		CmdHeader::eCommands NextCmd = kCommandsOrder[Index++];
 		switch( NextCmd )
 		{
 			case CmdHeader::eCommands::Texture:		Communications_Outgoing_Textures(client); break;
@@ -348,9 +349,6 @@ void Communications_Outgoing(ClientInfo& client)
 			case CmdHeader::eCommands::Input:
 			case CmdHeader::eCommands::Version:
 			case CmdHeader::eCommands::Count: break;
-		}
-		if( client.mPendingSend.IsPending() ){
-			client.mPendingSendNext = Index;
 		}
 	}
 }
@@ -411,7 +409,7 @@ bool Communications_Initialize(ClientInfo& client)
 		client.mpSocketComs					= pNewComSocket;					// Take ownerhip of socket
 		client.mBGSettingSent.mTextureId	= client.mBGSetting.mTextureId-1u;	// Force sending the Background settings (by making different than current settings)
 		client.mFrameIndex					= 0;
-		client.mPendingSendNext				= 0;
+		client.mClientTextureIDNext			= 0;
 		client.mServerForceConnectEnabled	= (cmdVersionRcv.mFlags & static_cast<uint8_t>(CmdVersion::eFlags::ConnectExclusive)) == 0;
 		client.mPendingRcv					= PendingCom();
 		client.mPendingSend					= PendingCom();
@@ -704,7 +702,6 @@ void ClientInfo::TextureTrackingClear()
 		// This is basically a stripped version of 'ImGui_ImplDX11_UpdateTexture'
 		// where we only care about the TexID and status values
 		ImVector<ImTextureData*>& Textures = ImGui::GetPlatformIO().Textures;
-		ImTextureRef ClientTextureRef;
 		for(auto TexData : Textures)
 		{
 			if (TexData->Status == ImTextureStatus_WantCreate )
@@ -725,6 +722,19 @@ void ClientInfo::TextureTrackingClear()
 			}
 		}
 	}
+	
+	// Remove all Dear ImGui Managed textures on disconnect,
+	// they will be resent on reconnect
+	if( !IsConnected() && mDearImguiTextureCount > 0 )
+	{
+		for(auto pCmdTexture : mTrackedTextures )
+		{
+			if( pCmdTexture->mIsDearImGuiManaged )
+			{
+				mbTrackedTexturesPending |= TextureTrackingRem(pCmdTexture->mTextureClientID);
+			}
+		}
+	}
 #endif
 }
 
@@ -739,31 +749,40 @@ void ClientInfo::TextureTrackingUpdate(bool bResendAll)
 	{
 		ImVector<ImTextureData*>& Textures	= ImGui::GetPlatformIO().Textures;
 		ImTextureRef ClientTextureRef;
+		
+		//------------------------------------------------------------------------
+		// Find and send all Dear ImGui managed textures creation/update to
+		// remote NetImgui Server
+		//------------------------------------------------------------------------
 		for(auto TexData : Textures)
 		{
 			ClientTextureRef._TexData	= TexData;
 			ImTextureStatus TexStatus 	= TexData != nullptr ? TexData->Status : ImTextureStatus_OK;
-			eTexFormat TexFormat		= eTexFormat::kTexFmtRGBA8; //SF TODO pick format
+			eTexFormat TexFormat		= NetImgui::Internal::ConvertTextureFormat(TexData->Format);
 			uint32_t dataSize			= 0;
-			uint16_t w					= static_cast<uint16_t>(TexData->Width); //SF TODO data rounding on u8?
+			uint16_t w					= static_cast<uint16_t>(TexData->Width);
 			uint16_t h					= static_cast<uint16_t>(TexData->Height);
 
 			if( (TexStatus == ImTextureStatus_WantCreate) ||
-				(bResendAll && TexStatus != ImTextureStatus_Destroyed && TexStatus != ImTextureStatus_WantDestroy)){
-
+				(bResendAll && TexStatus != ImTextureStatus_Destroyed && TexStatus != ImTextureStatus_WantDestroy))
+			{
+				// @sammyfreg todo 	UserID and mClientTextureIDNext used for dear imgui managed's textures
+				//					could potentially collide when generating ClientTextureID. Needs something more robust.
+				TexData->UniqueID 		= ++mClientTextureIDNext;
 				CmdTexture* pCmdTexture	= TextureCmdAllocate(ConvertToClientTexID(ClientTextureRef), w, h, TexFormat, dataSize);
 				if( pCmdTexture )
 				{
 					memcpy(pCmdTexture->mpTextureData.Get(), TexData->GetPixels(), dataSize);
 					pCmdTexture->mUpdatable = true;
 					pCmdTexture->mpTextureData.ToOffset();
-					TextureTrackingAdd(*pCmdTexture);
+					pCmdTexture->mIsDearImGuiManaged = true;
+					TextureTrackingAdd(*pCmdTexture);	// Add texture to our list and request it to be sent over to Server
 					mbTrackedTexturesPending = true;
 				}
 			}
 			else if( TexStatus == ImTextureStatus_WantUpdates )
 			{
-				uint16_t dstW			= static_cast<uint16_t>(TexData->UpdateRect.w); //SF TODO data rounding on u8?
+				uint16_t dstW			= static_cast<uint16_t>(TexData->UpdateRect.w);
 				uint16_t dstH			= static_cast<uint16_t>(TexData->UpdateRect.h);
 				CmdTexture* pCmdTexture	= TextureCmdAllocate(ConvertToClientTexID(ClientTextureRef), dstW, dstH, TexFormat, dataSize);
 				if( pCmdTexture )
@@ -783,16 +802,40 @@ void ClientInfo::TextureTrackingUpdate(bool bResendAll)
 					pCmdTexture->mOffsetX	= TexData->UpdateRect.x;
 					pCmdTexture->mOffsetY	= TexData->UpdateRect.y;
 					pCmdTexture->mUpdatable	= true;
+					pCmdTexture->mIsDearImGuiManaged = true;
 					pCmdTexture->mpTextureData.ToOffset();
 					TexturePendingServerAdd(*pCmdTexture);		// Request texture to be sent over to Server
 					mbTrackedTexturesPending = true;
 				}
 			}
-			else if( TexStatus == ImTextureStatus_WantDestroy ){
-				mbTrackedTexturesPending |= TextureTrackingRem(ClientTextureRef.GetTexID());
+		}
+		
+		//------------------------------------------------------------------------
+		// Remove released DearImgui textures
+		// This is not ideal with large texture count but should be ok for most
+		// cases. Using a unordered_map for 'mTrackedTextures' could help for 
+		// high count, but adds a std dependency
+		//------------------------------------------------------------------------
+		if( mDearImguiTextureCount != Textures.Size )
+		{
+			for(auto pCmdTexture : mTrackedTextures )
+			{
+				if( pCmdTexture->mIsDearImGuiManaged )
+				{
+					bool bFound(false);
+					for(int i(0); !bFound && i<Textures.Size; ++i)
+					{
+						ClientTextureRef._TexData = Textures[i];
+						bFound = pCmdTexture->mTextureClientID == ConvertToClientTexID(ClientTextureRef);
+					}
+					if( !bFound )
+					{
+						mbTrackedTexturesPending |= TextureTrackingRem(pCmdTexture->mTextureClientID);
+					}
+				}
 			}
 		}
-	}
+	}	
 #endif
 
 	//----------------------------------------
@@ -848,6 +891,7 @@ bool ClientInfo::TextureTrackingAdd(CmdTexture& cmdTexture)
 	TextureTrackingRem(cmdTexture.mTextureClientID);
 	mTrackedTextures.push_back(&cmdTexture);	// Add the new entry needing to be tracked
 	TexturePendingServerAdd(cmdTexture);		// Request texture to be sent over to Server
+	mDearImguiTextureCount += cmdTexture.mIsDearImGuiManaged ? 1 : 0;
 	return true;
 }
 
@@ -858,16 +902,14 @@ bool ClientInfo::TextureTrackingRem(ClientTextureID clientTextureID)
 	for(int i(0); i<mTrackedTextures.Size; ++i)
 	{
 		CmdTexture* pCmdTexture = mTrackedTextures[i];
-		if( pCmdTexture && 
-			pCmdTexture->mSent &&
-			pCmdTexture->mTextureClientID == clientTextureID && 
-			pCmdTexture->mStatus == CmdTexture::eType::Create)
+		if( pCmdTexture && pCmdTexture->mTextureClientID == clientTextureID && pCmdTexture->mStatus == CmdTexture::eType::Create )
 		{
 			pCmdTexture->mSent		= false;
 			pCmdTexture->mStatus 	= CmdTexture::eType::Destroy;	// Re-purpose create cmd to destroy the texture
 			TexturePendingServerAdd(*pCmdTexture);
 
 			// Remove item from our list
+			mDearImguiTextureCount -= pCmdTexture->mIsDearImGuiManaged ? 1 : 0;
 			mTrackedTextures[i] = mTrackedTextures.back();
 			mTrackedTextures.pop_back();
 			return true;

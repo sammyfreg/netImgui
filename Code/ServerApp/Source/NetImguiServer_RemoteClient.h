@@ -21,6 +21,7 @@ struct NetImguiImDrawData : ImDrawData
 {
 				NetImguiImDrawData();
 	ImDrawList	mCommandList;
+	uint64_t 	mFrameIndex = 0;
 };
 
 //=================================================================================================
@@ -34,7 +35,21 @@ struct Client
 	using ExchPtrBackground = NetImgui::Internal::ExchangePtr<NetImgui::Internal::CmdBackground>;
 	using ExchPtrImguiDraw	= NetImgui::Internal::ExchangePtr<NetImguiImDrawData>;
 	using TextureTable		= std::unordered_map<uint64_t, App::ServerTexture*>;
-
+	struct TexUpdateInfo
+	{
+		uint64_t ClientId;
+		uint64_t Frame;
+		uint32_t UpdateId;
+		uint32_t Format;
+		uint32_t x;
+		uint32_t y;
+		uint32_t w;
+		uint32_t h;
+		uint32_t isCreate : 1;
+		uint32_t isDestroy : 1;
+		uint32_t isUpdate : 1;
+		uint32_t isDearImguiManaged : 1;
+	};
 												Client();
 												~Client();
 												Client(const Client&)	= delete;
@@ -77,6 +92,7 @@ struct Client
 	int											mConnectPort			= 0;		//!< Connected Port of this remote client
 
 	NetImguiImDrawData*							mpImguiDrawData			= nullptr;	//!< Current Imgui Data that this client is the owner of
+	NetImguiImDrawData*							mpPendingDrawData		= nullptr;	//!< Pending Imgui Data that's has to have 1 frame display delay, to avoid issue with textures with pending updates
 	NetImgui::Internal::CmdDrawFrame*			mpFrameDrawPrev			= nullptr;	//!< Last valid DrawDrame (used by com thread, to uncompress data)
 	TextureTable								mTextureTable;						//!< Table matching client TextureUserID to textures allocated on Server for it
 	ExchPtrImguiDraw							mPendingImguiDrawDataIn;			//!< Pending received Imgui DrawData, waiting to be taken ownership of
@@ -120,6 +136,9 @@ struct Client
 	NetImgui::Internal::CmdPendingRead 			mCmdPendingRead;					//!< Used to get info on the next incoming command from Client
 	NetImgui::Internal::PendingCom 				mPendingRcv;						//!< Data being currently received from Client
 	NetImgui::Internal::PendingCom 				mPendingSend;						//!< Data being currently sent to Client
+	TexUpdateInfo								mTextureHistory[256]	= {};		//!< Keeps track of texture changes (for debug info)
+	uint32_t 									mTextureHistoryIndex	= 0;
+	uint64_t									mLastDrawFrameIndex		= 0;		//!< Last frame index of valid drawdata drawn
 };
 
 }} // namespace NetImguiServer { namespace Client

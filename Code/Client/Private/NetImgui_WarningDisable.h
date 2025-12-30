@@ -12,7 +12,9 @@
 	#pragma clang diagnostic ignored "-Wc++98-compat-pedantic"
 	#pragma clang diagnostic ignored "-Wmissing-prototypes"
 	#pragma clang diagnostic ignored "-Wold-style-cast"			// For ImTextureID_Invalid
-	
+	#pragma clang diagnostic ignored "-Wunsafe-buffer-usage"
+	#pragma clang diagnostic ignored "-Wswitch-default"
+
 //=================================================================================================
 // Visual Studio warnings
 //=================================================================================================

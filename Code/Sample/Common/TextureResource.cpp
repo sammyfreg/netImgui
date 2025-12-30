@@ -1,11 +1,6 @@
 #include "TextureResource.h"
 #include "imgui_internal.h" // Needed for 'RegisterUserTexture/UnregisterUserTexture/ImMin/imMax'
 
-// Methods extracted from DirectX11 backend and copied to main.cpp
-extern void TextureCreate(const uint8_t* pPixelData, uint32_t width, uint32_t height, void*& pTextureViewOut);
-extern void TextureDestroy(void*& pTextureView);
-
-
 //#################################################################################################
 //#################################################################################################
 // DEAR IMGUI TEXTURE RESOURCE
@@ -122,6 +117,10 @@ bool TexResImgui::IsValid() const
 //#################################################################################################
 
 #if NETIMGUI_ENABLED
+
+void TextureCreate(const uint8_t* pPixelData, uint32_t width, uint32_t height, void*& pTextureViewOut);
+void TextureDestroy(void*& pTextureView);
+
 //=================================================================================================
 // Initialize a new User Texture entry that relies on manual management to display the textures.
 // This mostly allocate the pixels data we will use to send to GPU texture resource	
@@ -218,6 +217,59 @@ size_t TexResUser::GetSizeInBytes()
 //=================================================================================================
 {
 	return NetImgui::GetTexture_BytePerImage(mFormat, mWidth, mHeight);
+}
+
+//=================================================================================================
+// These 2 functions are copied from older Dear ImGui backend and allows
+// Creating DirectX11 textures directly, without relying on new Dear ImGui built-in texture support.
+// Used as a demonstration of handling user texture directly, instead of built-in support in Dear Imgui 1.92+
+//=================================================================================================
+#include <d3d11.h>
+
+extern ID3D11Device* g_pd3dDevice;
+void TextureCreate(const uint8_t* pPixelData, uint32_t width, uint32_t height, void*& pTextureViewOut)
+{
+    D3D11_TEXTURE2D_DESC desc;
+    D3D11_SUBRESOURCE_DATA subResource;
+
+    ZeroMemory(&desc, sizeof(desc));
+    desc.Width = static_cast<UINT>(width);
+    desc.Height = static_cast<UINT>(height);
+    desc.MipLevels = 1;
+    desc.ArraySize = 1;
+    desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    desc.SampleDesc.Count = 1;
+    desc.Usage = D3D11_USAGE_DEFAULT;
+    desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+    desc.CPUAccessFlags = 0;
+
+    ID3D11Texture2D* pTexture = nullptr;
+    subResource.pSysMem = pPixelData;
+    subResource.SysMemPitch = desc.Width * 4;
+    subResource.SysMemSlicePitch = 0;
+    g_pd3dDevice->CreateTexture2D(&desc, &subResource, &pTexture);
+
+    if( pTexture )
+    {
+        // Create texture view
+        D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
+        ZeroMemory(&srvDesc, sizeof(srvDesc));
+        srvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+        srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+        srvDesc.Texture2D.MipLevels = desc.MipLevels;
+        srvDesc.Texture2D.MostDetailedMip = 0;
+        g_pd3dDevice->CreateShaderResourceView(pTexture, &srvDesc, reinterpret_cast<ID3D11ShaderResourceView**>(&pTextureViewOut));
+        pTexture->Release();
+    }
+}
+
+void TextureDestroy(void*& pTextureView)
+{
+    if (pTextureView)
+    {
+        reinterpret_cast<ID3D11ShaderResourceView*>(pTextureView)->Release();
+        pTextureView = nullptr;
+    }
 }
 
 #endif // NETIMGUI_ENABLED

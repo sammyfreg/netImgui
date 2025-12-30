@@ -12,6 +12,8 @@ constexpr uint32_t			kClientCountMax		= 32;		//! @sammyfreg todo: support unlimi
 ImVector<ServerTexture*>	gServerTextures;				// List of ALL server created textures (used by server and clients)
 ServerTexture*				gServerTextureEmpty	= nullptr;	// Empty texture used when no valid texture found
 
+void UpdateServerTextures();
+
 bool Startup(const char* CmdLine)
 {	
 	//---------------------------------------------------------------------------------------------
@@ -19,7 +21,7 @@ bool Startup(const char* CmdLine)
 	//---------------------------------------------------------------------------------------------	
 	NetImguiServer::Config::Client::LoadAll();
 	AddTransientClientConfigFromString(CmdLine);
-	
+
 	//---------------------------------------------------------------------------------------------
     // Perform application initialization:
 	//---------------------------------------------------------------------------------------------
@@ -27,7 +29,7 @@ bool Startup(const char* CmdLine)
 		NetImguiServer::Network::Startup() &&
 		NetImguiServer::UI::Startup())
 	{
-		NetImgui::Internal::CmdTexture cmdTexture; //SF TODO make this 8 bits
+		NetImgui::Internal::CmdTexture cmdTexture;
 		uint32_t EmptyData[4*4]					= {0xFF0000FF,0xFF0000FF,0xFF0000FF,0xFF0000FF,0xFF0000FF,0xFF0000FF,0xFF0000FF,0xFF0000FF,0xFF0000FF,0xFF0000FF,0xFF0000FF,0xFF0000FF,0xFF0000FF,0xFF0000FF,0xFF0000FF,0xFF0000FF};
 		cmdTexture.mTextureClientID				= 0;
 		cmdTexture.mFormat						= ImTextureFormat::ImTextureFormat_RGBA32;
@@ -45,11 +47,38 @@ bool Startup(const char* CmdLine)
 
 void Shutdown()
 {
-	if( gServerTextureEmpty )
-	{
-		gServerTextureEmpty->MarkForDelete();
+	// Mark all texture resources as wanting deletion
+	for(ServerTexture* texServer : gServerTextures){
+		if( texServer && texServer->IsValid() )
+		{
+			if( !texServer->mIsCustom  )
+			{
+				texServer->mTexData.SetStatus(ImTextureStatus_WantDestroy);
+				texServer->mTexData.UnusedFrames = 1;
+			}
+			else
+			{
+			#if TEXTURE_CUSTOM_SAMPLE
+				if( texServer && texServer->mIsCustom )
+				{
+					0 // TODO
+				}
+			#endif
+			}
+		}
 	}
-	//SF TODO delete res
+	
+	ImGui::NewFrame();	ImGui::Render(); HAL_RenderDrawData(ImGui::GetDrawData());	// Allow Dear ImGui to delete the textures
+	UpdateServerTextures();															// Finish removing them from Dear ImGui user textures and delete objects
+	ImGui::NewFrame();	ImGui::Render(); 											// Update Dear ImGui texture list (so it doesn't have deleted items in it)
+
+	// Remove deleted textures from clients
+	for(uint32_t i(0); i<RemoteClient::Client::GetCountMax(); ++i)
+	{
+		RemoteClient::Client& client = RemoteClient::Client::Get(i);
+		client.mTextureTable.clear();
+	}
+
 	NetImguiServer::Network::Shutdown();
 	NetImguiServer::UI::Shutdown();
 	NetImguiServer::Config::Client::Clear();
@@ -133,8 +162,8 @@ void DrawClientBackground(RemoteClient::Client& client)
 		ImGui::Begin("Background", nullptr, ImGuiWindowFlags_NoDecoration|ImGuiWindowFlags_NoInputs|ImGuiWindowFlags_NoNav|ImGuiWindowFlags_NoBackground|ImGuiWindowFlags_NoSavedSettings);
 		// Look for the desired texture (and use default if not found)
 		auto texIt						= client.mTextureTable.find(client.mBGSettings.mTextureId);
-		const ServerTexture* pTexture	= texIt == client.mTextureTable.end() ? &UI::GetBackgroundTexture() : texIt->second;
-		UI::DrawCenteredBackground(*pTexture, ImVec4(client.mBGSettings.mTextureTint[0],client.mBGSettings.mTextureTint[1],client.mBGSettings.mTextureTint[2],client.mBGSettings.mTextureTint[3]));
+		const ServerTexture* pTexture	= texIt == client.mTextureTable.end() ? UI::GetBackgroundTexture() : texIt->second;
+		UI::DrawCenteredBackground(pTexture, ImVec4(client.mBGSettings.mTextureTint[0],client.mBGSettings.mTextureTint[1],client.mBGSettings.mTextureTint[2],client.mBGSettings.mTextureTint[3]));
 		ImGui::End();
 		ImGui::Render();
 		client.mBGNeedUpdate = false;
@@ -149,7 +178,7 @@ void UpdateServerTextures()
 	{
 		if( gServerTextures[i] )
 		{
-			ServerTexture& ServerTex 		= *gServerTextures[i];
+			ServerTexture& ServerTex = *gServerTextures[i];
 
 			// Release un-needed pixel data once it has been processed by backend
 			if( ServerTex.mIsUpdatable == false && 
@@ -170,10 +199,14 @@ void UpdateServerTextures()
 			// Send deletion request to backend
 			else if( ServerTex.mTexData.WantDestroyNextFrame )
 			{
-				if(ServerTex.mTexData.UnusedFrames++ >= 2)
+				const RemoteClient::Client* Client = ServerTex.mOwnerClientIndex >= 0 ? &RemoteClient::Client::Get(ServerTex.mOwnerClientIndex) : nullptr;
+				if( !Client || !Client->mpImguiDrawData || Client->mpImguiDrawData->mFrameIndex > ServerTex.mLastFrameUsed )
 				{
-					ServerTex.mTexData.Status 				= ImTextureStatus_WantDestroy;
-					ServerTex.mTexData.WantDestroyNextFrame	= false;
+					if(ServerTex.mTexData.UnusedFrames++ > 0)
+					{
+						ServerTex.mTexData.Status 				= ImTextureStatus_WantDestroy;
+						ServerTex.mTexData.WantDestroyNextFrame	= false;
+					}
 				}
 			}
 		}
@@ -229,9 +262,8 @@ ServerTexture* CreateTexture(const NetImgui::Internal::CmdTexture& cmdTexture, u
 	if( serverTex )
 	{
 		serverTex->mIsCustom	= cmdTexture.mFormat == NetImgui::eTexFormat::kTexFmtCustom;
-		serverTex->mIsUpdatable	= false;
 		serverTex->mClientTexID	= cmdTexture.mTextureClientID;
-
+		serverTex->mIsUpdatable	= false;
 		if(	CreateTexture_Custom(*serverTex, cmdTexture, textureDataSize) ||
 			CreateTexture_Default(*serverTex, cmdTexture, textureDataSize) )
 		{
@@ -244,18 +276,6 @@ ServerTexture* CreateTexture(const NetImgui::Internal::CmdTexture& cmdTexture, u
 		}
 	}
 	return serverTex;
-}
-//=================================================================================================
-void DestroyTexture(ServerTexture* serverTexture, const NetImgui::Internal::CmdTexture& cmdTexture, uint32_t customDataSize)
-//=================================================================================================
-{
-	if( serverTexture )
-	{
-		if ( DestroyTexture_Custom(*serverTexture, cmdTexture, customDataSize) == false )
-		{
-			serverTexture->MarkForDelete();
-		}
-	}
 }
 
 //-----------------------------------------------------------------------------------------

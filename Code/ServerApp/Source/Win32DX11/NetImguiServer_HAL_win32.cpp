@@ -45,7 +45,7 @@ bool NetImguiNamedPipeMsgSend( const char* cmdline )
 		// Connected to named pipe, meaning there's already a running copy of netImgui Server
 		// Forward commandline options.
 		if( cmdline && cmdline[0] != 0 )
-			WriteFile(hNamedPipe, cmdline, static_cast<DWORD>(strlen(cmdline) + 1), nullptr, nullptr);		
+			WriteFile(hNamedPipe, cmdline, static_cast<DWORD>(strlen(cmdline) + 1), nullptr, nullptr);
 		CloseHandle(hNamedPipe);
 		return true;
 	}
