@@ -738,7 +738,7 @@ void DrawImguiContent_MainMenu_Clients_Entry(RemoteClient::Client* pClient, NetI
 	ImGui::EndDisabled();	
 
 	// Config: Connection
-	float kButtonWidth = ImGui::GetFont()->CalcTextSizeA(ImGui::GetFontSize(), 0.f, 0.f, " Disconnect ").x;
+	float kButtonWidth = ImGui::GetFont()->CalcTextSizeA(ImGui::GetFontSize(), 500.f, 0.f, " Disconnect ").x;
 	if( pClient && !pClient->mbDisconnectPending && ImGui::Button("Disconnect", ImVec2(kButtonWidth, 0)) )
 	{
 		gPopup_ConfirmDisconnect_ClientIdx = pClient->mClientIndex;

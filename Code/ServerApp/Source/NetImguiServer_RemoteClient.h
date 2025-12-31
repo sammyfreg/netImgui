@@ -129,7 +129,7 @@ struct Client
 	float										mMousePos[2]			= {0,0};
 	float										mMouseWheelPos[2]		= {0,0};
 	ImGuiMouseCursor							mMouseCursor			= ImGuiMouseCursor_None;	// Last mosue cursor remote client requested
-	ImGuiContext*								mpBGContext				= nullptr;					// Special Imgui Context used to render the background (only updated when needed)	
+	ImGuiContext*								mpBGContext				= nullptr;					// Special Imgui Context used to render the background (only updated when needed)
 	bool										mBGNeedUpdate			= true;						// Let engine know that we should regenerate the background draw commands
 	NetImgui::Internal::Network::SocketInfo*	mpSocket				= nullptr;	//!< Socket used for communications 
 	NetImgui::Internal::CmdBackground			mBGSettings;						//!< Settings for client background drawing settings

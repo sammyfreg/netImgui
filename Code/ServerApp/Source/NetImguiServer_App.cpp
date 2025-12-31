@@ -143,18 +143,28 @@ void DrawClientBackground(RemoteClient::Client& client)
 		netImguiDeleteSafe(pBGUpdate);
 	}
 
+	if( client.mpBGContext == nullptr )
+	{
+		client.mpBGContext					= ImGui::CreateContext(ImGui::GetIO().Fonts);
+		client.mpBGContext->IO.DeltaTime	= 1/30.f;
+		client.mpBGContext->IO.IniFilename	= nullptr;	// Disable server ImGui ini settings (not really needed, and avoid imgui.ini filename conflicts)
+		client.mpBGContext->IO.LogFilename	= nullptr;
+		client.mpBGContext->IO.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
+	}
+
+	// Detect when the main font textures was updated, 
+	// in which case we need to re-generate the BG DrawData
+	const ImVector<ImTextureData*>& MainTextures = ImGui::GetPlatformIO().Textures;
+	NetImgui::Internal::ScopedImguiContext scopedCtx(client.mpBGContext);
+	const ImVector<ImTextureData*>& BGTextures = ImGui::GetPlatformIO().Textures;
+	for (ImTextureData* texData : BGTextures){
+		client.mBGNeedUpdate |= MainTextures.contains(texData) == false;
+	}
+
+	// Update the BG DrawData
+	// Note: Maybe we should try rendering it directly in client windows every frame instead, to keep things simpler
 	if (client.mBGNeedUpdate) 
 	{
-		if( client.mpBGContext == nullptr )
-		{
-			client.mpBGContext					= ImGui::CreateContext(ImGui::GetIO().Fonts);
-			client.mpBGContext->IO.DeltaTime	= 1/30.f;
-			client.mpBGContext->IO.IniFilename	= nullptr;	// Disable server ImGui ini settings (not really needed, and avoid imgui.ini filename conflicts)
-			client.mpBGContext->IO.LogFilename	= nullptr;
-			client.mpBGContext->IO.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
-		}
-
-		NetImgui::Internal::ScopedImguiContext scopedCtx(client.mpBGContext);
 		ImGui::GetIO().DisplaySize = ImVec2(client.mAreaSizeX,client.mAreaSizeY);
 		ImGui::NewFrame();
 		ImGui::SetNextWindowPos(ImVec2(0,0));

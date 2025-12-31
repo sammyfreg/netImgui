@@ -65,7 +65,7 @@ void HAL_RenderDrawData(RemoteClient::Client& client, ImDrawData* pDrawData)
 		{
 			void* mainBackend = ImGui::GetIO().BackendRendererUserData;
 			NetImgui::Internal::ScopedImguiContext scopedCtx(client.mpBGContext);
-			ImGui::GetIO().BackendRendererUserData = mainBackend; 	// Appropriate the existing renderer backend, for this client rendering
+			ImGui::GetIO().BackendRendererUserData = mainBackend; 	// Repurpose the existing renderer backend, for this client rendering
 			ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 			ImGui::GetIO().BackendRendererUserData = nullptr;		// Restore it to null
 		}
