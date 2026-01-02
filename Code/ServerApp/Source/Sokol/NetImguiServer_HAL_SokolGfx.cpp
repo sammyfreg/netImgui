@@ -15,6 +15,15 @@
 
 namespace NetImguiServer { namespace App
 {
+
+//=================================================================================================
+// HAL RENDER DRAW DATA
+//=================================================================================================
+void HAL_RenderDrawData(ImDrawData* pDrawData)
+{
+	simgui_render_draw_data(pDrawData);
+}
+
 //=================================================================================================
 // HAL RENDER DRAW DATA
 // The drawing of remote clients is handled normally by the standard rendering backend,
@@ -46,6 +55,7 @@ void HAL_RenderDrawData(RemoteClient::Client& client, ImDrawData* pDrawData)
                 NetImgui::Internal::ScopedImguiContext scopedCtx(client.mpBGContext);
                 ImGui::GetIO().BackendRendererUserData = mainBackend; // Re-appropriate the existing renderer backend, for this client rendeering
                 simgui_render_draw_data(ImGui::GetDrawData());
+                ImGui::GetIO().BackendRendererUserData = nullptr;
             }
             if (pDrawData)
             {
@@ -66,7 +76,7 @@ void HAL_RenderDrawData(RemoteClient::Client& client, ImDrawData* pDrawData)
 //=================================================================================================
 bool HAL_CreateRenderTarget(uint16_t Width, uint16_t Height, void*& pOutRT, ImTextureData& OutTexture)
 {
-	HAL_DestroyRenderTarget(pOutRT, pOutTexture);
+	HAL_DestroyRenderTarget(pOutRT, OutTexture);
 
     sg_image_desc img_desc{};
     img_desc.render_target = true;
@@ -81,7 +91,9 @@ bool HAL_CreateRenderTarget(uint16_t Width, uint16_t Height, void*& pOutRT, ImTe
     bool bSuccess = img.id != SG_INVALID_ID;
     if( bSuccess ){
 		pOutRT      = reinterpret_cast<void*>(static_cast<uint64_t>(img.id));
-		pOutTexture = reinterpret_cast<void*>(static_cast<uint64_t>(img.id));
+		// Store identifiers
+        OutTexture.SetTexID(static_cast<ImTextureID>(img.id));
+        OutTexture.SetStatus(ImTextureStatus_OK);
 		return true;
 	}
 
@@ -101,79 +113,17 @@ void HAL_DestroyRenderTarget(void*& pOutRT, ImTextureData& OutTexture)
 		pOutRT = nullptr;
         sg_destroy_image(pRT);
 	}
-	if(pOutTexture)
+
+	if(OutTexture.Status != ImTextureStatus_Destroyed && OutTexture.GetTexID() != ImTextureID_Invalid)
 	{
 		sg_image pTexture{};
-        pTexture.id = static_cast<uint32_t>(reinterpret_cast<uint64_t>(pOutTexture));
-		pOutTexture = nullptr;
+        pTexture.id = static_cast<uint32_t>(OutTexture.GetTexID());
         sg_destroy_image(pTexture);
+
+		// Clear identifiers and mark as destroyed (in order to allow e.g. calling InvalidateDeviceObjects while running)
+		OutTexture.SetTexID(ImTextureID_Invalid);
+		OutTexture.SetStatus(ImTextureStatus_Destroyed);
 	}
-}
-
-//=================================================================================================
-// HAL CREATE TEXTURE
-// Receive info on a Texture to allocate. At the moment, 'Dear ImGui' default rendering backend
-// only support RGBA8 format, so first convert any input format to a RGBA8 that we can use
-//=================================================================================================
-bool HAL_CreateTexture(uint16_t Width, uint16_t Height, NetImgui::eTexFormat Format, const uint8_t* pPixelData, ServerTexture& OutTexture)
-{
-	NetImguiServer::App::EnqueueHALTextureDestroy(OutTexture);
-
-	// Convert all incoming textures data to RGBA8
-	uint32_t* pPixelDataAlloc = NetImgui::Internal::netImguiSizedNew<uint32_t>(Width*Height*4);
-	if(Format == NetImgui::eTexFormat::kTexFmtA8)
-	{
-		for (int i = 0; i < Width * Height; ++i){
-			pPixelDataAlloc[i] = 0x00FFFFFF | (static_cast<uint32_t>(pPixelData[i])<<24);
-		}
-		pPixelData = reinterpret_cast<const uint8_t*>(pPixelDataAlloc);
-	}
-	else if (Format == NetImgui::eTexFormat::kTexFmtRGBA8)
-	{
-	}
-	else
-	{
-		// Unsupported format
-		return false;
-	}
-
-    sg_image_desc img_desc{};
-    img_desc.width = Width;
-    img_desc.height = Height;
-    img_desc.pixel_format = SG_PIXELFORMAT_RGBA8;
-    img_desc.usage = SG_USAGE_STREAM;
-
-    sg_image img = sg_make_image(&img_desc);
-
-    if (img.id != SG_INVALID_ID)
-    {
-        sg_image_data img_data{};
-        img_data.subimage[0][0].ptr  = pPixelData;
-        img_data.subimage[0][0].size = Width * Height * sizeof(uint32_t);
-        sg_update_image(img, img_data);
-
-        OutTexture.mSize[0]         = Width;
-        OutTexture.mSize[1]         = Height;
-        OutTexture.mpHAL_Texture	= reinterpret_cast<void*>(static_cast<uint64_t>(img.id));
-    }
-
-    NetImgui::Internal::netImguiDeleteSafe(pPixelDataAlloc);
-    return img.id != SG_INVALID_ID;
-}
-
-//=================================================================================================
-// HAL DESTROY TEXTURE
-// Free up allocated resources tried to a Texture
-//=================================================================================================
-void HAL_DestroyTexture(ServerTexture& OutTexture)
-{
-    if(OutTexture.mpHAL_Texture)
-    {
-        sg_image image{};
-        image.id = static_cast<uint32_t>(reinterpret_cast<uint64_t>(OutTexture.mpHAL_Texture));
-        sg_destroy_image(image);
-        OutTexture.mpHAL_Texture = nullptr;
-    }
 }
 
 }} //namespace NetImguiServer { namespace App

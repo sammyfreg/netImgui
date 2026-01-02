@@ -68,9 +68,27 @@ void Shutdown()
 		}
 	}
 	
-	ImGui::NewFrame();	ImGui::Render(); HAL_RenderDrawData(ImGui::GetDrawData());	// Allow Dear ImGui to delete the textures
-	UpdateServerTextures();															// Finish removing them from Dear ImGui user textures and delete objects
-	ImGui::NewFrame();	ImGui::Render(); 											// Update Dear ImGui texture list (so it doesn't have deleted items in it)
+	// Allow Dear ImGui to delete the textures
+	ImGui::NewFrame();
+	ImGui::Render();
+	HAL_RenderDrawData(ImGui::GetDrawData());
+	if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+	{
+		ImGui::UpdatePlatformWindows();
+		ImGui::RenderPlatformWindowsDefault();
+	}
+
+	// Finish removing them from Dear ImGui user textures and delete objects
+	UpdateServerTextures();
+	
+	// Update Dear ImGui texture list (so it doesn't have deleted items in it)
+	ImGui::NewFrame();
+	ImGui::Render();
+	if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+	{
+		ImGui::UpdatePlatformWindows();
+		ImGui::RenderPlatformWindowsDefault();
+	}
 
 	// Remove deleted textures from clients
 	for(uint32_t i(0); i<RemoteClient::Client::GetCountMax(); ++i)
