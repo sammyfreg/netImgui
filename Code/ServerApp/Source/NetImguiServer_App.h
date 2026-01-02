@@ -26,39 +26,36 @@ namespace NetImguiServer { namespace App
 	// Prepare for shutdown of application
 	void	Shutdown();
 	// Receive rendering request of each Remote client and output it to their own RenderTarget
-	void	UpdateRemoteContent();
+	void	Update();
 	// Add a new remote client config to our list (to attempt connexion)
 	bool	AddTransientClientConfigFromString(const char* string);
-	// Check for monitor DPI update and regenerate font when needed 
-	// (return true when font texture needs to be created)
-	bool	UpdateFont();
+	// Initialize the font atlas used by the Serve
+	void	LoadFonts();
+
 	// Descriptor of each textures by Server. Format always RGBA8
-	// @sammyfreg todo: make this safer with smart pointer instead of manually deleting the HALTexture
 	struct ServerTexture 
 	{
-		inline bool	IsValid(){ return mpHAL_Texture != nullptr; }
-		void*			mpHAL_Texture		= nullptr;
-		ServerTexture*	mpDeleteNext		= nullptr;	// Used to insert in a list of textures to be deleted next frame
-		uint64_t		mImguiId			= 0u;		// Associated ImGui TextureId in Imgui commandlist
-		uint64_t		mCustomData			= 0u;		// Memory available to custom command
-		uint16_t		mSize[2]			= {0,0};
-		uint8_t			mFormat				= 0;
-		uint8_t			mPadding[3]			= {};
+		inline ServerTexture(){ mTexData.Status = ImTextureStatus_Destroyed; mTexData.RefCount = 1; }
+		inline bool IsValid()const { return mTexData.Status != ImTextureStatus_WantCreate && mTexData.Status != ImTextureStatus_Destroyed; }
+		inline void MarkForDelete(){ mTexData.WantDestroyNextFrame = true; mTexData.UnusedFrames = 0; }
+		ImTextureData	mTexData;					// Struct used by backend for texture support
+		ImTextureID		mClientTexID;				// Client UserID associated with this texture
+		uint64_t		mCustomData			= 0u;	// Memory available to custom command
+		uint64_t 		mLastFrameUsed		= 0u;	// Last draw frame this texture was used (needed for resources release)
+		int32_t 		mOwnerClientIndex	= -1;	// Client that created this texture (if any)
+		uint8_t			mIsCustom			= 0u;	// Format handled by custom version of NetImguiServer modified by library user
+		uint8_t			mIsUpdatable		= 0u;	// True when textures can be updated (font)
+		uint8_t			mPadding[6]			= {};
 	};
 
 	//=============================================================================================
 	// Handling of texture data
 	//=============================================================================================
-	bool	CreateTexture(ServerTexture& serverTexture, const NetImgui::Internal::CmdTexture& cmdTexture, uint32_t customDataSize);
-	void	DestroyTexture(ServerTexture& serverTexture, const NetImgui::Internal::CmdTexture& cmdTexture, uint32_t customDataSize);
+	ServerTexture* CreateTexture(const NetImgui::Internal::CmdTexture& cmdTexture, uint32_t customDataSize);
 
 	// Library users can implement their own texture format (on client/server). Useful for vidoe streaming, new format, etc.
 	bool	CreateTexture_Custom(ServerTexture& serverTexture, const NetImgui::Internal::CmdTexture& cmdTexture, uint32_t customDataSize);
 	bool	DestroyTexture_Custom(ServerTexture& serverTexture, const NetImgui::Internal::CmdTexture& cmdTexture, uint32_t customDataSize);
-
-	// Texture destruction is postponed until the end of the frame update to avoid rendering issues
-	void	EnqueueHALTextureDestroy(ServerTexture& serverTexture);
-	void	CompleteHALTextureDestroy();
 
 	//=============================================================================================
 	// Note (H)ardware (A)bstraction (L)ayer
@@ -76,15 +73,12 @@ namespace NetImguiServer { namespace App
 	const char* HAL_GetUserSettingFolder();
 	// Return true when new content should be retrieved from Clipboard (avoid constantly reading/converting content)
 	bool	HAL_GetClipboardUpdated();
+	// Receive a ImDrawData drawlist and render it to backbuffer
+	void	HAL_RenderDrawData(ImDrawData* pDrawData);
 	// Receive a ImDrawData drawlist and request Dear ImGui's backend to output it into a texture
 	void	HAL_RenderDrawData(RemoteClient::Client& client, ImDrawData* pDrawData);
-	// Allocate a texture resource
-	bool	HAL_CreateTexture(uint16_t Width, uint16_t Height, NetImgui::eTexFormat Format, const uint8_t* pPixelData, ServerTexture& OutTexture);
-	// Free a Texture resource
-	void	HAL_DestroyTexture( ServerTexture& OutTexture );
 	// Allocate a RenderTarget that each client will use to output their ImGui drawing into.
-	bool	HAL_CreateRenderTarget(uint16_t Width, uint16_t Height, void*& pOutRT, void*& pOutTexture );
+	bool	HAL_CreateRenderTarget(uint16_t Width, uint16_t Height, void*& pOutRT, ImTextureData& OutTexture );
 	// Free a RenderTarget resource
-	void	HAL_DestroyRenderTarget(void*& pOutRT, void*& pOutTexture );
-
+	void	HAL_DestroyRenderTarget(void*& pOutRT, ImTextureData& OutTexture );
 }}

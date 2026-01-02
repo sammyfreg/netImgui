@@ -6,11 +6,6 @@
 // with NetImfui inactive.
 //=================================================================================================
 
-#include <NetImgui_Api.h>
-// Since NetImgui is disabled in this sample, NetImgui_Api.h will not include this header, 
-// so must include it manually
-#include "imgui.h" 
-
 #include "../Common/Sample.h"
 
 //=================================================================================================
@@ -20,7 +15,7 @@ class SampleDisabled : public Sample::Base
 {
 public:
 					SampleDisabled() : Base("SampleDisabled") {}
-virtual ImDrawData* Draw() override;
+virtual void		Draw() override;
 };
 
 //=================================================================================================
@@ -36,7 +31,7 @@ Sample::Base& GetSample()
 //=================================================================================================
 // DRAW
 //=================================================================================================
-ImDrawData* SampleDisabled::Draw()
+void SampleDisabled::Draw()
 {
 	//---------------------------------------------------------------------------------------------
 	// (1) Start a new Frame
@@ -65,10 +60,5 @@ ImDrawData* SampleDisabled::Draw()
 	// (3) Finish the frame, preparing the drawing data and...
 	//---------------------------------------------------------------------------------------------
 	ImGui::Render();
-	
-	//---------------------------------------------------------------------------------------------
-	// (4) Forward to drawing data our local renderer when not remotely drawing
-	//---------------------------------------------------------------------------------------------
-	return ImGui::GetDrawData();
 }
 

@@ -244,7 +244,13 @@ namespace NetImgui
 			SourceRootPath = NetImguiTarget.GetPath(sDefaultPath);
 			SourceFilesExcludeRegex.Add(@"backends\.*");
 		}
-		
+
+        public override void ConfigureAll(Configuration conf, NetImguiTarget target)
+        {
+            base.ConfigureAll(conf, target);
+            conf.IncludePaths.Add(NetImguiTarget.GetPath(sDefaultPath));
+        }
+
 		public static string sDefaultPath = @"\Code\ThirdParty\DearImgui";
 	}
 	
@@ -263,7 +269,7 @@ namespace NetImgui
 
 	// Dear ImGui Library, 32bits index
 	[Sharpmake.Generate] 
-	public class ProjectImguiIndex32 : ProjectImgui 
+	public class ProjectImguiIndex32 : ProjectImgui
 	{ 
 		public ProjectImguiIndex32() { Name = "DearImguiIndex32Lib"; }
 		
@@ -283,7 +289,7 @@ namespace NetImgui
 		public override void ConfigureAll(Configuration conf, NetImguiTarget target)
         {
 			base.ConfigureAll(conf, target);
-			conf.Defines.Add("ImTextureID=ImU64");		// Server must absolutly use at minimum 64bits texture id, even when compiled in 32 bits			
+			conf.Defines.Add("ImTextureUserID=ImU64");		// Server must absolutly use at minimum 64bits texture id, even when compiled in 32 bits			
 			EnabledImguiIndex32Bits(conf);
 		}
 	}

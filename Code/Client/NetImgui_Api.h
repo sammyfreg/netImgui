@@ -4,14 +4,12 @@
 //! @Name		: NetImgui
 //=================================================================================================
 //! @author		: Sammy Fatnassi
-//! @date		: 2024/12/10
-//!	@version	: v1.12.1
+//! @date		: 2026/01/01
+//!	@version	: v1.12.3
 //! @Details	: For integration info : https://github.com/sammyfreg/netImgui/wiki
 //=================================================================================================
-#define NETIMGUI_VERSION		"1.12.1"	// Fixed disconnect thread contention and clipboard command
-#define NETIMGUI_VERSION_NUM	11201
-
-
+#define NETIMGUI_VERSION		"1.12.3"	// Imported Texture rework into dev branch
+#define NETIMGUI_VERSION_NUM	11203
 
 
 //-------------------------------------------------------------------------------------------------
@@ -53,7 +51,7 @@
 // we define this library as 'Disabled'
 //-------------------------------------------------------------------------------------------------
 #ifndef NETIMGUI_ENABLED
-	#define NETIMGUI_ENABLED 0
+	#define NETIMGUI_ENABLED 					0
 #endif
 
 //-------------------------------------------------------------------------------------------------
@@ -63,7 +61,19 @@
 //-------------------------------------------------------------------------------------------------
 #if !defined(IMGUI_VERSION)
 	#undef	NETIMGUI_ENABLED
-	#define NETIMGUI_ENABLED 0
+	#define NETIMGUI_ENABLED 					0
+#endif
+
+//-------------------------------------------------------------------------------------------------
+// Control support for native Dear ImGui texture backend support
+// At the moment, meant to always be active on recent Dear Imgui version (1.92+)
+//-------------------------------------------------------------------------------------------------
+#ifndef NETIMGUI_IMGUI_TEXTURES_ENABLED
+#ifdef IMGUI_HAS_TEXTURES
+	#define NETIMGUI_IMGUI_TEXTURES_ENABLED		1
+#else
+	#define NETIMGUI_IMGUI_TEXTURES_ENABLED		0
+#endif
 #endif
 
 #if NETIMGUI_ENABLED
@@ -74,12 +84,11 @@
 // Default Build settings defines values
 // Assign default values when not set in user NetImgui_Config.h
 //=================================================================================================
-
 //-------------------------------------------------------------------------------------------------
 // Prepended to functions signature, for dll export/import
 //-------------------------------------------------------------------------------------------------
 #ifndef NETIMGUI_API
-	#define NETIMGUI_API						IMGUI_API						// Use same value as defined by Dear ImGui by default 
+	#define NETIMGUI_API						IMGUI_API	// Use same value as defined by Dear ImGui by default 
 #endif
 
 //-------------------------------------------------------------------------------------------------
@@ -87,7 +96,7 @@
 // Note:	Can help when unable to open a socket because it wasn't properly released after a crash.
 //-------------------------------------------------------------------------------------------------
 #ifndef NETIMGUI_FORCE_TCP_LISTEN_BINDING
-	#define NETIMGUI_FORCE_TCP_LISTEN_BINDING	0								// Doesn't seem to be needed on Window/Linux
+	#define NETIMGUI_FORCE_TCP_LISTEN_BINDING	0	// Doesn't seem to be needed on Window/Linux
 #endif
 
 //-------------------------------------------------------------------------------------------------
@@ -102,15 +111,6 @@
 	#define NETIMGUI_IMGUI_CALLBACK_ENABLED		(IMGUI_VERSION_NUM >= 18100)	// Not supported pre Dear ImGui 1.81
 #endif
 
-// Temporary code to support the new Font Texture Update
-// Very inneficient, this is a stop gap measure until 
-// the partial texture update support is finished in NetImgui
-#ifdef IMGUI_HAS_TEXTURES
-	#define NETIMGUI_FONTUPDATE_TEMP_WORKAROUND 1
-#else
-	#define NETIMGUI_FONTUPDATE_TEMP_WORKAROUND 0
-#endif
-
 namespace NetImgui 
 { 
 
@@ -118,8 +118,10 @@ namespace NetImgui
 // List of texture format supported
 //=================================================================================================
 enum eTexFormat {
-	kTexFmtA8,
+	// Match Dear Imgui 1.92 'ImTextureFormat'
 	kTexFmtRGBA8,
+	kTexFmtA8,
+	
 	
 	// Support of 'user defined' texture format.
 	// Implementation must be added on both client and Server code. 
@@ -176,6 +178,7 @@ NETIMGUI_API	void				Shutdown();
 //						  the font atlas, because of a monitor DPI change. When left to nullptr,
 //						  uses 'ImGuiIO.FontGlobalScale' instead to increase text size,
 //						  with blurier results.
+//						  NOTE: Not used by Dear ImGui 1.92+, unneeded with font update support.
 //=================================================================================================
 NETIMGUI_API	bool				ConnectToApp(const char* clientName, const char* serverHost, uint32_t serverPort=kDefaultServerPort, ThreadFunctPtr threadFunction=0, FontCreateFuncPtr FontCreateFunction=0);
 NETIMGUI_API	bool				ConnectFromApp(const char* clientName, uint32_t clientPort=kDefaultClientPort, ThreadFunctPtr threadFunction=0, FontCreateFuncPtr fontCreateFunction=0);
@@ -211,8 +214,10 @@ NETIMGUI_API	bool				IsDrawingRemote(void);
 //=================================================================================================
 // Send an updated texture used by imgui, to the NetImguiServer application
 // Note: To remove a texture, set pData to nullptr
-// Note: User needs to provide a valid 'dataSize' when using format 'kTexFmtCustom', 
+// Note: User needs to provide a valid 'dataSize' when using format 'kTexFmtCustom',
 //		 can be ignored otherwise
+// Note: Can now rely on native Dear ImGui managed texture support to let the system handle their
+//		 creation/update/destruction automatically (since Dear ImGui 1.92+. See 'SampleTextures').
 //=================================================================================================
 NETIMGUI_API	void				SendDataTexture(ImTextureID textureId, void* pData, uint16_t width, uint16_t height, eTexFormat format, uint32_t dataSize=0);
 
@@ -251,6 +256,9 @@ NETIMGUI_API	ImGuiContext*		GetContext();
 NETIMGUI_API	void				SetBackground(const ImVec4& bgColor);
 NETIMGUI_API	void				SetBackground(const ImVec4& bgColor, const ImVec4& textureTint );
 NETIMGUI_API	void				SetBackground(const ImVec4& bgColor, const ImVec4& textureTint, ImTextureID bgTextureID);
+#if NETIMGUI_IMGUI_TEXTURES_ENABLED
+NETIMGUI_API	void				SetBackground(const ImVec4& bgColor, const ImVec4& textureTint, const ImTextureRef& bgTextureRef);
+#endif
 
 //=================================================================================================
 // Control the data compression for communications between Client/Server
@@ -264,7 +272,7 @@ NETIMGUI_API	eCompressionMode	GetCompressionMode();
 NETIMGUI_API	uint8_t				GetTexture_BitsPerPixel	(eTexFormat eFormat);
 NETIMGUI_API	uint32_t			GetTexture_BytePerLine	(eTexFormat eFormat, uint32_t pixelWidth);
 NETIMGUI_API	uint32_t			GetTexture_BytePerImage	(eTexFormat eFormat, uint32_t pixelWidth, uint32_t pixelHeight);
-} 
+}
 
 //=================================================================================================
 // Optional single include compiling option

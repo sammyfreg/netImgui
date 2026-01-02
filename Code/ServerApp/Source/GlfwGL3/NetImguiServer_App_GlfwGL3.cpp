@@ -171,17 +171,8 @@ int main(int argc, char **argv)
         // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
         glfwPollEvents();
 
-		NetImguiServer::App::UpdateRemoteContent(); // @SAMPLE_EDIT (Request each client to update their drawing content )
+		NetImguiServer::App::Update(); // @SAMPLE_EDIT (Request each client to update their drawing content )
 
-        //=========================================================================================
-        // @SAMPLE_EDIT (DPI Awareness)
-        float scaleX, scaleY;
-        ImGui_ImplGlfw_Data* bd = ImGui_ImplGlfw_GetBackendData();
-        glfwGetWindowContentScale(bd->Window, &scaleX, &scaleY);
-        NetImguiServer::UI::SetWindowDPI(static_cast<int>(static_cast<float>(NetImguiServer::UI::kWindowDPIDefault) * (scaleX > scaleY ? scaleX : scaleY)));
-        ImGui::GetIO().FontGlobalScale = NetImguiServer::UI::GetFontDPIScale();
-        //=========================================================================================
-        
         // Start the Dear ImGui frame
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();

@@ -88,9 +88,9 @@ inline void ImGui_ExtractVertices(const ImDrawList& cmdList, ImguiDrawGroup& dra
 //=================================================================================================
 inline void ImGui_ExtractDraws(const ImDrawList& cmdList, ImguiDrawGroup& drawGroupOut, ComDataType*& pDataOutput)
 {
-	int maxDrawCount		= static_cast<int>(cmdList.CmdBuffer.size());
-	uint32_t drawCount		= 0;
-	ImguiDraw* pOutDraws	= reinterpret_cast<ImguiDraw*>(pDataOutput);
+	int maxDrawCount			= static_cast<int>(cmdList.CmdBuffer.size());
+	uint32_t drawCount			= 0;
+	ImguiDraw* pOutDraws		= reinterpret_cast<ImguiDraw*>(pDataOutput);
 	for(int cmd_i = 0; cmd_i < maxDrawCount; ++cmd_i)
 	{
 		const ImDrawCmd* pCmd = &cmdList.CmdBuffer[cmd_i];
@@ -104,11 +104,12 @@ inline void ImGui_ExtractDraws(const ImDrawList& cmdList, ImguiDrawGroup& drawGr
 			pOutDraws[drawCount].mIdxOffset		= 0;
 		#endif
 			
-		#if NETIMGUI_FONTUPDATE_TEMP_WORKAROUND
-			pOutDraws[drawCount].mTextureId		= TextureCastFromID(pCmd->GetTexID());
+		#if NETIMGUI_IMGUI_TEXTURES_ENABLED
+			ClientTextureID texClientID			= ConvertToClientTexID(pCmd->TexRef);
 		#else
-			pOutDraws[drawCount].mTextureId		= TextureCastFromID(pCmd->TextureId);
+			ClientTextureID texClientID			= ConvertToClientTexID(pCmd->TextureId);
 		#endif
+			pOutDraws[drawCount].mClientTexId	= texClientID;
 			pOutDraws[drawCount].mIdxCount		= pCmd->ElemCount;
 			pOutDraws[drawCount].mClipRect[0]	= pCmd->ClipRect.x;
 			pOutDraws[drawCount].mClipRect[1]	= pCmd->ClipRect.y;
@@ -125,7 +126,7 @@ inline void ImGui_ExtractDraws(const ImDrawList& cmdList, ImguiDrawGroup& drawGr
 
 //=================================================================================================
 // Delta comress data.
-// Take a data stream and output a version with only the difference from other stream is written
+// Take 2 data stream and output a stream with only the data difference from each other
 //=================================================================================================
 void CompressData(const ComDataType* pDataPrev, size_t dataSizePrev, const ComDataType* pDataNew, size_t dataSizeNew, ComDataType*& pCommandMemoryInOut)
 {
@@ -134,7 +135,7 @@ void CompressData(const ComDataType* pDataPrev, size_t dataSizePrev, const ComDa
 	const size_t elemCountNew	= static_cast<size_t>(DivUp(dataSizeNew, sizeof(uint64_t)));
 	const size_t elemCount		= elemCountPrev < elemCountNew ? elemCountPrev : elemCountNew;
 	size_t n					= 0;
-	
+
 	if( pDataPrev )
 	{
 		while(n < elemCount)
@@ -301,7 +302,7 @@ CmdDrawFrame* DecompressCmdDrawFrame(const CmdDrawFrame* pDrawFramePrev, const C
 			indiceSizePrev					= drawGroupPrev.mIndiceCount*static_cast<size_t>(drawGroupPrev.mBytePerIndex);
 			drawSizePrev					= drawGroupPrev.mDrawCount*sizeof(ImguiDraw);
 		}
-		
+
 		drawGroup.mpIndices.SetComDataPtr(pDataOutput);
 		DecompressData( pIndicePrev,							indiceSizePrev,
 						drawGroupPack.mpIndices.GetComData(),	drawGroupPack.mIndiceCount*static_cast<size_t>(drawGroupPack.mBytePerIndex),
@@ -311,7 +312,7 @@ CmdDrawFrame* DecompressCmdDrawFrame(const CmdDrawFrame* pDrawFramePrev, const C
 		DecompressData(	pVerticePrev,							verticeSizePrev,
 						drawGroupPack.mpVertices.GetComData(),	drawGroupPack.mVerticeCount*sizeof(ImguiVert),
 						pDataOutput);
-			
+
 		drawGroup.mpDraws.SetComDataPtr(pDataOutput);
 		DecompressData( pDrawsPrev,								drawSizePrev,
 						drawGroupPack.mpDraws.GetComData(),		drawGroupPack.mDrawCount*sizeof(ImguiDraw),
@@ -358,8 +359,6 @@ CmdDrawFrame* ConvertToCmdDrawFrame(const ImDrawData* pDearImguiData, ImGuiMouse
 	//-----------------------------------------------------------------------------------------
 	// Copy draw data (vertices, indices, drawcall info, ...)
 	//-----------------------------------------------------------------------------------------
-
-
 	for(size_t n = 0; n < pDrawFrame->mDrawGroupCount; n++)
 	{
 		ImguiDrawGroup& drawGroup		= pDrawFrame->mpDrawGroups[n];

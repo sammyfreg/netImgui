@@ -22,7 +22,7 @@ class SampleIndex : public Sample::Base
 {
 public:
 					SampleIndex() : Base(sizeof(ImDrawIdx) == 2 ? "SampleIndex16Bits" : "SampleIndex32Bits") {}
-virtual ImDrawData* Draw() override;
+virtual void		Draw() override;
 };
 
 //=================================================================================================
@@ -38,7 +38,7 @@ Sample::Base& GetSample()
 //=================================================================================================
 // Function used by the sample, to draw all ImGui Content
 //=================================================================================================
-ImDrawData* SampleIndex::Draw()
+void SampleIndex::Draw()
 {
 	//---------------------------------------------------------------------------------------------
 	// (1) Start a new Frame
@@ -91,9 +91,4 @@ ImDrawData* SampleIndex::Draw()
 		//-----------------------------------------------------------------------------------------
 		NetImgui::EndFrame();
 	}
-
-	//---------------------------------------------------------------------------------------------
-	// (4b) Render nothing locally (when connected)
-	//---------------------------------------------------------------------------------------------
-	return !NetImgui::IsConnected() ? ImGui::GetDrawData() : nullptr;
 }

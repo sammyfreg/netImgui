@@ -64,7 +64,7 @@ void HAL_RenderDrawData(RemoteClient::Client& client, ImDrawData* pDrawData)
 // The drawing of their menu content will be outputed in it, then displayed normally 
 // inside our own 'NetImGui application' Imgui drawing
 //=================================================================================================
-bool HAL_CreateRenderTarget(uint16_t Width, uint16_t Height, void*& pOutRT, void*& pOutTexture)
+bool HAL_CreateRenderTarget(uint16_t Width, uint16_t Height, void*& pOutRT, ImTextureData& OutTexture)
 {
 	HAL_DestroyRenderTarget(pOutRT, pOutTexture);
 
@@ -92,7 +92,7 @@ bool HAL_CreateRenderTarget(uint16_t Width, uint16_t Height, void*& pOutRT, void
 // HAL DESTROY RENDER TARGET
 // Free up allocated resources tried to a RenderTarget
 //=================================================================================================
-void HAL_DestroyRenderTarget(void*& pOutRT, void*& pOutTexture)
+void HAL_DestroyRenderTarget(void*& pOutRT, ImTextureData& OutTexture)
 {
     if(pOutRT)
 	{

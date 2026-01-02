@@ -16,7 +16,7 @@ class SampleNewFrame : public Sample::Base
 {
 public:
 						SampleNewFrame() : Base("SampleNewFrame") {}
-	virtual ImDrawData* Draw() override;
+	virtual void		Draw() override;
 
 protected:
 	enum class eDrawUpdateMode : int { Always, OnDemand };
@@ -156,13 +156,12 @@ ImDrawData* SampleNewFrame::Draw_ModeOnDemand()
 //=================================================================================================
 // Function used by the sample, to draw all ImGui Content
 //=================================================================================================
-ImDrawData* SampleNewFrame::Draw()
+void SampleNewFrame::Draw()
 {	
 	switch( mFrameRefreshMode )
 	{
-	case eDrawUpdateMode::Always:	return Draw_ModeAlways();
-	case eDrawUpdateMode::OnDemand:	return Draw_ModeOnDemand();
+	case eDrawUpdateMode::Always:	Draw_ModeAlways();
+	case eDrawUpdateMode::OnDemand:	Draw_ModeOnDemand();
 	}
-	return nullptr;
 }
 

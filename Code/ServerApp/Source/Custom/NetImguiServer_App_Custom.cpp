@@ -12,10 +12,9 @@
 // Enable handling of a Custom Texture Format samples. 
 // Only meant as an example, users are free to replace it with their own handling of
 // custom texture formats. Look for this define for implementation details.
-#define TEXTURE_CUSTOM_SAMPLE 1
+#define TEXTURE_CUSTOM_SAMPLE 0 //@sammyfreg todo: Re-Implement custom texture support
 
 #if TEXTURE_CUSTOM_SAMPLE
-
 //=================================================================================================
 // This is our Custom texture data format, it must match when the NetImgui Client code send
 // It can be customized to anything needed, as long as Client/Server use the same content
@@ -56,10 +55,15 @@ bool CreateTexture_Custom( ServerTexture& serverTexture, const NetImgui::Interna
 	IM_UNUSED(serverTexture);
 	IM_UNUSED(cmdTexture);
 	IM_UNUSED(customDataSize);
+
 #if TEXTURE_CUSTOM_SAMPLE
 	auto eTexFmt = static_cast<NetImgui::eTexFormat>(cmdTexture.mFormat);
 	if( eTexFmt == NetImgui::eTexFormat::kTexFmtCustom ){
-		
+		extern ImTextureData gEmptyTexture;
+		serverTexture.mTexData.BackendTexID 	= gEmptyTexture.BackendTexID;
+		serverTexture.mTexData.BackendUserData	= gEmptyTexture.BackendUserData;
+		return true;
+	#if 0
 		// Process Custom Texture Type 1
 		// This sample custom texture interpolate between 2 colors over the x axis
 		const customTextureData1* pCustomData1 = reinterpret_cast<const customTextureData1*>(cmdTexture.mpTextureData.Get());
@@ -116,6 +120,7 @@ bool CreateTexture_Custom( ServerTexture& serverTexture, const NetImgui::Interna
 			serverTexture.mCustomData = customTextureData2::kStamp;
 			return true;
 		}
+		#endif
 	}
 #endif
 	return false;
@@ -131,7 +136,7 @@ bool DestroyTexture_Custom( ServerTexture& serverTexture, const NetImgui::Intern
 	IM_UNUSED(customDataSize);
 
 #if TEXTURE_CUSTOM_SAMPLE
-	if( serverTexture.mpHAL_Texture && serverTexture.mFormat == NetImgui::eTexFormat::kTexFmtCustom ){
+	if( serverTexture.mpHAL_Texture && serverTexture.mIsCustom ){
 		if( serverTexture.mCustomData == customTextureData1::kStamp || 
 			serverTexture.mCustomData == customTextureData2::kStamp )
 		{
