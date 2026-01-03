@@ -232,8 +232,7 @@ void UpdateServerTextures()
 				{
 					if(ServerTex.mTexData.UnusedFrames++ > 0)
 					{
-						ServerTex.mTexData.Status 				= ImTextureStatus_WantDestroy;
-						ServerTex.mTexData.WantDestroyNextFrame	= false;
+						ServerTex.mTexData.Status = ImTextureStatus_WantDestroy;
 					}
 				}
 			}

@@ -179,15 +179,16 @@ namespace NetImgui
 
 			conf.Options.Add(Options.Vc.General.WindowsTargetPlatformVersion.Latest);
 			conf.Options.Add(Options.Vc.General.TreatWarningsAsErrors.Enable);
-			conf.Options.Add(Options.Vc.General.CharacterSet.Unicode);			
 			conf.Options.Add(Options.Vc.Linker.TreatLinkerWarningAsErrors.Enable);
-			
-			conf.Defines.Add("_HAS_EXCEPTIONS=0"); 					// Prevents error in VisualStudio c++ library with NoExcept, like xlocale
+			conf.Options.Add(Options.Vc.General.CharacterSet.Unicode);
+			//conf.Options.Add(Options.Vc.Compiler.Exceptions.Enable);			
+			conf.Defines.Add("_HAS_EXCEPTIONS=0"); 					// Prevents error in VisualStudio c++ library with NoExcept, like xlocale			
 			conf.Defines.Add("IMGUI_DISABLE_OBSOLETE_FUNCTIONS");	// Enforce using up to date Dear ImGui Api (In Server, Compatibility tests and Samples)
 			
 			if (target.Optimization == Optimization.Debug){
 				conf.Defines.Add("BUILD_DEBUG=1");
-				conf.Options.Add(Options.Vc.Compiler.RuntimeLibrary.MultiThreadedDLL);				
+				conf.Defines.Add("_DEBUG");				
+				conf.Options.Add(Options.Vc.Compiler.RuntimeLibrary.MultiThreadedDebugDLL);				
 				// Note: Once Clang debug library link error is fixed (in new clang release),
 				// try removing 'MultiThreadedDebugDLL' and enabling asan for clang too
 				if( target.DevEnv > DevEnv.vs2017 && target.Compiler == Compiler.MSBuild ){

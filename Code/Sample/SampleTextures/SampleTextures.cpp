@@ -219,65 +219,68 @@ void SampleTextures::Draw()
 
 		if (ImGui::Begin("Sample Textures", nullptr))
 		{
-			ImGui::BeginTable("2x2", 2, ImGuiTableFlags_SizingStretchSame|ImGuiTableFlags_RowBg|ImGuiTableFlags_BordersInnerV);
-			ImGui::TableNextRow();
-
-			ImGui::TableNextColumn();
+			if( ImGui::BeginTable("2x2", 2, ImGuiTableFlags_SizingStretchSame|ImGuiTableFlags_RowBg|ImGuiTableFlags_BordersInnerV) )
+			{
+				ImGui::TableNextRow();
+				ImGui::TableNextColumn();
 			
-			ImGui::TextColored(ImVec4(0.1, 1, 0.1, 1), "DearImgui Backend Textures");
-			ImGui::TextWrapped("Native Dear ImGui Textures changes are automatically detected by NetImgui, they don't need manual management. ");
-			ImGui::NewLine();
+				ImGui::TextColored(ImVec4(0.1, 1, 0.1, 1), "DearImgui Backend Textures");
+				ImGui::TextWrapped("Native Dear ImGui Textures changes are automatically detected by NetImgui, they don't need manual management. ");
+				ImGui::NewLine();
 
-			ImGui::TableNextColumn();
-			ImGui::TextColored(ImVec4(0.1, 1, 0.1, 1), "User Managed Textures");
-			ImGui::TextWrapped("User texture on the otherhand (texture created and managed outside of the Dear ImGui backend support) need to let NetImgui know about them.");
-			ImGui::NewLine();
+				ImGui::TableNextColumn();
+				ImGui::TextColored(ImVec4(0.1, 1, 0.1, 1), "User Managed Textures");
+				ImGui::TextWrapped("User texture on the otherhand (texture created and managed outside of the Dear ImGui backend support) need to let NetImgui know about them.");
+				ImGui::NewLine();
 
-			//-----------------------------------------------------------------
-			// Demo of Dear ImGui Backend Texture support
-			//-----------------------------------------------------------------
-			ImGui::TableNextColumn();
-			ImGui::BeginTable("ImEntries", 3, ImGuiTableFlags_SizingFixedFit|ImGuiTableFlags_RowBg);
-			for (uint32_t i = 0; i < kTexCountImgui; ++i)
-			{
-				if( !mImguiTexInfo[i].mRemoteOnly || NetImgui::IsDrawingRemote() )
+				//-----------------------------------------------------------------
+				// Demo of Dear ImGui Backend Texture support
+				//-----------------------------------------------------------------
+				ImGui::TableNextColumn();
+				if( ImGui::BeginTable("ImEntries", 3, ImGuiTableFlags_SizingFixedFit|ImGuiTableFlags_RowBg) )
 				{
-					if( DrawTextureInfo(mImguiTexInfo[i]))
+					for (uint32_t i = 0; i < kTexCountImgui; ++i)
 					{
-						switch(static_cast<EImguiTex>(i))
+						if( !mImguiTexInfo[i].mRemoteOnly || NetImgui::IsDrawingRemote() )
 						{
-							case EImguiTex::CreateDestroy: DemoImActionCreateDestroy(); break;
-							case EImguiTex::Update: DemoImActionPartialUpdate(); break;
-							default:break;
+							if( DrawTextureInfo(mImguiTexInfo[i]))
+							{
+								switch(static_cast<EImguiTex>(i))
+								{
+									case EImguiTex::CreateDestroy: DemoImActionCreateDestroy(); break;
+									case EImguiTex::Update: DemoImActionPartialUpdate(); break;
+									default:break;
+								}
+							}
 						}
 					}
+					ImGui::EndTable();
 				}
-			}
-			ImGui::EndTable();
-
-			//-----------------------------------------------------------------
-			// Demo of older NetImgui texture handling
-			//-----------------------------------------------------------------
-			ImGui::TableNextColumn();
-			ImGui::BeginTable("ImEntries", 3, ImGuiTableFlags_SizingFixedFit|ImGuiTableFlags_RowBg);
-			for (uint32_t i = 0; i < kTexCountUser; ++i)
-			{
-				if( !mUserTexInfo[i].mRemoteOnly || NetImgui::IsDrawingRemote() )
+				//-----------------------------------------------------------------
+				// Demo of older NetImgui texture handling
+				//-----------------------------------------------------------------
+				ImGui::TableNextColumn();
+				if( ImGui::BeginTable("ImEntries", 3, ImGuiTableFlags_SizingFixedFit|ImGuiTableFlags_RowBg) )
 				{
-					if( DrawTextureInfo(mUserTexInfo[i]) )
+					for (uint32_t i = 0; i < kTexCountUser; ++i)
 					{
-						switch(static_cast<EUserTex>(i))
+						if( !mUserTexInfo[i].mRemoteOnly || NetImgui::IsDrawingRemote() )
 						{
-							case EUserTex::CreateDestroy: DemoUserActionCreateDestroy(); break;
-							default:break;
+							if( DrawTextureInfo(mUserTexInfo[i]) )
+							{
+								switch(static_cast<EUserTex>(i))
+								{
+									case EUserTex::CreateDestroy: DemoUserActionCreateDestroy(); break;
+									default:break;
+								}
+							}
 						}
 					}
+					ImGui::EndTable();
 				}
 			}
 			ImGui::EndTable();
 		}
-		
-		ImGui::EndTable();
 		ImGui::End();
 
 		//-----------------------------------------------------------------------------------------

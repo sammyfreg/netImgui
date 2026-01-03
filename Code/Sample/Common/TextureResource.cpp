@@ -51,7 +51,6 @@ void TexResImgui::Update()
 	if( mImTexData.WantDestroyNextFrame )
 	{
 		mImTexData.SetStatus(ImTextureStatus_WantDestroy);
-		mImTexData.WantDestroyNextFrame = false;
 	}
 	// Let the backend know that texture can be released
 	else if(mImTexData.Status == ImTextureStatus_WantDestroy)
