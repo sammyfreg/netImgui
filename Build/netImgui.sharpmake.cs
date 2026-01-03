@@ -97,7 +97,7 @@ namespace NetImgui
 			conf.Options.Add(new Options.Vc.Linker.DisableSpecificWarnings("4099")); //Prevents: warning LNK4099: PDB '' was not found with 'glfw3_mtd.lib(context.c.obj)' or at ''; linking object as if no debug info
 			//---------------------------------------------
 			
-			if (target.DevEnv == DevEnv.xcode4ios)
+			if (target.DevEnv == DevEnv.xcode)
 			{
 				conf.Options.Add(new Sharpmake.Options.XCode.Compiler.InfoPListFile(NetImguiTarget.GetPath(@"/Code/ServerApp/info.plist")));
 			}
@@ -105,18 +105,24 @@ namespace NetImgui
 			{
 				conf.EventPostBuild.Add("xcopy \"" + NetImguiTarget.GetPath(@"\Code\ServerApp\Background.png") + "\" \"" + conf.TargetPath + "\" /D /Y");
 			}
+			
+			if ( target.Compiler == Compiler.Clang ){
+				conf.AdditionalCompilerOptions.Add("-Wno-deprecated-literal-operator"); // caused by json header include
+			}
 		}
 
 		private string getGlfwLibName(Platform platform, DevEnv developerEnv)
 		{
 			string libName = "lib";
-			if( developerEnv == DevEnv.vs2022 ){
+			if( developerEnv == DevEnv.vs2026 ){
+			   libName += "-vc2026";
+			} else if( developerEnv == DevEnv.vs2022 ){
 			   libName += "-vc2022";
 			} else if( developerEnv == DevEnv.vs2019 ) {
                 libName += "-vc2019";
 			} else if( developerEnv == DevEnv.vs2017 ) {
                 libName += "-vc2017";
-			} else if( developerEnv == DevEnv.xcode4ios ) {
+			} else if( developerEnv == DevEnv.xcode ) {
                 libName += "-macos-universal";
             }
 

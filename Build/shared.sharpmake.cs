@@ -43,7 +43,7 @@ namespace NetImgui
 		static public NetImguiTarget[] CreateTargets()
 		{		
 			List<NetImguiTarget> targets = new List<NetImguiTarget>();
-			foreach (var devEnv in new [] { DevEnv.vs2017, DevEnv.vs2019, DevEnv.vs2022 })
+			foreach (var devEnv in new [] { DevEnv.vs2017, DevEnv.vs2019, DevEnv.vs2022, DevEnv.vs2026 })
 			{				
 				if( Util.DirectoryExists(devEnv.GetVisualStudioDir()) ){
 					Compiler compiler = Compiler.MSBuild;
@@ -154,10 +154,20 @@ namespace NetImgui
 
 			conf.IncludePaths.Add(NetImguiTarget.GetPath(ProjectImgui.sDefaultPath) + @"\backends");
 			conf.IncludePaths.Add(NetImguiTarget.GetPath(@"\Code\Client"));
+			
 			if ( target.Compiler == Compiler.Clang ){
 				conf.Options.Add(Options.Vc.General.PlatformToolset.ClangCL);
 				conf.AdditionalCompilerOptions.Add("-Wno-unused-command-line-argument"); //Note: Latest Clang doesn't support '/MP' (multiprocessor build) option, creating a compile error
 			}
+			else if( target.Compiler == Compiler.MSBuild ){
+				conf.Options.Add(new Options.Vc.Compiler.DisableSpecificWarnings(""));
+				conf.Options.Add(Options.Vc.Librarian.TreatLibWarningAsErrors.Enable);	//Note: Clang VS2019 doesn't support this option properly
+				if( target.DevEnv == DevEnv.vs2026)
+				{
+					conf.AdditionalCompilerOptions.Add("/Zc:enumTypes"); // Prevents bunchs of error in Windows includes
+				}
+			}
+			
 			if (mIsExe)
 			{
 				conf.VcxprojUserFile = new ProjConfig.VcxprojUserFileSettings();
@@ -176,20 +186,17 @@ namespace NetImgui
 			conf.Defines.Add("IMGUI_DISABLE_OBSOLETE_FUNCTIONS");	// Enforce using up to date Dear ImGui Api (In Server, Compatibility tests and Samples)
 			
 			if (target.Optimization == Optimization.Debug){
-				conf.Options.Add(Options.Vc.Compiler.RuntimeLibrary.MultiThreadedDebugDLL);				
+				conf.Defines.Add("BUILD_DEBUG=1");
+				conf.Options.Add(Options.Vc.Compiler.RuntimeLibrary.MultiThreadedDLL);				
 				// Note: Once Clang debug library link error is fixed (in new clang release),
 				// try removing 'MultiThreadedDebugDLL' and enabling asan for clang too
 				if( target.DevEnv > DevEnv.vs2017 && target.Compiler == Compiler.MSBuild ){
-					conf.Options.Add(Options.Vc.Compiler.EnableAsan.Enable);
+				//	conf.Options.Add(Options.Vc.Compiler.EnableAsan.Enable); // Issues with asan, gets hanged during window init
 				}
 			}
             else{
+				conf.Defines.Add("BUILD_RELEASE=1");
                 conf.Options.Add(Options.Vc.Compiler.RuntimeLibrary.MultiThreadedDLL);
-			}
-			
-			if( target.Compiler == Compiler.MSBuild ){
-				conf.Options.Add(new Options.Vc.Compiler.DisableSpecificWarnings(""));
-				conf.Options.Add(Options.Vc.Librarian.TreatLibWarningAsErrors.Enable);	//Note: Clang VS2019 doesn't support this option properly
 			}
 		}
 		
@@ -396,6 +403,7 @@ namespace NetImgui
 				conf.AdditionalCompilerOptions.Add("-Wno-unused-parameter");
 				conf.AdditionalCompilerOptions.Add("-Wno-unused-variable");
 				conf.AdditionalCompilerOptions.Add("-Wno-unused-but-set-variable");
+				conf.AdditionalCompilerOptions.Add("-Wno-nontrivial-memcall");
 			}
 		}
 		string mImguiFullPath;

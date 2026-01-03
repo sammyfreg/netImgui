@@ -7,7 +7,7 @@ pushd %~dp0
 :: SETTINGS 
 ::-----------------------------------------------------------------------------------
 :: List of offical Dear ImGui (from official depot)
-set VERSIONS=(v1.71 v1.72 v1.73 v1.74 v1.75 v1.76 v1.77 v1.78 v1.79, v1.80, v1.81, v1.82, v1.83, v1.84, v1.85, v1.86, v1.87, v1.88, v1.89.1, v1.89.2, v1.89.3, v1.89.4, v1.89.5, v1.89.6, v1.89.7, v1.89.7-docking, v1.89.8, v1.89.8-docking, v1.89.9, v1.89.9-docking, v1.90, v1.90-docking, v1.90.1, v1.90.2, v1.90.3, v1.90.4, v1.90.5, v1.90.6, v1.90.6-docking, v1.90.7, v1.90.8, v1.90.9, v1.91.0, v1.91.0-docking, v1.91.1, v1.91.2, v1.91.3, v1.91.4, v1.91.5, v1.91.5-docking, v1.92.0, v1.92.0-docking)
+set VERSIONS=(v1.71 v1.72 v1.73 v1.74 v1.75 v1.76 v1.77 v1.78 v1.79, v1.80, v1.81, v1.82, v1.83, v1.84, v1.85, v1.86, v1.87, v1.88, v1.89.1, v1.89.2, v1.89.3, v1.89.4, v1.89.5, v1.89.6, v1.89.7, v1.89.7-docking, v1.89.8, v1.89.8-docking, v1.89.9, v1.89.9-docking, v1.90, v1.90-docking, v1.90.1, v1.90.2, v1.90.3, v1.90.4, v1.90.5, v1.90.6, v1.90.6-docking, v1.90.7, v1.90.8, v1.90.9, v1.91.0, v1.91.0-docking, v1.91.1, v1.91.2, v1.91.3, v1.91.4, v1.91.5, v1.91.5-docking, v1.92.0, v1.92.0-docking, v1.92.1, v1.92.2, v1.92.3, v1.92.4, v1.92.5)
 
 :: List of custom Dear ImGui releases (from own depot)
 set EXTRA_VERSIONS=(dock-1-76, dock-1-80, dock-1-89)

@@ -39,6 +39,8 @@ HINSTANCE ghInstance;
 //=================================================================================================
 bool NetImguiNamedPipeMsgSend( const char* cmdline )
 {
+	IM_UNUSED(cmdline);
+#ifndef BUILD_DEBUG //Issue with ASAN
 	HANDLE hNamedPipe = CreateFileA(kServerNamedPipe, GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
 	if (hNamedPipe != INVALID_HANDLE_VALUE)
 	{
@@ -49,6 +51,7 @@ bool NetImguiNamedPipeMsgSend( const char* cmdline )
 		CloseHandle(hNamedPipe);
 		return true;
 	}
+#endif
 	return false;
 }
 

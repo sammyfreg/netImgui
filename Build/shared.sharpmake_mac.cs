@@ -152,7 +152,7 @@ namespace NetImgui
 				conf.IncludePaths.Add(NetImguiTarget.GetPath(@"/Code"));
 			}
 
-			//conf.Defines.Add("JSON_NOEXCEPTION"); 					// Prevents error in VisualStudio c++ library with NoExcept, like xlocale
+			//conf.Defines.Add("JSON_NOEXCEPTION"); 				// Prevents error in VisualStudio c++ library with NoExcept, like xlocale
 			conf.Defines.Add("IMGUI_DISABLE_OBSOLETE_FUNCTIONS");	// Enforce using up to date Dear ImGui Api (In Server, Compatibility tests and Samples)
 		
 			conf.Options.Add(new Sharpmake.Options.XCode.Compiler.SystemFrameworks("AppKit"));

@@ -14,6 +14,7 @@
 	#pragma clang diagnostic ignored "-Wold-style-cast"			// For ImTextureID_Invalid
 	#pragma clang diagnostic ignored "-Wunsafe-buffer-usage"
 	#pragma clang diagnostic ignored "-Wswitch-default"
+	#pragma clang diagnostic ignored "-Wnontrivial-memcall"		// For ImGui::IO memcpy warning
 
 //=================================================================================================
 // Visual Studio warnings
