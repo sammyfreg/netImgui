@@ -25,15 +25,15 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v5
 
     - name: Add MSBuild to PATH
       uses: microsoft/setup-msbuild@v1.1
     
     - name: Setup dotnet
-      uses: actions/setup-dotnet@v1
+      uses: actions/setup-dotnet@v5
       with:
-        dotnet-version: '5.0.408' # Check for latest at link at .NET 5 download page
+        global-json-file: "./Build/Sharpmake/Sharpmake.Application.runtimeconfig.json"
     
     - name: Generate Solutions
       working-directory: ${{env.GITHUB_WORKSPACE}}
