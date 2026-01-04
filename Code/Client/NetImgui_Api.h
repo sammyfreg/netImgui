@@ -4,12 +4,12 @@
 //! @Name		: NetImgui
 //=================================================================================================
 //! @author		: Sammy Fatnassi
-//! @date		: 2026/01/01
-//!	@version	: v1.12.3
+//! @date		: 2026/01/04
+//!	@version	: v1.13.0
 //! @Details	: For integration info : https://github.com/sammyfreg/netImgui/wiki
 //=================================================================================================
-#define NETIMGUI_VERSION		"1.12.3"	// Imported Texture rework into dev branch
-#define NETIMGUI_VERSION_NUM	11203
+#define NETIMGUI_VERSION		"1.13.0"	// Release of v 1.13
+#define NETIMGUI_VERSION_NUM	11300
 
 
 //-------------------------------------------------------------------------------------------------
