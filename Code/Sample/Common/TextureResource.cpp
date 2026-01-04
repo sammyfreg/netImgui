@@ -32,6 +32,7 @@ void TexResImgui::Create()
 	assert(!IsValid());
 	mImTexData.SetStatus(ImTextureStatus_WantCreate);
 	mImTexData.RefCount = 1;
+	mImTexData.WantDestroyNextFrame = false;
 	ImGui::RegisterUserTexture(&mImTexData);
 }
 
@@ -48,7 +49,7 @@ void TexResImgui::Update()
 //=================================================================================================
 {
 	// Texture has been flagged for destruction
-	if( mImTexData.WantDestroyNextFrame )
+	if( mImTexData.WantDestroyNextFrame && mImTexData.Status != ImTextureStatus_WantDestroy && mImTexData.Status !=  ImTextureStatus_Destroyed)
 	{
 		mImTexData.SetStatus(ImTextureStatus_WantDestroy);
 	}
@@ -224,7 +225,6 @@ size_t TexResUser::GetSizeInBytes()
 // Used as a demonstration of handling user texture directly, instead of built-in support in Dear Imgui 1.92+
 //=================================================================================================
 #include <d3d11.h>
-
 extern ID3D11Device* g_pd3dDevice;
 void TextureCreate(const uint8_t* pPixelData, uint32_t width, uint32_t height, void*& pTextureViewOut)
 {

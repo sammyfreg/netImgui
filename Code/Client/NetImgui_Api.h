@@ -217,9 +217,13 @@ NETIMGUI_API	bool				IsDrawingRemote(void);
 // Note: User needs to provide a valid 'dataSize' when using format 'kTexFmtCustom',
 //		 can be ignored otherwise
 // Note: Can now rely on native Dear ImGui managed texture support to let the system handle their
-//		 creation/update/destruction automatically (since Dear ImGui 1.92+. See 'SampleTextures').
+//		 creation/update/destruction automatically, without needing to call this function
+//		 (since Dear ImGui 1.92+. See 'SampleTextures').
 //=================================================================================================
 NETIMGUI_API	void				SendDataTexture(ImTextureID textureId, void* pData, uint16_t width, uint16_t height, eTexFormat format, uint32_t dataSize=0);
+#if NETIMGUI_IMGUI_TEXTURES_ENABLED
+NETIMGUI_API	void				SendDataTexture(const ImTextureRef& textureRef, void* pData, uint16_t width, uint16_t height, eTexFormat format, uint32_t dataSize=0);
+#endif
 
 //=================================================================================================
 // Start a new Imgui Frame and wait for Draws commands, using ImContext that was active on connect.

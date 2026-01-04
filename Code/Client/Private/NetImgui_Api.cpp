@@ -295,7 +295,7 @@ void EndFrame(void)
 		}
 		
 		// Detect all DearImgui ImGui managed Textures waiting for updates before backend process them (active on 1.92+)
-		client.TextureTrackingUpdate();	
+		client.TextureTrackingUpdate();
 
 		// Prepare the Dear Imgui DrawData for later transmission to Server
 		ImDrawData* imDrawData = ImGui::GetDrawData();
@@ -382,6 +382,34 @@ void SendDataTexture(ImTextureID textureId, void* pData, uint16_t width, uint16_
 		client.TextureTrackingRem(clientTexID);
 	}
 }
+
+#if NETIMGUI_IMGUI_TEXTURES_ENABLED
+//=================================================================================================
+void SendDataTexture(const ImTextureRef& textureRef, void* pData, uint16_t width, uint16_t height, eTexFormat format, uint32_t dataSize)
+//=================================================================================================
+{
+	if (!gpClientInfo) return;
+	Client::ClientInfo& client	= *gpClientInfo;
+	ClientTextureID clientTexID = ConvertToClientTexID(textureRef);
+
+	// Add/Update a texture
+	if( pData != nullptr )
+	{
+		CmdTexture* pCmdTexture	= client.TextureCmdAllocate(clientTexID, width, height, format, dataSize);
+		if( pCmdTexture )
+		{
+			memcpy(pCmdTexture->mpTextureData.Get(), pData, dataSize);
+			pCmdTexture->mpTextureData.ToOffset();
+			client.TextureTrackingAdd(*pCmdTexture);
+		}
+	}
+	// Texture to remove
+	else
+	{
+		client.TextureTrackingRem(clientTexID);
+	}
+}
+#endif //NETIMGUI_IMGUI_TEXTURES_ENABLED
 
 //=================================================================================================
 void SetBackground(const ImVec4& bgColor)
