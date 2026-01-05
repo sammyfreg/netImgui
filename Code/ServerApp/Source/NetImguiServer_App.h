@@ -18,6 +18,15 @@ namespace NetImgui { namespace Internal { struct CmdTexture; } }
 
 namespace NetImguiServer { namespace App
 {
+	struct WindowPlacement
+	{
+		int x = 0;
+		int y = 0;
+		int w = 0;
+		int h = 0;
+		bool isMaximized = false;
+	};
+
 	//=============================================================================================
 	// Code specific to 'NetImgui Server' application and needed inside platform specific code
 	//=============================================================================================
@@ -26,7 +35,11 @@ namespace NetImguiServer { namespace App
 	// Prepare for shutdown of application
 	void	Shutdown();
 	// Receive rendering request of each Remote client and output it to their own RenderTarget
-	void	Update();
+	void	UpdateClientDraw();
+	// Save server window placement (to restore it on next start)
+	void 	UpdateWindowPlacement(int x, int y, int w, int h, bool isMaximized);
+	// Get last server window placement
+	WindowPlacement GetWindowPlacement();
 	// Add a new remote client config to our list (to attempt connexion)
 	bool	AddTransientClientConfigFromString(const char* string);
 	// Initialize the font atlas used by the Serve

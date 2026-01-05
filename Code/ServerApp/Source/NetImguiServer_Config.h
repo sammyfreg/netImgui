@@ -25,6 +25,7 @@ public:
 		Refresh			= 2,			// Added refresh rate support
 		DPIScale		= 3,			// Added DPI scaling
 		BlockTakeOver	= 4,			// Added Takeover Block
+		WindowPlacement	= 5,			// Added saving of main window location and size
 		_Count, 
 		_Latest = _Count-1
 	};
@@ -115,6 +116,8 @@ struct Server
 	static float	sDPIScaleRatio;			//!< Ratio of DPI scale applied to Font size (helps with high resolution monitor, default 1.0)
 	static bool		sCompressionEnable;		//!< Ask the clients to compress their data before transmission
 	static float 	sFontSize;				//!< Font size used for Server UI
+	static int		sWindowPlacement[4];	//!< Main window position and size (x,y,width,height)
+	static bool		sWindowMaximized;
 };
 
 }} // namespace NetImguiServer { namespace Config

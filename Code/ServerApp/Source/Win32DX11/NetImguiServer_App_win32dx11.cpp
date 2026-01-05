@@ -61,8 +61,32 @@ int main(int, char**)
         return 1;
     }
 
+    //=========================================================================================
+    // @SAMPLE_EDIT (Fetch previous window placement and restore it)
     // Show the window
-    ::ShowWindow(hwnd, SW_SHOWDEFAULT);
+    //::ShowWindow(hwnd, SW_SHOWDEFAULT);
+    NetImguiServer::App::WindowPlacement serverwp = NetImguiServer::App::GetWindowPlacement();
+    WINDOWPLACEMENT wp          = {};
+    wp.length                   = sizeof(wp);
+    wp.rcNormalPosition.left    = serverwp.x;
+    wp.rcNormalPosition.top     = serverwp.y;
+    wp.rcNormalPosition.right   = serverwp.x + serverwp.w;
+    wp.rcNormalPosition.bottom  = serverwp.y + serverwp.h;
+    wp.showCmd                  = serverwp.isMaximized ? SW_SHOWMAXIMIZED : SW_SHOWNORMAL;
+
+    // Clamp position to inside monitor work area
+    HMONITOR hMon               = MonitorFromRect(&wp.rcNormalPosition, MONITOR_DEFAULTTONEAREST);
+    MONITORINFO mi              = {};
+    mi.cbSize                   = sizeof(MONITORINFO);
+    GetMonitorInfo(hMon, &mi);
+    wp.rcNormalPosition.left    = ImMax(wp.rcNormalPosition.left, mi.rcWork.left);
+    wp.rcNormalPosition.top     = ImMax(wp.rcNormalPosition.top, mi.rcWork.top);
+    wp.rcNormalPosition.left    = ImMin(wp.rcNormalPosition.left, mi.rcWork.right-150);
+    wp.rcNormalPosition.top     = ImMin(wp.rcNormalPosition.top, mi.rcWork.bottom-150);
+    wp.rcNormalPosition.right   = wp.rcNormalPosition.left + serverwp.w;
+    wp.rcNormalPosition.bottom  = wp.rcNormalPosition.top + serverwp.h;
+    SetWindowPlacement(hwnd, &wp);
+    //=========================================================================================
     ::UpdateWindow(hwnd);
 
     // Setup Dear ImGui context
@@ -153,7 +177,7 @@ int main(int, char**)
         sLastTime = std::chrono::steady_clock::now();
         
         // @SAMPLE_EDIT (Request clients to update their drawing content and update texture resources)
-        NetImguiServer::App::Update();
+        NetImguiServer::App::UpdateClientDraw();
         //=========================================================================================
 		
         // Handle window being minimized or screen locked
@@ -341,6 +365,20 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
     switch (msg)
     {
+    //=================================================================================================
+    // @SAMPLE_EDIT (Save the window placement)
+    case WM_CLOSE:{
+        WINDOWPLACEMENT wp = {};
+        wp.length = sizeof(wp);
+        if (GetWindowPlacement(hWnd, &wp))
+        {
+            NetImguiServer::App::UpdateWindowPlacement(wp.rcNormalPosition.left, wp.rcNormalPosition.top,
+                                                       wp.rcNormalPosition.right - wp.rcNormalPosition.left,
+                                                       wp.rcNormalPosition.bottom - wp.rcNormalPosition.top,
+                                                       (wp.showCmd == SW_MAXIMIZE));
+        }
+    }break;
+    //=================================================================================================
     case WM_SIZE:
         if (wParam == SIZE_MINIMIZED)
             return 0;

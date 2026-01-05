@@ -216,7 +216,7 @@ int main(int argc, char **argv) // @SAMPLE_EDIT (added parameters names so we ca
         }
 
         // Start the Dear ImGui frame
-		NetImguiServer::App::Update(); // @SAMPLE_EDIT (Request each client to update their drawing content )
+		NetImguiServer::App::UpdateClientDraw(); // @SAMPLE_EDIT (Request each client to update their drawing content )
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();

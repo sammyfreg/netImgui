@@ -11,6 +11,7 @@ namespace NetImguiServer { namespace App
 constexpr uint32_t			kClientCountMax		= 32;		//! @sammyfreg todo: support unlimited client count
 ImVector<ServerTexture*>	gServerTextures;				// List of ALL server created textures (used by server and clients)
 ServerTexture*				gServerTextureEmpty	= nullptr;	// Empty texture used when no valid texture found
+bool						gLoadedConfigOnce	= false;
 
 void UpdateServerTextures();
 
@@ -18,9 +19,13 @@ bool Startup(const char* CmdLine)
 {	
 	//---------------------------------------------------------------------------------------------
 	// Load Settings savefile and parse for auto connect commandline option
-	//---------------------------------------------------------------------------------------------	
-	NetImguiServer::Config::Client::LoadAll();
+	//---------------------------------------------------------------------------------------------
+	if( !gLoadedConfigOnce ){
+		NetImguiServer::Config::Client::LoadAll();
+		gLoadedConfigOnce = true;
+	}
 	AddTransientClientConfigFromString(CmdLine);
+	
 
 	//---------------------------------------------------------------------------------------------
     // Perform application initialization:
@@ -305,10 +310,10 @@ ServerTexture* CreateTexture(const NetImgui::Internal::CmdTexture& cmdTexture, u
 	return serverTex;
 }
 
-//-----------------------------------------------------------------------------------------
+//=================================================================================================
 // Initialize all needed fonts by the NetImguiServer application
-//-----------------------------------------------------------------------------------------
 void LoadFonts()
+//=================================================================================================
 {
 	ImFontConfig fontConfig;
 	ImFontAtlas* pFontAtlas = ImGui::GetIO().Fonts;
@@ -322,11 +327,40 @@ void LoadFonts()
 }
 
 //=================================================================================================
+void UpdateWindowPlacement(int x, int y, int w, int h, bool isMaximized)
+//=================================================================================================
+{
+	NetImguiServer::Config::Server::sWindowPlacement[0] = x;
+	NetImguiServer::Config::Server::sWindowPlacement[1] = y;
+	NetImguiServer::Config::Server::sWindowPlacement[2] = w;
+	NetImguiServer::Config::Server::sWindowPlacement[3] = h;
+	NetImguiServer::Config::Server::sWindowMaximized = isMaximized;
+	NetImguiServer::Config::Client::SaveAll();
+}
+
+//=================================================================================================
+WindowPlacement GetWindowPlacement()
+//=================================================================================================
+{
+	if( !gLoadedConfigOnce ){
+		NetImguiServer::Config::Client::LoadAll();
+		gLoadedConfigOnce = true;
+	}
+	
+	WindowPlacement wp;
+	wp.x = NetImguiServer::Config::Server::sWindowPlacement[0];
+	wp.y = NetImguiServer::Config::Server::sWindowPlacement[1];
+	wp.w = ImMax(100, NetImguiServer::Config::Server::sWindowPlacement[2]);
+	wp.h = ImMax(100, NetImguiServer::Config::Server::sWindowPlacement[3]);
+	wp.isMaximized = NetImguiServer::Config::Server::sWindowMaximized;
+	return wp;
+}
+//=================================================================================================
 // UPDATE REMOTE CONTENT
 // Create a render target for each connected remote client once, and update it every frame
 // with the last drawing commands received from it. This Render Target will then be used
 // normally as the background image of each client window renderered by this Server
-void Update()
+void UpdateClientDraw()
 //=================================================================================================
 {
 	for (uint32_t i(0); i < RemoteClient::Client::GetCountMax(); ++i)
