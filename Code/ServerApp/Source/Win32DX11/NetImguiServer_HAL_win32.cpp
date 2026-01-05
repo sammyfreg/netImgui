@@ -39,16 +39,19 @@ HINSTANCE ghInstance;
 //=================================================================================================
 bool NetImguiNamedPipeMsgSend( const char* cmdline )
 {
+	IM_UNUSED(cmdline);
+#ifndef BUILD_DEBUG //Issue with ASAN
 	HANDLE hNamedPipe = CreateFileA(kServerNamedPipe, GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
 	if (hNamedPipe != INVALID_HANDLE_VALUE)
 	{
 		// Connected to named pipe, meaning there's already a running copy of netImgui Server
 		// Forward commandline options.
 		if( cmdline && cmdline[0] != 0 )
-			WriteFile(hNamedPipe, cmdline, static_cast<DWORD>(strlen(cmdline) + 1), nullptr, nullptr);		
+			WriteFile(hNamedPipe, cmdline, static_cast<DWORD>(strlen(cmdline) + 1), nullptr, nullptr);
 		CloseHandle(hNamedPipe);
 		return true;
 	}
+#endif
 	return false;
 }
 

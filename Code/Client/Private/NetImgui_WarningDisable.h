@@ -9,9 +9,14 @@
 //=================================================================================================
 #if defined (__clang__)
 	#pragma clang diagnostic push
+	#pragma clang diagnostic ignored "-Wunknown-warning-option"
 	#pragma clang diagnostic ignored "-Wc++98-compat-pedantic"
 	#pragma clang diagnostic ignored "-Wmissing-prototypes"
-	
+	#pragma clang diagnostic ignored "-Wold-style-cast"			// For ImTextureID_Invalid
+	#pragma clang diagnostic ignored "-Wunsafe-buffer-usage"
+	#pragma clang diagnostic ignored "-Wswitch-default"
+	#pragma clang diagnostic ignored "-Wnontrivial-memcall"		// For ImGui::IO memcpy warning
+
 //=================================================================================================
 // Visual Studio warnings
 //=================================================================================================

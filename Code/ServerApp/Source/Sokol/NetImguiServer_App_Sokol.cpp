@@ -103,7 +103,7 @@ void frame() {
 //    sg_begin_default_pass(&pass_action, width, height);
 
     simgui_new_frame({ width, height, sapp_frame_duration(), sapp_dpi_scale() });
-    NetImguiServer::App::UpdateRemoteContent(); // @SAMPLE_EDIT (Request each client to update their drawing content )
+    NetImguiServer::App::UpdateClientDraw(); // @SAMPLE_EDIT (Request each client to update their drawing content )
     clear_color = NetImguiServer::UI::DrawImguiContent();
     pass_action.colors[0].clear_value.r = clear_color.x;
     pass_action.colors[0].clear_value.g = clear_color.y;

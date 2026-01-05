@@ -9,37 +9,8 @@
 #include "Sample.h"
 #include "../../ServerApp/Source/Fonts/Roboto_Medium.cpp"
 
-// When NetImgui is disabled, it doesn't include these needed headers
-#if !NETIMGUI_ENABLED
-#include "imgui.h"
-#include <stdint.h>
-#endif
-
-//=================================================================================================
-// FontCreationCallback_Default
-//-------------------------------------------------------------------------------------------------
-// Default handling of remote server request to adjust the font DPI
-// This is optional, when no callback is specified on connection function, we use
-// 'ImGui::GetIO().FontGlobalScale' to adjust the font display size. Simple but blurier results.
-//=================================================================================================
-void FontCreationCallback_Default(float PreviousDPIScale, float NewDPIScale)
-{
-	IM_UNUSED(PreviousDPIScale); IM_UNUSED(NewDPIScale);
-#if NETIMGUI_ENABLED
-	if (GetSample().UpdateFont(NewDPIScale, false))
-	{
-		uint8_t* pPixelData(nullptr); int width(0), height(0);
-		ImGui::GetIO().Fonts->GetTexDataAsAlpha8(&pPixelData, &width, &height);
-		NetImgui::SendDataTexture(ImGui::GetIO().Fonts->TexID, pPixelData, static_cast<uint16_t>(width), static_cast<uint16_t>(height), NetImgui::eTexFormat::kTexFmtA8);
-	}
-#endif
-}
-
-extern void ExtraSampleBackend_UpdateFontTexture();
-
 namespace Sample
 {
-
 //=================================================================================================
 // Constructor
 //-------------------------------------------------------------------------------------------------
@@ -51,7 +22,6 @@ Base::Base(const char* sampleName)
 #if NETIMGUI_ENABLED
 	mConnect_PortClient		= NetImgui::kDefaultClientPort;
 	mConnect_PortServer		= NetImgui::kDefaultServerPort;
-	mCallback_FontGenerate	= FontCreationCallback_Default;
 #endif
 }
 
@@ -62,11 +32,11 @@ Base::Base(const char* sampleName)
 //=================================================================================================
 bool Base::Startup()
 {
-	mpContextLocal = mpContextMain = ImGui::GetCurrentContext();
 #if NETIMGUI_ENABLED
 	if( !NetImgui::Startup() )
 		return false;
 #endif
+	AddFont();
 	return true;
 }
 
@@ -83,57 +53,32 @@ void Base::Shutdown()
 }
 
 //=================================================================================================
-// UpdateFont
+// AddFont
 //-------------------------------------------------------------------------------------------------
-// Called from the main function and by remote server, to regnerate our font texture
-// with the appropriate character pixel size. This is to handle monitor with DPI scaling to make
-// small text readable on high resolution screens. 
-// 
-// The DPI scaling can also be entirely ignored by generating the font texture once 
-// to a fixed size, paired with 'ImGui::GetIO().FontGlobalScale' for the text size increase.
-// However, this create blurier text. See 'SampleFontDPI' for more details
+// Add and configure the fonts wanted in the demo.
+// Method can be overriden to use different font, byt default to Roboto 18pts
+//
+// Note:	Since Dear ImGui 1.92+, we do not need to manage font scaling/dpi at all,
+//			It is automatically done, and NetImgui Server also assign desired DPI behind the scene.
 //=================================================================================================
-bool Base::UpdateFont(float fontScaleDPI, bool isLocal)
+void Base::AddFont()
 {
-	IM_UNUSED(isLocal);
 	constexpr float kFontPixelSize = 16.f;
+	ImFontConfig FontConfig = {};
+// Using Roboto Font for prettier results
+#if 1
+	//Note: Using memcpy to avoid warnings related to OS string copy variations, 
+	//		and cannot rely on 'NetImgui::Internal::StringCopy' that can handle this problem
+	//		because 'SampleDisabled' couln't compile properly
+	const char FontName[] = "Roboto Medium";
+	memcpy(FontConfig.Name, FontName, sizeof(FontName));
+	ImGui::GetIO().Fonts->AddFontFromMemoryCompressedTTF(Roboto_Medium_compressed_data, Roboto_Medium_compressed_size, kFontPixelSize, &FontConfig);
 
-#if NETIMGUI_ENABLED
-	// Ignore local font resize when remotely drawing to this context
-	bool isLocalFontWithRemoteContext = isLocal && NetImgui::IsConnected() && mpContextMain == ImGui::GetCurrentContext();
-	if( !isLocalFontWithRemoteContext )
+// But can as easily rely on the default font
+#else 
+	FontConfig.SizePixels 	= kFontPixelSize;
+	FontAtlas->AddFontDefault(&FontConfig);
 #endif
-	{
-		// We detect if the current scaling result in a different pixel size
-		// When handling many font, each different font size would have to be tested
-		int pixelSizeCurrent	= static_cast<int>(roundf(kFontPixelSize * mGeneratedFontScaleDPI));
-		int pixelSizeWanted		= static_cast<int>(roundf(kFontPixelSize * fontScaleDPI));
-		if(pixelSizeCurrent != pixelSizeWanted)
-		{
-			ImFontConfig FontConfig = {};
-			ImFontAtlas* FontAtlas	= ImGui::GetIO().Fonts;
-			mGeneratedFontScaleDPI	= fontScaleDPI;
-			FontConfig.SizePixels	= static_cast<float>(pixelSizeWanted);
-			FontAtlas->Clear();
-		
-		#if 1 
-			// Using Roboto Font with DPI awareness
-			StringCopy(FontConfig.Name, "Roboto Medium");
-			ImGui::GetIO().Fonts->AddFontFromMemoryCompressedTTF(Roboto_Medium_compressed_data, Roboto_Medium_compressed_size, FontConfig.SizePixels, &FontConfig);
-		#else 
-			// But could as easily rely on the default font
-			FontAtlas->AddFontDefault(&FontConfig);
-		#endif
-			
-			FontAtlas->Build();
-			// Regenerate the Font Texture (only if used by local context)
-			if( ImGui::GetCurrentContext() == mpContextLocal ){
-				ExtraSampleBackend_UpdateFontTexture();
-			}
-			return true;
-		}
-	}
-	return false;
 }
 
 //=================================================================================================
@@ -197,7 +142,7 @@ void Base::Draw_Connect()
 				ImGui::Separator();
 				if (ImGui::Button("Connect", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
 				{
-					NetImgui::ConnectToApp(mSampleName, mConnect_HostnameServer, mConnect_PortServer, mCallback_ThreadLaunch, mCallback_FontGenerate);
+					NetImgui::ConnectToApp(mSampleName, mConnect_HostnameServer, mConnect_PortServer, mCallback_ThreadLaunch);
 				}
 				ImGui::EndMenu();
 			}
@@ -209,13 +154,13 @@ void Base::Draw_Connect()
 			if (ImGui::BeginMenu("[  Wait For  ]"))
 			//-------------------------------------------------------------------------------------
 			{
-				ImGui::TextColored(ImVec4(0.1, 1, 0.1, 1), "Client Settings");				
+				ImGui::TextColored(ImVec4(0.1, 1, 0.1, 1), "Client Settings");
 				ImGui::InputInt("Port", &mConnect_PortClient);
 				ImGui::NewLine();
 				ImGui::Separator();
 				if (ImGui::Button("Listen", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
 				{
-					NetImgui::ConnectFromApp(mSampleName, mConnect_PortClient, mCallback_ThreadLaunch, mCallback_FontGenerate);
+					NetImgui::ConnectFromApp(mSampleName, mConnect_PortClient, mCallback_ThreadLaunch);
 				}
 				ImGui::EndMenu();
 			}
@@ -225,7 +170,7 @@ void Base::Draw_Connect()
 		
 		ImGui::SameLine(0,40);	
 		ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.8,0.8,0.8,0.9) );
-		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(3, 3));				
+		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(3, 3));
 		ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, mbShowDemoWindow ? 1.f : 0.f);
 		ImGui::SetCursorPosY(3);
 		if( ImGui::Button(" Show ImGui Demo ") ){
@@ -236,11 +181,10 @@ void Base::Draw_Connect()
 		ImGui::EndMainMenuBar();
 	}
 	ImGui::PopStyleVar();
-
+#endif // #if NETIMGUI_ENABLED
 	if( mbShowDemoWindow ){
 		ImGui::ShowDemoWindow(&mbShowDemoWindow);
 	}
-#endif // #if NETIMGUI_ENABLED
 }
 
 }; // namespace Sample

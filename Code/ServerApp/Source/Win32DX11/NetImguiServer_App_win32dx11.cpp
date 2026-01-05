@@ -9,9 +9,10 @@
 #include "NetImguiServer_UI.h"
 #include "backends/imgui_impl_dx11.cpp"
 #include "backends/imgui_impl_win32.cpp"
+
 //=================================================================================================
 
-// Dear ImGui: standalone example application for DirectX 11
+// Dear ImGui: standalone example application for Windows API + DirectX 11
 
 // Learn about Dear ImGui:
 // - FAQ                  https://dearimgui.com/faq
@@ -43,11 +44,14 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 // Main code
 int main(int, char**)
 {
+    // Make process DPI aware and obtain main monitor scale
+    ImGui_ImplWin32_EnableDpiAwareness();
+    float main_scale = ImGui_ImplWin32_GetDpiScaleForMonitor(::MonitorFromPoint(POINT{ 0, 0 }, MONITOR_DEFAULTTOPRIMARY));
+
     // Create application window
-    ImGui_ImplWin32_EnableDpiAwareness(); // @SAMPLE_EDIT (DPI Awareness)
     WNDCLASSEXW wc = { sizeof(wc), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, L"NetImgui Server", nullptr }; // @SAMPLE_EDIT (changed name)
     ::RegisterClassExW(&wc);
-    HWND hwnd = ::CreateWindowW(wc.lpszClassName, L"NetImgui Server", WS_OVERLAPPEDWINDOW, 100, 100, 1280, 800, nullptr, nullptr, wc.hInstance, nullptr); // @SAMPLE_EDIT (changed name)
+    HWND hwnd = ::CreateWindowW(wc.lpszClassName, L"NetImgui Server", WS_OVERLAPPEDWINDOW, 100, 100, (int)(1280 * main_scale), (int)(800 * main_scale), nullptr, nullptr, wc.hInstance, nullptr); // @SAMPLE_EDIT (changed name)// @SAMPLE_EDIT (changed name)
 
     // Initialize Direct3D
     if (!CreateDeviceD3D(hwnd))
@@ -57,8 +61,32 @@ int main(int, char**)
         return 1;
     }
 
+    //=========================================================================================
+    // @SAMPLE_EDIT (Fetch previous window placement and restore it)
     // Show the window
-    ::ShowWindow(hwnd, SW_SHOWDEFAULT);
+    //::ShowWindow(hwnd, SW_SHOWDEFAULT);
+    NetImguiServer::App::WindowPlacement serverwp = NetImguiServer::App::GetWindowPlacement();
+    WINDOWPLACEMENT wp          = {};
+    wp.length                   = sizeof(wp);
+    wp.rcNormalPosition.left    = serverwp.x;
+    wp.rcNormalPosition.top     = serverwp.y;
+    wp.rcNormalPosition.right   = serverwp.x + serverwp.w;
+    wp.rcNormalPosition.bottom  = serverwp.y + serverwp.h;
+    wp.showCmd                  = serverwp.isMaximized ? SW_SHOWMAXIMIZED : SW_SHOWNORMAL;
+
+    // Clamp position to inside monitor work area
+    HMONITOR hMon               = MonitorFromRect(&wp.rcNormalPosition, MONITOR_DEFAULTTONEAREST);
+    MONITORINFO mi              = {};
+    mi.cbSize                   = sizeof(MONITORINFO);
+    GetMonitorInfo(hMon, &mi);
+    wp.rcNormalPosition.left    = ImMax(wp.rcNormalPosition.left, mi.rcWork.left);
+    wp.rcNormalPosition.top     = ImMax(wp.rcNormalPosition.top, mi.rcWork.top);
+    wp.rcNormalPosition.left    = ImMin(wp.rcNormalPosition.left, mi.rcWork.right-150);
+    wp.rcNormalPosition.top     = ImMin(wp.rcNormalPosition.top, mi.rcWork.bottom-150);
+    wp.rcNormalPosition.right   = wp.rcNormalPosition.left + serverwp.w;
+    wp.rcNormalPosition.bottom  = wp.rcNormalPosition.top + serverwp.h;
+    SetWindowPlacement(hwnd, &wp);
+    //=========================================================================================
     ::UpdateWindow(hwnd);
 
     // Setup Dear ImGui context
@@ -68,21 +96,24 @@ int main(int, char**)
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;         // Enable Docking
-    io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;       // Enable Multi-Viewport / Platform Windows
+    // io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;       // Enable Multi-Viewport / Platform Windows // @SAMPLE_EDIT Disabled multi-viewport
     //io.ConfigViewportsNoAutoMerge = true;
     //io.ConfigViewportsNoTaskBarIcon = true;
-    //io.ConfigViewportsNoDefaultParent = true;
     //io.ConfigDockingAlwaysTabBar = true;
     //io.ConfigDockingTransparentPayload = true;
-    //io.ConfigFlags |= ImGuiConfigFlags_DpiEnableScaleFonts;     // FIXME-DPI: Experimental. THIS CURRENTLY DOESN'T WORK AS EXPECTED. DON'T USE IN USER APP!
-    //io.ConfigFlags |= ImGuiConfigFlags_DpiEnableScaleViewports; // FIXME-DPI: Experimental.
 
     // Setup Dear ImGui style
     ImGui::StyleColorsDark();
     //ImGui::StyleColorsLight();
 
-    // When viewports are enabled we tweak WindowRounding/WindowBg so platform windows can look identical to regular ones.
+    // Setup scaling
     ImGuiStyle& style = ImGui::GetStyle();
+    style.ScaleAllSizes(main_scale);        // Bake a fixed style scale. (until we have a solution for dynamic style scaling, changing this requires resetting Style + calling this again)
+    style.FontScaleDpi = main_scale;        // Set initial font scale. (using io.ConfigDpiScaleFonts=true makes this unnecessary. We leave both here for documentation purpose)
+    io.ConfigDpiScaleFonts = true;          // [Experimental] Automatically overwrite style.FontScaleDpi in Begin() when Monitor DPI changes. This will scale fonts but _NOT_ scale sizes/padding for now.
+    io.ConfigDpiScaleViewports = true;      // [Experimental] Scale Dear ImGui and Platform Windows when Monitor DPI changes.
+
+    // When viewports are enabled we tweak WindowRounding/WindowBg so platform windows can look identical to regular ones.
     if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
     {
         style.WindowRounding = 0.0f;
@@ -97,16 +128,16 @@ int main(int, char**)
     // - If no fonts are loaded, dear imgui will use the default font. You can also load multiple fonts and use ImGui::PushFont()/PopFont() to select them.
     // - AddFontFromFileTTF() will return the ImFont* so you can store it if you need to select the font among multiple.
     // - If the file cannot be loaded, the function will return a nullptr. Please handle those errors in your application (e.g. use an assertion, or display an error and quit).
-    // - The fonts will be rasterized at a given size (w/ oversampling) and stored into a texture when calling ImFontAtlas::Build()/GetTexDataAsXXXX(), which ImGui_ImplXXXX_NewFrame below will call.
     // - Use '#define IMGUI_ENABLE_FREETYPE' in your imconfig file to use Freetype for higher quality font rendering.
-    // - Read 'docs/FONTS.md' for more instructions and details.
+    // - Read 'docs/FONTS.md' for more instructions and details. If you like the default font but want it to scale better, consider using the 'ProggyVector' from the same author!
     // - Remember that in C/C++ if you want to include a backslash \ in a string literal you need to write a double backslash \\ !
+    //style.FontSizeBase = 20.0f;
     //io.Fonts->AddFontDefault();
-    //io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\segoeui.ttf", 18.0f);
-    //io.Fonts->AddFontFromFileTTF("../../misc/fonts/DroidSans.ttf", 16.0f);
-    //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Roboto-Medium.ttf", 16.0f);
-    //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Cousine-Regular.ttf", 15.0f);
-    //ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, nullptr, io.Fonts->GetGlyphRangesJapanese());
+    //io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\segoeui.ttf");
+    //io.Fonts->AddFontFromFileTTF("../../misc/fonts/DroidSans.ttf");
+    //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Roboto-Medium.ttf");
+    //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Cousine-Regular.ttf");
+    //ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf");
     //IM_ASSERT(font != nullptr);
 
     // Our state
@@ -145,13 +176,8 @@ int main(int, char**)
         }
         sLastTime = std::chrono::steady_clock::now();
         
-        // @SAMPLE_EDIT (DPI Awareness)
-        if( NetImguiServer::App::UpdateFont() ) {
-			ImGui_ImplDX11_CreateFontsTexture();
-        }
-
-        // @SAMPLE_EDIT (Request each client to update their drawing content )
-        NetImguiServer::App::UpdateRemoteContent();
+        // @SAMPLE_EDIT (Request clients to update their drawing content and update texture resources)
+        NetImguiServer::App::UpdateClientDraw();
         //=========================================================================================
 		
         // Handle window being minimized or screen locked
@@ -176,12 +202,15 @@ int main(int, char**)
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
 
-        //=========================================================================================
+		//=========================================================================================
         // @SAMPLE_EDIT (Invoke our own Imgui content drawing, instead of the sample code)
         clear_color = NetImguiServer::UI::DrawImguiContent(); 
         IM_UNUSED(show_demo_window);
         IM_UNUSED(show_another_window);
 #if 0
+        //::Sleep(100);
+        //ImGui::GetStyle().FrameBorderSize = 3;
+        //ImGui::GetStyle().Colors[ImGuiCol_Border] = ImVec4(1,0,0,1);
 
         // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
         if (show_demo_window)
@@ -221,7 +250,6 @@ int main(int, char**)
         }
 #endif
         //=========================================================================================
-        
 
         // Rendering
         ImGui::Render();
@@ -237,8 +265,10 @@ int main(int, char**)
             ImGui::RenderPlatformWindowsDefault();
         }
 
-        g_pSwapChain->Present(1, 0); // Present with vsync
-        //g_pSwapChain->Present(0, 0); // Present without vsync
+        // Present
+        HRESULT hr = g_pSwapChain->Present(1, 0);   // Present with vsync
+        //HRESULT hr = g_pSwapChain->Present(0, 0); // Present without vsync
+        g_SwapChainOccluded = (hr == DXGI_STATUS_OCCLUDED);
     }
 
     // Cleanup
@@ -258,6 +288,7 @@ int main(int, char**)
 bool CreateDeviceD3D(HWND hWnd)
 {
     // Setup swap chain
+    // This is a basic setup. Optimally could use e.g. DXGI_SWAP_EFFECT_FLIP_DISCARD and handle fullscreen mode differently. See #8979 for suggestions.
     DXGI_SWAP_CHAIN_DESC sd;
     ZeroMemory(&sd, sizeof(sd));
     sd.BufferCount = 2;
@@ -284,6 +315,16 @@ bool CreateDeviceD3D(HWND hWnd)
     if (res != S_OK)
         return false;
 
+    // Disable DXGI's default Alt+Enter fullscreen behavior.
+    // - You are free to leave this enabled, but it will not work properly with multiple viewports.
+    // - This must be done for all windows associated to the device. Our DX11 backend does this automatically for secondary viewports that it creates.
+    IDXGIFactory* pSwapChainFactory;
+    if (SUCCEEDED(g_pSwapChain->GetParent(IID_PPV_ARGS(&pSwapChainFactory))))
+    {
+        pSwapChainFactory->MakeWindowAssociation(hWnd, DXGI_MWA_NO_ALT_ENTER);
+        pSwapChainFactory->Release();
+    }
+
     CreateRenderTarget();
     return true;
 }
@@ -309,10 +350,6 @@ void CleanupRenderTarget()
     if (g_mainRenderTargetView) { g_mainRenderTargetView->Release(); g_mainRenderTargetView = nullptr; }
 }
 
-#ifndef WM_DPICHANGED
-#define WM_DPICHANGED 0x02E0 // From Windows SDK 8.1+ headers
-#endif
-
 // Forward declare message handler from imgui_impl_win32.cpp
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
@@ -328,12 +365,25 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
     switch (msg)
     {
+    //=================================================================================================
+    // @SAMPLE_EDIT (Save the window placement)
+    case WM_CLOSE:{
+        WINDOWPLACEMENT wp = {};
+        wp.length = sizeof(wp);
+        if (GetWindowPlacement(hWnd, &wp))
+        {
+            NetImguiServer::App::UpdateWindowPlacement(wp.rcNormalPosition.left, wp.rcNormalPosition.top,
+                                                       wp.rcNormalPosition.right - wp.rcNormalPosition.left,
+                                                       wp.rcNormalPosition.bottom - wp.rcNormalPosition.top,
+                                                       (wp.showCmd == SW_MAXIMIZE));
+        }
+    }break;
+    //=================================================================================================
     case WM_SIZE:
         if (wParam == SIZE_MINIMIZED)
             return 0;
         g_ResizeWidth = (UINT)LOWORD(lParam); // Queue resize
         g_ResizeHeight = (UINT)HIWORD(lParam);
-        NetImguiServer::UI::SetWindowDPI(GetDpiForWindow(hWnd)); // @SAMPLE_EDIT (DPI Awareness)
         return 0;
     case WM_SYSCOMMAND:
         if ((wParam & 0xfff0) == SC_KEYMENU) // Disable ALT application menu
@@ -342,16 +392,6 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
     case WM_DESTROY:
         ::PostQuitMessage(0);
         return 0;
-    case WM_DPICHANGED:
-        NetImguiServer::UI::SetWindowDPI(GetDpiForWindow(hWnd)); // @SAMPLE_EDIT (DPI Awareness)
-        if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DpiEnableScaleViewports)
-        {
-            //const int dpi = HIWORD(wParam);
-            //printf("WM_DPICHANGED to %d (%.0f%%)\n", dpi, (float)dpi / 96.0f * 100.0f);
-            const RECT* suggested_rect = (RECT*)lParam;
-            ::SetWindowPos(hWnd, nullptr, suggested_rect->left, suggested_rect->top, suggested_rect->right - suggested_rect->left, suggested_rect->bottom - suggested_rect->top, SWP_NOZORDER | SWP_NOACTIVATE);
-        }
-        break;
     }
     return ::DefWindowProcW(hWnd, msg, wParam, lParam);
 }

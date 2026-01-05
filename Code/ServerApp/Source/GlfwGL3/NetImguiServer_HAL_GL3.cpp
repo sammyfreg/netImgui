@@ -14,6 +14,15 @@
 
 namespace NetImguiServer { namespace App
 {
+
+//=================================================================================================
+// HAL RENDER DRAW DATA
+//=================================================================================================
+void HAL_RenderDrawData(ImDrawData* pDrawData)
+{
+	ImGui_ImplOpenGL3_RenderDrawData(pDrawData);
+}
+
 //=================================================================================================
 // HAL RENDER DRAW DATA
 // The drawing of remote clients is handled normally by the standard rendering backend,
@@ -31,6 +40,7 @@ void HAL_RenderDrawData(RemoteClient::Client& client, ImDrawData* pDrawData)
 			NetImgui::Internal::ScopedImguiContext scopedCtx(client.mpBGContext);
 			ImGui::GetIO().BackendRendererUserData = mainBackend; // Re-appropriate the existing renderer backend, for this client rendeering
 			ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+			ImGui::GetIO().BackendRendererUserData = nullptr;
 		}
 		if (pDrawData)
 		{
@@ -46,23 +56,23 @@ void HAL_RenderDrawData(RemoteClient::Client& client, ImDrawData* pDrawData)
 // The drawing of their menu content will be outputed in it, then displayed normally 
 // inside our own 'NetImGui application' Imgui drawing
 //=================================================================================================
-bool HAL_CreateRenderTarget(uint16_t Width, uint16_t Height, void*& pOutRT, void*& pOutTexture)
+bool HAL_CreateRenderTarget(uint16_t Width, uint16_t Height, void*& pOutRT, ImTextureData& OutTexture)
 {
-	HAL_DestroyRenderTarget(pOutRT, pOutTexture);
+	HAL_DestroyRenderTarget(pOutRT, OutTexture);
 
-    GLuint pTextureView = 0u;
-    glGenTextures(1, &pTextureView);
-    glBindTexture(GL_TEXTURE_2D, pTextureView);
+    GLuint TextureView = 0u;
+    glGenTextures(1, &TextureView);
+    glBindTexture(GL_TEXTURE_2D, TextureView);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, Width, Height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-		
+
     GLuint pRenderTargetView = 0u;
     glGenFramebuffers(1, &pRenderTargetView);
     glBindFramebuffer(GL_FRAMEBUFFER, pRenderTargetView);
 
     //Attach 2D texture to this FBO
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, pTextureView, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, TextureView, 0);
 
     GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
 	bool bSuccess = status == GL_FRAMEBUFFER_COMPLETE;
@@ -73,7 +83,9 @@ bool HAL_CreateRenderTarget(uint16_t Width, uint16_t Height, void*& pOutRT, void
 
 	if( bSuccess ){
 		pOutRT      = reinterpret_cast<void*>(static_cast<uint64_t>(pRenderTargetView));
-		pOutTexture = reinterpret_cast<void*>(static_cast<uint64_t>(pTextureView));
+		// Store identifiers
+        OutTexture.SetTexID(static_cast<ImTextureID>(TextureView));
+        OutTexture.SetStatus(ImTextureStatus_OK);
 		return true;
 	}
     return false;
@@ -83,7 +95,7 @@ bool HAL_CreateRenderTarget(uint16_t Width, uint16_t Height, void*& pOutRT, void
 // HAL DESTROY RENDER TARGET
 // Free up allocated resources tried to a RenderTarget
 //=================================================================================================
-void HAL_DestroyRenderTarget(void*& pOutRT, void*& pOutTexture)
+void HAL_DestroyRenderTarget(void*& pOutRT, ImTextureData& OutTexture)
 {
 	if(pOutRT)
 	{
@@ -91,70 +103,15 @@ void HAL_DestroyRenderTarget(void*& pOutRT, void*& pOutTexture)
 		pOutRT		= nullptr;
 		glDeleteFramebuffers(1, &pRT);
 	}
-	if(pOutTexture)
+	if(OutTexture.Status != ImTextureStatus_Destroyed && OutTexture.GetTexID() != ImTextureID_Invalid)
 	{
-		GLuint pTexture = static_cast<GLuint>(reinterpret_cast<uint64_t>(pOutTexture));
-		pOutTexture		= nullptr;
-		glDeleteTextures(1, &pTexture);
+		GLuint ViewTexture = static_cast<GLuint>(OutTexture.GetTexID());
+		glDeleteTextures(1, &ViewTexture);
+
+		// Clear identifiers and mark as destroyed (in order to allow e.g. calling InvalidateDeviceObjects while running)
+		OutTexture.SetTexID(ImTextureID_Invalid);
+		OutTexture.SetStatus(ImTextureStatus_Destroyed);
 	}
-}
-
-//=================================================================================================
-// HAL CREATE TEXTURE
-// Receive info on a Texture to allocate. At the moment, 'Dear ImGui' default rendering backend
-// only support RGBA8 format, so first convert any input format to a RGBA8 that we can use
-//=================================================================================================
-bool HAL_CreateTexture(uint16_t Width, uint16_t Height, NetImgui::eTexFormat Format, const uint8_t* pPixelData, ServerTexture& OutTexture)
-{
-	NetImguiServer::App::EnqueueHALTextureDestroy(OutTexture);
-	
-	// Convert all incoming textures data to RGBA8
-	uint32_t* pPixelDataAlloc = NetImgui::Internal::netImguiSizedNew<uint32_t>(Width*Height*4);
-	if(Format == NetImgui::eTexFormat::kTexFmtA8)
-	{
-		for (int i = 0; i < Width * Height; ++i){
-			pPixelDataAlloc[i] = 0x00FFFFFF | (static_cast<uint32_t>(pPixelData[i])<<24);
-		}
-		pPixelData = reinterpret_cast<const uint8_t*>(pPixelDataAlloc);
-	}
-	else if (Format == NetImgui::eTexFormat::kTexFmtRGBA8)
-	{
-	}	
-	else
-	{
-		// Unsupported format
-		return false;
-	}
-
-	GLint last_texture;
-	glGetIntegerv(GL_TEXTURE_BINDING_2D, &last_texture); // Save state
-
-	// Create new texture
-	GLuint texture = 0u;
-	glGenTextures(1, &texture);
-
-	//GLenum error = glGetError(); (void)error;
-	if( texture != 0 ){
-		glBindTexture(GL_TEXTURE_2D, texture);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, Width, Height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pPixelData);
-		OutTexture.mpHAL_Texture	= reinterpret_cast<void*>(static_cast<uint64_t>(texture));
-		glBindTexture(GL_TEXTURE_2D, last_texture); // Restore state
-	}
-	NetImgui::Internal::netImguiDeleteSafe(pPixelDataAlloc);
-	return texture != 0;
-}
-
-//=================================================================================================
-// HAL DESTROY TEXTURE
-// Free up allocated resources tried to a Texture
-//=================================================================================================
-void HAL_DestroyTexture(ServerTexture& OutTexture)
-{
-	GLuint pTexture = static_cast<GLuint>(reinterpret_cast<uint64_t>(OutTexture.mpHAL_Texture));
-	glDeleteTextures(1, &pTexture);
-	memset(&OutTexture, 0, sizeof(OutTexture));
 }
 
 }} //namespace NetImguiServer { namespace App

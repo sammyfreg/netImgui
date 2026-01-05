@@ -27,8 +27,8 @@
 class SampleSingleInclude : public Sample::Base
 {
 public:
-					SampleSingleInclude() : Base("SampleSingleInclude") {}
-virtual ImDrawData* Draw() override;
+				SampleSingleInclude() : Base("SampleSingleInclude") {}
+virtual void	Draw() override;
 };
 
 //=================================================================================================
@@ -44,7 +44,7 @@ Sample::Base& GetSample()
 //=================================================================================================
 // Function used by the sample, to draw all ImGui Content
 //=================================================================================================
-ImDrawData* SampleSingleInclude::Draw()
+void SampleSingleInclude::Draw()
 {
 	//---------------------------------------------------------------------------------------------
 	// (1) Start a new Frame.
@@ -78,9 +78,4 @@ ImDrawData* SampleSingleInclude::Draw()
 	// (3) Finish the frame
 	//---------------------------------------------------------------------------------------------
 	ImGui::Render();
-
-	//---------------------------------------------------------------------------------------------
-	// (4) Return content to draw by local renderer. Stop drawing locally when remote connected
-	//---------------------------------------------------------------------------------------------
-	return !NetImgui::IsConnected() ? ImGui::GetDrawData() : nullptr;	
 }

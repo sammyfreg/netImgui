@@ -12,7 +12,7 @@
 	#pragma clang diagnostic ignored "-Wunknown-warning-option"
 	#pragma clang diagnostic ignored "-Wc++98-compat-pedantic"
 	#pragma clang diagnostic ignored "-Wnonportable-include-path"		// Sharpmake convert include path to lowercase, avoid warning
-	#pragma clang diagnostic ignored "-Wreserved-identifier"			// Enuma values using '__' or member starting with '_' in imgui.h
+	#pragma clang diagnostic ignored "-Wreserved-identifier"			// Enum values using '__' or member starting with '_' in imgui.h
 
 //=================================================================================================
 // Visual Studio warnings

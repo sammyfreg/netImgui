@@ -43,7 +43,7 @@ namespace NetImgui
 		static public NetImguiTarget[] CreateTargets()
 		{		
 			List<NetImguiTarget> targets = new List<NetImguiTarget>();
-			foreach (var devEnv in new [] { DevEnv.vs2017, DevEnv.vs2019, DevEnv.vs2022 })
+			foreach (var devEnv in new [] { DevEnv.vs2017, DevEnv.vs2019, DevEnv.vs2022, DevEnv.vs2026 })
 			{				
 				if( Util.DirectoryExists(devEnv.GetVisualStudioDir()) ){
 					Compiler compiler = Compiler.MSBuild;
@@ -154,10 +154,20 @@ namespace NetImgui
 
 			conf.IncludePaths.Add(NetImguiTarget.GetPath(ProjectImgui.sDefaultPath) + @"\backends");
 			conf.IncludePaths.Add(NetImguiTarget.GetPath(@"\Code\Client"));
+			
 			if ( target.Compiler == Compiler.Clang ){
 				conf.Options.Add(Options.Vc.General.PlatformToolset.ClangCL);
 				conf.AdditionalCompilerOptions.Add("-Wno-unused-command-line-argument"); //Note: Latest Clang doesn't support '/MP' (multiprocessor build) option, creating a compile error
 			}
+			else if( target.Compiler == Compiler.MSBuild ){
+				conf.Options.Add(new Options.Vc.Compiler.DisableSpecificWarnings(""));
+				conf.Options.Add(Options.Vc.Librarian.TreatLibWarningAsErrors.Enable);	//Note: Clang VS2019 doesn't support this option properly
+				if( target.DevEnv == DevEnv.vs2026)
+				{
+					conf.AdditionalCompilerOptions.Add("/Zc:enumTypes"); // Prevents bunchs of error in Windows includes
+				}
+			}
+			
 			if (mIsExe)
 			{
 				conf.VcxprojUserFile = new ProjConfig.VcxprojUserFileSettings();
@@ -169,27 +179,25 @@ namespace NetImgui
 
 			conf.Options.Add(Options.Vc.General.WindowsTargetPlatformVersion.Latest);
 			conf.Options.Add(Options.Vc.General.TreatWarningsAsErrors.Enable);
-			conf.Options.Add(Options.Vc.General.CharacterSet.Unicode);			
 			conf.Options.Add(Options.Vc.Linker.TreatLinkerWarningAsErrors.Enable);
-			
-			conf.Defines.Add("_HAS_EXCEPTIONS=0"); 					// Prevents error in VisualStudio c++ library with NoExcept, like xlocale
+			conf.Options.Add(Options.Vc.General.CharacterSet.Unicode);
+			//conf.Options.Add(Options.Vc.Compiler.Exceptions.Enable);			
+			conf.Defines.Add("_HAS_EXCEPTIONS=0"); 					// Prevents error in VisualStudio c++ library with NoExcept, like xlocale			
 			conf.Defines.Add("IMGUI_DISABLE_OBSOLETE_FUNCTIONS");	// Enforce using up to date Dear ImGui Api (In Server, Compatibility tests and Samples)
 			
 			if (target.Optimization == Optimization.Debug){
+				conf.Defines.Add("BUILD_DEBUG=1");
+				conf.Defines.Add("_DEBUG");				
 				conf.Options.Add(Options.Vc.Compiler.RuntimeLibrary.MultiThreadedDebugDLL);				
 				// Note: Once Clang debug library link error is fixed (in new clang release),
 				// try removing 'MultiThreadedDebugDLL' and enabling asan for clang too
 				if( target.DevEnv > DevEnv.vs2017 && target.Compiler == Compiler.MSBuild ){
-					conf.Options.Add(Options.Vc.Compiler.EnableAsan.Enable);
+				//	conf.Options.Add(Options.Vc.Compiler.EnableAsan.Enable); // Issues with asan, gets hanged during window init
 				}
 			}
             else{
+				conf.Defines.Add("BUILD_RELEASE=1");
                 conf.Options.Add(Options.Vc.Compiler.RuntimeLibrary.MultiThreadedDLL);
-			}
-			
-			if( target.Compiler == Compiler.MSBuild ){
-				conf.Options.Add(new Options.Vc.Compiler.DisableSpecificWarnings(""));
-				conf.Options.Add(Options.Vc.Librarian.TreatLibWarningAsErrors.Enable);	//Note: Clang VS2019 doesn't support this option properly
 			}
 		}
 		
@@ -244,7 +252,13 @@ namespace NetImgui
 			SourceRootPath = NetImguiTarget.GetPath(sDefaultPath);
 			SourceFilesExcludeRegex.Add(@"backends\.*");
 		}
-		
+
+        public override void ConfigureAll(Configuration conf, NetImguiTarget target)
+        {
+            base.ConfigureAll(conf, target);
+            conf.IncludePaths.Add(NetImguiTarget.GetPath(sDefaultPath));
+        }
+
 		public static string sDefaultPath = @"\Code\ThirdParty\DearImgui";
 	}
 	
@@ -263,7 +277,7 @@ namespace NetImgui
 
 	// Dear ImGui Library, 32bits index
 	[Sharpmake.Generate] 
-	public class ProjectImguiIndex32 : ProjectImgui 
+	public class ProjectImguiIndex32 : ProjectImgui
 	{ 
 		public ProjectImguiIndex32() { Name = "DearImguiIndex32Lib"; }
 		
@@ -283,7 +297,7 @@ namespace NetImgui
 		public override void ConfigureAll(Configuration conf, NetImguiTarget target)
         {
 			base.ConfigureAll(conf, target);
-			conf.Defines.Add("ImTextureID=ImU64");		// Server must absolutly use at minimum 64bits texture id, even when compiled in 32 bits			
+			conf.Defines.Add("ImTextureUserID=ImU64");		// Server must absolutly use at minimum 64bits texture id, even when compiled in 32 bits			
 			EnabledImguiIndex32Bits(conf);
 		}
 	}
@@ -390,6 +404,7 @@ namespace NetImgui
 				conf.AdditionalCompilerOptions.Add("-Wno-unused-parameter");
 				conf.AdditionalCompilerOptions.Add("-Wno-unused-variable");
 				conf.AdditionalCompilerOptions.Add("-Wno-unused-but-set-variable");
+				conf.AdditionalCompilerOptions.Add("-Wno-nontrivial-memcall");
 			}
 		}
 		string mImguiFullPath;
