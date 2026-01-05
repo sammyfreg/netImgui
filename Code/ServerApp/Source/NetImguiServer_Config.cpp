@@ -246,14 +246,21 @@ void Client::SaveAll()
 	std::ofstream localFile(GetConfigFilename(eConfigType::Local));
 	bool localIsWritable = localFile.is_open();
 	localFile.close();
-	std::ofstream local2ndFile(GetConfigFilename(eConfigType::Local2nd));
-	bool local2ndIsWritable = local2ndFile.is_open();
-	local2ndFile.close();
-
-	// Try saving into default config file	
+	
+	std::ifstream local2ndFileExist(GetConfigFilename(eConfigType::Local2nd));
+	bool local2ndExist		= local2ndFileExist.is_open() ;
+	bool local2ndIsWritable = false;
+	local2ndFileExist.close();
+	
+	// Try saving into default config file
 	SaveConfigFile(eConfigType::Local, localIsWritable);
 	// And then in 2nd workingdir user file when 1st one is read only
-	SaveConfigFile(eConfigType::Local2nd, !localIsWritable && local2ndIsWritable);
+	if( !localIsWritable || local2ndExist )
+	{
+		std::ofstream local2ndFile(GetConfigFilename(eConfigType::Local2nd));
+		SaveConfigFile(eConfigType::Local2nd, !localIsWritable && local2ndIsWritable);
+	}
+
 	// Finally saved the shared config into user folder
 	SaveConfigFile(eConfigType::Shared, !localIsWritable && !local2ndIsWritable);
 }
