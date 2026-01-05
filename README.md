@@ -140,7 +140,8 @@ Related projects making use of **NetImgui**.
   - Updated Sharpmake version to 0.92
      - Added *Visual Studio 2026* support
 	 - Used by Server and Samples solutions generation (not needed by library users of **NetImgui's** client code)
-	 
+  -	 **NetImgui Server** application now remember previous window placement on launch
+  
 ### Older
 [Release Notes](https://github.com/sammyfreg/netImgui/wiki/Release-notes)
 
