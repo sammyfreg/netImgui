@@ -20,7 +20,7 @@
 Initially created to assist game developers in debugging their game running on a game console or smartphone, from a PC. However, its use extends to wider applications. The only requirements are that a program is using **Dear ImGui** using C++ and available TCP/IP communications.
 
 #### 1. UI for devices without display/input.
-Some applications lack display and inputs access, preventing feedbacks and easy control. It could be a program running on a [Raspberry Pie](https://www.raspberrypi.org/products/ "Raspberry Pie") device, or [Unreal 4](https://www.unrealengine.com "Unreal4") running in server mode, etc . . . Using **NetImgui** allows the display of a user interface with full control on your PC while the logic remains on the client application itself.
+Some applications lack display and inputs access, preventing feedbacks and easy control. It could be a program running on a [Raspberry Pi](https://www.raspberrypi.org/products/ "Raspberry Pi") device, or [Unreal 4](https://www.unrealengine.com "Unreal4") running in server mode, etc . . . Using **NetImgui** allows the display of a user interface with full control on your PC while the logic remains on the client application itself.
 
 **Note**: *SampleNoBackend demonstrate using Dear ImGui without any backend implementation. It is a simple console application connecting to the NetImguiServer to draw its Imgui content. There is no rendering/input backend that's usually require by Dear ImGui*
 
