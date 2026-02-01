@@ -336,8 +336,6 @@ NetImguiImDrawData*	Client::GetImguiDrawData(ImTextureID EmtpyTextureID)
 //=================================================================================================
 void Client::ProcessCmdDrawFrame(NetImgui::Internal::CmdDrawFrame* pCmdDrawFrame)
 {
-	constexpr float kPosRangeMin	= static_cast<float>(NetImgui::Internal::ImguiVert::kPosRange_Min);
-	constexpr float kPosRangeMax	= static_cast<float>(NetImgui::Internal::ImguiVert::kPosRange_Max);
 	constexpr float kUVRangeMin		= static_cast<float>(NetImgui::Internal::ImguiVert::kUvRange_Min);
 	constexpr float kUVRangeMax		= static_cast<float>(NetImgui::Internal::ImguiVert::kUvRange_Max);
 
@@ -391,8 +389,8 @@ void Client::ProcessCmdDrawFrame(NetImgui::Internal::CmdDrawFrame* pCmdDrawFrame
 			const NetImgui::Internal::ImguiVert* pVertexSrc = drawGroup.mpVertices.Get();
 			for (uint32_t vtxIdx(0); vtxIdx < drawGroup.mVerticeCount; ++vtxIdx)
 			{
-				pVertexDst[vtxIdx].pos.x				= (static_cast<float>(pVertexSrc[vtxIdx].mPos[0]) * (kPosRangeMax - kPosRangeMin)) / static_cast<float>(0xFFFF) + kPosRangeMin + drawGroup.mReferenceCoord[0];
-				pVertexDst[vtxIdx].pos.y				= (static_cast<float>(pVertexSrc[vtxIdx].mPos[1]) * (kPosRangeMax - kPosRangeMin)) / static_cast<float>(0xFFFF) + kPosRangeMin + drawGroup.mReferenceCoord[1];
+				pVertexDst[vtxIdx].pos.x				= pVertexSrc[vtxIdx].mPos[0] + drawGroup.mReferenceCoord[0];
+				pVertexDst[vtxIdx].pos.y				= pVertexSrc[vtxIdx].mPos[1] + drawGroup.mReferenceCoord[1];
 				pVertexDst[vtxIdx].uv.x					= (static_cast<float>(pVertexSrc[vtxIdx].mUV[0]) * (kUVRangeMax - kUVRangeMin)) / static_cast<float>(0xFFFF) + kUVRangeMin;
 				pVertexDst[vtxIdx].uv.y					= (static_cast<float>(pVertexSrc[vtxIdx].mUV[1]) * (kUVRangeMax - kUVRangeMin)) / static_cast<float>(0xFFFF) + kUVRangeMin;
 				pVertexDst[vtxIdx].col					= pVertexSrc[vtxIdx].mColor;

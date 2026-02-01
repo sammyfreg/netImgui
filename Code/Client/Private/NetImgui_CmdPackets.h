@@ -45,6 +45,7 @@ struct alignas(8) CmdVersion : public CmdHeader
 		UpdatedComs 		= 16,	// Faster protocol by removing blocking coms
 		RemDisconnect		= 17,	// Removed Disconnect command
 		ManagedTextures		= 18, 	// Adding support for Dear Imgui Managed Textures (introduced in 1.92))
+		VertexFloat			= 19,	// Increased Vertex from UNorm16 bit to float for added precision on large screen/graphing tools
 		// Insert new version here
 
 		//--------------------------------

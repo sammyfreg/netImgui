@@ -78,8 +78,8 @@ inline void ImGui_ExtractVertices(const ImDrawList& cmdList, ImguiDrawGroup& dra
 		pVertices[i].mColor		= Vtx.col;
 		pVertices[i].mUV[0]		= static_cast<uint16_t>((Vtx.uv.x	- static_cast<float>(ImguiVert::kUvRange_Min) + 0.5f/65535.f) * 0xFFFF / (ImguiVert::kUvRange_Max - ImguiVert::kUvRange_Min));
 		pVertices[i].mUV[1]		= static_cast<uint16_t>((Vtx.uv.y	- static_cast<float>(ImguiVert::kUvRange_Min) + 0.5f/65535.f) * 0xFFFF / (ImguiVert::kUvRange_Max - ImguiVert::kUvRange_Min));
-		pVertices[i].mPos[0]	= static_cast<uint16_t>((Vtx.pos.x	- drawGroupOut.mReferenceCoord[0] - static_cast<float>(ImguiVert::kPosRange_Min)) * 0xFFFF / (ImguiVert::kPosRange_Max - ImguiVert::kPosRange_Min));
-		pVertices[i].mPos[1]	= static_cast<uint16_t>((Vtx.pos.y	- drawGroupOut.mReferenceCoord[1] - static_cast<float>(ImguiVert::kPosRange_Min)) * 0xFFFF / (ImguiVert::kPosRange_Max - ImguiVert::kPosRange_Min));
+		pVertices[i].mPos[0]	= Vtx.pos.x	- drawGroupOut.mReferenceCoord[0];
+		pVertices[i].mPos[1]	= Vtx.pos.y	- drawGroupOut.mReferenceCoord[1];
 	}
 }
 

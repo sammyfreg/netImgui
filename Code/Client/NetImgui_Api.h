@@ -4,12 +4,12 @@
 //! @Name		: NetImgui
 //=================================================================================================
 //! @author		: Sammy Fatnassi
-//! @date		: 2026/01/04
-//!	@version	: v1.13.0
+//! @date		: 2026/02/01
+//!	@version	: v1.13.1
 //! @Details	: For integration info : https://github.com/sammyfreg/netImgui/wiki
 //=================================================================================================
-#define NETIMGUI_VERSION		"1.13.0"	// Release of v 1.13
-#define NETIMGUI_VERSION_NUM	11300
+#define NETIMGUI_VERSION		"1.13.1"	// Switched vtx pos to float (from u16) to support large coordinates
+#define NETIMGUI_VERSION_NUM	11301
 
 
 //-------------------------------------------------------------------------------------------------
