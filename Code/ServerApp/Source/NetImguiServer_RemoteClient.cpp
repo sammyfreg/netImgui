@@ -107,7 +107,7 @@ void Client::ProcessPendingTextureCmds()
 		}
 
 		// Add a texture
-		if( isCreate ) 
+		if( isCreate )
 		{
 			serverTex = NetImguiServer::App::CreateTexture(*pTextureCmd, texDataSize);
 			if( serverTex ){

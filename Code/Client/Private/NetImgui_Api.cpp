@@ -55,7 +55,7 @@ bool ConnectToApp(const char* clientName, const char* ServerHost, uint32_t serve
 #if NETIMGUI_IMGUI_TEXTURES_ENABLED
 	IM_UNUSED(FontCreateFunction);
 #else
-	client.mFontCreationFunction	= FontCreateFunction;
+	client.mOldFontCreationFunction	= FontCreateFunction;
 #endif
 	if (client.mpSocketPending.load() != nullptr)
 	{				
@@ -87,7 +87,7 @@ bool ConnectFromApp(const char* clientName, uint32_t serverPort, ThreadFunctPtr 
 #if NETIMGUI_IMGUI_TEXTURES_ENABLED
 	IM_UNUSED(FontCreateFunction);
 #else
-	client.mFontCreationFunction	= FontCreateFunction;
+	client.mOldFontCreationFunction	= FontCreateFunction;
 #endif
 	client.mThreadFunction			= (threadFunction == nullptr) ? DefaultStartCommunicationThread : threadFunction;
 	if (client.mpSocketPending.load() != nullptr)
@@ -221,18 +221,16 @@ bool NewFrame(bool bSupportFrameSkip)
 			ImGui::GetStyle().FontScaleDpi	= client.mFontServerScale;
 		#else
 			// We are about to start drawing for remote context, check for font data update
-			const ImFontAtlas* pFonts = ImGui::GetIO().Fonts;
-			if( pFonts->TexPixelsAlpha8 && 
-				(pFonts->TexPixelsAlpha8 != client.mpFontTextureData || client.mFontTextureID != ConvertToClientTexID(pFonts->TexID) ))
+			if( client.OldFontIsChanged() )
 			{
 				uint8_t* pPixelData(nullptr); int width(0), height(0);
 				ImGui::GetIO().Fonts->GetTexDataAsAlpha8(&pPixelData, &width, &height);
-				SendDataTexture(pFonts->TexID, pPixelData, static_cast<uint16_t>(width), static_cast<uint16_t>(height), eTexFormat::kTexFmtA8);
+				SendDataTexture(ImGui::GetIO().Fonts->TexID, pPixelData, static_cast<uint16_t>(width), static_cast<uint16_t>(height), eTexFormat::kTexFmtA8);
 			}
 			// No font texture has been sent to the netImgui server, you can either 
 			// 1. Leave font data available in ImGui (not call ImGui::ClearTexData) for netImgui to auto send it
 			// 2. Manually call 'NetImgui::SendDataTexture' with font texture data
-			assert(client.mbFontUploaded);
+			assert(client.mbOldFontUploaded);
 		#endif
 		}
 		
@@ -264,7 +262,7 @@ bool NewFrame(bool bSupportFrameSkip)
 	client.mbIsDrawing			= true;
 
 	// Reset Dear ImGui managed Textures status if not handled by backend, to not re-process the same elements (active on 1.92+)
-	client.TextureTrackingClear();
+	client.ManagedTextureClear();
 
 	// This function can be called from a 'NewFrame' ImGui hook, we should not start a new frame again
 	if (!client.mbInsideHook)
@@ -295,7 +293,7 @@ void EndFrame(void)
 		}
 		
 		// Detect all DearImgui ImGui managed Textures waiting for updates before backend process them (active on 1.92+)
-		client.TextureTrackingUpdate();
+		client.ManagedTextureUpdate();
 
 		// Prepare the Dear Imgui DrawData for later transmission to Server
 		ImDrawData* imDrawData = ImGui::GetDrawData();
@@ -361,17 +359,14 @@ void SendDataTexture(ImTextureID textureId, void* pData, uint16_t width, uint16_
 		if( pCmdTexture )
 		{
 			memcpy(pCmdTexture->mpTextureData.Get(), pData, dataSize);
-			pCmdTexture->mpTextureData.ToOffset();
-			client.TextureTrackingAdd(*pCmdTexture);
+			client.TextureCmdAdd(*pCmdTexture);
 
 			// Detects when user is sending the font texture
 		#if !NETIMGUI_IMGUI_TEXTURES_ENABLED
 			ScopedImguiContext scopedCtx(client.mpContext ? client.mpContext : ImGui::GetCurrentContext());
 			if( ImGui::GetIO().Fonts && ImGui::GetIO().Fonts->TexID == textureId )
 			{
-				client.mbFontUploaded		|= true;
-				client.mpFontTextureData	= ImGui::GetIO().Fonts->TexPixelsAlpha8;
-				client.mFontTextureID		= clientTexID;
+				client.OldFontUpdate();
 			}
 		#endif
 		}
@@ -379,7 +374,7 @@ void SendDataTexture(ImTextureID textureId, void* pData, uint16_t width, uint16_
 	// Texture to remove
 	else
 	{
-		client.TextureTrackingRem(clientTexID);
+		client.TextureDestroyCmdAdd(clientTexID);
 	}
 }
 
@@ -399,14 +394,13 @@ void SendDataTexture(const ImTextureRef& textureRef, void* pData, uint16_t width
 		if( pCmdTexture )
 		{
 			memcpy(pCmdTexture->mpTextureData.Get(), pData, dataSize);
-			pCmdTexture->mpTextureData.ToOffset();
-			client.TextureTrackingAdd(*pCmdTexture);
+			client.TextureCmdAdd(*pCmdTexture);
 		}
 	}
 	// Texture to remove
 	else
 	{
-		client.TextureTrackingRem(clientTexID);
+		client.TextureDestroyCmdAdd(clientTexID);
 	}
 }
 #endif //NETIMGUI_IMGUI_TEXTURES_ENABLED
@@ -636,13 +630,17 @@ bool ProcessInputData(Client::ClientInfo& client)
 #else
 		// User assigned a function callback handling FontScaling, 
 		// use it to request a Font update on DPI scaling change on the server
-		if (gpClientInfo->mFontCreationFunction != nullptr)
+		if (gpClientInfo->mOldFontCreationFunction != nullptr)
 		{
 			io.FontGlobalScale = 1.f;
-			if(abs(gpClientInfo->mFontServerScale - pCmdInput->mFontDPIScaling) > 0.01f)
+			if(abs(gpClientInfo->mOldFontDPIScalingLastCheck - pCmdInput->mFontDPIScaling) > 0.01f)
 			{
-				gpClientInfo->mFontCreationFunction(gpClientInfo->mFontSavedScaling, pCmdInput->mFontDPIScaling);
-				client.mFontServerScale = pCmdInput->mFontDPIScaling;
+				gpClientInfo->mOldFontDPIScalingLastCheck = pCmdInput->mFontDPIScaling;
+				gpClientInfo->mOldFontCreationFunction(gpClientInfo->mFontServerScale, pCmdInput->mFontDPIScaling);
+				if( client.OldFontIsChanged() )
+				{
+					client.mFontServerScale = pCmdInput->mFontDPIScaling;
+				}
 			}
 		}
 		// Client doesn't support regenerating the font at new DPI

@@ -215,7 +215,7 @@ struct alignas(8) CmdTexture : public CmdHeader
 	eType							mStatus				= eType::Create;
 	uint8_t							mFormat				= eTexFormat::kTexFmt_Invalid;	// eTexFormat
 	uint8_t							mUpdatable			= false;						// Set to true on Create, for updatable textures
-	uint8_t 						mIsDearImGuiManaged	= false;						// True if this is not an user created/managed texture
+	uint8_t 						mCanDeleteCmd		= false;						// True if the command should be released once it has been sent to server
 	uint16_t						mWidth				= 0;							// Either the texture width on create, or the update area width
 	uint16_t						mHeight				= 0;							// Either the texture height on create, or the update area height
 	uint16_t 						mOffsetX			= 0;							// Used by partial update

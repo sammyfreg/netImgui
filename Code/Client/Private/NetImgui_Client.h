@@ -28,6 +28,9 @@ struct SavedImguiContext
 	bool					mSavedContext								= false;
 	char					mPadding1[2]								= {};
 	void*					mClipboardUserData							= nullptr;
+#if NETIMGUI_HAS_VIEWPORT_DPI
+	bool 					mAutoDPIConfig 								= false;
+#endif
 #if IMGUI_VERSION_NUM < 19110
 	const char*				(*mGetClipboardTextFn)(void*)				= nullptr;
     void					(*mSetClipboardTextFn)(void*, const char*)	= nullptr;
@@ -40,8 +43,8 @@ struct SavedImguiContext
 	char					mPadding2[8 - (sizeof(mKeyMap) % 8)]		= {};
 #endif
 #if !NETIMGUI_IMGUI_TEXTURES_ENABLED
-	float					mFontGlobalScale							= 1.f;
-	float					mFontGeneratedSize							= 0.f;
+	float					mOldFontGlobalScale							= 1.f;	// Size of 1st font before NetImGui took over (used to restore Font DPI)
+	float					mOldFontGeneratedSize						= 0.f;
 #endif
 };
 
@@ -72,14 +75,13 @@ struct ClientInfo
 	inline bool							IsConnectPending()const;
 	inline bool							IsActive()const;
 	
-
-	bool 								TextureTrackingAdd(CmdTexture& cmdTexture);
-	bool 								TextureTrackingRem(ClientTextureID cmdTexture);
-	void 								TextureTrackingClear();
-	void 								TextureTrackingUpdate(bool bResendAll=false);		// Process Backend ImGui textures
 	CmdTexture*							TextureCmdAllocate(ClientTextureID clientTexID, uint16_t width, uint16_t height, eTexFormat format, uint32_t& dataSizeInOut);
-
-	void 								TexturePendingServerAdd(CmdTexture& cmdTexture);	// Add CmdTexture to list of command waiting for send off to Server	
+	void 								TextureCmdAdd(CmdTexture& cmdTexture);
+	void 								TextureDestroyCmdAdd(ClientTextureID clientTexID);
+	void 								TextureCmdServerAdd(CmdTexture& cmdTexture);		// Add CmdTexture to list of command waiting for send off to Server	
+	void 								ManagedTextureClear();
+	void 								ManagedTextureUpdate(bool bResendAll=false);		// Process Backend ImGui textures
+	
 	
 	void								ProcessDrawData(const ImDrawData* pDearImguiData, ImGuiMouseCursor mouseCursor);
 
@@ -91,9 +93,9 @@ struct ClientInfo
 	uint32_t							mSocketListenPort			= 0;		// Socket Port number used to wait for communication request from server
 	char								mName[64]					= {};
 	uint64_t							mFrameIndex					= 0;		// Incremented every time we send a DrawFrame Command
-	std::mutex							mPendingTexturesLock;					// Lock to prevent thread contention on the list of texure cmd waiting to be sent to the NetImgui Server
-	CmdTexture*							mPendingTextures			= nullptr;	// List of texture commands waiting to be send to Sever (single linked list with oldest item at the head)
-	ImVector<CmdTexture*>				mTrackedTextures;						// List of texture commands to create textures used by this client (note for large texture count, should be replace with a unordered_map for fast operations)
+	std::mutex							mTextureServerLock;						// Lock to prevent thread contention on the list of texure cmd waiting to be sent to the NetImgui Server
+	CmdTexture*							mTextureServerPending		= nullptr;	// List of texture commands waiting to be send to Sever (single linked list with oldest item at the head)
+	ImVector<CmdTexture*>				mTextureCmdTracked;						// List of texture commands to create textures used by this client (note for large texture count, should be replace with a unordered_map for fast operations)
 	ExchangePtr<CmdDrawFrame>			mPendingFrameOut;
 	ExchangePtr<CmdBackground>			mPendingBackgroundOut;
 	ExchangePtr<CmdInput>				mPendingInputIn;
@@ -116,7 +118,7 @@ struct ClientInfo
 	std::atomic_bool					mbClientThreadActive;					// True when connected and communicating with Server
 	std::atomic_bool					mbListenThreadActive;					// True when listening from connection request from Server
 	std::atomic_bool					mbComInitActive;						// True when attempting to initialize a new connection
-	bool 								mbTrackedTexturesPending 	= false;	// True if there are some pending tracked textures waiting to be removed
+	bool 								mbTextureCmdUpdated 		= false;	// True if there are some pending tracked textures waiting to be removed
 	bool								mbIsDrawing					= false;	// We are inside a 'NetImgui::NewFrame' / 'NetImgui::EndFrame' (even if not for a remote draw)
 	bool								mbIsRemoteDrawing			= false;	// True if the rendering it meant for the remote netImgui server
 	bool								mbRestorePending			= false;	// Original context has had some settings overridden, original values stored in mRestoreXXX
@@ -135,12 +137,17 @@ struct ClientInfo
 	ImGuiID								mhImguiHookNewframe			= 0;
 	ImGuiID								mhImguiHookEndframe			= 0;
 	int									mClientTextureIDNext		= 0;		// Next available ID to assign to new Dear ImGui managed textures
-	int									mDearImguiTextureCount		= 0;		// Keep track of number of Dear ImGui managed texture added (to detect when DearImgui released some)
-#if !NETIMGUI_IMGUI_TEXTURES_ENABLED
-	const void*							mpFontTextureData			= nullptr;	// Last font texture data send to server (used to detect if font was changed)
-	uint64_t							mFontTextureID				= 0;		// Used to detect textureID change [Before ImGui 1.92, old Font Atlas]
-	FontCreateFuncPtr					mFontCreationFunction		= nullptr;	// Method to call to generate the remote ImGui font. By default, re-use the local font, but this doesn't handle native DPI scaling on remote server. //NOTE: Unused by Dear imGui 1.92+
-	bool								mbFontUploaded				= false;	// Auto detect if font was sent to server
+	ImVector<ClientTextureID>			mTexturesManagedList;					// Keep a list of managed textures we sent to Server (used to detect Dear ImGui managed textures changes)
+
+#if !NETIMGUI_IMGUI_TEXTURES_ENABLED	// Method and data to track old font system status
+	bool 								OldFontIsChanged()const;				// Detect Font atlas changes
+	void 								OldFontUpdate();						// Update the font change tracking info
+	ImVector<float>						mOldFontSizes;							// List of point size of each font (used to detect font changes)
+	ImVector<int>						mOldFontGlyphCount;						// List of glyph count for each font
+	uint64_t							mOldFontTextureID			= 0;		// Used to detect textureID change [Before ImGui 1.92, old Font Atlas]
+	FontCreateFuncPtr					mOldFontCreationFunction	= nullptr;	// Method to call to generate the remote ImGui font. By default, re-use the local font, but this doesn't handle native DPI scaling on remote server. //NOTE: Unused by Dear imGui 1.92+
+	bool								mbOldFontUploaded			= false;	// Auto detect if font was sent to server
+	float 								mOldFontDPIScalingLastCheck	= 0.f;		// Keep track of last DPI value check we did
 #endif
 
 // Prevent warnings about implicitly created copy

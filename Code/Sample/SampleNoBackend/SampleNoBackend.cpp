@@ -48,25 +48,41 @@ enum eSampleState : uint8_t {
 };
 
 //=================================================================================================
+// Font DPI change request by NetImgui, need to re-generate the font
+// Note: On Dear ImGui with NETIMGUI_IMGUI_TEXTURES_ENABLED support (1.92+) this callback is not 
+//		 used beyond the first call in 'Client_Startup' to init the font once. The new font system
+//		 does not need to regenate the font atlat, it can adjust DPI directly and only update 
+//		 used glyphs
+//=================================================================================================
+void Client_FontUpdateCB(float PreviousDPIScale, float NewDPIScale)
+{
+	if( abs(PreviousDPIScale-NewDPIScale) > 0.05f )
+	{
+		ImGuiIO& io					= ImGui::GetIO();
+		ImFontConfig FontConfig 	= {};
+		const char FontName[] 		= "Roboto Medium";
+		constexpr float kFontSize	= 16.f;
+		memcpy(FontConfig.Name, FontName, sizeof(FontName));
+		io.Fonts->Clear();
+		io.Fonts->AddFontFromMemoryCompressedTTF(Roboto_Medium_compressed_data, Roboto_Medium_compressed_size, kFontSize*NewDPIScale, &FontConfig);
+	#if !NETIMGUI_IMGUI_TEXTURES_ENABLED
+		io.Fonts->Build();
+		io.Fonts->SetTexID(0);
+	#endif
+	}
+}
+
+//=================================================================================================
 // Initialize the Dear Imgui Context and the NetImgui library
 //=================================================================================================
 bool Client_Startup()
 {
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
-	ImGuiIO& io		= ImGui::GetIO();	
+	ImGuiIO& io		= ImGui::GetIO();
 	io.BackendFlags |= ImGuiBackendFlags_HasGamepad;	// Enable NetImgui Gamepad support
 	io.DisplaySize	= ImVec2(8,8);
-
-	ImFontConfig FontConfig = {};
-	const char FontName[] = "Roboto Medium";
-	memcpy(FontConfig.Name, FontName, sizeof(FontName));
-	io.Fonts->AddFontFromMemoryCompressedTTF(Roboto_Medium_compressed_data, Roboto_Medium_compressed_size, 16.f, &FontConfig);
-#if !NETIMGUI_IMGUI_TEXTURES_ENABLED
-	io.Fonts->Build();
-	io.Fonts->SetTexID(0);
-#endif
-	
+	Client_FontUpdateCB(0,1); 							// Makes sure there a valid font
 	ImGui::StyleColorsDark();
 
 	if( !NetImgui::Startup() )
@@ -93,14 +109,14 @@ void Client_Connect(eSampleState& sampleState)
 	if( sampleState == eSampleState::Start )
 	{
 		printf("- Connecting to NetImguiServer to (127.0.0.1:%i)... ", NetImgui::kDefaultServerPort);
-		NetImgui::ConnectToApp(zClientName, "localhost");
+		NetImgui::ConnectToApp(zClientName, "localhost", NetImgui::kDefaultServerPort, nullptr, Client_FontUpdateCB);
 		while( NetImgui::IsConnectionPending() );
 		bool bSuccess   = NetImgui::IsConnected();
 		sampleState     = bSuccess ? eSampleState::Connected : eSampleState::Disconnected;
 		printf(bSuccess ? "Success\n" : "Failed\n");
 		if (!bSuccess) {
 			printf("- Waiting for a connection from NetImguiServer on port %i... ", NetImgui::kDefaultClientPort);
-			NetImgui::ConnectFromApp(zClientName);
+			NetImgui::ConnectFromApp(zClientName, NetImgui::kDefaultClientPort, nullptr, Client_FontUpdateCB);
 			
 		}
 	}
@@ -114,7 +130,7 @@ void Client_Connect(eSampleState& sampleState)
 		sampleState = eSampleState::Disconnected;
 		printf("DISCONNECTED\n");
 		printf("- Waiting for a connection from NetImguiServer on port %i... ", NetImgui::kDefaultClientPort);
-		NetImgui::ConnectFromApp(zClientName);
+		NetImgui::ConnectFromApp(zClientName, NetImgui::kDefaultClientPort, nullptr, Client_FontUpdateCB);
 	}
 }
 

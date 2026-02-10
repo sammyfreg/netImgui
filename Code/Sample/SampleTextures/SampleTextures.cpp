@@ -568,7 +568,7 @@ void SampleTextures::DemoUserActionCreateDestroy()
 
 
 //=================================================================================================
-// Test case of sending 2 texture update commands to NetImgui Server, in the same frame
+// Test case of sending 4 texture update commands to NetImgui Server, in the same frame
 // This is to potential problems with the library
 void SampleTextures::DemoUserActionDoubleSend()
 //=================================================================================================

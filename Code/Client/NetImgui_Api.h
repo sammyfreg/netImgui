@@ -4,12 +4,12 @@
 //! @Name		: NetImgui
 //=================================================================================================
 //! @author		: Sammy Fatnassi
-//! @date		: 2026/02/01
-//!	@version	: v1.13.1
+//! @date		: 2026/02/09
+//!	@version	: v1.13.2
 //! @Details	: For integration info : https://github.com/sammyfreg/netImgui/wiki
 //=================================================================================================
-#define NETIMGUI_VERSION		"1.13.1"	// Switched vtx pos to float (from u16) to support large coordinates
-#define NETIMGUI_VERSION_NUM	11301
+#define NETIMGUI_VERSION		"1.13.2"	// Fixed font DPI resizing support on Dear ImGui < 1.92 (pre font texture work)
+#define NETIMGUI_VERSION_NUM	11302
 
 
 //-------------------------------------------------------------------------------------------------
@@ -75,6 +75,13 @@
 	#define NETIMGUI_IMGUI_TEXTURES_ENABLED		0
 #endif
 #endif
+
+#if defined(IMGUI_HAS_VIEWPORT) && (IMGUI_VERSION_NUM >= 19200)
+	#define NETIMGUI_HAS_VIEWPORT_DPI 1
+#else
+	#define NETIMGUI_HAS_VIEWPORT_DPI 0
+#endif
+
 
 #if NETIMGUI_ENABLED
 
