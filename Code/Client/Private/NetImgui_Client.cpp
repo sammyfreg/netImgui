@@ -452,7 +452,7 @@ void Communications_Loop(void* pClientVoid)
 	if (pSocket){
 		NetImgui::Internal::Network::Disconnect(pSocket);
 	}
-
+	pClient->mbDisconnectPending	= false;
 	pClient->mbClientThreadActive 	= false;
 }
 
