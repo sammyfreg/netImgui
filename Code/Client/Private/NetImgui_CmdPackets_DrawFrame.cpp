@@ -75,7 +75,14 @@ inline void ImGui_ExtractVertices(const ImDrawList& cmdList, ImguiDrawGroup& dra
 	for(int i(0); i<static_cast<int>(drawGroupOut.mVerticeCount); ++i)
 	{
 		const auto& Vtx			= cmdList.VtxBuffer[i];
-		pVertices[i].mColor		= Vtx.col;
+
+		// Convert colors with non-standard encoding to the encoding that the server expects
+		ImU32 r					= (Vtx.col >> IM_COL32_R_SHIFT) & 0xFF;
+		ImU32 g					= (Vtx.col >> IM_COL32_G_SHIFT) & 0xFF;
+		ImU32 b					= (Vtx.col >> IM_COL32_B_SHIFT) & 0xFF;
+		ImU32 a					= (Vtx.col >> IM_COL32_A_SHIFT) & 0xFF;
+		pVertices[i].mColor		= r << 0 | g << 8 | b << 16 | a << 24;
+
 		pVertices[i].mUV[0]		= static_cast<uint16_t>((Vtx.uv.x	- static_cast<float>(ImguiVert::kUvRange_Min) + 0.5f/65535.f) * 0xFFFF / (ImguiVert::kUvRange_Max - ImguiVert::kUvRange_Min));
 		pVertices[i].mUV[1]		= static_cast<uint16_t>((Vtx.uv.y	- static_cast<float>(ImguiVert::kUvRange_Min) + 0.5f/65535.f) * 0xFFFF / (ImguiVert::kUvRange_Max - ImguiVert::kUvRange_Min));
 		pVertices[i].mPos[0]	= Vtx.pos.x	- drawGroupOut.mReferenceCoord[0];
