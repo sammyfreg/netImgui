@@ -925,11 +925,11 @@ void ClientInfo::TextureCmdServerAdd(CmdTexture& cmdTexture)
 		cmdTexture.mpTextureData.ToOffset();
 	}
 
-	std::lock_guard<std::mutex> guard(mTextureServerLock);
 	if( IsConnected() )
 	{
 		// Find last added entry and remove all unprocessed texture commands with same id
 		// (only need latest create/destroy action but can have multiple update queued)
+		std::lock_guard<std::mutex> guard(mTextureServerLock);
 		CmdTexture** ppTexNextPtr = &mTextureServerPending;
 		while( (*ppTexNextPtr) != nullptr )
 		{
@@ -949,6 +949,7 @@ void ClientInfo::TextureCmdServerAdd(CmdTexture& cmdTexture)
 
 		// Add as last element and ready to be sent
 		cmdTexture.mSent	= false;
+		cmdTexture.mpNext 	= nullptr;
 		*ppTexNextPtr		= &cmdTexture;
 	}
 }
