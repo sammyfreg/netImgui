@@ -139,6 +139,11 @@ struct Client
 	TexUpdateInfo								mTextureHistory[256]	= {};		//!< Keeps track of texture changes (for debug info)
 	uint32_t 									mTextureHistoryIndex	= 0;
 	uint64_t									mLastDrawFrameIndex		= 0;		//!< Last frame index of valid drawdata drawn
+	uint8_t 									mRGBA32_R_Shift			= 0; 		// Client ImGui color encoding (left to 0 if same as server and no conversion needed)
+	uint8_t 									mRGBA32_G_Shift			= 0;
+	uint8_t 									mRGBA32_B_Shift			= 0;
+	uint8_t 									mRGBA32_A_Shift			= 0;
+	uint32_t 									mRGBA32_A_Mask			= 0;
 };
 
 }} // namespace NetImguiServer { namespace Client

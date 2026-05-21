@@ -72,6 +72,24 @@ void Client::ReceiveTexture(NetImgui::Internal::CmdTexture* pTextureCmd)
 {
 	if( pTextureCmd )
 	{
+		// Mismatch between client and server RGBA32 format, 
+		// shuffle bits around to match what is expected on the Server
+		if( mRGBA32_A_Mask != 0 && pTextureCmd->mFormat == NetImgui::eTexFormat::kTexFmtRGBA8 )
+		{
+			uint32_t texDataSize	= pTextureCmd->mSize - sizeof(NetImgui::Internal::CmdTexture);
+			uint32_t* pRGBACur 		= reinterpret_cast<uint32_t*>(pTextureCmd->mpTextureData.Get());
+			uint32_t* pRGBAEnd 		= reinterpret_cast<uint32_t*>(pTextureCmd->mpTextureData.Get()+texDataSize);
+			while( pRGBACur < pRGBAEnd )
+			{
+				uint32_t R	= (*pRGBACur >> mRGBA32_R_Shift) & 0xFF;
+				uint32_t G	= (*pRGBACur >> mRGBA32_G_Shift) & 0xFF;
+				uint32_t B	= (*pRGBACur >> mRGBA32_B_Shift) & 0xFF;
+				uint32_t A	= (*pRGBACur >> mRGBA32_A_Shift) & 0xFF;
+				*pRGBACur	= (R<<IM_COL32_R_SHIFT) | (G<<IM_COL32_G_SHIFT) | (B<<IM_COL32_B_SHIFT) | (A<<IM_COL32_A_SHIFT);
+				++pRGBACur;
+			}
+		}
+
 		// Wait for a free spot in the ring buffer
 		while (mPendingTextureWriteIndex - mPendingTextureReadIndex >= IM_ARRAYSIZE(mpPendingTextures)) {
 			std::this_thread::yield();
@@ -387,13 +405,34 @@ void Client::ProcessCmdDrawFrame(NetImgui::Internal::CmdDrawFrame* pCmdDrawFrame
 
 			// Convert the Vertices from network command to Dear Imgui Format
 			const NetImgui::Internal::ImguiVert* pVertexSrc = drawGroup.mpVertices.Get();
-			for (uint32_t vtxIdx(0); vtxIdx < drawGroup.mVerticeCount; ++vtxIdx)
+			// Default behaviour, no vertex color format needed
+			if( mRGBA32_A_Mask == 0 )
 			{
-				pVertexDst[vtxIdx].pos.x				= pVertexSrc[vtxIdx].mPos[0] + drawGroup.mReferenceCoord[0];
-				pVertexDst[vtxIdx].pos.y				= pVertexSrc[vtxIdx].mPos[1] + drawGroup.mReferenceCoord[1];
-				pVertexDst[vtxIdx].uv.x					= (static_cast<float>(pVertexSrc[vtxIdx].mUV[0]) * (kUVRangeMax - kUVRangeMin)) / static_cast<float>(0xFFFF) + kUVRangeMin;
-				pVertexDst[vtxIdx].uv.y					= (static_cast<float>(pVertexSrc[vtxIdx].mUV[1]) * (kUVRangeMax - kUVRangeMin)) / static_cast<float>(0xFFFF) + kUVRangeMin;
-				pVertexDst[vtxIdx].col					= pVertexSrc[vtxIdx].mColor;
+				for (uint32_t vtxIdx(0); vtxIdx < drawGroup.mVerticeCount; ++vtxIdx)
+				{
+					pVertexDst[vtxIdx].pos.x	= pVertexSrc[vtxIdx].mPos[0] + drawGroup.mReferenceCoord[0];
+					pVertexDst[vtxIdx].pos.y	= pVertexSrc[vtxIdx].mPos[1] + drawGroup.mReferenceCoord[1];
+					pVertexDst[vtxIdx].uv.x		= (static_cast<float>(pVertexSrc[vtxIdx].mUV[0]) * (kUVRangeMax - kUVRangeMin)) / static_cast<float>(0xFFFF) + kUVRangeMin;
+					pVertexDst[vtxIdx].uv.y		= (static_cast<float>(pVertexSrc[vtxIdx].mUV[1]) * (kUVRangeMax - kUVRangeMin)) / static_cast<float>(0xFFFF) + kUVRangeMin;
+					pVertexDst[vtxIdx].col		= pVertexSrc[vtxIdx].mColor;
+				}
+			}
+			// Client and Server do not use the same RGBA format, shift bits around
+			else
+			{
+				for (uint32_t vtxIdx(0); vtxIdx < drawGroup.mVerticeCount; ++vtxIdx)
+				{
+					pVertexDst[vtxIdx].pos.x	= pVertexSrc[vtxIdx].mPos[0] + drawGroup.mReferenceCoord[0];
+					pVertexDst[vtxIdx].pos.y	= pVertexSrc[vtxIdx].mPos[1] + drawGroup.mReferenceCoord[1];
+					pVertexDst[vtxIdx].uv.x		= (static_cast<float>(pVertexSrc[vtxIdx].mUV[0]) * (kUVRangeMax - kUVRangeMin)) / static_cast<float>(0xFFFF) + kUVRangeMin;
+					pVertexDst[vtxIdx].uv.y		= (static_cast<float>(pVertexSrc[vtxIdx].mUV[1]) * (kUVRangeMax - kUVRangeMin)) / static_cast<float>(0xFFFF) + kUVRangeMin;
+					const uint32_t Color 		= pVertexSrc[vtxIdx].mColor;
+					uint32_t R					= (Color >> mRGBA32_R_Shift) & 0xFF;
+					uint32_t G					= (Color >> mRGBA32_G_Shift) & 0xFF;
+					uint32_t B					= (Color >> mRGBA32_B_Shift) & 0xFF;
+					uint32_t A					= (Color >> mRGBA32_A_Shift) & 0xFF;
+					pVertexDst[vtxIdx].col		= (R<<IM_COL32_R_SHIFT) | (G<<IM_COL32_G_SHIFT) | (B<<IM_COL32_B_SHIFT) | (A<<IM_COL32_A_SHIFT);
+				}
 			}
 
 			// Convert the Draws from network command to Dear Imgui Format

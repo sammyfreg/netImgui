@@ -301,6 +301,18 @@ bool Communications_InitializeClient(NetImgui::Internal::Network::SocketInfo* pC
 			pClient->mInfoNetImguiVerID = cmdVersionRcv.mNetImguiVerID;
 			pClient->mPendingRcv		= PendingCom();
 			pClient->mPendingSend		= PendingCom();
+			if( (cmdVersionRcv.mRGBA32_R_Shift != IM_COL32_R_SHIFT) ||
+				(cmdVersionRcv.mRGBA32_G_Shift != IM_COL32_G_SHIFT) ||
+				(cmdVersionRcv.mRGBA32_B_Shift != IM_COL32_B_SHIFT) ||
+				(cmdVersionRcv.mRGBA32_A_Shift != IM_COL32_A_SHIFT) ||
+				(cmdVersionRcv.mRGBA32_A_Mask != IM_COL32_A_MASK) )
+			{
+				pClient->mRGBA32_R_Shift	= cmdVersionRcv.mRGBA32_R_Shift;
+				pClient->mRGBA32_G_Shift 	= cmdVersionRcv.mRGBA32_G_Shift;
+				pClient->mRGBA32_B_Shift	= cmdVersionRcv.mRGBA32_B_Shift;
+				pClient->mRGBA32_A_Shift	= cmdVersionRcv.mRGBA32_A_Shift;
+				pClient->mRGBA32_A_Mask		= cmdVersionRcv.mRGBA32_A_Mask;
+			}
 			NetImgui::Internal::StringCopy(pClient->mInfoName,				cmdVersionRcv.mClientName);
 			NetImgui::Internal::StringCopy(pClient->mInfoImguiVerName,		cmdVersionRcv.mImguiVerName);
 			NetImgui::Internal::StringCopy(pClient->mInfoNetImguiVerName,	cmdVersionRcv.mNetImguiVerName);

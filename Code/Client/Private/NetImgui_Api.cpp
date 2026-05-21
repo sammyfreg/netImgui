@@ -472,7 +472,7 @@ void SetCompressionMode(eCompressionMode eMode)
 //=================================================================================================
 {
 	if (!gpClientInfo) return;
-	
+
 	Client::ClientInfo& client		= *gpClientInfo;
 	client.mClientCompressionMode	= static_cast<uint8_t>(eMode);
 }

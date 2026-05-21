@@ -46,7 +46,7 @@ void SampleIndex::Draw()
 	if (NetImgui::NewFrame(true))
 	{		
 		//-----------------------------------------------------------------------------------------
-		// (2) Draw ImGui Content 		
+		// (2) Draw ImGui Content
 		//-----------------------------------------------------------------------------------------
 		Base::Draw_Connect(); //Note: Connection to remote server done in there
 
