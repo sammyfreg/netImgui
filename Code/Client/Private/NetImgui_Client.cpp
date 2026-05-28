@@ -368,7 +368,8 @@ bool Communications_Initialize(ClientInfo& client)
 	CmdVersion cmdVersionSend, cmdVersionRcv;
 	PendingCom PendingRcv, PendingSend;
 
-	client.mbComInitActive = true;
+	client.mbDisconnectPending	= false;
+	client.mbComInitActive 		= true;
 
 	//---------------------------------------------------------------------
 	// Handshake confirming connection validity
@@ -462,7 +463,7 @@ void Communications_Loop(void* pClientVoid)
 void CommunicationsConnect(void* pClientVoid)
 {
 	IM_ASSERT(pClientVoid != nullptr);
-	ClientInfo* pClient	= reinterpret_cast<ClientInfo*>(pClientVoid);
+	ClientInfo* pClient				= reinterpret_cast<ClientInfo*>(pClientVoid);
 	if( Communications_Initialize(*pClient) )
 	{
 		Communications_Loop(pClientVoid);
@@ -478,6 +479,7 @@ void CommunicationsHost(void* pClientVoid)
 	ClientInfo* pClient				= reinterpret_cast<ClientInfo*>(pClientVoid);
 	pClient->mbListenThreadActive	= true;
 	pClient->mbDisconnectListen		= false;
+	pClient->mbDisconnectPending	= false;
 	pClient->mpSocketListen			= pClient->mpSocketPending.exchange(nullptr);
 	
 	while( pClient->mpSocketListen.load() != nullptr && !pClient->mbDisconnectListen )

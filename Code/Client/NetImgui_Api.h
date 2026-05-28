@@ -4,12 +4,12 @@
 //! @Name		: NetImgui
 //=================================================================================================
 //! @author		: Sammy Fatnassi
-//! @date		: 2026/02/09
-//!	@version	: v1.13.2
+//! @date		: 2026/05/27
+//!	@version	: v1.13.3
 //! @Details	: For integration info : https://github.com/sammyfreg/netImgui/wiki
 //=================================================================================================
-#define NETIMGUI_VERSION		"1.13.2"	// Fixed font DPI resizing support on Dear ImGui < 1.92 (pre font texture work)
-#define NETIMGUI_VERSION_NUM	11302
+#define NETIMGUI_VERSION		"1.13.3"	// Added support for texture&vertex IM_COL32 and fixed a connection init issue
+#define NETIMGUI_VERSION_NUM	11303
 
 
 //-------------------------------------------------------------------------------------------------
