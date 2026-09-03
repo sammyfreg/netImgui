@@ -618,7 +618,14 @@ void ClientInfo::ContextOverride()
 
 #if NETIMGUI_IMGUI_TEXTURES_ENABLED
 		mFontSavedScaling 				= ImGui::GetStyle().FontScaleDpi;
-		newIO.BackendFlags				|= ImGuiBackendFlags_RendererHasTextures;
+		// Dear ImGui does not allow switching to managed textures after a legacy atlas build.
+		// NetImgui can still send the retained atlas pixels without changing the renderer flag.
+		const ImFontAtlas* pFontAtlas	= newIO.Fonts;
+		const bool bLegacyAtlasBuilt		= pFontAtlas && pFontAtlas->TexIsBuilt && !pFontAtlas->RendererHasTextures;
+		if( !bLegacyAtlasBuilt )
+		{
+			newIO.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
+		}
 		TextureTrackingUpdate(true); // Force resend all Dear Imgui managed textures
 #else
 		if( mFontCreationFunction != nullptr )
