@@ -156,8 +156,27 @@ void Communications_Outgoing_Textures(ClientInfo& client)
 			client.mPendingTextures			= client.mPendingTextures->mpNext;
 			pPendingTexture->mpNext			= nullptr;
 			client.mPendingSend.pCommand	= pPendingTexture;
-			client.mPendingSend.bAutoFree	= false; // free handled by main update thread
+			client.mPendingSend.bAutoFree	= true;
 		}
+	}
+}
+
+static void Communications_ReleaseTexturePackets(ClientInfo& client)
+{
+	std::lock_guard<std::mutex> guard(client.mPendingTexturesLock);
+	while( client.mPendingTextures )
+	{
+		CmdTexture* pPendingTexture = client.mPendingTextures;
+		client.mPendingTextures = pPendingTexture->mpNext;
+		netImguiDelete(pPendingTexture);
+	}
+
+	if( client.mPendingSend.pCommand && client.mPendingSend.pCommand->mType == CmdHeader::eCommands::Texture )
+	{
+		IM_ASSERT(client.mPendingSend.bAutoFree);
+		CmdTexture* pPendingTexture = static_cast<CmdTexture*>(client.mPendingSend.pCommand);
+		netImguiDelete(pPendingTexture);
+		client.mPendingSend = PendingCom();
 	}
 }
 
@@ -406,6 +425,7 @@ bool Communications_Initialize(ClientInfo& client)
 			while( client.IsConnected() );
 		}
 
+		client.mbDisconnectPending			= false;
 		client.mpSocketComs					= pNewComSocket;					// Take ownerhip of socket
 		client.mBGSettingSent.mTextureId	= client.mBGSetting.mTextureId-1u;	// Force sending the Background settings (by making different than current settings)
 		client.mFrameIndex					= 0;
@@ -441,6 +461,10 @@ void Communications_Loop(void* pClientVoid)
 		Communications_Outgoing(*pClient);
 		Communications_Incoming(*pClient);
 	}
+
+	// Drop every texture packet tied to the old server before a new connection can become visible.
+	// This also releases an independently allocated packet when a send was interrupted.
+	Communications_ReleaseTexturePackets(*pClient);
 
 	Network::SocketInfo* pSocket = pClient->mpSocketComs.exchange(nullptr);
 	if (pSocket){
@@ -535,6 +559,9 @@ ClientInfo::ClientInfo()
 ClientInfo::~ClientInfo()
 {
 	ContextRemoveHooks();
+
+	// Pending and in-flight texture packets are independent copies owned by the send path.
+	Communications_ReleaseTexturePackets(*this);
 
 	// Free all tracked textures
 	for(auto cmdTexture : mTrackedTextures){
@@ -703,9 +730,12 @@ void ClientInfo::TextureTrackingClear()
 		{
 			if (TexData->Status == ImTextureStatus_WantCreate )
 			{
-				IM_ASSERT(TexData->TexID == ImTextureID_Invalid && TexData->BackendUserData == nullptr);
-				static ImTextureID sUniqueID(1);
-				TexData->SetTexID(static_cast<ImTextureID>(sUniqueID++));
+				IM_ASSERT(TexData->BackendUserData == nullptr);
+				if( TexData->TexID == ImTextureID_Invalid )
+				{
+					static ImTextureID sUniqueID(1);
+					TexData->SetTexID(static_cast<ImTextureID>(sUniqueID++));
+				}
 				TexData->SetStatus(ImTextureStatus_OK);
 			}
 			else if (TexData->Status == ImTextureStatus_WantUpdates)
@@ -724,8 +754,10 @@ void ClientInfo::TextureTrackingClear()
 	// they will be resent on reconnect
 	if( !IsConnected() && mDearImguiTextureCount > 0 )
 	{
-		for(auto pCmdTexture : mTrackedTextures )
+		// TextureTrackingRem removes disconnected entries immediately, so iterate backwards.
+		for( int i = mTrackedTextures.Size - 1; i >= 0; --i )
 		{
+			CmdTexture* pCmdTexture = mTrackedTextures[i];
 			if( pCmdTexture->mIsDearImGuiManaged )
 			{
 				mbTrackedTexturesPending |= TextureTrackingRem(pCmdTexture->mTextureClientID);
@@ -801,8 +833,8 @@ void ClientInfo::TextureTrackingUpdate(bool bResendAll)
 					pCmdTexture->mUpdatable	= true;
 					pCmdTexture->mIsDearImGuiManaged = true;
 					pCmdTexture->mpTextureData.ToOffset();
-					TexturePendingServerAdd(*pCmdTexture);		// Request texture to be sent over to Server
-					mbTrackedTexturesPending = true;
+					TexturePendingServerAdd(*pCmdTexture);
+					netImguiDelete(pCmdTexture);
 				}
 			}
 		}
@@ -816,8 +848,10 @@ void ClientInfo::TextureTrackingUpdate(bool bResendAll)
 		//------------------------------------------------------------------------
 		if( mDearImguiTextureCount != Textures.Size )
 		{
-			for(auto pCmdTexture : mTrackedTextures )
+			// TextureTrackingRem uses erase-swap, so walk backwards to keep the remaining indices valid.
+			for( int trackedIndex = mTrackedTextures.Size - 1; trackedIndex >= 0; --trackedIndex )
 			{
+				CmdTexture* pCmdTexture = mTrackedTextures[trackedIndex];
 				if( pCmdTexture->mIsDearImGuiManaged )
 				{
 					bool bFound(false);
@@ -895,56 +929,99 @@ bool ClientInfo::TextureTrackingAdd(CmdTexture& cmdTexture)
 
 bool ClientInfo::TextureTrackingRem(ClientTextureID clientTextureID)
 {
-	// If texture has been sent to server, re-purpose existing command 
-	// as a 'destroy' and re-send it to server
 	for(int i(0); i<mTrackedTextures.Size; ++i)
 	{
 		CmdTexture* pCmdTexture = mTrackedTextures[i];
 		if( pCmdTexture && pCmdTexture->mTextureClientID == clientTextureID && pCmdTexture->mStatus == CmdTexture::eType::Create )
 		{
-			pCmdTexture->mSent		= false;
-			pCmdTexture->mStatus 	= CmdTexture::eType::Destroy;	// Re-purpose create cmd to destroy the texture
-			TexturePendingServerAdd(*pCmdTexture);
-
-			// Remove item from our list
+			// The send queue receives its own copy, so this tracked object cannot be in use by the communication thread.
+			pCmdTexture->mStatus = CmdTexture::eType::Destroy;
 			mDearImguiTextureCount -= pCmdTexture->mIsDearImGuiManaged ? 1 : 0;
+			TexturePendingServerAdd(*pCmdTexture);
 			mTrackedTextures[i] = mTrackedTextures.back();
 			mTrackedTextures.pop_back();
+			netImguiDelete(pCmdTexture);
 			return true;
 		}
 	}
 	return false;
 }
 
-void ClientInfo::TexturePendingServerAdd(CmdTexture& cmdTexture)
+static CmdTexture* TextureCmdCloneForQueue(const CmdTexture& cmdTexture)
+{
+	if( cmdTexture.mSize < sizeof(CmdTexture) )
+	{
+		IM_ASSERT(false);
+		return nullptr;
+	}
+
+	CmdTexture* pQueuedTexture = netImguiSizedNew<CmdTexture>(cmdTexture.mSize);
+	if( pQueuedTexture == nullptr )
+	{
+		return nullptr;
+	}
+
+	*pQueuedTexture = cmdTexture;
+	pQueuedTexture->mSent = false;
+	pQueuedTexture->mpNext = nullptr;
+
+	const size_t textureDataSize = cmdTexture.mSize - sizeof(CmdTexture);
+	if( textureDataSize > 0 )
+	{
+		const uint8_t* pTextureData = cmdTexture.mpTextureData.IsOffset()
+			? reinterpret_cast<const uint8_t*>(&cmdTexture.mpTextureData) + cmdTexture.mpTextureData.GetOff()
+			: cmdTexture.mpTextureData.Get();
+		memcpy(&pQueuedTexture[1], pTextureData, textureDataSize);
+	}
+	pQueuedTexture->mpTextureData.SetPtr(reinterpret_cast<uint8_t*>(&pQueuedTexture[1]));
+	pQueuedTexture->mpTextureData.ToOffset();
+	return pQueuedTexture;
+}
+
+bool ClientInfo::TexturePendingServerAdd(const CmdTexture& cmdTexture)
 {
 	std::lock_guard<std::mutex> guard(mPendingTexturesLock);
-	if( IsConnected() )
+	const bool canQueue = IsConnected() && !mbDisconnectPending;
+	if( !canQueue )
 	{
-		// Find last added entry
-		CmdTexture** ppNextTexture 	= &mPendingTextures;
-		CmdTexture* pendingTexture 	= mPendingTextures;
-		while( pendingTexture != nullptr )
+		// Every queued packet belongs to the old connection, not just packets for this texture.
+		while( mPendingTextures )
 		{
-			// Remove all unprocessed texture commands with same id
-			// (only need the latest action for create/destroy, but can have multiple update queued)
-			if(	cmdTexture.mStatus != CmdTexture::eType::Update &&
-				cmdTexture.mSent == false &&
-				cmdTexture.mTextureClientID == pendingTexture->mTextureClientID )
-			{
-				// Mark as sent and un-needed (which gets it removed from tracking array and deleted later)
-				pendingTexture->mSent	= true;
-				pendingTexture->mStatus	= CmdTexture::eType::Destroy;
-				*ppNextTexture			= pendingTexture->mpNext;
-			}
-			ppNextTexture	= &pendingTexture->mpNext;
-			pendingTexture 	= pendingTexture->mpNext;
+			CmdTexture* pPendingTexture = mPendingTextures;
+			mPendingTextures = pPendingTexture->mpNext;
+			netImguiDelete(pPendingTexture);
+		}
+		return false;
+	}
+
+	CmdTexture* pQueuedTexture = TextureCmdCloneForQueue(cmdTexture);
+	if( pQueuedTexture == nullptr )
+	{
+		return false;
+	}
+
+	// A Create or Destroy supersedes every older pending command for the same texture.
+	CmdTexture** ppNextTexture = &mPendingTextures;
+	CmdTexture* pPendingTexture = mPendingTextures;
+	while( pPendingTexture != nullptr )
+	{
+		if( cmdTexture.mStatus != CmdTexture::eType::Update &&
+			cmdTexture.mTextureClientID == pPendingTexture->mTextureClientID )
+		{
+			CmdTexture* pRemovedTexture = pPendingTexture;
+			*ppNextTexture = pRemovedTexture->mpNext;
+			pPendingTexture = *ppNextTexture;
+			pRemovedTexture->mpNext = nullptr;
+			netImguiDelete(pRemovedTexture);
+			continue;
 		}
 
-		// Add as last element and ready to be sent
-		cmdTexture.mSent	= false;
-		*ppNextTexture		= &cmdTexture;
+		ppNextTexture = &pPendingTexture->mpNext;
+		pPendingTexture = pPendingTexture->mpNext;
 	}
+
+	*ppNextTexture = pQueuedTexture;
+	return true;
 }
 
 //=================================================================================================
