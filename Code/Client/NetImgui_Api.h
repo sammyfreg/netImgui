@@ -4,12 +4,12 @@
 //! @Name		: NetImgui
 //=================================================================================================
 //! @author		: Sammy Fatnassi
-//! @date		: 2026/01/04
-//!	@version	: v1.13.0
+//! @date		: 2026/05/27
+//!	@version	: v1.13.3
 //! @Details	: For integration info : https://github.com/sammyfreg/netImgui/wiki
 //=================================================================================================
-#define NETIMGUI_VERSION		"1.13.0"	// Release of v 1.13
-#define NETIMGUI_VERSION_NUM	11300
+#define NETIMGUI_VERSION		"1.13.3"	// Added support for texture&vertex IM_COL32 and fixed a connection init issue
+#define NETIMGUI_VERSION_NUM	11303
 
 
 //-------------------------------------------------------------------------------------------------
@@ -59,7 +59,7 @@
 // When including this header, make sure imgui.h is included first 
 // (either always included in NetImgui_config.h or have it included after Imgui.h in your cpp)
 //-------------------------------------------------------------------------------------------------
-#if !defined(IMGUI_VERSION)
+#if !defined(IMGUI_VERSION) || defined(IMGUI_DISABLE)
 	#undef	NETIMGUI_ENABLED
 	#define NETIMGUI_ENABLED 					0
 #endif
@@ -75,6 +75,13 @@
 	#define NETIMGUI_IMGUI_TEXTURES_ENABLED		0
 #endif
 #endif
+
+#if defined(IMGUI_HAS_VIEWPORT) && (IMGUI_VERSION_NUM >= 19200)
+	#define NETIMGUI_HAS_VIEWPORT_DPI 1
+#else
+	#define NETIMGUI_HAS_VIEWPORT_DPI 0
+#endif
+
 
 #if NETIMGUI_ENABLED
 

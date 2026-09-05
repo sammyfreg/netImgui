@@ -45,6 +45,8 @@ struct alignas(8) CmdVersion : public CmdHeader
 		UpdatedComs 		= 16,	// Faster protocol by removing blocking coms
 		RemDisconnect		= 17,	// Removed Disconnect command
 		ManagedTextures		= 18, 	// Adding support for Dear Imgui Managed Textures (introduced in 1.92))
+		VertexFloat			= 19,	// Increased Vertex from UNorm16 bit to float for added precision on large screen/graphing tools
+		VertexColorFmt		= 20, 	// Added support for color format specifier
 		// Insert new version here
 
 		//--------------------------------
@@ -65,6 +67,11 @@ struct alignas(8) CmdVersion : public CmdHeader
 	eVersion	mVersion				= eVersion::_current;
 	uint32_t	mImguiVerID				= IMGUI_VERSION_NUM;
 	uint32_t	mNetImguiVerID			= NETIMGUI_VERSION_NUM;
+	uint8_t 	mRGBA32_R_Shift			= IM_COL32_R_SHIFT; // Client ImGui RGBA32 Color encoding
+	uint8_t 	mRGBA32_G_Shift			= IM_COL32_G_SHIFT;
+	uint8_t 	mRGBA32_B_Shift			= IM_COL32_B_SHIFT;
+	uint8_t 	mRGBA32_A_Shift			= IM_COL32_A_SHIFT;
+	uint32_t 	mRGBA32_A_Mask			= IM_COL32_A_MASK;
 	uint8_t		mWCharSize				= static_cast<uint8_t>(sizeof(ImWchar));
 	uint8_t 	mFlags 					= 0;
 	uint8_t		PADDING[2]				= {};
@@ -214,7 +221,7 @@ struct alignas(8) CmdTexture : public CmdHeader
 	eType							mStatus				= eType::Create;
 	uint8_t							mFormat				= eTexFormat::kTexFmt_Invalid;	// eTexFormat
 	uint8_t							mUpdatable			= false;						// Set to true on Create, for updatable textures
-	uint8_t 						mIsDearImGuiManaged	= false;						// True if this is not an user created/managed texture
+	uint8_t 						mCanDeleteCmd		= false;						// True if the command should be released once it has been sent to server
 	uint16_t						mWidth				= 0;							// Either the texture width on create, or the update area width
 	uint16_t						mHeight				= 0;							// Either the texture height on create, or the update area height
 	uint16_t 						mOffsetX			= 0;							// Used by partial update

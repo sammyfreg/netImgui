@@ -271,7 +271,7 @@ bool CreateTexture_Default(ServerTexture& serverTexture, const NetImgui::Interna
 			uint32_t* pDestCur		= reinterpret_cast<uint32_t*>(serverTexture.mTexData.GetPixels());
 			uint32_t* pDestEnd		= &pDestCur[cmdTexture.mHeight*cmdTexture.mWidth];
 			while (pDestCur < pDestEnd) {
-				*pDestCur++ = 0x00FFFFFF | (uint64_t(*pSrcCur++)<<24);
+				*pDestCur++ = (~IM_COL32_A_MASK) | (uint32_t(*pSrcCur++)<<IM_COL32_A_SHIFT);
 			}
 		}
 		else {

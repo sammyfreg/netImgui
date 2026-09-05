@@ -38,7 +38,7 @@ void Communications_Incoming_CmdTexture(RemoteClient::Client& Client)
 	Client.mTextureHistory[idx].isCreate			= pCmdTexture->mStatus == CmdTexture::eType::Create;
 	Client.mTextureHistory[idx].isDestroy			= pCmdTexture->mStatus == CmdTexture::eType::Destroy;
 	Client.mTextureHistory[idx].isUpdate			= pCmdTexture->mStatus == CmdTexture::eType::Update;
-	Client.mTextureHistory[idx].isDearImguiManaged	= pCmdTexture->mIsDearImGuiManaged != 0;
+	Client.mTextureHistory[idx].isDearImguiManaged	= pCmdTexture->mUpdatable != 0; // For now always true, but might change
 	Client.mTextureHistory[idx].x					= pCmdTexture->mOffsetX;
 	Client.mTextureHistory[idx].y					= pCmdTexture->mOffsetY;
 	Client.mTextureHistory[idx].w					= pCmdTexture->mWidth;
@@ -301,6 +301,18 @@ bool Communications_InitializeClient(NetImgui::Internal::Network::SocketInfo* pC
 			pClient->mInfoNetImguiVerID = cmdVersionRcv.mNetImguiVerID;
 			pClient->mPendingRcv		= PendingCom();
 			pClient->mPendingSend		= PendingCom();
+			if( (cmdVersionRcv.mRGBA32_R_Shift != IM_COL32_R_SHIFT) ||
+				(cmdVersionRcv.mRGBA32_G_Shift != IM_COL32_G_SHIFT) ||
+				(cmdVersionRcv.mRGBA32_B_Shift != IM_COL32_B_SHIFT) ||
+				(cmdVersionRcv.mRGBA32_A_Shift != IM_COL32_A_SHIFT) ||
+				(cmdVersionRcv.mRGBA32_A_Mask != IM_COL32_A_MASK) )
+			{
+				pClient->mRGBA32_R_Shift	= cmdVersionRcv.mRGBA32_R_Shift;
+				pClient->mRGBA32_G_Shift 	= cmdVersionRcv.mRGBA32_G_Shift;
+				pClient->mRGBA32_B_Shift	= cmdVersionRcv.mRGBA32_B_Shift;
+				pClient->mRGBA32_A_Shift	= cmdVersionRcv.mRGBA32_A_Shift;
+				pClient->mRGBA32_A_Mask		= cmdVersionRcv.mRGBA32_A_Mask;
+			}
 			NetImgui::Internal::StringCopy(pClient->mInfoName,				cmdVersionRcv.mClientName);
 			NetImgui::Internal::StringCopy(pClient->mInfoImguiVerName,		cmdVersionRcv.mImguiVerName);
 			NetImgui::Internal::StringCopy(pClient->mInfoNetImguiVerName,	cmdVersionRcv.mNetImguiVerName);
