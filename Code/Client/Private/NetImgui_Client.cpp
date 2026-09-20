@@ -684,7 +684,7 @@ void ClientInfo::ContextRemoveHooks()
 	{
 		ImGui::RemoveContextHook(mpContext, mhImguiHookNewframe);
 		ImGui::RemoveContextHook(mpContext, mhImguiHookEndframe);
-		mhImguiHookNewframe = mhImguiHookNewframe = 0;
+		mhImguiHookNewframe = mhImguiHookEndframe = 0;
 	}
 #endif
 }
