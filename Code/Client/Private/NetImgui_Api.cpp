@@ -136,6 +136,9 @@ void Disconnect(void)
 	if( pPendingSocket ){
 		Network::Disconnect(pPendingSocket);
 	}
+
+	client.ContextRestore();
+	client.ContextRemoveHooks();
 }
 
 //=================================================================================================
