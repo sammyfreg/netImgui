@@ -31,7 +31,7 @@ struct SocketInfo
 			mpSocket->SetNoDelay(true);
 
 			int32 NewSize(0);
-			while( !mpSocket->SetSendBufferSize(2*mSendSize, NewSize) ){
+			while( mSendSize >= 4096 && !mpSocket->SetSendBufferSize(2*mSendSize, NewSize) ){
 				mSendSize /= 2;
 			}
 			mSendSize = NewSize/2;
@@ -45,10 +45,11 @@ struct SocketInfo
 
 	void Close()
 	{
-		if(mpSocket )
+		if(mpSocket)
 		{
 			mpSocket->Close();
-			ISocketSubsystem::Get()->DestroySocket(mpSocket);
+			ISocketSubsystem* SocketSubSystem = ISocketSubsystem::Get(PLATFORM_SOCKETSUBSYSTEM);
+			SocketSubSystem->DestroySocket(mpSocket);
 			mpSocket = nullptr;
 		}
 	}
@@ -80,6 +81,7 @@ SocketInfo* Connect(const char* ServerHost, uint32_t ServerPort)
 		if (IpAddress->IsValid())
 		{
 			FSocket* pNewSocket	= SocketSubSystem->CreateSocket(NAME_Stream, "NetImgui", IpAddress->GetProtocolType());
+			pSocketInfo = netImguiNew<SocketInfo>(pNewSocket);
 			if (pNewSocket)
 			{
 				pNewSocket->SetNonBlocking(true);
@@ -89,7 +91,6 @@ SocketInfo* Connect(const char* ServerHost, uint32_t ServerPort)
 					pNewSocket->WaitForPendingConnection(bConnectionReady, FTimespan::FromSeconds(1.0f));
 					if( bConnectionReady )
 					{
-						pSocketInfo = netImguiNew<SocketInfo>(pNewSocket);
 						return pSocketInfo;
 					}
 				}
@@ -182,7 +183,7 @@ void DataReceive(SocketInfo* pClientSocket, NetImgui::Internal::PendingCom& Pend
 										sizeRcv,
 										ESocketReceiveFlags::None) )
 	{
-		PendingComRcv.SizeCurrent	+= static_cast<size_t>(sizeRcv);
+		PendingComRcv.SizeCurrent	+= sizeRcv > 0 ? static_cast<size_t>(sizeRcv) : 0;
 		PendingComRcv.bError		|= sizeRcv <= 0; // Error if no data read since DataReceivePending() said there was some available
 	}
 	else
@@ -212,7 +213,7 @@ void DataSend(SocketInfo* pClientSocket, NetImgui::Internal::PendingCom& Pending
 										static_cast<int>(sizeToSend),
 										sizeSent) )
 	{
-		PendingComSend.SizeCurrent += static_cast<size_t>(sizeSent);
+		PendingComSend.SizeCurrent += sizeSent > 0 ? static_cast<size_t>(sizeSent) : 0;
 	}
 	else
 	{

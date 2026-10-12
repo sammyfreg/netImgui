@@ -44,8 +44,9 @@ bool ConnectToApp(const char* clientName, const char* ServerHost, uint32_t serve
 	Client::ClientInfo& client	= *gpClientInfo;
 	Disconnect();
 	
-	while (client.IsActive())
+	while (client.IsActive()){
 		std::this_thread::yield();
+	}
 
 	client.ContextRestore();		// Restore context setting override, after a disconnect
 	client.ContextRemoveHooks();	// Remove hooks callback only when completely disconnected
@@ -123,8 +124,10 @@ void Disconnect(void)
 	}
 
 	// Wait for connection attempt to complete and fail
-	while( client.mbComInitActive || client.mbClientThreadActive );
-	
+	while( client.mbComInitActive || client.mbClientThreadActive ){
+		std::this_thread::yield();
+	}
+
 	// If fake connection to exit Listening failed, force disconnect socket directly
 	// even though it might potentially cause a race condition
 	Network::SocketInfo* pListenSocket =  client.mpSocketListen.exchange(nullptr);

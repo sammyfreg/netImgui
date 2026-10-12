@@ -410,7 +410,9 @@ bool Communications_Initialize(ClientInfo& client)
 		if( client.IsConnected() )
 		{
 			client.mbDisconnectPending = true;
-			while( client.IsConnected() );
+			while( client.IsConnected() ){
+				std::this_thread::yield();
+			}
 		}
 
 		client.mpSocketComs					= pNewComSocket;					// Take ownerhip of socket
