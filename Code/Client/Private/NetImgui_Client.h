@@ -79,7 +79,7 @@ struct ClientInfo
 	void 								TextureTrackingUpdate(bool bResendAll=false);		// Process Backend ImGui textures
 	CmdTexture*							TextureCmdAllocate(ClientTextureID clientTexID, uint16_t width, uint16_t height, eTexFormat format, uint32_t& dataSizeInOut);
 
-	void 								TexturePendingServerAdd(CmdTexture& cmdTexture);	// Add CmdTexture to list of command waiting for send off to Server	
+	bool 								TexturePendingServerAdd(const CmdTexture& cmdTexture);	// Add an owned copy to the send queue.
 	
 	void								ProcessDrawData(const ImDrawData* pDearImguiData, ImGuiMouseCursor mouseCursor);
 
