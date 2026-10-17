@@ -209,20 +209,19 @@ bool NewFrame(bool bSupportFrameSkip)
 		auto elapsedDrawMs					= static_cast<float>(std::chrono::duration_cast<std::chrono::microseconds>(elapsedDraw).count()) / 1000.f;
 		client.mLastOutgoingDrawCheckTime	= std::chrono::steady_clock::now();
 		
-		// Update input and see if remote netImgui expect a new frame
+		// Update input and see if remote netImgui expect a new frame.
+		// Also backup the local settings that will be overriden
 		client.mbValidDrawFrame				= false;
-		
+		client.mSavedDisplaySize			= ImGui::GetIO().DisplaySize;
+	#if NETIMGUI_IMGUI_TEXTURES_ENABLED
+		client.mFontSavedScaling			= ImGui::GetStyle().FontScaleDpi;
+	#endif
 		// Take into account delay until next method call, for more precise fps
 		if( client.mDesiredFps > 0.f && (elapsedDrawMs + elapsedCheckMs/2.f) > (1000.f/client.mDesiredFps) )
 		{
 			client.mLastOutgoingDrawTime	= std::chrono::steady_clock::now();
 			client.mbValidDrawFrame			= true;
-			client.mSavedDisplaySize		= ImGui::GetIO().DisplaySize;
-		
-		#if NETIMGUI_IMGUI_TEXTURES_ENABLED
-			client.mFontSavedScaling		= ImGui::GetStyle().FontScaleDpi;
-			ImGui::GetStyle().FontScaleDpi	= client.mFontServerScale;
-		#else
+		#if !NETIMGUI_IMGUI_TEXTURES_ENABLED
 			// We are about to start drawing for remote context, check for font data update
 			if( client.OldFontIsChanged() )
 			{
@@ -236,8 +235,13 @@ bool NewFrame(bool bSupportFrameSkip)
 			assert(client.mbOldFontUploaded);
 		#endif
 		}
-		
 		ProcessInputData(client);
+
+		// Always apply the Server provided DPI scaling on every remote frame, otherwise
+		// the layout alternates between local and remote scaling, causing hit test issues.
+	#if NETIMGUI_IMGUI_TEXTURES_ENABLED
+		ImGui::GetStyle().FontScaleDpi	= client.mFontServerScale;
+	#endif
 
 		// Update current active content with our time
 		ImGui::GetIO().DeltaTime = std::max<float>(1.f / 1000.f, elapsedCheckMs/1000.f);
