@@ -138,6 +138,8 @@ struct ClientInfo
 	ImGuiID								mhImguiHookEndframe			= 0;
 	int									mClientTextureIDNext		= 0;		// Next available ID to assign to new Dear ImGui managed textures
 	ImVector<ClientTextureID>			mTexturesManagedList;					// Keep a list of managed textures we sent to Server (used to detect Dear ImGui managed textures changes)
+	KeyEventFuncPtr						mKeyEventFunction			= nullptr;	// Optional application handler of the keyboard keys received from server
+	CharEventFuncPtr					mCharEventFunction			= nullptr;	// Optional application handler of the input characters received from server
 
 #if !NETIMGUI_IMGUI_TEXTURES_ENABLED	// Method and data to track old font system status
 	bool 								OldFontIsChanged()const;				// Detect Font atlas changes
