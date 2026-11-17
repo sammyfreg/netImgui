@@ -110,7 +110,7 @@ int main(int argc, char **argv) // @SAMPLE_EDIT (added parameters names so we ca
 
     // Create window with graphics context
     float main_scale = ImGui_ImplGlfw_GetContentScaleForMonitor(glfwGetPrimaryMonitor()); // Valid on GLFW 3.3+ only
-    GLFWwindow* window = glfwCreateWindow((int)(1280 * main_scale), (int)(800 * main_scale), "NetImgui Server", nullptr, nullptr); // @SAMPLE_EDIT (changed name)
+    GLFWwindow* window = glfwCreateWindow((int)(1280 * main_scale), (int)(800 * main_scale), NETIMGUI_SERVER_APP_TITLE, nullptr, nullptr); // @SAMPLE_EDIT (changed name)
     if (window == nullptr)
         return 1;
     glfwMakeContextCurrent(window);

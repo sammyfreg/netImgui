@@ -144,7 +144,7 @@ int main(int argc, const char* argv[]) {
     desc.event_cb = input,
     desc.width = 1280,
     desc.height = 720,
-    desc.window_title = "NetImgui Server",
+    desc.window_title = NETIMGUI_SERVER_APP_TITLE,
     desc.icon.sokol_default = true,
     desc.logger.func = slog_func;
     sapp_run(desc);

@@ -12,6 +12,10 @@
 #define HAL_API_RENDERTARGET_INVERT_Y	(HAL_API_PLATFORM_GLFW_GL3 || HAL_API_PLATFORM_SOKOL)	// Invert client render target Y axis (since OpenGL start texture UV from BottomLeft instead of DirectX TopLeft)
 //=============================================================================================
 
+#ifndef NETIMGUI_SERVER_APP_TITLE
+#define NETIMGUI_SERVER_APP_TITLE		"NetImgui Server"										// Main window title, can be overridden by the build settings
+#endif
+
 // Forward declare
 namespace NetImguiServer { namespace RemoteClient { struct Client; } }
 namespace NetImgui { namespace Internal { struct CmdTexture; } }
