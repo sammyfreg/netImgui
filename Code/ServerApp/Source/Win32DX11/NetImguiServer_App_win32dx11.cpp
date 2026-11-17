@@ -35,6 +35,7 @@ static UINT                     g_ResizeWidth = 0, g_ResizeHeight = 0;
 static ID3D11RenderTargetView*  g_mainRenderTargetView = nullptr;
 
 // Forward declarations of helper functions
+void NetImguiNamedPipeMsgReceive(HANDLE& hNamedPipe); // @SAMPLE_EDIT (receive connection requests forwarded by other instances)
 bool CreateDeviceD3D(HWND hWnd);
 void CleanupDeviceD3D();
 void CreateRenderTarget();
@@ -150,9 +151,12 @@ int main(int, char**)
     //=========================================================================================
     // @SAMPLE_EDIT (Start our own initialisation)
     done = !NetImguiServer::App::Startup( GetCommandLineA() );
+    HANDLE hNamedPipe = INVALID_HANDLE_VALUE;
     //=========================================================================================
     while (!done)
     {
+        NetImguiNamedPipeMsgReceive(hNamedPipe); // @SAMPLE_EDIT
+
         // Poll and handle messages (inputs, window resize, etc.)
         // See the WndProc() function below for our to dispatch events to the Win32 backend.
         MSG msg;
