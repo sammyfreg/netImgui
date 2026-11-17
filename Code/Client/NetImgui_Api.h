@@ -155,6 +155,8 @@ enum eCompressionMode {
 //-------------------------------------------------------------------------------------------------
 typedef void (*ThreadFunctPtr)(void threadedFunction(void* pClientInfo), void* pClientInfo);
 typedef void (*FontCreateFuncPtr)(float PreviousDPIScale, float NewDPIScale);
+typedef bool (*KeyEventFuncPtr)(ImGuiKey key, bool isDown);		// Return true when consumed, false to let netImgui add it to ImGuiIO
+typedef bool (*CharEventFuncPtr)(ImWchar character);			// Return true when consumed, false to let netImgui add it to ImGuiIO
 
 //=================================================================================================
 // Initialize the Network Library
@@ -277,6 +279,13 @@ NETIMGUI_API	void				SetBackground(const ImVec4& bgColor, const ImVec4& textureT
 //=================================================================================================
 NETIMGUI_API	void				SetCompressionMode(eCompressionMode eMode);
 NETIMGUI_API	eCompressionMode	GetCompressionMode();
+
+//=================================================================================================
+// Send the keyboard input received from the NetImguiServer to the application first
+// Note: Lets the application route keys through its own input system instead of ImGuiIO.
+//		 Call after 'Startup()'. A null function keeps the default ImGuiIO behavior.
+//=================================================================================================
+NETIMGUI_API	void				SetKeyboardInputCallbacks(KeyEventFuncPtr keyEventFunction, CharEventFuncPtr charEventFunction);
 
 //=================================================================================================
 // Helper functions

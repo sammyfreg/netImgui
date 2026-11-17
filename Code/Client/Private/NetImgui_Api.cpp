@@ -494,6 +494,17 @@ eCompressionMode GetCompressionMode()
 }
 
 //=================================================================================================
+void SetKeyboardInputCallbacks(KeyEventFuncPtr keyEventFunction, CharEventFuncPtr charEventFunction)
+//=================================================================================================
+{
+	if (!gpClientInfo) return;
+
+	Client::ClientInfo& client	= *gpClientInfo;
+	client.mKeyEventFunction	= keyEventFunction;
+	client.mCharEventFunction	= charEventFunction;
+}
+
+//=================================================================================================
 bool Startup(void)
 //=================================================================================================
 {
@@ -586,10 +597,22 @@ static inline void AddKeyEvent(const Client::ClientInfo& client, const CmdInput*
 #else
 	bool bChanged = (pCmdInput->mInputDownMask[valIndex] ^ client.mPreviousInputState.mInputDownMask[valIndex]) & valMask;
 	if( bChanged ){
-		ImGui::GetIO().AddKeyEvent(imguiKey, pCmdInput->mInputDownMask[valIndex] & valMask );
+		const bool bDown = (pCmdInput->mInputDownMask[valIndex] & valMask) != 0;
+		if( !client.mKeyEventFunction || !client.mKeyEventFunction(imguiKey, bDown) ){
+			ImGui::GetIO().AddKeyEvent(imguiKey, bDown);
+		}
 	}
 #endif
 }
+
+#if IMGUI_VERSION_NUM >= 18700
+static inline void AddKeyModEvent(const Client::ClientInfo& client, ImGuiKey imguiMod, bool bDown)
+{
+	if( !client.mKeyEventFunction || !client.mKeyEventFunction(imguiMod, bDown) ){
+		ImGui::GetIO().AddKeyEvent(imguiMod, bDown);
+	}
+}
+#endif
 
 static inline void AddKeyAnalogEvent(const Client::ClientInfo& client, const CmdInput* pCmdInput, CmdInput::NetImguiKeys netimguiKey, ImGuiKey imguiKey)
 {
@@ -793,10 +816,10 @@ bool ProcessInputData(Client::ClientInfo& client)
 		#define ImGuiMod_Alt ImGuiKey_ModAlt
 		#define ImGuiMod_Super ImGuiKey_ModSuper
 	#endif
-		io.AddKeyEvent(ImGuiMod_Ctrl,	pCmdInput->IsKeyDown(CmdInput::NetImguiKeys::ImGuiKey_ReservedForModCtrl));
-		io.AddKeyEvent(ImGuiMod_Shift,	pCmdInput->IsKeyDown(CmdInput::NetImguiKeys::ImGuiKey_ReservedForModShift));
-		io.AddKeyEvent(ImGuiMod_Alt,	pCmdInput->IsKeyDown(CmdInput::NetImguiKeys::ImGuiKey_ReservedForModAlt));
-		io.AddKeyEvent(ImGuiMod_Super,	pCmdInput->IsKeyDown(CmdInput::NetImguiKeys::ImGuiKey_ReservedForModSuper));
+		AddKeyModEvent(client, ImGuiMod_Ctrl,	pCmdInput->IsKeyDown(CmdInput::NetImguiKeys::ImGuiKey_ReservedForModCtrl));
+		AddKeyModEvent(client, ImGuiMod_Shift,	pCmdInput->IsKeyDown(CmdInput::NetImguiKeys::ImGuiKey_ReservedForModShift));
+		AddKeyModEvent(client, ImGuiMod_Alt,	pCmdInput->IsKeyDown(CmdInput::NetImguiKeys::ImGuiKey_ReservedForModAlt));
+		AddKeyModEvent(client, ImGuiMod_Super,	pCmdInput->IsKeyDown(CmdInput::NetImguiKeys::ImGuiKey_ReservedForModSuper));
 
 		// Mouse
 		io.AddMouseWheelEvent(wheelX, wheelY);
@@ -812,7 +835,9 @@ bool ProcessInputData(Client::ClientInfo& client)
 		io.InputQueueCharacters.resize(0);
 		while (client.mPendingKeyIn.ReadData(&character)){
 			ImWchar ConvertedKey = static_cast<ImWchar>(character);
-			io.AddInputCharacter(ConvertedKey);
+			if( !client.mCharEventFunction || !client.mCharEventFunction(ConvertedKey) ){
+				io.AddInputCharacter(ConvertedKey);
+			}
 		}
 
 		static_assert(sizeof(client.mPreviousInputState.mInputDownMask) == sizeof(pCmdInput->mInputDownMask), "Array size should match");
