@@ -51,7 +51,7 @@ int main(int, char**)
     // Create application window
     WNDCLASSEXW wc = { sizeof(wc), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, L"NetImgui Server", nullptr }; // @SAMPLE_EDIT (changed name)
     ::RegisterClassExW(&wc);
-    HWND hwnd = ::CreateWindowW(wc.lpszClassName, L"NetImgui Server", WS_OVERLAPPEDWINDOW, 100, 100, (int)(1280 * main_scale), (int)(800 * main_scale), nullptr, nullptr, wc.hInstance, nullptr); // @SAMPLE_EDIT (changed name)// @SAMPLE_EDIT (changed name)
+    HWND hwnd = ::CreateWindowW(wc.lpszClassName, L"" NETIMGUI_SERVER_APP_TITLE, WS_OVERLAPPEDWINDOW, 100, 100, (int)(1280 * main_scale), (int)(800 * main_scale), nullptr, nullptr, wc.hInstance, nullptr); // @SAMPLE_EDIT (changed name)// @SAMPLE_EDIT (changed name)
 
     // Initialize Direct3D
     if (!CreateDeviceD3D(hwnd))
