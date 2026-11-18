@@ -660,7 +660,9 @@ void ClientInfo::ContextRestore()
 	if (IsContextOverriden() && ImGui::GetCurrentContext() == mpContext)
 	{
 #ifdef IMGUI_HAS_VIEWPORT
-		ImGui::UpdatePlatformWindows(); // Prevents issue with mismatched frame tracking, when restoring enabled viewport feature
+		// Prevents issue with mismatched frame tracking, when restoring enabled viewport feature (unless the application already did it this frame)
+		if (mpContext->FrameCountPlatformEnded < mpContext->FrameCount)
+			ImGui::UpdatePlatformWindows();
 #endif
 #if NETIMGUI_IMGUI_TEXTURES_ENABLED
 		ImGui::GetStyle().FontScaleDpi = mFontSavedScaling;
